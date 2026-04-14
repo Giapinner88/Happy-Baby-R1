@@ -13,7 +13,7 @@
 
 **Happy Baby Project** là dự án nghiên cứu trọng điểm tại AiRA-Lab, tập trung vào việc làm chủ công nghệ điều khiển và vận hành Robot hình người **Unitree G1**. Dự án được thiết kế để giải quyết bài toán Sim-to-Real, chuyển đổi các chính sách điều khiển (control policies) từ môi trường mô phỏng vật lý độ trung thực cao sang thực thể robot.
 
-[](asset/fig/Unitree_R1_Specs-729x1024.jpg)
+![](asset/fig/Unitree_R1_Specs-729x1024.jpg)
 
 ### Core Technologies
 
@@ -22,7 +22,7 @@
   * **Communication:** ROS2 Humble, CycloneDDS (Optimized for Real-time).
   * **Dev Stack:** Python 3.10 (JAX/PyTorch), C++17 (Low-level Control).
 
-[](asset/fig/draw.png)
+![](asset/fig/draw.png)
 
 -----
 
