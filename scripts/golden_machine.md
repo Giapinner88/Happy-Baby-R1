@@ -14,20 +14,63 @@ Tài liệu này xác định cấu hình phần cứng tiêu chuẩn ("Golden M
 
 ## 2. Thông số kỹ thuật nền tảng (Hardware Context)
 
-[cite_start]Dự án hiện đang vận hành và nhắm mục tiêu phát triển trên phiên bản **Unitree R1 EDU U2**[cite: 267, 268]. [cite_start]Mẫu humanoid này được trang bị 26 bậc tự do (DOF), bao gồm cả hệ thống khớp cổ và đầu linh hoạt[cite: 268]. [cite_start]Nền tảng tính toán tích hợp (onboard computer) cung cấp mức hiệu năng xấp xỉ 100 TOPS [cite: 268][cite_start], cho phép xử lý trực tiếp các dự án AI và thị giác máy tính nâng cao ngay trên phần cứng của robot[cite: 268].
+Dự án hiện đang vận hành và nhắm mục tiêu phát triển trên phiên bản **Unitree R1 EDU U2**. Mẫu humanoid này được trang bị 26 bậc tự do (DOF), bao gồm cả hệ thống khớp cổ và đầu linh hoạt. Nền tảng tính toán tích hợp (onboard computer) cung cấp mức hiệu năng xấp xỉ 100 TOPS, cho phép xử lý trực tiếp các dự án AI và thị giác máy tính nâng cao ngay trên phần cứng của robot.
 
 ## 3. Thông số kỹ thuật máy trạm đề xuất (Technical Specifications)
 
-Để đồng bộ với hệ điều hành Ubuntu 22.04 LTS và tương thích với yêu cầu của R1, cấu hình Golden Machine được lựa chọn như sau:
+Để đồng bộ với hệ điều hành Ubuntu 22.04 LTS và tương thích với yêu cầu của R1, cấu hình Golden Machine được chốt như sau:
 
 | Thành phần | Thông số kỹ thuật chi tiết | Ghi chú |
 | :--- | :--- | :--- |
-| **CPU** | Intel Core i9-13900K hoặc AMD Ryzen 9 7950X | Tối thiểu 16 nhân/32 luồng hỗ trợ biên dịch và xử lý song song. |
-| **GPU** | NVIDIA GeForce RTX 4080 hoặc 4090 (16GB+ VRAM) | Bắt buộc sử dụng kiến trúc Ada Lovelace để tối ưu Isaac Lab. |
-| **RAM** | 64GB DDR5 5200MHz (hoặc cao hơn) | Đảm bảo băng thông bộ nhớ không bị nghẽn khi chạy mô phỏng cùng lúc với ROS2. |
-| **Storage** | 2TB NVMe PCIe Gen4 SSD | Cung cấp tốc độ đọc/ghi cao phục vụ việc lưu trữ dataset và ghi log (rosbag2). |
-| **Network** | Dual Gigabit Ethernet + WiFi 6 | Cổng LAN chuyên dụng để đảm bảo băng thông giao tiếp DDS với R1. |
+| **Model/Code** | 100-100001277WOF | Mã cấu hình CPU theo danh mục mua sắm. |
+| **CPU** | AMD Ryzen 9 9950X | Nền tảng xử lý chính cho biên dịch và mô phỏng cường độ cao. |
+| **GPU** | Dual NVIDIA RTX 4500 Ada, 24GB GDDR6, 4xDP | Cấu hình 2 GPU phục vụ Isaac Lab, AI pipeline và render song song. |
+| **Mainboard** | ASROCK X670E TAICHI (tấm mạch in đã lắp ráp) | Bo mạch chủ nền tảng AM5 cao cấp cho tính ổn định lâu dài. |
+| **RAM** | Corsair VENGEANCE RGB DDR5 64GB (2x32GB), 6000MHz, 1.35V, CMH64GX5M2D6000C40 | Dung lượng và băng thông phù hợp đa tác vụ mô phỏng + ROS2. |
+| **Storage** | Kingston SSD NV3 1000GB, M.2 2280 NVMe (SNV3S/1000G) | Ổ hệ thống và dữ liệu tốc độ cao chuẩn NVMe. |
+| **PSU** | Super Flower Leadex Platinum 2000W, 80 Plus Platinum (SF-2000F14HP) | Công suất lớn đáp ứng cấu hình 2 GPU chuyên dụng. |
+| **Cooling** | Cooler Master MasterLiquid 360 Atmos ARGB | Tản nhiệt AIO 360mm cho CPU tải nặng kéo dài. |
+| **Case** | Thermaltake View 600 TG Full Tower (không nguồn, không quạt) | Không gian lắp đặt lớn cho workstation đa GPU. |
 | **OS** | Ubuntu 22.04.x LTS (Jammy Jellyfish) | Phiên bản hệ điều hành tiêu chuẩn hỗ trợ `unitree_sdk2`. |
+
+### 3.1. Máy tương đương trên Lightning AI (Cloud Workstation)
+
+Để đảm bảo khả năng mô phỏng và huấn luyện tương đương khi làm việc trên Lightning AI, cần chọn máy ảo cloud có cấu hình tối thiểu như sau:
+
+| Thành phần | Yêu cầu tối thiểu | Ghi chú |
+| :--- | :--- | :--- |
+| **GPU** | 2x NVIDIA GPU, mỗi GPU >= 24GB VRAM | Mục tiêu tương đương RTX 4500 Ada 24GB. |
+| **CPU** | >= 16 vCPU | Ưu tiên CPU hiệu năng cao cho build và mô phỏng. |
+| **RAM** | >= 64GB | Tránh nghẽn bộ nhớ khi chạy Isaac Lab + ROS2. |
+| **Storage** | >= 1TB NVMe | Lưu dataset, checkpoint, rosbag2. |
+| **OS Image** | Ubuntu 22.04 LTS | Đồng bộ môi trường với máy trạm vật lý. |
+
+Checklist thiết lập trên Lightning AI:
+1. Chọn image Ubuntu 22.04 LTS, bật CUDA 12.x tương thích GPU.
+2. Cài ROS2 Humble Desktop Full và cấu hình CycloneDDS giống máy trạm.
+3. Đồng bộ workspace bằng Git + LFS (nếu cần) và restore các dataset/model từ object storage.
+4. Đặt biến môi trường và cấu hình driver theo chuẩn Golden Machine để tránh sai lệch Sim-to-Real.
+
+### 3.2. Thiết lập Golden Machine trên Lightning AI (Team Workspace -> Hardware)
+
+Mục tiêu là tạo một Team Workspace chuẩn và chọn phần cứng cloud mạnh nhất có sẵn để mô phỏng đúng năng lực Golden Machine.
+
+Quy trình đề xuất:
+1. Tạo Team Workspace mới với tên thống nhất theo dự án (ví dụ: `r1-golden-machine`).
+2. Chọn template Team Workspace: "team" (phù hợp thiết lập dùng chung cho nhiều người).
+3. Thiết lập quyền truy cập (Owner/Editor/Viewer) và bật audit log nếu có.
+4. Tạo Project/Studio chính, cấu hình Git repo mặc định và bật Git LFS.
+5. Chọn Studio template: "machine learning" (phù hợp pipeline huấn luyện + mô phỏng).
+6. Chọn image nền Ubuntu 22.04 LTS, sau đó cấu hình CUDA 12.x và driver NVIDIA tương thích.
+7. Chọn phần cứng (không giới hạn budget):
+	- Model máy: ưu tiên loại máy đa GPU cao cấp (ví dụ: node H100 80GB x2 hoặc H100 80GB x4).
+	- GPU: NVIDIA H100 80GB (SXM/PCIe), tối thiểu 2 GPU cho Isaac Lab và huan luyen song song.
+	- CPU: AMD EPYC 9654 (96C/192T) hoac Intel Xeon Platinum 8480+ (56C/112T).
+	- RAM: 256GB (toi thieu 128GB), uu tien DDR5 ECC.
+	- Storage: NVMe 2TB (toi thieu 1TB) cho dataset, checkpoint, rosbag2.
+8. Tạo snapshot/base image sau khi cài xong ROS2 Humble, Isaac Lab, MuJoCo, unitree_sdk2.
+9. Thiết lập object storage và policy đồng bộ dataset/model/checkpoint theo chuẩn dự án.
+10. Kiểm tra benchmark tối thiểu (build ROS2 + chạy Isaac Lab sample) để xác nhận hiệu năng.
 
 ## 4. Lý do lựa chọn (Justification & Rationale)
 
