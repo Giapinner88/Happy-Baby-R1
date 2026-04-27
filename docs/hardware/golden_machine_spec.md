@@ -63,11 +63,11 @@ Quy trình đề xuất:
 5. Chọn Studio template: "machine learning" (phù hợp pipeline huấn luyện + mô phỏng).
 6. Chọn image nền Ubuntu 22.04 LTS, sau đó cấu hình CUDA 12.x và driver NVIDIA tương thích.
 7. Chọn phần cứng (không giới hạn budget):
-	- Model máy: ưu tiên loại máy đa GPU cao cấp (ví dụ: node H100 80GB x2 hoặc H100 80GB x4).
-	- GPU: NVIDIA H100 80GB (SXM/PCIe), tối thiểu 2 GPU cho Isaac Lab và huan luyen song song.
-	- CPU: AMD EPYC 9654 (96C/192T) hoac Intel Xeon Platinum 8480+ (56C/112T).
-	- RAM: 256GB (toi thieu 128GB), uu tien DDR5 ECC.
-	- Storage: NVMe 2TB (toi thieu 1TB) cho dataset, checkpoint, rosbag2.
+   - Model máy: ưu tiên loại máy đa GPU cao cấp (ví dụ: node H100 80GB x2 hoặc H100 80GB x4).
+   - GPU: NVIDIA H100 80GB (SXM/PCIe), tối thiểu 2 GPU cho Isaac Lab và huan luyen song song.
+   - CPU: AMD EPYC 9654 (96C/192T) hoac Intel Xeon Platinum 8480+ (56C/112T).
+   - RAM: 256GB (toi thieu 128GB), uu tien DDR5 ECC.
+   - Storage: NVMe 2TB (toi thieu 1TB) cho dataset, checkpoint, rosbag2.
 8. Tạo snapshot/base image sau khi cài xong ROS2 Humble, Isaac Lab, MuJoCo, unitree_sdk2.
 9. Thiết lập object storage và policy đồng bộ dataset/model/checkpoint theo chuẩn dự án.
 10. Kiểm tra benchmark tối thiểu (build ROS2 + chạy Isaac Lab sample) để xác nhận hiệu năng.
@@ -90,3 +90,10 @@ Sau khi cài đặt hệ điều hành, Golden Machine cần được thiết l�
 2.  **ROS2 Environment:** Cài đặt bản phân phối ROS2 Humble Desktop Full.
 3.  **GPU Drivers:** Tích hợp NVIDIA Driver (Stable) và CUDA Toolkit 12.x.
 4.  **Middleware:** Cấu hình QoS cho CycloneDDS thông qua file XML được chia sẻ nội bộ.
+
+## 6. Tài liệu liên quan
+
+* Hướng dẫn cài Ubuntu: [../operations/ubuntu_22_04_lts_setup_guide.md](../operations/ubuntu_22_04_lts_setup_guide.md)
+* Hướng dẫn môi trường dev: [../operations/development_environment_setup_guide.md](../operations/development_environment_setup_guide.md)
+* Thiết lập mạng/DDS: [../operations/network_setup_checklist.md](../operations/network_setup_checklist.md)
+* Trang chỉ mục an toàn: [../safety/safety_rules.md](../safety/safety_rules.md)

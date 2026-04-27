@@ -1,4 +1,4 @@
-# Unitree R1 - Happy Baby Project (G1 Humanoid Research)
+# Unitree R1 - Happy Baby Project (R1 Humanoid Research)
 
 [![Project Status: Active](https://img.shields.io/badge/Project%20Status-Active-brightgreen)](#)
 [![Hardware: Unitree R1 EDU U2](https://img.shields.io/badge/Hardware-Unitree%20R1%20EDU%20U2-orange)](#)
@@ -11,13 +11,13 @@
 
 ## 1\. Project Overview
 
-**Happy Baby Project** là dự án nghiên cứu trọng điểm tại AiRA-Lab, tập trung vào việc làm chủ công nghệ điều khiển và vận hành Robot hình người **Unitree G1**. Dự án được thiết kế để giải quyết bài toán Sim-to-Real, chuyển đổi các chính sách điều khiển (control policies) từ môi trường mô phỏng vật lý độ trung thực cao sang thực thể robot.
+**Happy Baby Project** là dự án nghiên cứu trọng điểm tại AiRA-Lab, tập trung vào việc làm chủ công nghệ điều khiển và vận hành Robot hình người **Unitree R1**. Dự án được thiết kế để giải quyết bài toán Sim-to-Real, chuyển đổi các chính sách điều khiển (control policies) từ môi trường mô phỏng vật lý độ trung thực cao sang thực thể robot.
 
 ![](asset/fig/Unitree_R1_Specs-729x1024.jpg)
 
 ### Core Technologies
 
-  * **Hardware:** Unitree G1 (26 DOF), Jetson Orin NX Onboard Computer.
+  * **Hardware:** Unitree R1 (26 DOF), Jetson Orin NX Onboard Computer.
   * **Simulation:** MuJoCo (Physics), Isaac Lab (Reinforcement Learning).
   * **Communication:** ROS2 Humble, CycloneDDS (Optimized for Real-time).
   * **Dev Stack:** Python 3.10 (JAX/PyTorch), C++17 (Low-level Control).
@@ -60,36 +60,60 @@
 
 ```text
 .
-├── .github/                        # (DevOps) Workflows CI/CD, PR Templates
-├── docs/                           # (Documentation) Tài liệu dự án
-│   ├── hardware/                   # Specs của R1, sơ đồ mạch, pin
-│   ├── safety/                     # SOPs An toàn, Emergency Procedures
-│   └── architecture/               # Sơ đồ luồng dữ liệu, Network configs
-├── scripts/                        # (Tooling) Các script tự động hóa hệ thống
-│   ├── env_setup/                  # Script cài Zsh, Conda, Clang
-│   └── network/                    # Script cấu hình Static IP, CycloneDDS
-├── src/                            # (ROS2 Workspace) Mã nguồn lõi trên robot
-│   ├── r1_bringup/                 # Launch files tổng (chạy sim hoặc real)
-│   ├── r1_description/             # URDF, Meshes, cấu hình động học
-│   ├── r1_controllers/             # (C++) NMPC, LQR, Low-level control (1000Hz)
-│   ├── r1_hardware_interface/      # (C++) Bridge kết nối với unitree_sdk2
-│   └── r1_messages/                # Định nghĩa Custom ROS2 Interfaces/Messages
-├── sim/                            # (Simulation) Môi trường giả lập
-│   ├── mujoco_env/                 # (Python/C++) Scripts chạy MuJoCo, test Control
-│   └── isaac_lab_env/              # (Python) Môi trường RL, training tasks, configs
-├── ai_modules/                     # (AI/ML) Các module trí tuệ nhân tạo độc lập
-│   ├── voice_interaction/          # STT, TTS, LLM Prompts (Vietnamese pipeline)
-│   └── vision/                     # Xử lý ảnh từ Stereo Camera của R1
-├── data/                           # (Data Pipeline) LƯU Ý: Thư mục này bị ignore bởi Git
-│   ├── rosbags/                    # Log file ROS2 từ các buổi test
-│   ├── models/                     # Checkpoints của RL/LLM
-│   └── datasets/                   # Dữ liệu thu thập từ LeRobot (Imitation Learning)
-├── third_party/                    # (Dependencies) Thư viện bên ngoài (Submodules)
-│   ├── unitree_sdk2/               # C/C++ SDK gốc từ Unitree
-│   └── unitree_ros2/               # ROS2 Wrapper do Unitree cung cấp
-├── .gitignore                      # Ignore build/, install/, log/, data/
-├── requirements.txt                # Khóa phiên bản Python dependencies (Mujoco, numpy...)
-└── README.md                       # Trang chủ của Repository
+├── .github/
+├── .vscode/
+├── ai_modules/
+│   ├── vision/
+│   └── voice_interaction/
+├── asset/
+│   └── fig/
+├── build/
+├── config/
+│   └── cyclonedds_config.xml
+├── data/
+│   ├── datasets/
+│   ├── models/
+│   ├── processed/
+│   └── rosbags/
+├── docs/
+│   ├── Lab setup/
+│   │   └── Laboratory layout.md
+│   ├── architecture/
+│   │   └── network_dds_rationale.md
+│   ├── hardware/
+│   │   └── golden_machine_spec.md
+│   ├── operations/
+│   │   ├── SOP_v0.md
+│   │   ├── development_environment_setup_guide.md
+│   │   ├── naming_convention.md
+│   │   ├── network_setup_checklist.md
+│   │   ├── rosbag2_operation.md
+│   │   └── ubuntu_22_04_lts_setup_guide.md
+│   ├── safety/
+│   └── templates/
+│       └── test_log_template.md
+├── hardware/
+├── install/
+├── log/
+├── media/
+│   └── videos/
+├── setup_env.sh
+├── sim/
+│   ├── isaac_lab_env/
+│   └── mujoco_env/
+├── src/
+│   ├── integration_test_pkg/
+│   ├── r1_bringup/
+│   ├── r1_controllers/
+│   ├── r1_description/
+│   ├── r1_hardware_interface/
+│   └── r1_messages/
+├── test/
+│   ├── test_ai_env.py
+│   └── test_dds_node.py
+└── third_party/
+    ├── unitree_ros2/
+    └── unitree_sdk2/
 ```
 
 -----
@@ -98,7 +122,7 @@
 
 ### 5.1. Network Configuration
 
-Để đảm bảo giao tiếp ổn định với G1, máy tính điều khiển (Host) phải được cấu hình Static IP cùng dải mạng với Robot.
+Để đảm bảo giao tiếp ổn định với R1, máy tính điều khiển (Host) phải được cấu hình Static IP cùng dải mạng với Robot.
 
 ```bash
 # Example Setup for Ethernet Interface
@@ -115,7 +139,7 @@ Việc build workspace phải tuân thủ trình tự để đảm bảo các g�
 ```bash
 # Clone with submodules
 git clone --recursive <repo_url>
-cd happy-baby-g1/src
+cd Happy-Baby-R1/src
 
 # Install dependencies
 rosdep update
@@ -165,11 +189,11 @@ Chúng tôi áp dụng mô hình **Git Flow** nghiêm ngặt để bảo vệ t�
 
 ## 8\. Safety First
 
-Robot G1 có động lực học phức tạp và sức mạnh lớn. Tất cả thành viên phải tuân thủ:
+Robot R1 có động lực học phức tạp và sức mạnh lớn. Tất cả thành viên phải tuân thủ:
 
 1.  Luôn có người trực nút Emergency Stop khi vận hành.
 2.  Tuyệt đối không vận hành robot một mình.
-3.  Tuân thủ bảng mã lỗi và quy trình xử lý sự cố trong `docs/safety/Emergency_Procedure.md`.
+3.  Tuân thủ bảng mã lỗi và quy trình xử lý sự cố trong thư mục `docs/safety/`.
 
 -----
 

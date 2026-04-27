@@ -69,3 +69,10 @@ nvidia-smi
 *(Kết quả mong đợi: Hiển thị bảng giám sát NVIDIA-SMI với thông tin đầy đủ về Driver Version, CUDA Version và tình trạng tiêu thụ VRAM).*
 
 * **Tham khảo:** [Ubuntu Lenovo](docs/ts_p360_ubuntu_22.04_lts_installation_guide.pdf)
+
+## 5. Tài liệu liên quan
+
+* Hướng dẫn môi trường dev: [development_environment_setup_guide.md](development_environment_setup_guide.md)
+* Golden Machine: [../hardware/golden_machine_spec.md](../hardware/golden_machine_spec.md)
+* Thiết lập mạng/DDS: [network_setup_checklist.md](network_setup_checklist.md)
+* Trang chỉ mục an toàn: [../safety/safety_rules.md](../safety/safety_rules.md)
