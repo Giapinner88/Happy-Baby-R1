@@ -3,6 +3,12 @@ build/
 install/
 log/
 .colcon/
+**/build/
+**/cmake-build-*/
+**/out/
+
+# Vendored third-party dependencies
+third_party/
 
 # CMake / Make artifacts
 CMakeCache.txt
@@ -69,12 +75,12 @@ Thumbs.db
 *.mcap
 *.zst
 
-# Large local data (keep folder structure with .gitkeep if needed)
-data/datasets/
-data/models/
-data/processed/
-data/rosbags/
-media/videos/
+# Large local data (ignore contents, keep folder with .gitkeep)
+data/datasets/*
+data/models/*
+data/processed/*
+data/rosbags/*
+media/videos/*
 
 # Keep placeholder files inside ignored data dirs
 !data/datasets/.gitkeep
@@ -82,4 +88,3 @@ media/videos/
 !data/processed/.gitkeep
 !data/rosbags/.gitkeep
 !media/videos/.gitkeep
-

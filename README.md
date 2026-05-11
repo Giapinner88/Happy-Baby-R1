@@ -149,6 +149,17 @@ rosdep install --from-paths . --ignore-src -y
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
+### 5.3. Local Robot State Simulation
+
+Để mô phỏng luồng điều khiển state/joint mà không cần robot thật, chạy script dưới đây:
+
+```bash
+python3 sim/robot_state_sim.py --mode path --hz 20 --steps 80
+python3 sim/robot_state_sim.py --mode keyboard
+```
+
+`path` sẽ phát một quỹ đạo cố định qua các pose `stand -> crouch -> reach -> stand`, còn `keyboard` cho phép nhập lệnh như `set left_knee 0.5` hoặc `crouch` trực tiếp từ bàn phím.
+
 -----
 
 ## 6\. Branching & Development Workflow

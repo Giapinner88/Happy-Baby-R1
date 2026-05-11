@@ -28,7 +28,6 @@ class DummySubscriber(Node):
 def main():
     print("=== KHỞI ĐỘNG KIỂM THỬ DDS MIDDLEWARE ===")
     rclpy.init()
-    
     pub_node = DummyPublisher()
     sub_node = DummySubscriber()
     
