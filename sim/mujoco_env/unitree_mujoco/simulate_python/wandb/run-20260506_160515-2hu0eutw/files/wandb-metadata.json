@@ -1,0 +1,36 @@
+{
+  "os":  "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+  "python":  "CPython 3.13.12",
+  "startedAt":  "2026-05-06T09:05:15.435683Z",
+  "program":  "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_python/run98.py",
+  "codePath":  "run98.py",
+  "codePathLocal":  "run98.py",
+  "email":  "phamngockhanh2408@gmail.com",
+  "root":  "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_python",
+  "host":  "khanh248-Precision-7530",
+  "executable":  "/home/khanh248/Documents/HB/Mujoco/.venv/bin/python3",
+  "cpu_count":  6,
+  "cpu_count_logical":  12,
+  "gpu":  "Quadro P2000",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "105792806912",
+      "used":  "90967805952"
+    }
+  },
+  "memory":  {
+    "total":  "24943595520"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "Quadro P2000",
+      "memoryTotal":  "4294967296",
+      "cudaCores":  768,
+      "architecture":  "Pascal",
+      "uuid":  "GPU-053c17f8-51e7-5a0f-fcdd-fd9362ae1cc6"
+    }
+  ],
+  "cudaVersion":  "12.2",
+  "writerId":  "ownnaopmxbfykpn8ab3udsvu3fm7gh2u"
+}

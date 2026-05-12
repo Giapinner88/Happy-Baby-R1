@@ -1,0 +1,9 @@
+.venv/
+env_unitree/
+.vscode/
+.env
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+unitree_mujoco/simulate_python/sim_state_logs/
