@@ -22,7 +22,7 @@ CycloneDDS giúp tối ưu hóa $\tau_{latency}$ bằng cách sử dụng cơ ch
 Ngoài việc xác định Interface mạng, chúng ta cần cấu hình các tham số nội tại để phù hợp với đặc thù của Robot hình người (dữ liệu truyền tải liên tục nhưng kích thước gói tin nhỏ).
 
 ### 2.1. Thiết lập biến môi trường (Environment Variables)
-Để hệ thống nhận diện đúng tệp cấu hình tùy chỉnh, biến `CYCLONEDDS_URI` phải được xuất hiện trong mọi phiên làm việc của terminal. Điều này đã được tích hợp vào alias `load_ros` trong `~/.zshrc`.
+Để hệ thống nhận diện đúng tệp cấu hình tùy chỉnh khi test qua mang, bien `CYCLONEDDS_URI` nen duoc set trong terminal. Dieu nay da duoc tich hop vao alias `load_ros` trong `~/.zshrc`. Neu chi test local, co the `unset CYCLONEDDS_URI` de bo qua XML.
 
 ```bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
@@ -34,6 +34,8 @@ Tệp `cyclonedds_config.xml` của dự án chứa các khối điều khiển 
 - `<NetworkInterfaceAddress>`: Ràng buộc DDS vào đúng card mạng Ethernet nối với R1 để tránh nhiễu từ Wifi.
 - `<AllowMulticast>`: Thiết lập `true` để cho phép cơ chế tự động khám phá (Discovery) các Node trong mạng nội bộ.
 - `<WatermarkPings>`: Thiết lập `false` để giảm thiểu các gói tin kiểm tra không cần thiết, tiết kiệm băng thông cho dữ liệu điều khiển chính.
+
+*Luu y:* Neu CycloneDDS bao `unknown element` cho `WatermarkPings`, hay bo khoi file XML hoac cap nhat theo schema phu hop version hien tai.
 
 ---
 
@@ -72,6 +74,7 @@ Hệ thống sẽ tạo ra tệp log chi tiết các bước bắt tay (handshak
 
 1. **Node không thấy nhau:** Thường do tường lửa (Firewall) của Ubuntu chặn cổng UDP. Chạy `sudo ufw disable` để kiểm tra nhanh.
 2. **Tần số bản tin bị sụt giảm:** Kiểm tra xem có Node nào đang thực hiện các tác vụ nặng (như xử lý ảnh) trên cùng một Core CPU với Node truyền tin không. Khuyến khích sử dụng `taskset` để ghim Node DDS vào một Core riêng biệt.
+3. **`rmw_create_node` fail sau khi set `CYCLONEDDS_URI`:** Thu `unset CYCLONEDDS_URI` de xac minh ROS 2 van chay, sau do cap nhat XML cho dung schema (neu log co `deprecated element`/`unknown element`).
 
 ## 5. Tài liệu liên quan
 

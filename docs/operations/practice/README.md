@@ -21,6 +21,8 @@ Sau khi đọc xong bộ tài liệu này, bạn sẽ nắm được:
 2. [02_boot_and_run_exercise.md](02_boot_and_run_exercise.md)
 3. [03_data_flow_and_dds_exercise.md](03_data_flow_and_dds_exercise.md)
 4. [04_test_log_practice.md](04_test_log_practice.md)
+5. [07_ros2_conda_communication_test.md](07_ros2_conda_communication_test.md)
+6. [08_state_control_sim.md](08_state_control_sim.md)
 
 ## Cách dùng
 

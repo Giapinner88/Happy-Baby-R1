@@ -107,6 +107,8 @@ Chỉnh sửa tệp cấu hình `cyclonedds_config.xml` của dự án (nằm t�
 </CycloneDDS>
 ```
 
+*Luu y:* Neu log CycloneDDS bao `unknown element` cho `WatermarkPings`, hay bo dong nay khoi file XML hoac cap nhat theo schema phu hop version hien tai.
+
 ---
 
 ## 4. Kịch bản kiểm thử (Verification Pipeline)

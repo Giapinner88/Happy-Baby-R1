@@ -30,11 +30,17 @@ export CYCLONEDDS_URI=file:///home/$USER/Projects/Happy-Baby-R1/config/cyclonedd
 ```
 
 3. Kiểm tra file cấu hình XML trong repo và xác nhận interface mạng đúng với máy đang dùng.
+4. Neu log bao `deprecated element` hoac `unknown element` va `rmw_create_node` fail, tam thoi `unset CYCLONEDDS_URI` de test local, sau do cap nhat XML cho phu hop version CycloneDDS.
 
 ## 4. Kiểm tra kết nối
 
 1. Chạy `ping 192.168.123.1` hoặc IP mặc định của robot để kiểm tra thông suốt.
 2. Chạy demo pub/sub của ROS 2 để xác nhận giao tiếp nội bộ:
+
+```bash
+exec zsh
+load_ros
+```
 
 ```bash
 ros2 run demo_nodes_cpp talker

@@ -25,6 +25,8 @@ Trong humanoid lab, **rosbag2 = data backbone của toàn bộ pipeline AI**.
 
 ## 2. Các lệnh cơ bản (Essentials)
 
+Truoc khi chay cac lenh ben duoi, mo terminal moi va chay `load_ros`.
+
 ### A. Ghi dữ liệu (Recording)
 
 Không khuyến khích ghi toàn bộ topic vì file rất nặng.

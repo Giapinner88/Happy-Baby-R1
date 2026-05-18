@@ -163,6 +163,8 @@ cat << 'EOF' > ~/Projects/Happy-Baby-R1/config/cyclonedds_config.xml
 EOF
 ```
 
+*Luu y:* Neu log CycloneDDS bao `unknown element` cho `WatermarkPings`, hay bo dong nay khoi file XML hoac cap nhat theo schema phu hop version hien tai.
+
 ## 4. Kịch bản kiểm thử (Initial Test)
 
 Integration Lead phải thực thi tuần tự 3 kịch bản sau trên hệ thống mới. Nếu bất kỳ test nào thất bại, hệ thống chưa sẵn sàng.
