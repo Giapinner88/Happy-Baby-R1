@@ -4,7 +4,9 @@
 **Author:** Integration Lead (Nguyễn Trọng Giáp)
 **Status:** Draft / Pending Review
 
-Tài liệu này tập trung vào việc thiết lập, tinh chỉnh và xác thực lớp trung gian CycloneDDS trong hệ sinh thái ROS 2 Humble. Mục tiêu cốt lõi là đảm bảo tính ổn định của luồng dữ liệu (Data Pipeline) giữa máy trạm và robot Unitree R1, triệt tiêu hiện tượng mất gói tin (Packet loss) và giảm thiểu độ trễ biến thiên (Jitter) trong các tác vụ điều khiển thời gian thực.
+Tài liệu này tập trung vào việc thiết lập, tinh chỉnh và xác thực lớp trung gian CycloneDDS trong hệ sinh thái ROS 2 Foxy trên Ubuntu 20.04. Mục tiêu cốt lõi là đảm bảo tính ổn định của luồng dữ liệu (Data Pipeline) giữa máy trạm và robot Unitree R1, triệt tiêu hiện tượng mất gói tin (Packet loss) và giảm thiểu độ trễ biến thiên (Jitter) trong các tác vụ điều khiển thời gian thực.
+
+> **Lưu ý hỗ trợ:** ROS 2 Foxy đã hết vòng đời hỗ trợ chính thức. Đây là baseline dành cho máy Ubuntu 20.04 hiện tại.
 
 ## 1. Cơ sở lý thuyết và Lựa chọn Middleware
 

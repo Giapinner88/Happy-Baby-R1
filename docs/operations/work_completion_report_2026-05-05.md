@@ -17,13 +17,13 @@ Report này chỉ ghi nhận 11 task đầu tiên trong checklist đã được 
 
 ### 3.1. Nền tảng hệ thống và môi trường
 
-1. Cài ROS 2 Humble trên golden machine.
+1. Cài ROS 2 Foxy trên golden machine Ubuntu 20.04.
 2. Build `unitree_ros2` workspace thành công.
 3. Cấu hình Ethernet static IP và kiểm tra interface mạng.
 4. Cấu hình CycloneDDS và xác nhận DDS hoạt động.
 5. Cài `unitree_sdk2_python` và chạy demo DDS helloworld.
 6. Chạy example đọc robot state ở chế độ giả lập.
-7. Cài ROS 2 Humble theo guide nội bộ trên máy cá nhân.
+7. Cài ROS 2 Foxy theo guide nội bộ trên máy cá nhân Ubuntu 20.04.
 8. Đọc và hệ thống lại ROS 2 concepts: topic, service, action, node, lifecycle node.
 9. Nghiên cứu DDS, bao gồm CycloneDDS vs FastDDS và các khái niệm QoS cơ bản.
 
@@ -45,7 +45,7 @@ Task chỉ nên được xem là hoàn thành khi có ít nhất một dẫn ch�
 
 | Vị trí | Task | Cách thực hiện chính | Dẫn chứng / file test | Kết quả |
 | --- | --- | --- | --- | --- |
-| 1 | Cài ROS2 Humble trên golden machine | Cài ROS 2 Humble theo guide nội bộ trên máy golden, bảo đảm môi trường chuẩn cho nhóm | Log cài đặt ROS 2, terminal output `ros2 --version`, hoặc ảnh chụp môi trường sau khi source ROS | Hoàn tất, máy golden sẵn sàng cho các bước build và test tiếp theo |
+| 1 | Cài ROS 2 Foxy trên golden machine | Cài ROS 2 Foxy theo guide nội bộ trên máy Ubuntu 20.04, bảo đảm môi trường chuẩn cho nhóm | Log cài đặt ROS 2, terminal output `ros2 --version`, hoặc ảnh chụp môi trường sau khi source ROS | Hoàn tất, máy golden sẵn sàng cho các bước build và test tiếp theo |
 | 2 | Build `unitree_ros2` workspace thành công | Đồng bộ source `unitree_ros2`, chạy build workspace và xác nhận package ROS 2 sinh ra đúng | Log `colcon build`, thư mục `install/` được sinh ra, hoặc output build không lỗi | Build thành công |
 | 3 | Cấu hình Ethernet static IP, kiểm tra interface | Gán IP tĩnh cho interface Ethernet, kiểm tra interface đang dùng bằng lệnh hệ thống | Output `ip a` / `nmcli con show`, ảnh chụp interface, hoặc note cấu hình IP trong `network_configuration_static_ethernet.md` | Interface mạng hoạt động đúng dải IP của robot |
 | 4 | Cấu hình CycloneDDS, verify DDS hoạt động | Set `RMW_IMPLEMENTATION`, trỏ `CYCLONEDDS_URI` tới file XML trong repo, kiểm tra DDS discovery | File `config/cyclonedds_config.xml`, output `ros2 doctor --report`, hoặc log discovery/pub-sub | DDS hoạt động, middleware nhận đúng cấu hình interface |
@@ -66,8 +66,8 @@ Task chỉ nên được xem là hoàn thành khi có ít nhất một dẫn ch�
 
 ### 4.2. Chi tiết thực hiện từng task
 
-1. Task 1 - Cài ROS2 Humble trên golden machine
-	- Cài ROS 2 Humble theo guide nội bộ đúng phiên bản Ubuntu 22.04.
+1. Task 1 - Cài ROS 2 Foxy trên golden machine
+	- Cài ROS 2 Foxy theo guide nội bộ đúng phiên bản Ubuntu 20.04.
 	- Kiểm tra source environment sau khi cài để bảo đảm shell có thể load ROS bình thường.
 	- Dùng máy golden làm máy chuẩn để các bước build và demo sau đó có cùng môi trường.
 
@@ -125,9 +125,9 @@ Task chỉ nên được xem là hoàn thành khi có ít nhất một dẫn ch�
 
 Mục này gom các mốc kiểm chứng tối thiểu cho từng task. Nếu thiếu một trong các evidence tương ứng, task đó chưa nên xem là hoàn thành hoàn toàn.
 
-1. Task 1 - Cài ROS2 Humble trên golden machine
+1. Task 1 - Cài ROS 2 Foxy trên golden machine
 	- Evidence gợi ý: terminal output `ros2 --version`, log cài ROS 2, hoặc ảnh chụp môi trường sau khi source ROS.
-	- File liên quan: `docs/operations/ubuntu_22_04_lts_setup_guide.md`.
+	- File liên quan: `docs/operations/ubuntu_20_04_lts_setup_guide.md`.
 
 2. Task 2 - Build `unitree_ros2` workspace thành công
 	- Evidence gợi ý: log `colcon build`, thư mục `install/` sinh ra, hoặc output build không lỗi.

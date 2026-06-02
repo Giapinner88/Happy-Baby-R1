@@ -29,7 +29,7 @@
 ### 2.3. Kỹ sư mô phỏng (Simulation)
 
 1. [Development environment setup](operations/development_environment_setup_guide.md)
-2. [Ubuntu 22.04 setup guide](operations/ubuntu_22_04_lts_setup_guide.md)
+2. [Ubuntu 20.04 setup guide](operations/ubuntu_20_04_lts_setup_guide.md)
 3. [Quy trình rosbag2](operations/rosbag2_operation.md)
 4. [Quy ước đặt tên](operations/naming_convention.md)
 5. [Bộ thực hành vận hành hệ thống](operations/practice/README.md)
@@ -61,7 +61,7 @@
 - [Work completion report](operations/work_completion_report_2026-05-05.md)
 - [Third-party build](operations/third-party_build.md)
 - [Development environment setup](operations/development_environment_setup_guide.md)
-- [Ubuntu 22.04 setup](operations/ubuntu_22_04_lts_setup_guide.md)
+- [Ubuntu 20.04 setup](operations/ubuntu_20_04_lts_setup_guide.md)
 
 ### 3.3. Architecture & Layout
 
@@ -101,7 +101,7 @@
 - [operations/network_setup_checklist.md](operations/network_setup_checklist.md)
 - [operations/rosbag2_operation.md](operations/rosbag2_operation.md)
 - [operations/third-party_build.md](operations/third-party_build.md)
-- [operations/ubuntu_22_04_lts_setup_guide.md](operations/ubuntu_22_04_lts_setup_guide.md)
+- [operations/ubuntu_20_04_lts_setup_guide.md](operations/ubuntu_20_04_lts_setup_guide.md)
 - [operations/work_completion_report_2026-05-05.md](operations/work_completion_report_2026-05-05.md)
 - [operations/practice/README.md](operations/practice/README.md)
 - [operations/practice/01_system_map.md](operations/practice/01_system_map.md)
@@ -110,6 +110,9 @@
 - [operations/practice/04_test_log_practice.md](operations/practice/04_test_log_practice.md)
 - [operations/practice/05_third_party_bridge_exercise.md](operations/practice/05_third_party_bridge_exercise.md)
 - [operations/practice/06_quick_self_check.md](operations/practice/06_quick_self_check.md)
+- [operations/practice/07_ros2_conda_communication_test.md](operations/practice/07_ros2_conda_communication_test.md)
+- [operations/practice/08_state_control_sim.md](operations/practice/08_state_control_sim.md)
+- [operations/practice/practice_tests_index.md](operations/practice/practice_tests_index.md)
 - [safety/safety_rules.md](safety/safety_rules.md)
 - [safety/hardware_safety_rules.md](safety/hardware_safety_rules.md)
 - [safety/software_safety_rules.md](safety/software_safety_rules.md)
@@ -120,7 +123,7 @@
 - [user-manual.pdf](user-manual.pdf)
 - [UNITREER1MODELLUBERSICHT.pdf](UNITREER1MODELLUBERSICHT.pdf)
 - [Student's role.pdf](Student's%20role.pdf)
-- [ts_p360_ubuntu_22.04_lts_installation_guide.pdf](ts_p360_ubuntu_22.04_lts_installation_guide.pdf)
+- [ts_p360_ubuntu_22.04_lts_installation_guide.pdf](ts_p360_ubuntu_22.04_lts_installation_guide.pdf) - PDF tham khảo cũ, không phải baseline OS hiện tại.
 
 ## 5. Quy ước cập nhật
 

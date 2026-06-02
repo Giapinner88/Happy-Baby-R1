@@ -22,7 +22,7 @@ Tránh lỗi con trỏ từ Git Submodule bằng cách tải mã nguồn độc 
 ```bash
 # Cài đặt dependency cho luồng sinh Message
 sudo apt update
-sudo apt install -y ros-humble-rosidl-generator-dds-idl ros-humble-rmw-cyclonedds-cpp
+sudo apt install -y ros-foxy-rosidl-generator-dds-idl ros-foxy-rmw-cyclonedds-cpp
 
 # Dọn dẹp thư mục lỗi (nếu có) và tải mã nguồn nguyên bản
 cd ~/Projects/Happy-Baby-R1/third_party
@@ -37,7 +37,7 @@ git clone [https://github.com/unitreerobotics/unitree_sdk2_python.git](https://g
 
 ## 3. Biên dịch Core SDK C++ (`unitree_sdk2`)
 
-Quá trình này sinh ra tệp `libunitree_sdk2.so` và khai báo chúng vào bộ nhớ đệm của Ubuntu 22.04.
+Quá trình này sinh ra tệp `libunitree_sdk2.so` và khai báo chúng vào bộ nhớ đệm của Ubuntu 20.04.
 
 ```bash
 cd ~/Projects/Happy-Baby-R1/third_party/unitree_sdk2

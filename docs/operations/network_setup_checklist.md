@@ -21,7 +21,7 @@
 
 ## 3. Cấu hình CycloneDDS
 
-1. Cài package `ros-humble-rmw-cyclonedds-cpp`.
+1. Cài package `ros-foxy-rmw-cyclonedds-cpp`.
 2. Thiết lập biến môi trường trong `.bashrc` hoặc `.zshrc`:
 
 ```bash

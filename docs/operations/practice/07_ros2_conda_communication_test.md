@@ -10,8 +10,8 @@ Bai nay kiem tra xem node ROS2 chay trong conda co the giao tiep voi node ROS2 c
 
 ## 2. Dieu kien
 
-- ROS 2 Humble da duoc cai dat va co the source.
-- Conda env co Python 3.10 (khuyen nghi de tuong thich voi ROS 2 Humble).
+- ROS 2 Foxy da duoc cai dat va co the source tren Ubuntu 20.04.
+- Conda env co Python 3.8 (khuyen nghi de giam sai lech voi ROS 2 Foxy/Python system).
 - `unitree_sdk2_python` da duoc cai dat trong conda va co file vi du: [third_party/unitree_sdk2_python/example/h1_2/low_level/h1_2_low_level_example.py](third_party/unitree_sdk2_python/example/h1_2/low_level/h1_2_low_level_example.py).
 - Neu test qua mang, cau hinh DDS theo [../network_setup_checklist.md](../network_setup_checklist.md).
 

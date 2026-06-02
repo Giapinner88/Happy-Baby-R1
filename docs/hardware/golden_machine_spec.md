@@ -18,7 +18,7 @@ Dự án hiện đang vận hành và nhắm mục tiêu phát triển trên phi
 
 ## 3. Thông số kỹ thuật máy trạm đề xuất (Technical Specifications)
 
-Để đồng bộ với hệ điều hành Ubuntu 22.04 LTS và tương thích với yêu cầu của R1, cấu hình Golden Machine được chốt như sau:
+Để đồng bộ với hệ điều hành đang sử dụng là Ubuntu 20.04 LTS và baseline ROS 2 Foxy, cấu hình Golden Machine được chốt như sau:
 
 | Thành phần | Thông số kỹ thuật chi tiết | Ghi chú |
 | :--- | :--- | :--- |
@@ -31,7 +31,7 @@ Dự án hiện đang vận hành và nhắm mục tiêu phát triển trên phi
 | **PSU** | Super Flower Leadex Platinum 2000W, 80 Plus Platinum (SF-2000F14HP) | Công suất lớn đáp ứng cấu hình 2 GPU chuyên dụng. |
 | **Cooling** | Cooler Master MasterLiquid 360 Atmos ARGB | Tản nhiệt AIO 360mm cho CPU tải nặng kéo dài. |
 | **Case** | Thermaltake View 600 TG Full Tower (không nguồn, không quạt) | Không gian lắp đặt lớn cho workstation đa GPU. |
-| **OS** | Ubuntu 22.04.x LTS (Jammy Jellyfish) | Phiên bản hệ điều hành tiêu chuẩn hỗ trợ `unitree_sdk2`. |
+| **OS** | Ubuntu 20.04.x LTS (Focal Fossa) | Baseline hiện tại của nhóm; dùng ROS 2 Foxy. |
 
 ### 3.1. Máy tương đương trên Lightning AI (Cloud Workstation)
 
@@ -43,11 +43,11 @@ Dự án hiện đang vận hành và nhắm mục tiêu phát triển trên phi
 | **CPU** | >= 16 vCPU | Ưu tiên CPU hiệu năng cao cho build và mô phỏng. |
 | **RAM** | >= 64GB | Tránh nghẽn bộ nhớ khi chạy Isaac Lab + ROS2. |
 | **Storage** | >= 1TB NVMe | Lưu dataset, checkpoint, rosbag2. |
-| **OS Image** | Ubuntu 22.04 LTS | Đồng bộ môi trường với máy trạm vật lý. |
+| **OS Image** | Ubuntu 20.04 LTS | Đồng bộ môi trường với máy trạm vật lý hiện tại. |
 
 Checklist thiết lập trên Lightning AI:
-1. Chọn image Ubuntu 22.04 LTS, bật CUDA 12.x tương thích GPU.
-2. Cài ROS2 Humble Desktop Full và cấu hình CycloneDDS giống máy trạm.
+1. Chọn image Ubuntu 20.04 LTS, bật driver/CUDA tương thích GPU.
+2. Cài ROS 2 Foxy Desktop Full và cấu hình CycloneDDS giống máy trạm.
 3. Đồng bộ workspace bằng Git + LFS (nếu cần) và restore các dataset/model từ object storage.
 4. Đặt biến môi trường và cấu hình driver theo chuẩn Golden Machine để tránh sai lệch Sim-to-Real.
 
@@ -61,14 +61,14 @@ Quy trình đề xuất:
 3. Thiết lập quyền truy cập (Owner/Editor/Viewer) và bật audit log nếu có.
 4. Tạo Project/Studio chính, cấu hình Git repo mặc định và bật Git LFS.
 5. Chọn Studio template: "machine learning" (phù hợp pipeline huấn luyện + mô phỏng).
-6. Chọn image nền Ubuntu 22.04 LTS, sau đó cấu hình CUDA 12.x và driver NVIDIA tương thích.
+6. Chọn image nền Ubuntu 20.04 LTS, sau đó cấu hình driver NVIDIA/CUDA tương thích.
 7. Chọn phần cứng (không giới hạn budget):
    - Model máy: ưu tiên loại máy đa GPU cao cấp (ví dụ: node H100 80GB x2 hoặc H100 80GB x4).
    - GPU: NVIDIA H100 80GB (SXM/PCIe), tối thiểu 2 GPU cho Isaac Lab và huan luyen song song.
    - CPU: AMD EPYC 9654 (96C/192T) hoac Intel Xeon Platinum 8480+ (56C/112T).
    - RAM: 256GB (toi thieu 128GB), uu tien DDR5 ECC.
    - Storage: NVMe 2TB (toi thieu 1TB) cho dataset, checkpoint, rosbag2.
-8. Tạo snapshot/base image sau khi cài xong ROS2 Humble, Isaac Lab, MuJoCo, unitree_sdk2.
+8. Tạo snapshot/base image sau khi cài xong ROS 2 Foxy, MuJoCo, unitree_sdk2 và các công cụ simulation đang dùng.
 9. Thiết lập object storage và policy đồng bộ dataset/model/checkpoint theo chuẩn dự án.
 10. Kiểm tra benchmark tối thiểu (build ROS2 + chạy Isaac Lab sample) để xác nhận hiệu năng.
 
@@ -86,14 +86,14 @@ Bo mạch chủ tích hợp Dual Ethernet là yêu cầu kỹ thuật bắt bu�
 ## 5. Danh mục phần mềm đi kèm (Standard Software Stack)
 
 Sau khi cài đặt hệ điều hành, Golden Machine cần được thiết lập tuần tự theo môi trường chuẩn:
-1.  **Môi trường Python:** Thiết lập `pyenv` hoặc `virtualenv` với phiên bản **Python 3.10.12** làm môi trường mặc định (tương thích tối đa với Exudyn và SDK).
-2.  **ROS2 Environment:** Cài đặt bản phân phối ROS2 Humble Desktop Full.
-3.  **GPU Drivers:** Tích hợp NVIDIA Driver (Stable) và CUDA Toolkit 12.x.
+1.  **Môi trường Python:** Dùng Python hệ thống 3.8 cho ROS 2 Foxy; dùng Conda env riêng cho AI/Simulation.
+2.  **ROS 2 Environment:** Cài đặt ROS 2 Foxy Desktop Full trên Ubuntu 20.04.
+3.  **GPU Drivers:** Tích hợp NVIDIA Driver ổn định và CUDA Toolkit tương thích với Ubuntu 20.04.
 4.  **Middleware:** Cấu hình QoS cho CycloneDDS thông qua file XML được chia sẻ nội bộ.
 
 ## 6. Tài liệu liên quan
 
-* Hướng dẫn cài Ubuntu: [../operations/ubuntu_22_04_lts_setup_guide.md](../operations/ubuntu_22_04_lts_setup_guide.md)
+* Hướng dẫn cài Ubuntu: [../operations/ubuntu_20_04_lts_setup_guide.md](../operations/ubuntu_20_04_lts_setup_guide.md)
 * Hướng dẫn môi trường dev: [../operations/development_environment_setup_guide.md](../operations/development_environment_setup_guide.md)
 * Thiết lập mạng/DDS: [../operations/network_setup_checklist.md](../operations/network_setup_checklist.md)
 * Trang chỉ mục an toàn: [../safety/safety_rules.md](../safety/safety_rules.md)

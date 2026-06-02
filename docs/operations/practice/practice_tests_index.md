@@ -57,7 +57,7 @@
 ### HB-PRAC-007 - Giao tiep ROS2 va conda
 
 - Muc tieu: Xac minh ROS2 low code va conda high code giao tiep qua DDS.
-- Dau vao: ROS2 Humble setup, conda env, [../network_setup_checklist.md](../network_setup_checklist.md).
+- Dau vao: ROS 2 Foxy setup, conda env, [../network_setup_checklist.md](../network_setup_checklist.md).
 - Dau ra: Conda nhan `lowstate`, ROS2 nhan `/lowcmd`.
 - Tieu chi dat: Conda in IMU (rpy) va ROS2 thay `/lowcmd`.
 

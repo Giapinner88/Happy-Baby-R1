@@ -16,7 +16,7 @@ $$T_{cycle} = \frac{1}{f} = 1\text{ ms}$$
 
 ---
 
-## 2. Cấu hình Static IP trên Host (Ubuntu 22.04 LTS)
+## 2. Cấu hình Static IP trên Host (Ubuntu 20.04 LTS)
 
 Robot Unitree R1 xuất xưởng với cấu hình mặc định là `192.168.123.164`. Do đó, Host Machine bắt buộc phải được gắn một IP tĩnh trong dải `/24` của mạng này.
 
@@ -29,7 +29,7 @@ ip link show
 
 ### Bước 2.2: Cấu hình Static IP bằng Netplan (Phương pháp khuyến nghị)
 
-**Phương pháp này sử dụng Netplan - công cụ mạng tiêu chuẩn trên Ubuntu 22.04 LTS.**
+**Phương pháp này sử dụng Netplan - công cụ mạng tiêu chuẩn trên Ubuntu 20.04 LTS.**
 
 #### Cách A: Dùng file YAML từ repo (Nhanh & Chuẩn)
 1. Xác định tên interface từ kết quả `ip link show` (ví dụ: `enp3s0`, `eth0`)

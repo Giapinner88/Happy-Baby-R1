@@ -4,90 +4,136 @@
 **Author:** Integration Lead (Nguyễn Trọng Giáp)
 **Status:** Approved / Final
 
-Tài liệu này cung cấp hướng dẫn Step-by-Step để khởi tạo môi trường phát triển (Development Environment) từ một máy chủ Ubuntu 22.04 LTS trắng. Mục tiêu là thiết lập một workflow kết hợp giữa **Miniconda** (quản lý Python), **Clang/CMake** (trình biên dịch C++) và **Zsh** (Terminal), đảm bảo sự cô lập an toàn tuyệt đối giữa ROS 2 system và các thư viện AI/Simulation.
+Tài liệu này hướng dẫn khởi tạo môi trường phát triển trên **Ubuntu 20.04 LTS (Focal Fossa)**. Baseline ROS 2 của máy hiện tại là **ROS 2 Foxy Fitzroy**, vì đây là bản ROS 2 có deb packages chính thức cho Ubuntu 20.04.
 
-## 1. Khởi tạo Workspace và Quản lý Python với Miniconda
+> **Lưu ý hỗ trợ:** ROS 2 Foxy đã hết vòng đời hỗ trợ chính thức. Dự án vẫn dùng Foxy vì máy đang chạy Ubuntu 20.04. Nếu cần một bản ROS 2 còn được hỗ trợ dài hạn hơn, hướng đi đúng là nâng OS lên Ubuntu 22.04 để dùng Humble, hoặc chạy môi trường Humble trong container/VM riêng.
 
-Môi trường phát triển yêu cầu sự phân tách rạch ròi. **Miniconda** được ưu tiên sử dụng để quản lý các pre-compiled binaries (như CUDA, cuDNN) cho thuật toán học máy, nhưng phải được kiểm soát chặt chẽ để không phá vỡ trình thông dịch Python mặc định của hệ điều hành mà ROS 2 phụ thuộc.
+## 1. Khởi tạo workspace và quản lý Python với Miniconda
 
-### 1.1. Khởi tạo cấu trúc thư mục Workspace
-Trước tiên, thiết lập không gian lưu trữ mã nguồn vật lý cho toàn bộ dự án. Mở Terminal và chạy tuần tự các lệnh sau:
+Môi trường phát triển cần tách rõ hai lớp:
+
+- **ROS 2 system environment:** dùng Python hệ thống của Ubuntu 20.04, mặc định là Python 3.8.
+- **AI/Simulation Conda environment:** dùng cho MuJoCo, SDK Python, training hoặc thử nghiệm thuật toán. Không cài `rclpy` bằng `pip` trong Conda.
+
+### 1.1. Khởi tạo cấu trúc thư mục workspace
+
 ```bash
+mkdir -p ~/Projects
 cd ~/Projects
 git clone --recursive https://github.com/Giapinner88/Happy-Baby-R1.git
-cd Happy-Baby-R1/src
-
-# Cài đặt công cụ quản lý dependencies của ROS 2
-sudo apt install python3-rosdep2 -y
-rosdep update
-rosdep install --from-paths . --ignore-src -y
+cd Happy-Baby-R1
 ```
 
-### 1.2. Cài đặt và vô hiệu hóa Auto-Activate của Miniconda
-Thực thi các lệnh sau để cài đặt và ngăn chặn Conda tự động can thiệp vào terminal:
+Cài công cụ quản lý dependency của ROS 2:
+
 ```bash
-# Tải và thực thi script cài đặt
+sudo apt update
+sudo apt install -y python3-rosdep python3-colcon-common-extensions python3-vcstool
+sudo rosdep init 2>/dev/null || true
+rosdep update
+rosdep install --from-paths src --ignore-src -y
+```
+
+### 1.2. Cài đặt Miniconda và tắt auto-activate
+
+```bash
 mkdir -p ~/miniconda3
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
 bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
 
-# Khởi tạo cho shell
 ~/miniconda3/bin/conda init bash
 ~/miniconda3/bin/conda init zsh
-
-# QUAN TRỌNG: Ngăn chặn tự động kích hoạt môi trường base
 ~/miniconda3/bin/conda config --set auto_activate_base false
 ```
-> **Lưu ý cực kỳ quan trọng:** Sau khi cài đặt, nếu bạn thấy tiền tố `(base)` xuất hiện ở đầu dòng lệnh trong Terminal (nghĩa là môi trường mặc định của Conda đang được kích hoạt), bạn **bắt buộc phải chạy lệnh `conda deactivate`** để thoát ra hoàn toàn trước khi tiến hành bất kỳ thao tác nào với ROS 2.
 
-### 1.3. Khởi tạo Virtual Environment
-Tạo không gian cô lập `r1_env` với chuẩn Python 3.10.12 (tương thích nguyên bản với Ubuntu 22.04):
+Sau khi cài đặt, mở terminal mới. Nếu thấy tiền tố `(base)`, chạy:
+
 ```bash
-conda create -n r1_env python=3.10.12 -y
-conda activate r1_env
-conda install numpy scipy mujoco==3.1.2
 conda deactivate
 ```
-*Nguyên tắc tối thượng:* Tuyệt đối không cài đặt các gói ROS (như `rclpy`) thông qua `pip` bên trong Conda. `rclpy` phải sử dụng package system-level.
 
-## 1.4 Cài đặt ROS 2 Humble & Cấu hình Repositories
-Để tránh lỗi phân giải tên miền (như sự cố PPA Zotero) và lỗi không tìm thấy gói `colcon`, cần chuẩn hóa danh sách nguồn của Ubuntu:
+### 1.3. Khởi tạo môi trường Conda cho AI/Simulation
+
+Với Ubuntu 20.04 + ROS 2 Foxy, ưu tiên Python 3.8 để giảm sai lệch ABI khi làm việc gần hệ sinh thái ROS/DDS.
 
 ```bash
-# 1. Dọn dẹp các PPA ngoại lai gây nhiễu (nếu có)
-sudo rm -f /etc/apt/sources.list.d/zotero*.list
-
-# 2. Thêm GPG Key và Repository chuẩn của ROS 2
-sudo apt install software-properties-common curl -y
-sudo add-apt-repository universe -y
-sudo curl -sSL [https://raw.githubusercontent.com/ros/rosdistro/master/ros.key](https://raw.githubusercontent.com/ros/rosdistro/master/ros.key) -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] [http://packages.ros.org/ros2/ubuntu](http://packages.ros.org/ros2/ubuntu) $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-
-# 3. Cài đặt ROS 2 Desktop và công cụ biên dịch Colcon
-sudo apt update
-sudo apt install ros-humble-desktop python3-colcon-common-extensions -y
+conda create -n r1_env python=3.8.10 -y
+conda activate r1_env
+conda install -y numpy scipy
+pip install mujoco==3.1.2
+conda deactivate
 ```
 
-## 2. Tiêu chuẩn C++ Build System với Clang & CMake
+Nguyên tắc bắt buộc:
 
-Dự án quy định sử dụng **Clang** làm Compiler chính. Clang cung cấp thời gian biên dịch nhanh hơn, thông báo lỗi trực quan và bộ phân tích tĩnh (`clang-tidy`) tối ưu cho Low-level control.
+- Không cài `rclpy`, `ros2cli` hoặc các package ROS 2 system-level bằng `pip` trong Conda.
+- Khi chạy node ROS 2, dùng terminal `load_ros`.
+- Khi chạy SDK Python hoặc thuật toán không phụ thuộc `rclpy`, dùng terminal `load_ml`.
 
-### 2.1. Cài đặt LLVM Toolchain
+## 2. Cài ROS 2 Foxy trên Ubuntu 20.04
+
+### 2.1. Thiết lập locale
+
+```bash
+sudo apt update
+sudo apt install -y locales
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+locale
+```
+
+### 2.2. Thêm repository ROS 2
+
+```bash
+sudo apt install -y software-properties-common curl gnupg lsb-release
+sudo add-apt-repository universe -y
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
+  -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" \
+  | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+```
+
+### 2.3. Cài ROS 2 Foxy và công cụ build
+
+```bash
+sudo apt update
+sudo apt install -y ros-foxy-desktop python3-colcon-common-extensions
+sudo apt install -y ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+```
+
+Kiểm tra:
+
+```bash
+source /opt/ros/foxy/setup.bash
+ros2 --help
+```
+
+## 3. Tiêu chuẩn C++ build system
+
+Ubuntu 20.04 dùng GCC 9.x làm compiler mặc định. Có thể dùng GCC mặc định để giảm rủi ro tương thích với Foxy. Nếu cần Clang cho phân tích tĩnh hoặc build nhanh hơn, cài thêm:
+
 ```bash
 sudo apt update
 sudo apt install -y clang clang-format clang-tidy lld
 ```
-*(Ghi chú: `lld` là linker của LLVM, cung cấp tốc độ liên kết vượt trội so với GNU `ld`).*
 
-### 2.2. Cấu hình ROS 2 Workspace sử dụng Clang
-Việc ép `colcon` sử dụng Clang thay vì GCC mặc định được thực hiện thông qua khai báo biến môi trường:
+Build workspace:
+
 ```bash
 cd ~/Projects/Happy-Baby-R1
-export CC=clang
-export CXX=clang++
+source /opt/ros/foxy/setup.bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+source install/setup.bash
+```
 
-# Biên dịch workspace lần đầu (kể cả khi chưa có code) để tạo cấu trúc
-colcon build \
+Build với Clang khi cần:
+
+```bash
+cd ~/Projects/Happy-Baby-R1
+source /opt/ros/foxy/setup.bash
+CC=clang CXX=clang++ colcon build \
   --symlink-install \
   --cmake-args \
     -DCMAKE_BUILD_TYPE=Release \
@@ -98,58 +144,65 @@ colcon build \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ```
 
-## 3. Terminal Workflow với Zsh
+## 4. Terminal workflow với Zsh
 
-Chuyển đổi sang Zsh kết hợp Oh My Zsh giúp tăng tốc độ thao tác lệnh, nhưng đòi hỏi việc quy hoạch alias phải tuân thủ nghiêm ngặt nguyên tắc cô lập môi trường.
+### 4.1. Cài Zsh và plugin
 
-### 3.1. Cài đặt Core và Plugins
 ```bash
-sudo apt install -y zsh
+sudo apt install -y zsh git curl
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
-# Bổ sung plugins hỗ trợ gõ lệnh
-git clone [https://github.com/zsh-users/zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions) ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-git clone [https://github.com/zsh-users/zsh-syntax-highlighting.git](https://github.com/zsh-users/zsh-syntax-highlighting.git) ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 ```
 
-### 3.2. Thiết lập `~/.zshrc` an toàn
- 
-**Nguyên tắc: Không bao giờ gộp môi trường AI và ROS 2.**
+### 4.2. Thiết lập `~/.zshrc`
 
-Mở file `~/.zshrc` bằng lệnh `nano ~/.zshrc`. Tìm dòng `plugins=(git)` và  paste toàn bộ khối cấu hình này ở cuối file:
+Mở `~/.zshrc`:
+
+```bash
+nano ~/.zshrc
+```
+
+Thêm hoặc cập nhật các dòng sau:
 
 ```zsh
-# 1. Kích hoạt Plugins
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting) #Thay thế  plugins=(git)
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
 
-# 2. Phân lập môi trường rõ ràng (Lựa chọn 1 trong 2 khi làm việc)
 alias load_ml="conda activate r1_env"
-alias load_ros="source /opt/ros/humble/setup.sh && [ -f ~/Projects/Happy-Baby-R1/install/local_setup.zsh ] && source ~/Projects/Happy-Baby-R1/install/local_setup.zsh || true"
+alias load_ros="source /opt/ros/foxy/setup.zsh && [ -f ~/Projects/Happy-Baby-R1/install/local_setup.zsh ] && source ~/Projects/Happy-Baby-R1/install/local_setup.zsh || true"
 
-# 3. Trình biên dịch C++ (Gắn cứng Clang để tránh nhầm lẫn)
-alias cb="CC=clang CXX=clang++ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_SHARED_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+alias cb="colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+alias cb_clang="CC=clang CXX=clang++ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_SHARED_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 alias cb_pkg="cb --packages-select"
 
-# 4. Quản lý mã nguồn
 alias gcmsg="git commit -m"
 alias gpr="git pull --rebase"
+alias r1_ssh="ssh unitree@192.168.123.164"
 
-# 5. Mạng giao tiếp phần cứng
-alias r1_ssh="ssh unitree@192.168.123.164" #config lại sau khi có hệ thật
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI="file:///home/$USER/Projects/Happy-Baby-R1/config/cyclonedds_config.xml"
 ```
 
-Sau khi lưu file, khởi chạy lại terminal bằng lệnh: exec zsh.
+Nạp lại shell:
 
-### 3.3. Thiết lập CycloneDDS Middleware
- 
-Để giải quyết bài toán giao tiếp Real-time giữa Host và Onboard Computer, hệ thống sử dụng CycloneDDS làm Middleware chính. Cấu hình này mở khóa luồng Multicast nội bộ.
-
-Thực thi lệnh sau để ghi tệp cấu hình:
 ```bash
-cat << 'EOF' > ~/Projects/Happy-Baby-R1/config/cyclonedds_config.xml
+exec zsh
+```
+
+## 5. Thiết lập CycloneDDS
+
+File cấu hình chuẩn nằm tại:
+
+```text
+config/cyclonedds_config.xml
+```
+
+Nội dung tối thiểu đang dùng trong repo:
+
+```xml
 <?xml version="1.0" encoding="UTF-8" ?>
-<CycloneDDS xmlns="[https://cdds.io/config](https://cdds.io/config)" xmlns:xsi="[http://www.w3.org/2001/XMLSchema-instance](http://www.w3.org/2001/XMLSchema-instance)" xsi:schemaLocation="[https://cdds.io/config](https://cdds.io/config) [https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd](https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd)">
+<CycloneDDS xmlns="https://cdds.io/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
     <Domain id="any">
         <General>
             <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
@@ -160,73 +213,78 @@ cat << 'EOF' > ~/Projects/Happy-Baby-R1/config/cyclonedds_config.xml
         </Internal>
     </Domain>
 </CycloneDDS>
-EOF
 ```
 
-*Luu y:* Neu log CycloneDDS bao `unknown element` cho `WatermarkPings`, hay bo dong nay khoi file XML hoac cap nhat theo schema phu hop version hien tai.
+Nếu CycloneDDS trên Foxy báo `unknown element` hoặc `deprecated element` với `WatermarkPings`, bỏ khối `<Internal>` để test local trước, sau đó cập nhật XML theo version CycloneDDS đang cài.
 
-## 4. Kịch bản kiểm thử (Initial Test)
+## 6. Kịch bản kiểm thử ban đầu
 
-Integration Lead phải thực thi tuần tự 3 kịch bản sau trên hệ thống mới. Nếu bất kỳ test nào thất bại, hệ thống chưa sẵn sàng.
+### Test 1: Kiểm tra tách biệt Python
 
-### Test 1: Kiểm định tính độc lập của Python
-Bật một terminal hoàn toàn mới.
+Terminal mới, chưa load môi trường:
+
 ```bash
-# Đảm bảo không có chữ (base) ở đầu. Nếu có, chạy `conda deactivate`.
-# Trạng thái chưa nạp môi trường -> Phải báo lỗi (Bảo vệ thành công system Python)
-python3 -c "import mujoco" 
+python3 -c "import mujoco"
+# Kỳ vọng: lỗi ImportError nếu chưa load Conda.
+```
 
-# Trạng thái thuật toán -> Phải thành công
-exec zsh # Để quay lại bash : exec bash
+Terminal AI:
+
+```bash
+exec zsh
 load_ml
 python ~/Projects/Happy-Baby-R1/test/test_ai_env.py
-conda deactivate  
+conda deactivate
 ```
 
-### Test 2: Xác thực Compiler
-```bash
-clang++ --version
-# Output bắt buộc: Ubuntu clang version 14.x.x
-```
+### Test 2: Kiểm tra ROS 2 Foxy
 
-### Test 3: Trình liên kết và ROS 2 Build
-Mở một terminal mới (hoặc gõ `conda deactivate` nhiều lần cho đến khi biến mất hoàn toàn tên môi trường ở đầu dòng lệnh).
 ```bash
 exec zsh
 load_ros
-cd ~/Projects/Happy-Baby-R1/src
-ros2 pkg create --build-type ament_cmake dummy_test_pkg
-
-# Tạo file mã nguồn giả lập để kích hoạt Clang
-mkdir -p dummy_test_pkg/src
-cat << 'EOF' > dummy_test_pkg/src/main.cpp
-int main() { return 0; }
-EOF
-echo "add_executable(dummy_node src/main.cpp)" >> dummy_test_pkg/CMakeLists.txt
-
-# Biên dịch kiểm thử
-cd ~/Projects/Happy-Baby-R1
-cb_pkg dummy_test_pkg
-
-# Output bắt buộc: Finished <<< dummy_test_pkg. Thời gian build phải cực ngắn.
-# Kiểm tra định tuyến trình biên dịch:
-cat build/dummy_test_pkg/compile_commands.json | grep clang
-# Output bắt buộc phải chứa đường dẫn /usr/bin/clang++
+ros2 doctor --report
 ```
 
-### Test 4: Giao tiếp Middleware DDS
-Kiểm tra khả năng luân chuyển gói tin thời gian thực qua CycloneDDS. 
-*Lưu ý: Đảm bảo `cyclonedds_config.xml` đã được khởi tạo theo hướng dẫn của README.md.*
+### Test 3: Build workspace
 
 ```bash
-# Thực thi (Yêu cầu trả về log "DDS Nhận: OK")
+exec zsh
+load_ros
+cd ~/Projects/Happy-Baby-R1
+cb
+```
+
+### Test 4: Giao tiếp DDS nội bộ
+
+```bash
+exec zsh
 load_ros
 python3 ~/Projects/Happy-Baby-R1/test/test_dds_node.py
 ```
 
+### Test 5: Demo pub/sub ROS 2
+
+Terminal 1:
+
+```bash
+exec zsh
+load_ros
+unset CYCLONEDDS_URI
+ros2 run demo_nodes_cpp talker
+```
+
+Terminal 2:
+
+```bash
+exec zsh
+load_ros
+unset CYCLONEDDS_URI
+ros2 run demo_nodes_py listener
+```
+
 ## 7. Tài liệu liên quan
 
-* Hướng dẫn cài Ubuntu: [ubuntu_22_04_lts_setup_guide.md](ubuntu_22_04_lts_setup_guide.md)
+* Hướng dẫn cài Ubuntu: [ubuntu_20_04_lts_setup_guide.md](ubuntu_20_04_lts_setup_guide.md)
 * Golden Machine: [../hardware/golden_machine_spec.md](../hardware/golden_machine_spec.md)
 * Thiết lập mạng/DDS: [network_setup_checklist.md](network_setup_checklist.md)
 * Quy trình rosbag2: [rosbag2_operation.md](rosbag2_operation.md)
