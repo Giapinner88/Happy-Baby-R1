@@ -69,6 +69,7 @@ Nguyên tắc bắt buộc:
 - Không cài `rclpy`, `ros2cli` hoặc các package ROS 2 system-level bằng `pip` trong Conda.
 - Khi chạy node ROS 2, dùng terminal `load_ros`.
 - Khi chạy SDK Python hoặc thuật toán không phụ thuộc `rclpy`, dùng terminal `load_ml`.
+- Khi chạy policy MuJoCo nội bộ, dùng `r1_env` và launcher [unitree_mujoco_policy_runtime.md](unitree_mujoco_policy_runtime.md); không đặt script policy hoặc ONNX vào `third_party/unitree_mujoco`.
 
 ## 2. Cài ROS 2 Foxy trên Ubuntu 20.04
 
@@ -124,7 +125,7 @@ Build workspace:
 ```bash
 cd ~/Projects/Happy-Baby-R1
 source /opt/ros/foxy/setup.bash
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
 
@@ -134,6 +135,7 @@ Build với Clang khi cần:
 cd ~/Projects/Happy-Baby-R1
 source /opt/ros/foxy/setup.bash
 CC=clang CXX=clang++ colcon build \
+  --base-paths src \
   --symlink-install \
   --cmake-args \
     -DCMAKE_BUILD_TYPE=Release \
@@ -172,8 +174,8 @@ plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
 alias load_ml="conda activate r1_env"
 alias load_ros="source /opt/ros/foxy/setup.zsh && [ -f ~/Projects/Happy-Baby-R1/install/local_setup.zsh ] && source ~/Projects/Happy-Baby-R1/install/local_setup.zsh || true"
 
-alias cb="colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
-alias cb_clang="CC=clang CXX=clang++ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_SHARED_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+alias cb="colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+alias cb_clang="CC=clang CXX=clang++ colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_SHARED_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 alias cb_pkg="cb --packages-select"
 
 alias gcmsg="git commit -m"

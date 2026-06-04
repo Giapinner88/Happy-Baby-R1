@@ -51,7 +51,7 @@ python3 sim/unitree_r1_controller_sim.py --duration 12
 - Chay het thoi gian `--duration` thi tu dung.
 
 ## 5. Dieu chinh thong so
-ddo
+
 - Thay `--target` de doi vi tri muc tieu.
 - Thay `--kp`, `--kd` de xem luc dieu khien thay doi.
 - Thay `--dt` de tang giam toc do vong lap.

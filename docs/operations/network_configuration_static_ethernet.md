@@ -90,14 +90,14 @@ sudo nmcli connection up "Wired connection 1"
 
 Khi Host Machine có nhiều kết nối mạng (ví dụ: vừa cắm Ethernet nối với Robot, vừa bật Wifi nối Internet), CycloneDDS có thể phát gói tin Multicast sai cổng. Cần phải trói (bind) Middleware trực tiếp vào IP tĩnh vừa tạo.
 
-Chỉnh sửa tệp cấu hình `cyclonedds_config.xml` của dự án (nằm tại thư mục `config/`):
+Chỉnh sửa tệp cấu hình `cyclonedds_config.xml` của dự án (nằm tại thư mục `config/`). Mặc định repo đang để `auto` để dễ test local; khi chạy qua Ethernet trực tiếp tới R1 và máy có nhiều card mạng, có thể đổi `auto` thành IP tĩnh của host, ví dụ `192.168.123.100`.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
-<CycloneDDS xmlns="[https://cdds.io/config](https://cdds.io/config)" xmlns:xsi="[http://www.w3.org/2001/XMLSchema-instance](http://www.w3.org/2001/XMLSchema-instance)" xsi:schemaLocation="[https://cdds.io/config](https://cdds.io/config) [https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd](https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd)">
+<CycloneDDS xmlns="https://cdds.io/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
     <Domain id="any">
         <General>
-            <NetworkInterfaceAddress>192.168.123.100</NetworkInterfaceAddress>
+            <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
             <AllowMulticast>true</AllowMulticast>
         </General>
         <Internal>
@@ -106,6 +106,8 @@ Chỉnh sửa tệp cấu hình `cyclonedds_config.xml` của dự án (nằm t�
     </Domain>
 </CycloneDDS>
 ```
+
+Nếu cần khóa cứng interface cho buổi test qua robot, thay `auto` bằng `192.168.123.100` sau khi host đã nhận IP tĩnh này.
 
 *Luu y:* Neu log CycloneDDS bao `unknown element` cho `WatermarkPings`, hay bo dong nay khoi file XML hoac cap nhat theo schema phu hop version hien tai.
 

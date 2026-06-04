@@ -11,11 +11,11 @@ Bài này giúp bạn luyện cách ghi log sao cho một người khác có th�
 ## 2. Mẫu ghi nhanh
 
 ```text
-Test ID: 20260427_demo_01
-Environment: Simulation
+Test ID: 20260427_R1_SIM_NetworkCheck_001_Success
+Environment: SIM
 Branch: feature/demo-run
 Goal: Verify DDS connection and node startup
-Result: Pass
+Result: Success
 Issues: None
 Artifacts: rosbag2, screenshot, short note
 Next step: Increase duration to 5 minutes

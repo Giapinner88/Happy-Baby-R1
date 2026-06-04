@@ -20,8 +20,8 @@
 | HB-PRAC-007 | Giao tiep ROS2 va conda | Kiem tra DDS lowstate/lowcmd | Conda nhan lowstate, ROS2 nhan lowcmd | [07_ros2_conda_communication_test.md](07_ros2_conda_communication_test.md) |
 | HB-PRAC-008 | Mo phong state/control | Mo phong 4-DOF va kenh cmd | In state/imu/cmd 2 terminal | [08_state_control_sim.md](08_state_control_sim.md) |
 | HB-PRAC-004 | Ghi log buoi test | Tao log co the truy vet | Ban log theo template | [04_test_log_practice.md](04_test_log_practice.md) |
-| HB-PRAC-005 | Cau noi third-party | Hieu ranh gioi SDK/wrapper/binding | Tom tat vai tro tung lop | [05_third_party_bridge_exercise.md](05_third_party_bridge_exercise.md) |
-| HB-PRAC-006 | Tu kiem nhanh | Tu danh gia sau khi doc | Tra loi >= 4/5 cau hoi | [06_quick_self_check.md](06_quick_self_check.md) |
+| HB-PRAC-005 | Cau noi third-party | Hieu ranh gioi SDK/wrapper/binding/vendor/runtime | Tom tat vai tro tung lop | [05_third_party_bridge_exercise.md](05_third_party_bridge_exercise.md) |
+| HB-PRAC-006 | Tu kiem nhanh | Tu danh gia sau khi doc | Tra loi >= 5/6 cau hoi | [06_quick_self_check.md](06_quick_self_check.md) |
 
 ## 3. Cau truc de xuat
 
@@ -64,7 +64,7 @@
 ### HB-PRAC-008 - Mo phong state/control
 
 - Muc tieu: Mo phong robot gui state va controller gui cmd qua 2 terminal.
-- Dau vao: [../../sim/unitree_r1_robot_sim.py](../../sim/unitree_r1_robot_sim.py) va [../../sim/unitree_r1_controller_sim.py](../../sim/unitree_r1_controller_sim.py).
+- Dau vao: [../../../sim/unitree_r1_robot_sim.py](../../../sim/unitree_r1_robot_sim.py) va [../../../sim/unitree_r1_controller_sim.py](../../../sim/unitree_r1_controller_sim.py).
 - Dau ra: In ra state/imu/cmd theo thoi gian.
 - Tieu chi dat: Ca 2 terminal in du lieu lien tuc trong suot `--duration`.
 
@@ -77,16 +77,16 @@
 
 ### HB-PRAC-005 - Cau noi third-party
 
-- Muc tieu: Hieu ranh gioi giua core SDK, ROS 2 wrapper, Python binding.
+- Muc tieu: Hieu ranh gioi giua core SDK, ROS 2 wrapper, Python binding, vendor simulator, va runtime local.
 - Dau vao: [../third-party_build.md](../third-party_build.md).
-- Dau ra: 3 cau tom tat + 2 cau tra loi ve wrapper va binding.
+- Dau ra: Tom tat tung lop + tra loi ve wrapper, binding, va ly do giu `third_party` sach.
 - Tieu chi dat: Trinh bay duoc ly do can tach ranh gioi tich hop.
 
 ### HB-PRAC-006 - Tu kiem nhanh
 
 - Muc tieu: Tu danh gia muc do hieu tai lieu.
-- Dau vao: [README.md](README.md), [../SOP_v0.md](../SOP_v0.md).
-- Dau ra: Tra loi >= 4/5 cau hoi.
+- Dau vao: [../../../README.md](../../../README.md), [README.md](README.md), [../SOP_v0.md](../SOP_v0.md).
+- Dau ra: Tra loi >= 5/6 cau hoi.
 - Tieu chi dat: Dat nguong tu kiem va biet phan doc lai neu thieu.
 
 ## 5. Ghi chu chung

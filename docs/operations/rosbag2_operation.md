@@ -47,7 +47,7 @@ ros2 bag record \
 
 ### Naming convention
 
-`YYYYMMDD_R1_<REAL/SIM>_<TASK>_<ID>_<STATUS>`
+`YYYYMMDD_R1_<REAL/SIM>_<TaskName>_<Attempt>_<Success/Fail/Abort>`
 
 Ví dụ:
 
@@ -182,12 +182,12 @@ ros2 topic list
 **Bước 2:** Ghi dữ liệu
 
 ```bash
-cd data/raw/
+cd data/rosbags/
 
 ros2 bag record \
   /rt/lowstate \
   /rt/imu \
-  -o 20260420_R1_REAL_WalkTest_001
+  -o 20260420_R1_REAL_WalkTest_001_Success
 ```
 
 **Bước 3:** Kiểm tra
@@ -206,9 +206,10 @@ tar -czvf bag.tar.gz <bag_folder>
 
 ```text
 data/
- ├── raw/
+ ├── rosbags/
  ├── processed/
- └── failed/
+ ├── datasets/
+ └── models/
 ```
 
 ---

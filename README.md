@@ -24,7 +24,7 @@
 | Middleware | ROS 2 Foxy, CycloneDDS |
 | Python | System Python 3.8 cho ROS 2, Conda env riêng cho AI/Simulation |
 | Build | colcon, ament_cmake |
-| Simulation hiện có | Python local simulator, UDP state/control simulator |
+| Simulation hiện có | Python local simulator, UDP state/control simulator, Unitree MuJoCo policy runtime |
 | Data / operation | rosbag2, test log, SOP vận hành |
 
 ## 3. Cấu trúc repo
@@ -33,10 +33,10 @@
 .
 ├── asset/                  # Hình ảnh minh họa, layout, specs
 ├── config/                 # Cấu hình network/DDS
-├── data/                   # Datasets, models, processed data, rosbags
+├── data/                   # Datasets, models, processed data, rosbags, sim logs
 ├── docs/                   # Tài liệu vận hành, an toàn, hardware, architecture
 ├── media/                  # Video hoặc tư liệu demo
-├── sim/                    # Mô phỏng state/control cục bộ
+├── sim/                    # Mô phỏng state/control và policy runtime cục bộ
 ├── src/                    # ROS 2 packages thử nghiệm/tích hợp
 ├── test/                   # Script kiểm thử môi trường, DDS, SDK
 └── README.md
@@ -53,6 +53,7 @@ Tài liệu chính:
 - [Ubuntu 20.04 setup guide](docs/operations/ubuntu_20_04_lts_setup_guide.md)
 - [Development environment setup](docs/operations/development_environment_setup_guide.md)
 - [Third-party build](docs/operations/third-party_build.md)
+- [Unitree MuJoCo policy runtime](docs/operations/unitree_mujoco_policy_runtime.md)
 - [Golden machine spec](docs/hardware/golden_machine_spec.md)
 
 ### 4.2. Build ROS 2 workspace
@@ -61,7 +62,7 @@ Tài liệu chính:
 source /opt/ros/foxy/setup.bash
 rosdep update
 rosdep install --from-paths src --ignore-src -y
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
 
@@ -100,7 +101,21 @@ python3 sim/unitree_r1_robot_sim.py --duration 12
 python3 sim/unitree_r1_controller_sim.py --duration 12
 ```
 
+Chạy thử policy trong Unitree MuJoCo:
+
+```bash
+python3 scripts/run_unitree_mujoco_policy.py \
+  --duration 20 \
+  --policy-script run98.py \
+  --domain-id 1 \
+  --interface lo
+```
+
+Quy ước hiện tại: `third_party/unitree_mujoco` giữ sạch theo upstream, còn script policy local nằm trong `sim/unitree_mujoco_policy`; ONNX/motion CSV nằm trong `data/models/unitree_mujoco_policy`.
+
 Tài liệu thực hành: [08_state_control_sim.md](docs/operations/practice/08_state_control_sim.md)
+
+Tài liệu MuJoCo policy: [unitree_mujoco_policy_runtime.md](docs/operations/unitree_mujoco_policy_runtime.md)
 
 ## 6. Kiểm thử nhanh
 
@@ -124,7 +139,7 @@ python3 test/test_unitree_dds_helloworld.py
 - Thành viên mới: [Practice index](docs/operations/practice/README.md)
 - Người vận hành: [SOP_v0.md](docs/operations/SOP_v0.md), [Safety rules](docs/safety/safety_rules.md)
 - Kỹ sư tích hợp: [Third-party build](docs/operations/third-party_build.md), [DDS implementation](docs/operations/dds_implementation.md)
-- Kỹ sư mô phỏng: [Development environment setup](docs/operations/development_environment_setup_guide.md), [rosbag2 operation](docs/operations/rosbag2_operation.md)
+- Kỹ sư mô phỏng: [Development environment setup](docs/operations/development_environment_setup_guide.md), [Unitree MuJoCo policy runtime](docs/operations/unitree_mujoco_policy_runtime.md), [rosbag2 operation](docs/operations/rosbag2_operation.md)
 
 ## 8. An toàn vận hành
 

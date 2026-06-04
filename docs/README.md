@@ -30,9 +30,10 @@
 
 1. [Development environment setup](operations/development_environment_setup_guide.md)
 2. [Ubuntu 20.04 setup guide](operations/ubuntu_20_04_lts_setup_guide.md)
-3. [Quy trình rosbag2](operations/rosbag2_operation.md)
-4. [Quy ước đặt tên](operations/naming_convention.md)
-5. [Bộ thực hành vận hành hệ thống](operations/practice/README.md)
+3. [Unitree MuJoCo policy runtime](operations/unitree_mujoco_policy_runtime.md)
+4. [Quy trình rosbag2](operations/rosbag2_operation.md)
+5. [Quy ước đặt tên](operations/naming_convention.md)
+6. [Bộ thực hành vận hành hệ thống](operations/practice/README.md)
 
 ### 2.4. Thành viên mới (Onboarding nhanh)
 
@@ -60,11 +61,13 @@
 - [Naming convention](operations/naming_convention.md)
 - [Work completion report](operations/work_completion_report_2026-05-05.md)
 - [Third-party build](operations/third-party_build.md)
+- [Unitree MuJoCo policy runtime](operations/unitree_mujoco_policy_runtime.md)
 - [Development environment setup](operations/development_environment_setup_guide.md)
 - [Ubuntu 20.04 setup](operations/ubuntu_20_04_lts_setup_guide.md)
 
 ### 3.3. Architecture & Layout
 
+- [System communication topology](architecture/system_communication_topology.md)
 - [Network DDS rationale](architecture/network_dds_rationale.md)
 - [Laboratory layout](Lab%20setup/laboratory_layout.md)
 
@@ -85,12 +88,16 @@
 - [04 - Test log practice](operations/practice/04_test_log_practice.md)
 - [05 - Third-party bridge](operations/practice/05_third_party_bridge_exercise.md)
 - [06 - Quick self-check](operations/practice/06_quick_self_check.md)
+- [07 - ROS 2 and Conda communication](operations/practice/07_ros2_conda_communication_test.md)
+- [08 - State/control simulation](operations/practice/08_state_control_sim.md)
+- [Practice tests index](operations/practice/practice_tests_index.md)
 
 ## 4. Chỉ mục đầy đủ tài liệu
 
 ### 4.1. Markdown
 
 - [architecture/network_dds_rationale.md](architecture/network_dds_rationale.md)
+- [architecture/system_communication_topology.md](architecture/system_communication_topology.md)
 - [Lab setup/laboratory_layout.md](Lab%20setup/laboratory_layout.md)
 - [hardware/golden_machine_spec.md](hardware/golden_machine_spec.md)
 - [operations/SOP_v0.md](operations/SOP_v0.md)
@@ -101,6 +108,7 @@
 - [operations/network_setup_checklist.md](operations/network_setup_checklist.md)
 - [operations/rosbag2_operation.md](operations/rosbag2_operation.md)
 - [operations/third-party_build.md](operations/third-party_build.md)
+- [operations/unitree_mujoco_policy_runtime.md](operations/unitree_mujoco_policy_runtime.md)
 - [operations/ubuntu_20_04_lts_setup_guide.md](operations/ubuntu_20_04_lts_setup_guide.md)
 - [operations/work_completion_report_2026-05-05.md](operations/work_completion_report_2026-05-05.md)
 - [operations/practice/README.md](operations/practice/README.md)

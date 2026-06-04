@@ -14,6 +14,7 @@ Sau khi đọc xong bộ tài liệu này, bạn sẽ nắm được:
 2. Trình tự khởi động một buổi làm việc an toàn.
 3. Dữ liệu đi qua hệ thống như thế nào khi chạy ROS 2 / DDS / rosbag2.
 4. Cách ghi nhận một buổi test để truy vết lại được.
+5. Ranh giới giữa vendor upstream trong `third_party` và runtime local trong `sim`.
 
 ## Thứ tự đọc đề xuất
 
@@ -21,8 +22,10 @@ Sau khi đọc xong bộ tài liệu này, bạn sẽ nắm được:
 2. [02_boot_and_run_exercise.md](02_boot_and_run_exercise.md)
 3. [03_data_flow_and_dds_exercise.md](03_data_flow_and_dds_exercise.md)
 4. [04_test_log_practice.md](04_test_log_practice.md)
-5. [07_ros2_conda_communication_test.md](07_ros2_conda_communication_test.md)
-6. [08_state_control_sim.md](08_state_control_sim.md)
+5. [05_third_party_bridge_exercise.md](05_third_party_bridge_exercise.md)
+6. [07_ros2_conda_communication_test.md](07_ros2_conda_communication_test.md)
+7. [08_state_control_sim.md](08_state_control_sim.md)
+8. [06_quick_self_check.md](06_quick_self_check.md)
 
 ## Cách dùng
 
@@ -37,3 +40,4 @@ Sau khi đọc xong bộ tài liệu này, bạn sẽ nắm được:
 * Thiết lập mạng/DDS: [../network_setup_checklist.md](../network_setup_checklist.md)
 * Quy trình rosbag2: [../rosbag2_operation.md](../rosbag2_operation.md)
 * Quy trình build third-party: [../third-party_build.md](../third-party_build.md)
+* Runtime policy MuJoCo: [../unitree_mujoco_policy_runtime.md](../unitree_mujoco_policy_runtime.md)

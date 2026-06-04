@@ -33,7 +33,7 @@ export CYCLONEDDS_URI=file:///home/$USER/Projects/Happy-Baby-R1/config/cyclonedd
 
 ### 2.2. Giải thích các tham số trong tệp XML
 Tệp `cyclonedds_config.xml` của dự án chứa các khối điều khiển quan trọng:
-- `<NetworkInterfaceAddress>`: Ràng buộc DDS vào đúng card mạng Ethernet nối với R1 để tránh nhiễu từ Wifi.
+- `<NetworkInterfaceAddress>`: Mặc định repo dùng `auto` để dễ test local. Khi chạy qua robot và host có nhiều card mạng, đổi giá trị này thành IP Ethernet nối với R1, ví dụ `192.168.123.100`, để tránh DDS chọn nhầm Wifi.
 - `<AllowMulticast>`: Thiết lập `true` để cho phép cơ chế tự động khám phá (Discovery) các Node trong mạng nội bộ.
 - `<WatermarkPings>`: Thiết lập `false` để giảm thiểu các gói tin kiểm tra không cần thiết, tiết kiệm băng thông cho dữ liệu điều khiển chính.
 

@@ -29,7 +29,7 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI=file:///home/$USER/Projects/Happy-Baby-R1/config/cyclonedds_config.xml
 ```
 
-3. Kiểm tra file cấu hình XML trong repo và xác nhận interface mạng đúng với máy đang dùng.
+3. Kiểm tra file cấu hình XML trong repo. Mặc định `NetworkInterfaceAddress` là `auto`; nếu test qua robot trên máy có nhiều card mạng, đổi thành IP Ethernet của host, ví dụ `192.168.123.100`.
 4. Neu log bao `deprecated element` hoac `unknown element` va `rmw_create_node` fail, tam thoi `unset CYCLONEDDS_URI` de test local, sau do cap nhat XML cho phu hop version CycloneDDS.
 
 ## 4. Kiểm tra kết nối
@@ -49,8 +49,8 @@ ros2 run demo_nodes_cpp listener
 
 ## 5. Kiểm thử Unitree SDK2
 
-1. Di chuyển vào thư mục `unitree_sdk2_python`.
-2. Chạy demo `python3 examples/helloworld.py`.
+1. Từ root repo, chạy `python3 test/test_unitree_dds_helloworld.py` để kiểm tra publisher/subscriber HelloWorld của `unitree_sdk2_python`.
+2. Nếu cần chạy thủ công, mở hai terminal trong `third_party/unitree_sdk2_python` và chạy `python3 example/helloworld/subscriber.py`, sau đó `python3 example/helloworld/publisher.py`.
 3. Chạy script đọc trạng thái robot để xác nhận dữ liệu IMU và joint trả về thành công.
 
 ## 6. Tài liệu liên quan

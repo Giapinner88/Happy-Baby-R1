@@ -4,7 +4,7 @@
 **Author:** Integration Lead (Nguyễn Trọng Giáp)
 **Status:** Approved / Final
 
-Tài liệu này chuẩn hóa quy trình tải, biên dịch và tích hợp ba thành phần lõi từ nhà sản xuất (Unitree) vào không gian làm việc của dự án. Quy trình đảm bảo tính cô lập tuyệt đối giữa thư viện điều khiển mức thấp (C++), lớp giao tiếp trung gian (ROS 2) và môi trường nghiên cứu thuật toán (Python).
+Tài liệu này chuẩn hóa quy trình tải, biên dịch và tích hợp các thành phần chính thống từ nhà sản xuất hoặc dự án nguồn mở vào không gian làm việc của dự án. Quy trình đảm bảo tính cô lập tuyệt đối giữa thư viện điều khiển mức thấp (C++), lớp giao tiếp trung gian (ROS 2), môi trường nghiên cứu thuật toán (Python), và mã vận hành nội bộ của Happy-Baby-R1.
 
 ## 1. Bản chất Kiến trúc Third-Party
 
@@ -12,6 +12,28 @@ Hệ thống yêu cầu tích hợp ba module độc lập với vai trò chuyê
 1. **`unitree_sdk2` (Core C++ Library):** Thư viện liên kết động cấp hệ thống. Xử lý giao thức UDP nội bộ, đảm bảo tính tiền định cho hệ thống điều khiển Low-level ở tần số 1000Hz.
 2. **`unitree_ros2` (ROS 2 Wrapper):** Bộ định nghĩa cấu trúc dữ liệu (Custom Messages). Ánh xạ các struct C++ thành tiêu chuẩn IDL của ROS 2 để vận hành Data Pipeline qua CycloneDDS.
 3. **`unitree_sdk2_python` (Python Binding):** Lớp bọc Pybind11 kết nối môi trường Miniconda (`r1_env`) với thư viện C++ lõi, phục vụ quá trình huấn luyện Reinforcement Learning và High-level control ở 50Hz.
+
+### 1.1. Manifest nguồn chính thống
+
+Các nguồn chính thống từ GitHub trong `third_party`:
+
+| Thư mục | Tổ chức | Remote chính thống | Vai trò | Trạng thái local | Cách dùng trong repo |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `unitree_sdk2` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_sdk2.git` | Core SDK C++ | Có `.git` remote chính thống | Build/install riêng theo mục 3 |
+| `unitree_ros2` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_ros2.git` | ROS 2 wrapper/messages/examples | Có `.git` remote chính thống | Symlink vào `src/unitree_ros2` rồi build bằng colcon |
+| `unitree_sdk2_python` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_sdk2_python.git` | Python binding cho high-level code | Có `.git` remote chính thống | Cài editable trong Conda `r1_env` |
+| `unitree_mujoco` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_mujoco.git` | MuJoCo simulator/reference | Giữ sạch theo upstream | Vendor mô phỏng; script policy local nằm ngoài `third_party` |
+| `cyclonedds` | Eclipse Cyclone DDS | `https://github.com/eclipse-cyclonedds/cyclonedds.git` | DDS middleware source/reference | Local hiện không có `.git` để verify commit | Vendor/reference; ROS runtime ưu tiên package `ros-foxy-rmw-cyclonedds-cpp` |
+| `cyclonedds-python` | Eclipse Cyclone DDS | `https://github.com/eclipse-cyclonedds/cyclonedds-python.git` | Python API/binding của CycloneDDS | Local hiện không có `.git` để verify commit | Chỉ dùng khi cần Python DDS API riêng; không build chung workspace ROS |
+
+Các thư mục không có `.git` local cần được clone lại từ remote chính thống nếu muốn pin commit hoặc audit provenance.
+
+**Quy tắc chuẩn:**
+
+* Khi build ROS workspace từ root repo, luôn dùng `--base-paths src` để colcon không crawl toàn bộ `third_party`.
+* `third_party` chỉ chứa mã vendor/upstream. Không đặt policy script, logger, replay helper, ONNX, CSV, wandb log, hoặc patch vận hành nội bộ trong `third_party`.
+* Runtime MuJoCo của Happy-Baby-R1 đặt tại `sim/unitree_mujoco_policy/`; model/motion artifact đặt tại `data/models/unitree_mujoco_policy/`; CSV chạy thử đặt tại `data/sim_state_logs/`.
+* Nếu cần sửa `unitree_mujoco` để chạy policy nội bộ, tạo wrapper hoặc bản glue trong `sim/unitree_mujoco_policy/`, không sửa trực tiếp file vendor.
 
 ---
 
@@ -26,18 +48,25 @@ sudo apt install -y ros-foxy-rosidl-generator-dds-idl ros-foxy-rmw-cyclonedds-cp
 
 # Dọn dẹp thư mục lỗi (nếu có) và tải mã nguồn nguyên bản
 cd ~/Projects/Happy-Baby-R1/third_party
-rm -rf unitree_sdk2 unitree_ros2 unitree_sdk2_python
+rm -rf unitree_sdk2 unitree_ros2 unitree_sdk2_python unitree_mujoco cyclonedds cyclonedds-python
 
-git clone [https://github.com/unitreerobotics/unitree_sdk2.git](https://github.com/unitreerobotics/unitree_sdk2.git)
-git clone [https://github.com/unitreerobotics/unitree_ros2.git](https://github.com/unitreerobotics/unitree_ros2.git)
-git clone [https://github.com/unitreerobotics/unitree_sdk2_python.git](https://github.com/unitreerobotics/unitree_sdk2_python.git)
+git clone https://github.com/unitreerobotics/unitree_sdk2.git
+git clone https://github.com/unitreerobotics/unitree_ros2.git
+git clone https://github.com/unitreerobotics/unitree_sdk2_python.git
+git clone https://github.com/unitreerobotics/unitree_mujoco.git
+git clone https://github.com/eclipse-cyclonedds/cyclonedds.git
+git clone https://github.com/eclipse-cyclonedds/cyclonedds-python.git
 ```
+
+Nếu chỉ thiết lập máy vận hành Ubuntu 20.04 + ROS 2 Foxy, ba repo bắt buộc là `unitree_sdk2`, `unitree_ros2`, `unitree_sdk2_python`. `unitree_mujoco`, `cyclonedds`, và `cyclonedds-python` là nguồn tham chiếu/vendor phục vụ nghiên cứu, debug hoặc mô phỏng; không build chung bằng `colcon build` từ root repo.
+
+Sau khi clone `unitree_mujoco`, không chép policy local vào `third_party/unitree_mujoco/simulate_python`. Dùng hướng dẫn chạy policy ở [unitree_mujoco_policy_runtime.md](unitree_mujoco_policy_runtime.md).
 
 ---
 
 ## 3. Biên dịch Core SDK C++ (`unitree_sdk2`)
 
-Quá trình này sinh ra tệp `libunitree_sdk2.so` và khai báo chúng vào bộ nhớ đệm của Ubuntu 20.04.
+Quá trình này sinh ra thư viện tĩnh `libunitree_sdk2.a` cùng các thư viện DDS đi kèm, rồi khai báo chúng vào bộ nhớ đệm của Ubuntu 20.04.
 
 ```bash
 cd ~/Projects/Happy-Baby-R1/third_party/unitree_sdk2
@@ -66,7 +95,7 @@ load_ros
 # 2. Tạo liên kết định tuyến từ third_party sang src
 ln -s ~/Projects/Happy-Baby-R1/third_party/unitree_ros2 ~/Projects/Happy-Baby-R1/src/unitree_ros2
 
-# 3. Quét toàn bộ workspace và biên dịch bằng alias cb (Sử dụng trình liên kết lld)
+# 3. Quét workspace ROS trong src và biên dịch bằng alias cb
 cd ~/Projects/Happy-Baby-R1
 cb
 
@@ -102,7 +131,7 @@ conda deactivate
 
 Sau khi hoàn tất cài đặt, Integration Lead phải thực thi 3 kịch bản sau để xác thực tính toàn vẹn của chuỗi phụ thuộc.
 
-### Test 1: Xác thực Shared Library (Hệ điều hành)
+### Test 1: Xác thực thư viện SDK (Hệ điều hành)
 Kiểm tra xem hệ thống đã nhận diện được thư viện C++ tĩnh chưa.
 ```bash
 ls -lh /usr/local/lib/libunitree_sdk2.a
@@ -125,7 +154,7 @@ exec zsh
 load_ml
 python -c "import unitree_sdk2py; print('Unitree Python Binding: OK')"
 conda deactivate
-# Output mong đợi: "Unitree Python Binding: OK". Nếu báo ImportError, liên kết giữa r1_env và tệp .so đã đứt gãy.
+# Output mong đợi: "Unitree Python Binding: OK". Nếu báo ImportError, liên kết giữa r1_env và thư viện SDK/DDS đã đứt gãy.
 ```
 
 ## 7. Tài liệu liên quan
@@ -133,5 +162,6 @@ conda deactivate
 * Hướng dẫn môi trường dev: [development_environment_setup_guide.md](development_environment_setup_guide.md)
 * Triển khai DDS: [dds_implementation.md](dds_implementation.md)
 * Cấu hình mạng tĩnh: [network_configuration_static_ethernet.md](network_configuration_static_ethernet.md)
+* Runtime policy MuJoCo: [unitree_mujoco_policy_runtime.md](unitree_mujoco_policy_runtime.md)
 * Thực hành cầu nối third-party: [practice/05_third_party_bridge_exercise.md](practice/05_third_party_bridge_exercise.md)
 * Quy trình vận hành: [SOP_v0.md](SOP_v0.md)

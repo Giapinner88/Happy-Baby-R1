@@ -43,12 +43,20 @@ Operator
 * `third_party/unitree_sdk2`: thư viện lõi C++.
 * `third_party/unitree_ros2`: wrapper ROS 2.
 * `third_party/unitree_sdk2_python`: binding Python.
+* `third_party/unitree_mujoco`: simulator/reference upstream, giữ sạch và không chứa logic vận hành local.
 
-### 3.4. Lớp dữ liệu
+### 3.4. Lớp mô phỏng/policy nội bộ
+
+* `sim/unitree_mujoco_policy`: script chạy policy, logger, replay helper, simulator glue nội bộ.
+* `scripts/run_unitree_mujoco_policy.py`: launcher ghép simulator và policy trên cùng DDS domain/interface.
+
+### 3.5. Lớp dữ liệu
 
 * `data/rosbags`: chứa dữ liệu thu từ các buổi chạy.
 * `data/processed`: chứa dữ liệu đã làm sạch hoặc chuẩn hóa.
 * `data/models`: chứa model hoặc checkpoint.
+* `data/models/unitree_mujoco_policy`: chứa ONNX policy và motion CSV cho MuJoCo.
+* `data/sim_state_logs`: chứa CSV trạng thái sinh ra khi chạy policy mô phỏng.
 
 ## 4. Bài tập nhanh
 
@@ -61,5 +69,6 @@ Operator
 Bạn nên có thể mô tả hệ thống bằng một chuỗi ngắn:
 
 * Operator -> ROS 2 -> Wrapper -> SDK -> Robot/Simulator -> Log
+* MuJoCo policy runtime -> DDS loopback -> Simulator -> CSV state log
 
 Nếu chưa mô tả được, hãy quay lại đọc phần third-party build và phần network/DDS.

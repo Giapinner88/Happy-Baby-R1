@@ -80,6 +80,7 @@ data/datasets/*
 data/models/*
 data/processed/*
 data/rosbags/*
+data/sim_state_logs/*
 media/videos/*
 
 # Keep placeholder files inside ignored data dirs
@@ -87,4 +88,5 @@ media/videos/*
 !data/models/.gitkeep
 !data/processed/.gitkeep
 !data/rosbags/.gitkeep
+!data/sim_state_logs/.gitkeep
 !media/videos/.gitkeep

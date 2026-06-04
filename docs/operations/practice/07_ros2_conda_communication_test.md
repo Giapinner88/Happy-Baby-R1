@@ -1,4 +1,4 @@
-# Thuc hanh 07 - Giao tiep ROS2 va conda
+# Thuc hanh 07 - Giao tiep ROS 2 va Conda
 **Project:** Unitree - Happy Baby (R1 Humanoid Research)
 **Document ID:** HB-PRAC-007
 **Author:** Operation & Data Lead
@@ -6,13 +6,13 @@
 
 ## 1. Muc tieu
 
-Bai nay kiem tra xem node ROS2 chay trong conda co the giao tiep voi node ROS2 chay trong terminal thuong hay khong.
+Bai nay kiem tra hai luong rieng: baseline ROS 2 pub/sub trong terminal ROS 2, va luong Conda high-level dung `unitree_sdk2_python` giao tiep DDS truc tiep voi low-level ROS/Unitree.
 
 ## 2. Dieu kien
 
 - ROS 2 Foxy da duoc cai dat va co the source tren Ubuntu 20.04.
 - Conda env co Python 3.8 (khuyen nghi de giam sai lech voi ROS 2 Foxy/Python system).
-- `unitree_sdk2_python` da duoc cai dat trong conda va co file vi du: [third_party/unitree_sdk2_python/example/h1_2/low_level/h1_2_low_level_example.py](third_party/unitree_sdk2_python/example/h1_2/low_level/h1_2_low_level_example.py).
+- `unitree_sdk2_python` da duoc cai dat trong conda va co file vi du: [../../../third_party/unitree_sdk2_python/example/h1_2/low_level/h1_2_low_level_example.py](../../../third_party/unitree_sdk2_python/example/h1_2/low_level/h1_2_low_level_example.py).
 - Neu test qua mang, cau hinh DDS theo [../network_setup_checklist.md](../network_setup_checklist.md).
 
 ## 3. Thiet lap chung
@@ -20,6 +20,7 @@ Bai nay kiem tra xem node ROS2 chay trong conda co the giao tiep voi node ROS2 c
 - Su dung alias da duoc setup:
 	- `load_ros` cho terminal ROS 2.
 	- `load_ml` cho terminal conda.
+- Khong cai `rclpy` bang pip trong Conda. Neu can chay lenh `ros2` trong terminal Conda cho baseline pub/sub, source ROS 2 system-level thay vi cai package ROS bang pip.
 - Neu chi test local, tam thoi tat config CycloneDDS custom:
 	- `unset CYCLONEDDS_URI`
 
@@ -34,7 +35,13 @@ export ROS_LOCALHOST_ONLY=1
 Neu test qua mang va can CycloneDDS config, dam bao `CYCLONEDDS_URI` da duoc set (tu `~/.zshrc`):
 
 ```bash
-export CYCLONEDDS_URI=file://$PWD/../../../config/cyclonedds_config.xml
+export CYCLONEDDS_URI=file://$PWD/config/cyclonedds_config.xml
+```
+
+Neu dang dung duong dan chuan cua repo tren may ca nhan, co the dung bien tuyet doi giong cac guide khac:
+
+```bash
+export CYCLONEDDS_URI=file:///home/$USER/Projects/Happy-Baby-R1/config/cyclonedds_config.xml
 ```
 
 ## 4. Cac buoc test
@@ -80,6 +87,7 @@ load_ros
 export ROS_DOMAIN_ID=10
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export ROS_LOCALHOST_ONLY=0  # test qua mang
+export CYCLONEDDS_URI=file:///home/$USER/Projects/Happy-Baby-R1/config/cyclonedds_config.xml
 ros2 topic list | grep -E "lowstate|lowcmd"
 ```
 
@@ -99,15 +107,18 @@ load_ml
 export ROS_DOMAIN_ID=10
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export ROS_LOCALHOST_ONLY=0
+export CYCLONEDDS_URI=file:///home/$USER/Projects/Happy-Baby-R1/config/cyclonedds_config.xml
 python third_party/unitree_sdk2_python/example/h1_2/low_level/h1_2_low_level_example.py
 ```
 
 Neu muon an toan hon, chay tren simulator truoc. Script nay se gui lenh dieu khien thuc.
-Neu dung model khac, chon vi du tuong ung trong [third_party/unitree_sdk2_python/example](third_party/unitree_sdk2_python/example).
+Neu dung model khac, chon vi du tuong ung trong [../../../third_party/unitree_sdk2_python/example](../../../third_party/unitree_sdk2_python/example).
 
-### 4.3. Dao chieu (bat buoc)
+### 4.3. Dao chieu baseline (tuy chon)
 
-- Dung `talker` o conda va `listener` o terminal thuong.
+- Chi ap dung cho baseline ROS 2 neu terminal Conda da source ROS 2 system-level sau `load_ml`.
+- Khong cai `rclpy` bang pip trong Conda de lam buoc nay.
+- Dung `talker` o terminal Conda da source ROS 2 va `listener` o terminal ROS 2 thuong.
 - Dam bao van nhan duoc message trong 30-60 giay.
 
 ## 5. Tieu chi dat
