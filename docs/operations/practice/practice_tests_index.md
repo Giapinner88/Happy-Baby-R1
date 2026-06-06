@@ -19,6 +19,7 @@
 | HB-PRAC-003 | Dong du lieu va DDS | Hieu topic, DDS, rosbag2 | Mo ta topic va duong di du lieu | [03_data_flow_and_dds_exercise.md](03_data_flow_and_dds_exercise.md) |
 | HB-PRAC-007 | Giao tiep ROS2 va conda | Kiem tra DDS lowstate/lowcmd | Conda nhan lowstate, ROS2 nhan lowcmd | [07_ros2_conda_communication_test.md](07_ros2_conda_communication_test.md) |
 | HB-PRAC-008 | Mo phong state/control | Mo phong 4-DOF va kenh cmd | In state/imu/cmd 2 terminal | [08_state_control_sim.md](08_state_control_sim.md) |
+| HB-PRAC-009 | DDS Ubuntu 20.04/22.04 | Kiem tra giao tiep DDS giua Foxy/Humble va SDK2 | Hai may gui/nhan message DDS hai chieu | [09_ubuntu_20_22_dds_compatibility_test.md](09_ubuntu_20_22_dds_compatibility_test.md) |
 | HB-PRAC-004 | Ghi log buoi test | Tao log co the truy vet | Ban log theo template | [04_test_log_practice.md](04_test_log_practice.md) |
 | HB-PRAC-005 | Cau noi third-party | Hieu ranh gioi SDK/wrapper/binding/vendor/runtime | Tom tat vai tro tung lop | [05_third_party_bridge_exercise.md](05_third_party_bridge_exercise.md) |
 | HB-PRAC-006 | Tu kiem nhanh | Tu danh gia sau khi doc | Tra loi >= 5/6 cau hoi | [06_quick_self_check.md](06_quick_self_check.md) |
@@ -27,7 +28,7 @@
 
 - Nhom tong quan: HB-PRAC-001, HB-PRAC-005
 - Nhom van hanh: HB-PRAC-002, HB-PRAC-004
-- Nhom du lieu va DDS: HB-PRAC-003, HB-PRAC-007
+- Nhom du lieu va DDS: HB-PRAC-003, HB-PRAC-007, HB-PRAC-009
 - Nhom mo phong va flow dieu khien: HB-PRAC-008
 - Tu kiem: HB-PRAC-006
 
@@ -67,6 +68,13 @@
 - Dau vao: [../../../sim/unitree_r1_robot_sim.py](../../../sim/unitree_r1_robot_sim.py) va [../../../sim/unitree_r1_controller_sim.py](../../../sim/unitree_r1_controller_sim.py).
 - Dau ra: In ra state/imu/cmd theo thoi gian.
 - Tieu chi dat: Ca 2 terminal in du lieu lien tuc trong suot `--duration`.
+
+### HB-PRAC-009 - DDS Ubuntu 20.04/22.04
+
+- Muc tieu: Xac minh may Ubuntu 20.04 va may Ubuntu 22.04 co the giao tiep qua CycloneDDS truoc khi nang cap may tram.
+- Dau vao: Hai may cung mang Ethernet, ROS 2 Foxy/Humble, `unitree_sdk2_python`, [../network_setup_checklist.md](../network_setup_checklist.md).
+- Dau ra: ROS 2 demo pub/sub va Unitree SDK2 HelloWorld DDS nhan du lieu hai chieu.
+- Tieu chi dat: Listener nhan lien tuc >= 60 giay va SDK2 subscriber nhan >= 25/30 message moi chieu.
 
 ### HB-PRAC-004 - Ghi log buoi test
 

@@ -15,8 +15,9 @@
 1. [Quy trình vận hành SOP](operations/SOP_v0.md)
 2. [Quy tắc an toàn tổng](safety/safety_rules.md)
 3. [Checklist thiết lập mạng/DDS](operations/network_setup_checklist.md)
-4. [Quy trình rosbag2](operations/rosbag2_operation.md)
-5. [Mẫu log test](templates/test_log_template.md)
+4. [Kiểm tra DDS Ubuntu 20.04/22.04](operations/practice/09_ubuntu_20_22_dds_compatibility_test.md)
+5. [Quy trình rosbag2](operations/rosbag2_operation.md)
+6. [Mẫu log test](templates/test_log_template.md)
 
 ### 2.2. Kỹ sư tích hợp (Integration)
 
@@ -90,6 +91,7 @@
 - [06 - Quick self-check](operations/practice/06_quick_self_check.md)
 - [07 - ROS 2 and Conda communication](operations/practice/07_ros2_conda_communication_test.md)
 - [08 - State/control simulation](operations/practice/08_state_control_sim.md)
+- [09 - Ubuntu 20.04/22.04 DDS compatibility](operations/practice/09_ubuntu_20_22_dds_compatibility_test.md)
 - [Practice tests index](operations/practice/practice_tests_index.md)
 
 ## 4. Chỉ mục đầy đủ tài liệu
@@ -120,6 +122,7 @@
 - [operations/practice/06_quick_self_check.md](operations/practice/06_quick_self_check.md)
 - [operations/practice/07_ros2_conda_communication_test.md](operations/practice/07_ros2_conda_communication_test.md)
 - [operations/practice/08_state_control_sim.md](operations/practice/08_state_control_sim.md)
+- [operations/practice/09_ubuntu_20_22_dds_compatibility_test.md](operations/practice/09_ubuntu_20_22_dds_compatibility_test.md)
 - [operations/practice/practice_tests_index.md](operations/practice/practice_tests_index.md)
 - [safety/safety_rules.md](safety/safety_rules.md)
 - [safety/hardware_safety_rules.md](safety/hardware_safety_rules.md)

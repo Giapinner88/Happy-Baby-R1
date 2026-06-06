@@ -61,7 +61,7 @@ Tài liệu chính:
 ```bash
 source /opt/ros/foxy/setup.bash
 rosdep update
-rosdep install --from-paths src --ignore-src -y
+rosdep install --from-paths src --ignore-src -y --rosdistro foxy
 colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
@@ -78,6 +78,7 @@ Checklist liên quan:
 - [Network setup checklist](docs/operations/network_setup_checklist.md)
 - [Network static Ethernet](docs/operations/network_configuration_static_ethernet.md)
 - [DDS implementation](docs/operations/dds_implementation.md)
+- [Ubuntu 20.04/22.04 DDS compatibility test](docs/operations/practice/09_ubuntu_20_22_dds_compatibility_test.md)
 - [Network/DDS rationale](docs/architecture/network_dds_rationale.md)
 
 ## 5. Chạy mô phỏng cục bộ
@@ -104,14 +105,16 @@ python3 sim/unitree_r1_controller_sim.py --duration 12
 Chạy thử policy trong Unitree MuJoCo:
 
 ```bash
-python3 scripts/run_unitree_mujoco_policy.py \
+python3 scripts/run_unitree_mujoco_official_g1.py \
   --duration 20 \
-  --policy-script run98.py \
-  --domain-id 1 \
-  --interface lo
+  --interface lo \
+  --auto-sim \
+  --auto-passive-seconds 0.5 \
+  --auto-fixstand-seconds 3.0 \
+  --viewer
 ```
 
-Quy ước hiện tại: `third_party/unitree_mujoco` giữ sạch theo upstream, còn script policy local nằm trong `sim/unitree_mujoco_policy`; ONNX/motion CSV nằm trong `data/models/unitree_mujoco_policy`.
+Quy ước hiện tại: `third_party/unitree_mujoco` giữ sạch theo upstream, `third_party/unitree_rl_mjlab` là nguồn policy ONNX/motion artifact của Unitree, còn script runtime local nằm trong `sim/unitree_mujoco_policy`; ONNX/motion symlink nằm trong `data/models/unitree_mujoco_policy`. Ưu tiên controller C++ chính thức của `unitree_rl_mjlab`; runner Python chỉ dùng để debug/log nhanh.
 
 Tài liệu thực hành: [08_state_control_sim.md](docs/operations/practice/08_state_control_sim.md)
 

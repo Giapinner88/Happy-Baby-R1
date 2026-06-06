@@ -52,6 +52,7 @@ ros2 run demo_nodes_cpp listener
 1. Từ root repo, chạy `python3 test/test_unitree_dds_helloworld.py` để kiểm tra publisher/subscriber HelloWorld của `unitree_sdk2_python`.
 2. Nếu cần chạy thủ công, mở hai terminal trong `third_party/unitree_sdk2_python` và chạy `python3 example/helloworld/subscriber.py`, sau đó `python3 example/helloworld/publisher.py`.
 3. Chạy script đọc trạng thái robot để xác nhận dữ liệu IMU và joint trả về thành công.
+4. Nếu cần kiểm tra máy Ubuntu 20.04 giao tiếp với máy Ubuntu 22.04 qua DDS, làm theo [practice/09_ubuntu_20_22_dds_compatibility_test.md](practice/09_ubuntu_20_22_dds_compatibility_test.md) trước khi publish lệnh điều khiển thật.
 
 ## 6. Tài liệu liên quan
 

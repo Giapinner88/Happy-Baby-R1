@@ -94,7 +94,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run Unitree MuJoCo simulator with a policy script"
     )
-    parser.add_argument("--policy-script", default="run98.py")
+    parser.add_argument("--policy-script", default="run98_2.py")
     parser.add_argument("--policy-onnx", default="")
     parser.add_argument("--motion-csv", default="")
     parser.add_argument("--conda-env", default=os.environ.get("R1_CONDA_ENV", "r1_env"))
@@ -103,8 +103,14 @@ def main() -> int:
     parser.add_argument("--interface", default="lo")
     parser.add_argument("--duration", type=float, default=12.0)
     parser.add_argument("--startup-wait", type=float, default=3.0)
+    parser.add_argument("--policy-warmup", type=float, default=2.0, help="Seconds to hold/ramp the robot in FixStand before ONNX inference")
+    parser.add_argument("--policy-fade", type=float, default=2.0, help="Seconds to fade ONNX actions in after FixStand")
+    parser.add_argument("--policy-action-clip", type=float, default=0.6, help="Clip raw ONNX actions to this absolute value; set 0 to disable")
+    parser.add_argument("--policy-target-rate-limit", type=float, default=4.0, help="Maximum target joint change in rad/s; set 0 to disable")
+    parser.add_argument("--policy-fall-guard-gravity-z", type=float, default=-0.55, help="Reset to DEFAULT_Q if projected gravity z rises above this")
     parser.add_argument("--log-dir", default="/tmp/happy_baby_mujoco_policy")
-    parser.add_argument("--viewer", action="store_true", help="Enable normal video driver instead of SDL dummy")
+    parser.add_argument("--viewer", action="store_true", help="Allow the MuJoCo viewer to open if the desktop/display supports it")
+    parser.add_argument("--policy-window", action="store_true", help="Show the pygame GAMEPAD CONTROL window for keyboard control")
     args = parser.parse_args()
 
     if not POLICY_ROOT.exists():
@@ -133,47 +139,64 @@ def main() -> int:
     env["ROBOT"] = args.robot
     env["USE_JOYSTICK"] = "0"
     env["UNITREE_MUJOCO_ROOT"] = str(UNITREE_MUJOCO_ROOT)
-    env.setdefault("MUJOCO_GL", "egl")
-    if not args.viewer:
-        env["SDL_VIDEODRIVER"] = "dummy"
     policy_onnx = resolve_runtime_asset(args.policy_onnx, default_policy_for(args.policy_script))
     if policy_onnx is not None:
         env["POLICY_ONNX"] = str(policy_onnx)
+    env["POLICY_WARMUP_SECONDS"] = str(max(0.0, args.policy_warmup))
+    env["POLICY_FADE_SECONDS"] = str(max(0.0, args.policy_fade))
+    env["POLICY_ACTION_CLIP"] = str(max(0.0, args.policy_action_clip))
+    env["POLICY_TARGET_RATE_LIMIT"] = str(max(0.0, args.policy_target_rate_limit))
+    env["POLICY_FALL_GUARD_GRAVITY_Z"] = str(args.policy_fall_guard_gravity_z)
     motion_csv = resolve_runtime_asset(args.motion_csv, default_motion_for(args.policy_script))
     if motion_csv is not None:
         env["MOTION_CSV"] = str(motion_csv)
 
+    sim_env = env.copy()
+    policy_env = env.copy()
+    if not args.viewer:
+        sim_env["SDL_VIDEODRIVER"] = "dummy"
+    if not args.policy_window:
+        policy_env["SDL_VIDEODRIVER"] = "dummy"
+
     sim_cmd = build_python_cmd(args.conda_env, "unitree_mujoco2.py")
     policy_cmd = build_python_cmd(args.conda_env, args.policy_script)
 
-    print(f"Simulator: {' '.join(sim_cmd)}")
     print(f"Policy:    {' '.join(policy_cmd)}")
+    print(f"Simulator: {' '.join(sim_cmd)}")
     print(f"DDS:       domain={args.domain_id}, interface={args.interface}")
     print(f"Logs:      {log_dir}")
 
     with sim_log_path.open("w", encoding="utf-8") as sim_log, policy_log_path.open(
         "w", encoding="utf-8"
     ) as policy_log:
-        sim_proc = subprocess.Popen(
-            sim_cmd,
+        policy_proc = subprocess.Popen(
+            policy_cmd,
             cwd=POLICY_ROOT,
-            env=env,
-            stdout=sim_log,
+            env=policy_env,
+            stdout=policy_log,
             stderr=subprocess.STDOUT,
             text=True,
         )
         time.sleep(args.startup_wait)
-        policy_proc = subprocess.Popen(
-            policy_cmd,
+        sim_proc = subprocess.Popen(
+            sim_cmd,
             cwd=POLICY_ROOT,
-            env=env,
-            stdout=policy_log,
+            env=sim_env,
+            stdout=sim_log,
             stderr=subprocess.STDOUT,
             text=True,
         )
 
         try:
-            time.sleep(args.duration)
+            deadline = time.monotonic() + args.duration
+            while time.monotonic() < deadline:
+                if policy_proc.poll() is not None:
+                    print("[policy] exited; stopping simulator...")
+                    break
+                if sim_proc.poll() is not None:
+                    print("[sim] exited; stopping policy...")
+                    break
+                time.sleep(0.2)
         finally:
             terminate(policy_proc, "policy")
             terminate(sim_proc, "sim")

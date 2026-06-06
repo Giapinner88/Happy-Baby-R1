@@ -33,6 +33,56 @@ ACTION_SCALE = np.array([0.55, 0.35, 0.55, 0.35, 0.44, 0.44, 0.55, 0.35, 0.55, 0
                          0.44, 0.44, 0.44, 0.44, 0.44, 0.07, 0.07, 0.44, 0.44, 0.44, 0.44, 0.44, 0.07, 0.07], dtype=np.float32)
 
 
+def get_int_env(name: str, default: int) -> int:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        print(f"CẢNH BÁO: {name}={value!r} không hợp lệ. Dùng {default}.")
+        return default
+
+
+def sleep_until(target_time: float, spin_threshold_s: float = 0.0005):
+    """Sleep until `target_time` (perf_counter timebase) with reduced jitter.
+
+    - Sleeps coarsely using `time.sleep`.
+    - Optionally busy-spins for the final `spin_threshold_s` seconds.
+
+    This pattern tends to reduce drift/oversleep jitter on Linux.
+    """
+    while True:
+        now = time.perf_counter()
+        remaining = target_time - now
+        if remaining <= 0.0:
+            return
+        if remaining > spin_threshold_s:
+            # Leave some margin for scheduler oversleep.
+            time.sleep(max(0.0, remaining - spin_threshold_s))
+        else:
+            # Busy wait for very short remainder.
+            while time.perf_counter() < target_time:
+                pass
+            return
+
+
+def get_float_env(name: str, default: float) -> float:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        print(f"CẢNH BÁO: {name}={value!r} không hợp lệ. Dùng {default}.")
+        return default
+
+
+def smoothstep01(value: float) -> float:
+    value = min(1.0, max(0.0, value))
+    return value * value * (3.0 - 2.0 * value)
+
+
 def state_handler(msg: LowState_):
     global robot_state, _got_first_state
     with state_lock:
@@ -43,11 +93,28 @@ def state_handler(msg: LowState_):
 
 def dds_publisher_loop(pub):
     crc_calc = CRC()
+    publish_hz = max(1, get_int_env("DDS_PUBLISH_HZ", 500))
+    publish_dt = 1.0 / float(publish_hz)
+    spin_threshold = max(0.0, get_float_env("SLEEP_SPIN_THRESHOLD", 0.0005))
+    next_pub_time = time.perf_counter()
     while True:
+        # Deadline-based scheduling helps reduce jitter/drift.
+        next_pub_time += publish_dt
         with cmd_lock:
             cmd.crc = crc_calc.Crc(cmd)
             pub.Write(cmd)
-        time.sleep(0.002) 
+        sleep_until(next_pub_time, spin_threshold_s=spin_threshold)
+
+
+def set_motor_position_targets(target_q):
+    with cmd_lock:
+        for i in range(29):
+            cmd.motor_cmd[i].q = float(target_q[i])
+            cmd.motor_cmd[i].dq = 0.0
+            cmd.motor_cmd[i].tau = 0.0
+            cmd.motor_cmd[i].kp = float(KP_ARRAY[i])
+            cmd.motor_cmd[i].kd = float(KD_ARRAY[i])
+
 
 def compute_projected_gravity(quat):
     """
@@ -148,15 +215,28 @@ def main():
 
     # Tích lũy thời gian chu kỳ bước (gait_time) thay vì dùng t_current liên tục
     gait_time = 0.0
-    last_step_time = time.perf_counter()
     last_print_time = 0.0
     
     # Biến để triệt tiêu dần tín hiệu nhịp bước (gait_phase) khi đứng im
-    gait_scale = 1.0
+    gait_scale = 0.0
+    warmup_seconds = max(0.0, get_float_env("POLICY_WARMUP_SECONDS", 2.0))
+    warmup_done = warmup_seconds == 0.0
+    warmup_start = None
+    warmup_q0 = None
+    policy_start = None
+    policy_fade_seconds = max(0.0, get_float_env("POLICY_FADE_SECONDS", 2.0))
+    action_clip = max(0.0, get_float_env("POLICY_ACTION_CLIP", 0.6))
+    target_rate_limit = max(0.0, get_float_env("POLICY_TARGET_RATE_LIMIT", 4.0))
+    fall_guard_gravity_z = get_float_env("POLICY_FALL_GUARD_GRAVITY_Z", -0.55)
+    previous_target_q = DEFAULT_Q.copy()
+    last_guard_print = 0.0
 
     logger = SimStateLogger(__file__)
     step = 0
     t0 = time.perf_counter()
+    CTRL_DT = 0.02  # 50 Hz — khớp với training
+    spin_threshold = max(0.0, get_float_env("SLEEP_SPIN_THRESHOLD", 0.0005))
+    next_step_time = None
 
     try:
         while True:
@@ -164,22 +244,29 @@ def main():
                 have_state = robot_state is not None
             if not have_state:
                 time.sleep(0.002)
-                last_step_time = time.perf_counter()
+                next_step_time = None
                 continue
-                
+
+            if next_step_time is None:
+                next_step_time = time.perf_counter()
+
+            # Sleep until the next control deadline for stable 50Hz pacing.
+            sleep_until(next_step_time, spin_threshold_s=spin_threshold)
             step_start = time.perf_counter()
-            dt = step_start - last_step_time
-            last_step_time = step_start
-            # Clamp dt to avoid large phase jumps when the loop stalls (OS scheduling/print/etc.)
-            if dt < 0.0:
-                dt = 0.0
-            elif dt > 0.05:
-                dt = 0.05
-            # Policy được train với dt cố định 20ms — dùng giá trị cố định cho gait_time
-            # để tránh phụ thuộc vào jitter CPU. dt thực tế chỉ dùng để enforce timing.
-            CTRL_DT = 0.02  # 50 Hz — khớp với training
+
+            # If we're far behind (e.g. OS hiccup), resync to avoid accumulating lag.
+            if step_start - next_step_time > 2.0 * CTRL_DT:
+                next_step_time = step_start
+
+            dt = CTRL_DT
     
-            pygame.event.pump()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (
+                    event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+                ):
+                    print("Đóng cửa sổ điều khiển. Dừng policy.")
+                    pygame.quit()
+                    return
             
             # --- ĐỌC TÍN HIỆU ĐIỀU KHIỂN ---
             raw_vx = 0.0
@@ -243,8 +330,49 @@ def main():
                     dq_current[i] = rs.motor_state[i].dq
                 gyro[:] = np.array(rs.imu_state.gyroscope, dtype=np.float32)
                 quat[:] = np.array(rs.imu_state.quaternion, dtype=np.float32)
+
+            if not warmup_done:
+                if warmup_start is None:
+                    warmup_start = step_start
+                    warmup_q0 = q_current.copy()
+                    print(f"FixStand warmup {warmup_seconds:.1f}s trước khi bật ONNX policy.")
+
+                alpha_warmup = smoothstep01((step_start - warmup_start) / warmup_seconds)
+                target_q_arr = (1.0 - alpha_warmup) * warmup_q0 + alpha_warmup * DEFAULT_Q
+                set_motor_position_targets(target_q_arr)
+
+                if alpha_warmup >= 1.0:
+                    warmup_done = True
+                    last_action.fill(0.0)
+                    smoothed_commands.fill(0.0)
+                    gait_time = 0.0
+                    gait_scale = 0.0
+                    previous_target_q = DEFAULT_Q.copy()
+                    policy_start = time.perf_counter()
+                    next_step_time = time.perf_counter()
+                    print("FixStand warmup xong. Bật ONNX policy.")
+                else:
+                    next_step_time += CTRL_DT
+                    continue
             
             projected_gravity = compute_projected_gravity(quat)
+
+            if projected_gravity[2] > fall_guard_gravity_z:
+                now = time.perf_counter()
+                if now - last_guard_print > 0.5:
+                    print(
+                        "Fall guard: thân robot nghiêng quá mức, "
+                        "đưa target về DEFAULT_Q và reset policy state."
+                    )
+                    last_guard_print = now
+                last_action.fill(0.0)
+                smoothed_commands.fill(0.0)
+                gait_time = 0.0
+                gait_scale = 0.0
+                previous_target_q = DEFAULT_Q.copy()
+                set_motor_position_targets(DEFAULT_Q)
+                next_step_time += CTRL_DT
+                continue
     
             # Tính toán phase_ratio từ biến thời gian tích lũy
             phase_ratio = (gait_time % 0.6) / 0.6
@@ -266,15 +394,28 @@ def main():
             ]).astype(np.float32)
     
             obs_tensor = np.expand_dims(obs, axis=0)
-            action = session.run(None, {input_name: obs_tensor})[0][0]
+            raw_action = session.run(None, {input_name: obs_tensor})[0][0]
+            action = raw_action.astype(np.float32)
+            if action_clip > 0.0:
+                action = np.clip(action, -action_clip, action_clip)
+            if policy_fade_seconds > 0.0:
+                if policy_start is None:
+                    policy_start = step_start
+                action *= smoothstep01((step_start - policy_start) / policy_fade_seconds)
     
             last_action = action.copy()
     
             # Tính target_q array (dùng để log replay VÀ gửi xuống motor)
             target_q_arr = DEFAULT_Q + action * ACTION_SCALE
-            with cmd_lock:
-                for i in range(29):
-                    cmd.motor_cmd[i].q = float(target_q_arr[i])
+            if target_rate_limit > 0.0:
+                max_delta = target_rate_limit * CTRL_DT
+                target_q_arr = previous_target_q + np.clip(
+                    target_q_arr - previous_target_q,
+                    -max_delta,
+                    max_delta,
+                )
+            previous_target_q = target_q_arr.copy()
+            set_motor_position_targets(target_q_arr)
     
             # Ghi log (non-blocking: chỉ put vào queue ~100ns)
             logger.log(
@@ -293,10 +434,8 @@ def main():
                 gait_time  = gait_time,
             )
             step += 1
-    
-            time_until_next = 0.02 - (time.perf_counter() - step_start)
-            if time_until_next > 0:
-                time.sleep(time_until_next)
+
+            next_step_time += CTRL_DT
 
     except KeyboardInterrupt:
         pass

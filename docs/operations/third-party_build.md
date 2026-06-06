@@ -8,10 +8,12 @@ Tài liệu này chuẩn hóa quy trình tải, biên dịch và tích hợp cá
 
 ## 1. Bản chất Kiến trúc Third-Party
 
-Hệ thống yêu cầu tích hợp ba module độc lập với vai trò chuyên biệt:
+Hệ thống yêu cầu tích hợp các module độc lập với vai trò chuyên biệt:
 1. **`unitree_sdk2` (Core C++ Library):** Thư viện liên kết động cấp hệ thống. Xử lý giao thức UDP nội bộ, đảm bảo tính tiền định cho hệ thống điều khiển Low-level ở tần số 1000Hz.
 2. **`unitree_ros2` (ROS 2 Wrapper):** Bộ định nghĩa cấu trúc dữ liệu (Custom Messages). Ánh xạ các struct C++ thành tiêu chuẩn IDL của ROS 2 để vận hành Data Pipeline qua CycloneDDS.
 3. **`unitree_sdk2_python` (Python Binding):** Lớp bọc Pybind11 kết nối môi trường Miniconda (`r1_env`) với thư viện C++ lõi, phục vụ quá trình huấn luyện Reinforcement Learning và High-level control ở 50Hz.
+4. **`unitree_mujoco` (MuJoCo simulator/reference):** Simulator chính thống của Unitree để kiểm thử DDS/control loop.
+5. **`unitree_rl_mjlab` (RL training/deploy/policies):** Nguồn policy ONNX mẫu, motion artifact, training/play scripts và C++ deploy controller của Unitree.
 
 ### 1.1. Manifest nguồn chính thống
 
@@ -23,6 +25,7 @@ Các nguồn chính thống từ GitHub trong `third_party`:
 | `unitree_ros2` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_ros2.git` | ROS 2 wrapper/messages/examples | Có `.git` remote chính thống | Symlink vào `src/unitree_ros2` rồi build bằng colcon |
 | `unitree_sdk2_python` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_sdk2_python.git` | Python binding cho high-level code | Có `.git` remote chính thống | Cài editable trong Conda `r1_env` |
 | `unitree_mujoco` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_mujoco.git` | MuJoCo simulator/reference | Giữ sạch theo upstream | Vendor mô phỏng; script policy local nằm ngoài `third_party` |
+| `unitree_rl_mjlab` | Unitree Robotics | `https://github.com/unitreerobotics/unitree_rl_mjlab.git` | RL training/play/deploy, policy ONNX mẫu | Có `.git` remote chính thống | Vendor policy/training; symlink artifact vào `data/models/unitree_mujoco_policy` |
 | `cyclonedds` | Eclipse Cyclone DDS | `https://github.com/eclipse-cyclonedds/cyclonedds.git` | DDS middleware source/reference | Local hiện không có `.git` để verify commit | Vendor/reference; ROS runtime ưu tiên package `ros-foxy-rmw-cyclonedds-cpp` |
 | `cyclonedds-python` | Eclipse Cyclone DDS | `https://github.com/eclipse-cyclonedds/cyclonedds-python.git` | Python API/binding của CycloneDDS | Local hiện không có `.git` để verify commit | Chỉ dùng khi cần Python DDS API riêng; không build chung workspace ROS |
 
@@ -44,23 +47,42 @@ Tránh lỗi con trỏ từ Git Submodule bằng cách tải mã nguồn độc 
 ```bash
 # Cài đặt dependency cho luồng sinh Message
 sudo apt update
-sudo apt install -y ros-foxy-rosidl-generator-dds-idl ros-foxy-rmw-cyclonedds-cpp
+sudo apt install -y ros-foxy-rosidl-generator-dds-idl ros-foxy-rmw-cyclonedds-cpp libyaml-cpp-dev
 
-# Dọn dẹp thư mục lỗi (nếu có) và tải mã nguồn nguyên bản
+# Tải mã nguồn nguyên bản. Chỉ xóa thư mục cũ nếu chắc chắn đó là bản clone lỗi.
 cd ~/Projects/Happy-Baby-R1/third_party
-rm -rf unitree_sdk2 unitree_ros2 unitree_sdk2_python unitree_mujoco cyclonedds cyclonedds-python
 
 git clone https://github.com/unitreerobotics/unitree_sdk2.git
 git clone https://github.com/unitreerobotics/unitree_ros2.git
 git clone https://github.com/unitreerobotics/unitree_sdk2_python.git
 git clone https://github.com/unitreerobotics/unitree_mujoco.git
+git clone https://github.com/unitreerobotics/unitree_rl_mjlab.git
 git clone https://github.com/eclipse-cyclonedds/cyclonedds.git
 git clone https://github.com/eclipse-cyclonedds/cyclonedds-python.git
 ```
 
-Nếu chỉ thiết lập máy vận hành Ubuntu 20.04 + ROS 2 Foxy, ba repo bắt buộc là `unitree_sdk2`, `unitree_ros2`, `unitree_sdk2_python`. `unitree_mujoco`, `cyclonedds`, và `cyclonedds-python` là nguồn tham chiếu/vendor phục vụ nghiên cứu, debug hoặc mô phỏng; không build chung bằng `colcon build` từ root repo.
+Nếu chỉ thiết lập máy vận hành Ubuntu 20.04 + ROS 2 Foxy, ba repo bắt buộc là `unitree_sdk2`, `unitree_ros2`, `unitree_sdk2_python`. `unitree_mujoco`, `unitree_rl_mjlab`, `cyclonedds`, và `cyclonedds-python` là nguồn tham chiếu/vendor phục vụ nghiên cứu, debug hoặc mô phỏng; không build chung bằng `colcon build` từ root repo.
 
 Sau khi clone `unitree_mujoco`, không chép policy local vào `third_party/unitree_mujoco/simulate_python`. Dùng hướng dẫn chạy policy ở [unitree_mujoco_policy_runtime.md](unitree_mujoco_policy_runtime.md).
+
+Sau khi clone `unitree_rl_mjlab`, symlink policy artifact mẫu của Unitree sang thư mục model chuẩn của dự án:
+
+```bash
+mkdir -p ~/Projects/Happy-Baby-R1/data/models/unitree_mujoco_policy
+cd ~/Projects/Happy-Baby-R1
+
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/velocity/v0/exported/policy.onnx \
+  data/models/unitree_mujoco_policy/policy98.onnx
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/velocity/v0/exported/policy.onnx \
+  data/models/unitree_mujoco_policy/policy.onnx
+
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/mimic/dance1_subject2/exported/policy.onnx \
+  data/models/unitree_mujoco_policy/policy_dance.onnx
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/mimic/dance1_subject2/exported/policy.onnx.data \
+  data/models/unitree_mujoco_policy/policy.onnx.data
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/mimic/dance1_subject2/params/dance1_subject2.npz \
+  data/models/unitree_mujoco_policy/dance1_subject2.npz
+```
 
 ---
 
@@ -85,24 +107,37 @@ sudo ldconfig
 
 ## 4. Tích hợp ROS 2 Wrapper (`unitree_ros2`)
 
-Sử dụng liên kết mềm (Symlink) để Colcon nhận diện được package mà không phá vỡ cấu trúc vật lý của dự án.
+Sử dụng liên kết mềm (Symlink) tới từng package ROS thật để Colcon nhận diện được package mà không phá vỡ cấu trúc vật lý của dự án. Không symlink root `third_party/unitree_ros2` vào `src`, vì repo upstream chứa nhiều workspace con.
 
 ```bash
-# 1. Khởi động Zsh và kích hoạt môi trường ROS 2
-exec zsh
-load_ros
+# 1. Kích hoạt môi trường ROS 2 bằng Python hệ thống, không dùng Conda.
+# Nếu prompt còn hiển thị (r1_env), chạy conda deactivate trước.
+conda deactivate 2>/dev/null || true
+source /opt/ros/foxy/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
-# 2. Tạo liên kết định tuyến từ third_party sang src
-ln -s ~/Projects/Happy-Baby-R1/third_party/unitree_ros2 ~/Projects/Happy-Baby-R1/src/unitree_ros2
-
-# 3. Quét workspace ROS trong src và biên dịch bằng alias cb
+# 2. Tạo liên kết định tuyến từ các package Unitree sang src
 cd ~/Projects/Happy-Baby-R1
-cb
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_ros2/cyclonedds_ws/src/unitree/unitree_api src/unitree_api
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_ros2/cyclonedds_ws/src/unitree/unitree_go src/unitree_go
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_ros2/cyclonedds_ws/src/unitree/unitree_hg src/unitree_hg
+ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_ros2/example/src src/unitree_ros2_example
+
+# 3. Quét workspace ROS trong src và biên dịch.
+# Ép Python về /usr/bin/python3 để tránh CMake dùng Python trong Conda.
+colcon build --base-paths src --symlink-install \
+  --packages-select unitree_api unitree_go unitree_hg unitree_ros2_example \
+  --cmake-clean-cache \
+  --cmake-args \
+    -DPython3_EXECUTABLE=/usr/bin/python3 \
+    -DPYTHON_EXECUTABLE=/usr/bin/python3
 
 # 4. Nạp lại nguồn để ghi nhận hệ thống tin nhắn mới
-source install/setup.zsh
+source install/setup.bash
 ```
 > **Lưu ý:** Bỏ qua các cảnh báo (Warnings) dạng `-Wnon-c-typedef-for-linkage` hoặc `-Wunused-variable` từ các tệp `example` do bộ phân tích tĩnh của Clang tạo ra.
+
+Nếu build báo `ModuleNotFoundError: No module named 'em'` và log đang chạy `/home/.../miniconda3/envs/r1_env/bin/python3`, nghĩa là terminal ROS vẫn đang nhiễm Conda. Thoát env và build lại với block trên.
 
 ---
 

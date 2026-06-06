@@ -90,15 +90,52 @@ ROS 2 Foxy là bản phù hợp với Ubuntu 20.04 Focal qua deb packages.
 sudo apt update
 sudo apt install -y software-properties-common curl gnupg lsb-release
 sudo add-apt-repository universe -y
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
-  -o /usr/share/keyrings/ros-archive-keyring.gpg
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" \
+sudo rm -f /etc/apt/sources.list.d/ros2-latest.list
+sudo rm -f /etc/apt/sources.list.d/ros2.list
+sudo sed -i.bak '/packages\.ros\.org\/ros2\/ubuntu/d' /etc/apt/sources.list
+
+curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
+  | sudo gpg --dearmor --yes -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
   | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
 sudo apt update
-sudo apt install -y ros-foxy-desktop python3-colcon-common-extensions python3-rosdep python3-vcstool
+sudo apt install -y ros-foxy-desktop python3-rosdep python3-vcstools
 sudo apt install -y ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+python3 -m pip install --user -U colcon-common-extensions
+```
+
+Nếu apt dừng ở `python3-catkin-pkg-modules`, `python3-rospkg-modules` hoặc `python3-rosdistro-modules`, sửa trạng thái broken dependency trước khi cài tiếp:
+
+```bash
+sudo apt --fix-broken install
+sudo dpkg --configure -a
+sudo apt update
+sudo apt install -y ros-foxy-desktop ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+```
+
+Nếu vẫn fail, kiểm tra và gỡ các package Python ROS cũ đang xung đột rồi chạy lại:
+
+```bash
+dpkg -l | grep -E 'python3-(catkin-pkg|rospkg|rosdistro)'
+sudo apt remove -y python3-catkin-pkg python3-rospkg python3-rosdistro
+sudo apt --fix-broken install
+sudo apt install -y ros-foxy-desktop ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+```
+
+Nếu apt vẫn báo `trying to overwrite` giữa `python3-catkin-pkg`, `python3-rospkg`, `python3-rosdistro` và 3 package `*-modules`, cho phép dpkg thay thế đúng 3 file package này rồi sửa apt:
+
+```bash
+sudo dpkg -i --force-overwrite \
+  /var/cache/apt/archives/python3-catkin-pkg-modules_*.deb \
+  /var/cache/apt/archives/python3-rospkg-modules_*.deb \
+  /var/cache/apt/archives/python3-rosdistro-modules_*.deb
+
+sudo apt --fix-broken install
+sudo dpkg --configure -a
+sudo apt-get check
 ```
 
 Khởi tạo `rosdep`:
@@ -106,12 +143,14 @@ Khởi tạo `rosdep`:
 ```bash
 sudo rosdep init 2>/dev/null || true
 rosdep update
+# Nếu đang ở workspace Happy-Baby-R1 và muốn cài dependencies cho src:
+rosdep install --from-paths ~/Projects/Happy-Baby-R1/src --ignore-src -y --rosdistro foxy
 ```
 
 Kiểm tra:
 
 ```bash
-source /opt/ros/foxy/setup.bash
+source /opt/ros/foxy/setup.zsh
 ros2 --help
 ```
 

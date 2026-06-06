@@ -28,11 +28,15 @@ Cài công cụ quản lý dependency của ROS 2:
 
 ```bash
 sudo apt update
-sudo apt install -y python3-rosdep python3-colcon-common-extensions python3-vcstool
+sudo add-apt-repository universe -y
+sudo apt install -y python3-rosdep python3-vcstools python3-pip
+python3 -m pip install --user -U colcon-common-extensions
 sudo rosdep init 2>/dev/null || true
 rosdep update
-rosdep install --from-paths src --ignore-src -y
+rosdep install --from-paths src --ignore-src -y --rosdistro foxy
 ```
+
+Hai package test trong workspace là [dummy_test_pkg](../../src/dummy_test_pkg/package.xml) và [integration_test_pkg](../../src/integration_test_pkg/package.xml). Chúng là package ROS 2 mẫu cho Foxy; lint test được để ở chế độ tùy chọn để `rosdep install` không bị chặn nếu máy chưa có đủ bộ test packages từ ROS build farm.
 
 ### 1.2. Cài đặt Miniconda và tắt auto-activate
 
@@ -86,29 +90,105 @@ locale
 
 ### 2.2. Thêm repository ROS 2
 
+Trước khi thêm repo, xác nhận máy đang là Ubuntu 20.04/Focal:
+
+```bash
+. /etc/os-release
+echo "$UBUNTU_CODENAME"
+# Kỳ vọng: focal
+```
+
 ```bash
 sudo apt install -y software-properties-common curl gnupg lsb-release
 sudo add-apt-repository universe -y
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
-  -o /usr/share/keyrings/ros-archive-keyring.gpg
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" \
+# Dọn các entry ROS 2 cũ/trùng. Nếu còn entry cũ không có signed-by,
+# apt update có thể báo NO_PUBKEY F42ED6FBAB17C654 dù key mới đã được cài.
+sudo rm -f /etc/apt/sources.list.d/ros2-latest.list
+sudo rm -f /etc/apt/sources.list.d/ros2.list
+sudo sed -i.bak '/packages\.ros\.org\/ros2\/ubuntu/d' /etc/apt/sources.list
+
+curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
+  | sudo gpg --dearmor --yes -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
   | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 ```
 
 ### 2.3. Cài ROS 2 Foxy và công cụ build
 
+Sau khi ghi lại key hoặc source list, luôn chạy `sudo apt update` lại trước khi cài package ROS. Nếu bỏ qua bước này, apt vẫn dùng cache cũ và sẽ báo `Unable to locate package`.
+
 ```bash
 sudo apt update
-sudo apt install -y ros-foxy-desktop python3-colcon-common-extensions
+sudo apt install -y ros-foxy-desktop
 sudo apt install -y ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+```
+
+Nếu `sudo apt update` vẫn báo lỗi public key:
+
+```bash
+grep -R "packages.ros.org/ros2/ubuntu" /etc/apt/sources.list /etc/apt/sources.list.d/*.list
+ls -l /usr/share/keyrings/ros-archive-keyring.gpg
+```
+
+Kết quả đúng chỉ nên còn một dòng repo ROS 2, có `signed-by=/usr/share/keyrings/ros-archive-keyring.gpg` và codename là `focal`.
+
+Nếu cài ROS bị dừng ở các package như `python3-catkin-pkg-modules`, `python3-rospkg-modules` hoặc `python3-rosdistro-modules`, apt đang bị kẹt ở trạng thái broken dependency. Thường nguyên nhân là package Python ROS từ Ubuntu `universe` và package mới hơn từ repo ROS đang bị cài xen kẽ. Sửa theo thứ tự sau:
+
+```bash
+sudo apt --fix-broken install
+sudo dpkg --configure -a
+sudo apt update
+sudo apt install -y ros-foxy-desktop ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+```
+
+Nếu `apt --fix-broken install` vẫn fail, kiểm tra package đang xung đột:
+
+```bash
+dpkg -l | grep -E 'python3-(catkin-pkg|rospkg|rosdistro)'
+sudo apt remove -y python3-catkin-pkg python3-rospkg python3-rosdistro
+sudo apt --fix-broken install
+sudo apt install -y ros-foxy-desktop ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+```
+
+Nếu vẫn còn lỗi `trying to overwrite`, lưu full log trước khi dùng biện pháp mạnh:
+
+```bash
+sudo apt --fix-broken install 2>&1 | tee /tmp/apt-fix-broken.log
+```
+
+Nếu log đúng là 3 dòng overwrite sau:
+
+- `catkin_pkg/__init__.py` thuộc `python3-catkin-pkg`
+- `rospkg/__init__.py` thuộc `python3-rospkg`
+- `rosdistro/__init__.py` thuộc `python3-rosdistro`
+
+thì cho phép dpkg thay thế 3 package cũ bằng 3 package `*-modules` từ repo ROS, rồi cấu hình lại các package còn dang dở:
+
+```bash
+sudo dpkg -i --force-overwrite \
+  /var/cache/apt/archives/python3-catkin-pkg-modules_*.deb \
+  /var/cache/apt/archives/python3-rospkg-modules_*.deb \
+  /var/cache/apt/archives/python3-rosdistro-modules_*.deb
+
+sudo apt --fix-broken install
+sudo dpkg --configure -a
+sudo apt install -y ros-foxy-desktop ros-foxy-rmw-cyclonedds-cpp ros-foxy-demo-nodes-cpp ros-foxy-demo-nodes-py
+```
+
+Sau khi apt hết broken, kiểm tra:
+
+```bash
+sudo apt-get check
 ```
 
 Kiểm tra:
 
 ```bash
-source /opt/ros/foxy/setup.bash
+load_ros
 ros2 --help
+ros2 run demo_nodes_cpp talker
 ```
 
 ## 3. Tiêu chuẩn C++ build system
@@ -124,16 +204,41 @@ Build workspace:
 
 ```bash
 cd ~/Projects/Happy-Baby-R1
-source /opt/ros/foxy/setup.bash
+load_ros
 colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-source install/setup.bash
+source install/setup.zsh
 ```
 
 Build với Clang khi cần:
 
 ```bash
 cd ~/Projects/Happy-Baby-R1
-source /opt/ros/foxy/setup.bash
+load_ros
+CC=clang CXX=clang++ colcon build \
+  --base-paths src \
+  --symlink-install \
+  --cmake-args \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_COMPILER=clang++ \
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" \
+    -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
+
+Nếu trước đó đã build bằng compiler khác hoặc CMake cache đang trỏ nhầm install prefix về `/usr/local`, build có thể fail với lỗi như:
+
+```text
+file cannot create directory: /usr/local/lib/<package_name>. Maybe need administrative privileges.
+```
+
+Không chạy `sudo colcon build`. Xóa cache rồi build lại:
+
+```bash
+cd ~/Projects/Happy-Baby-R1
+rm -rf build install log
+load_ros
+
 CC=clang CXX=clang++ colcon build \
   --base-paths src \
   --symlink-install \
@@ -171,7 +276,37 @@ Thêm hoặc cập nhật các dòng sau:
 ```zsh
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
 
-alias load_ml="conda activate r1_env"
+if [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+  source "$HOME/miniconda3/etc/profile.d/conda.sh"
+fi
+
+_remove_ros_paths() {
+  local var_name="$1"
+  local value="${(P)var_name}"
+  local filtered=""
+  local entry
+
+  for entry in ${(s.:.)value}; do
+    [[ -z "$entry" ]] && continue
+    [[ "$entry" == /opt/ros/* ]] && continue
+    [[ "$entry" == "$HOME/Projects/Happy-Baby-R1/install"* ]] && continue
+    filtered="${filtered:+$filtered:}$entry"
+  done
+
+  export "$var_name=$filtered"
+}
+
+load_ml() {
+  _remove_ros_paths PATH
+  _remove_ros_paths PYTHONPATH
+  _remove_ros_paths LD_LIBRARY_PATH
+  _remove_ros_paths AMENT_PREFIX_PATH
+  _remove_ros_paths COLCON_PREFIX_PATH
+  _remove_ros_paths CMAKE_PREFIX_PATH
+  unset ROS_DISTRO ROS_VERSION ROS_PYTHON_VERSION ROS_LOCALHOST_ONLY ROS_DOMAIN_ID RMW_IMPLEMENTATION CYCLONEDDS_URI
+  conda activate r1_env
+}
+
 alias load_ros="source /opt/ros/foxy/setup.zsh && [ -f ~/Projects/Happy-Baby-R1/install/local_setup.zsh ] && source ~/Projects/Happy-Baby-R1/install/local_setup.zsh || true"
 
 alias cb="colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
@@ -208,7 +343,7 @@ Nội dung tối thiểu đang dùng trong repo:
     <Domain id="any">
         <General>
             <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
-            <AllowMulticast>true</AllowMulticast>
+            <AllowMulticast>true</AllowMulticast>p nhậ
         </General>
         <Internal>
             <WatermarkPings>false</WatermarkPings>
@@ -235,6 +370,7 @@ Terminal AI:
 ```bash
 exec zsh
 load_ml
+python -c "import mujoco; print(mujoco.__version__)"
 python ~/Projects/Happy-Baby-R1/test/test_ai_env.py
 conda deactivate
 ```

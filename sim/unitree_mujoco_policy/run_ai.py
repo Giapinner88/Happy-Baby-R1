@@ -127,7 +127,13 @@ def main():
         step_start = time.perf_counter()
         t_current = step_start - t_start
 
-        pygame.event.pump()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (
+                event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+            ):
+                print("Đóng cửa sổ điều khiển. Dừng policy.")
+                pygame.quit()
+                return
         
         # --- ĐỌC TÍN HIỆU ĐIỀU KHIỂN ---
         raw_vx = 0.0

@@ -1,4 +1,5 @@
 import rclpy
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from std_msgs.msg import String
 import threading
@@ -31,7 +32,7 @@ def main():
     pub_node = DummyPublisher()
     sub_node = DummySubscriber()
     
-    executor = rclpy.executors.MultiThreadedExecutor()
+    executor = MultiThreadedExecutor()
     executor.add_node(pub_node)
     executor.add_node(sub_node)
     

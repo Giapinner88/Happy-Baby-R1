@@ -25,7 +25,8 @@ Sau khi đọc xong bộ tài liệu này, bạn sẽ nắm được:
 5. [05_third_party_bridge_exercise.md](05_third_party_bridge_exercise.md)
 6. [07_ros2_conda_communication_test.md](07_ros2_conda_communication_test.md)
 7. [08_state_control_sim.md](08_state_control_sim.md)
-8. [06_quick_self_check.md](06_quick_self_check.md)
+8. [09_ubuntu_20_22_dds_compatibility_test.md](09_ubuntu_20_22_dds_compatibility_test.md)
+9. [06_quick_self_check.md](06_quick_self_check.md)
 
 ## Cách dùng
 
