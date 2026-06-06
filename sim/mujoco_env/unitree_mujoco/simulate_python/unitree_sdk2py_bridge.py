@@ -14,7 +14,7 @@ from unitree_sdk2py.idl.default import unitree_go_msg_dds__WirelessController_
 from unitree_sdk2py.utils.thread import RecurrentThread
 
 import config
-if config.ROBOT=="g1":
+if config.ROBOT in ["g1", "r1"]:
     from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
     from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_
     from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowState_ as LowState_default
@@ -47,6 +47,7 @@ class UnitreeSdk2Bridge:
         self.idl_type = (self.num_motor > NUM_MOTOR_IDL_GO)  # 0: unitree_go, 1: unitree_hg
 
         self.joystick = None
+        self.last_reset_time = 0.0
 
         # Check sensor
         for i in range(self.dim_motor_sensor, self.mj_model.nsensor):
@@ -116,6 +117,17 @@ class UnitreeSdk2Bridge:
     def LowCmdHandler(self, msg: LowCmd_):
         if self.mj_data != None:
             with self._locked():
+                # Special simulation reset signal triggered by client
+                if len(msg.motor_cmd) > 0 and msg.motor_cmd[0].mode == 0xFF:
+                    import time
+                    current_time = time.time()
+                    if current_time - self.last_reset_time > 1.0:
+                        mujoco.mj_resetData(self.mj_model, self.mj_data)
+                        mujoco.mj_forward(self.mj_model, self.mj_data)
+                        print("[Bridge] MuJoCo simulation has been reset programmatically!")
+                        self.last_reset_time = current_time
+                    return
+
                 for i in range(self.num_motor):
                     self.mj_data.ctrl[i] = (
                         msg.motor_cmd[i].tau

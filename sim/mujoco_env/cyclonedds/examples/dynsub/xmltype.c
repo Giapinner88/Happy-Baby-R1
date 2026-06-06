@@ -42,7 +42,7 @@ static void exitfmt (const char *fmt, ...)
 
 static bool lookup_type_pair (struct dyntypelib *dtl, const char *names, struct dyntype **wrtype, struct dyntype **rdtype)
 {
-  char *wtname = strdup (names);
+  char *wtname = ddsrt_strdup (names);
   if (wtname == NULL)
     return false;
   char *rtname = strchr (wtname, '/');
@@ -86,6 +86,8 @@ static bool doread (struct dyntypelib *dtl, const dds_entity_t ws, const dds_ent
   dds_sample_info_t si;
   while ((rc = dds_take (rd, &ptr, &si, 1, 1)) == 1)
   {
+    if (!si.valid_data)
+      printf ("[invalid] ");
     dtl_print_sample (dtl, si.valid_data, ptr, &typeobj->_u.complete);
     dds_return_loan (rd, &ptr, 1);
   }
@@ -118,6 +120,7 @@ OPTIONS:\n\
                 - ignore member names\n\
                 - prevent type widening\n\
                 - force type validation\n\
+-x 0|1|2       force default (0) or XCDR version N\n\
 -i ID          use domain ID\n\
 -P P           use partition instead of default\n\
 -R             use binary data without input validation\n\
@@ -135,8 +138,9 @@ int main (int argc, char **argv)
   bool skip_normalize_for_bin = false;
   const char *partition = NULL;
   const char *topicname = "T";
+  int xcdrv = 0;
   dds_domainid_t domainid = DDS_DOMAIN_DEFAULT;
-  while ((opt = getopt (argc, argv, "c:i:P:RT:")) != EOF)
+  while ((opt = getopt (argc, argv, "c:i:P:RT:x:")) != EOF)
   {
     switch (opt)
     {
@@ -160,6 +164,13 @@ int main (int argc, char **argv)
         break;
       case 'T':
         topicname = optarg;
+        break;
+      case 'x':
+        xcdrv = atoi (optarg);
+        if (xcdrv < 0 || xcdrv > 2) {
+          fprintf (stderr, "%s: %s is not a valid setting for XCDR version\n", argv[0], optarg);
+          exit (2);
+        }
         break;
       default:
         usage (argv[0]);
@@ -219,8 +230,14 @@ int main (int argc, char **argv)
               (tce >> 2) & 1,
               (tce >> 1) & 1,
               tce & 1);
-      if (partition)
+      if (xcdrv != 0) {
+        const dds_data_representation_id_t datarep =
+          (xcdrv == 1) ? DDS_DATA_REPRESENTATION_XCDR1 : DDS_DATA_REPRESENTATION_XCDR2;
+        dds_qset_data_representation (epqos, 1, &datarep);
+      }
+      if (partition) {
         dds_qset_partition1 (epqos, partition);
+      }
 
       if (wrtype) {
         rc = dds_create_topic_descriptor (DDS_FIND_SCOPE_LOCAL_DOMAIN, dp, wrtype->typeinfo, 0, &wrdescriptor);

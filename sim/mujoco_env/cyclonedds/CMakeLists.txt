@@ -10,8 +10,7 @@
 # SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
 #
 cmake_minimum_required(VERSION 3.16)
-# C++ is only for Iceoryx plugin
-project(CycloneDDS VERSION 11.0.1 LANGUAGES C CXX)
+project(CycloneDDS VERSION 11.0.1 LANGUAGES C)
 
 # Set a default build type if none was specified
 set(default_build_type "RelWithDebInfo")
@@ -52,6 +51,12 @@ if(NOT BUILD_SHARED_LIBS AND NOT CMAKE_CROSSCOMPILING)
   message(WARNING "It is probably best to build a static library as-if cross compiling (e.g., use -DCMAKE_CROSSCOMPILING=1 -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME} -DCMAKE_PREFIX_PATH=<path to shared-library build>)")
 endif()
 
+# When we are build static libraries, Iceoryx requires C++ support at top-level as well.
+if(NOT BUILD_SHARED_LIBS AND ENABLE_ICEORYX)
+  enable_language(CXX)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+
 # By default don't treat warnings as errors, else anyone building it with a different compiler that
 # just happens to generate a warning, as well as anyone adding or modifying something and making a
 # small mistake would run into errors.  CI builds can be configured differently.
@@ -63,6 +68,12 @@ option(BUILD_IDLC "Build IDL preprocessor" ${not_crosscompiling})
 option(BUILD_DDSPERF "Build ddsperf tool" ${not_crosscompiling})
 
 option(WITH_ZEPHYR "Build for Zephyr RTOS" OFF)
+
+# Check if IDLC is already in the PATH
+find_library(_idlc_backend "cycloneddsidlc" NO_CMAKE_FIND_ROOT_PATH)
+if(BUILD_IDLC OR (CMAKE_CROSSCOMPILING AND _idlc_backend))
+  set(HAVE_IDLC ON CACHE BOOL "IDLC is going to be built or already found on system")
+endif()
 
 # We require C99, test code can benefit from C23
 if(CMAKE_VERSION VERSION_LESS "3.21" OR MSVC)
@@ -354,24 +365,6 @@ endif()
 
 set(CMAKE_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 
-# Generate <Package>Config.cmake
-configure_package_config_file(
-  "PackageConfig.cmake.in"
-  "${PROJECT_NAME}Config.cmake"
-  INSTALL_DESTINATION "${CMAKE_INSTALL_CMAKEDIR}")
-
-# Generate <Package>Version.cmake
-write_basic_package_version_file(
-  "${PROJECT_NAME}ConfigVersion.cmake"
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion)
-
-install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-  DESTINATION "${CMAKE_INSTALL_CMAKEDIR}"
-  COMPONENT dev)
-
 # Generate <Package>Targets.cmake
 install(
   EXPORT ${PROJECT_NAME}
@@ -417,12 +410,31 @@ set(generated_defconfig_src  "${CMAKE_CURRENT_SOURCE_DIR}/src/core/ddsi/defconfi
 
 add_subdirectory(compat)
 add_subdirectory(src)
-if(BUILD_EXAMPLES)
+if(BUILD_EXAMPLES AND HAVE_IDLC)
   add_subdirectory(examples)
 endif()
 
-if(DEFINED ENV{LIB_FUZZING_ENGINE})
+if(DEFINED ENV{LIB_FUZZING_ENGINE} AND BUILD_IDLC)
   add_subdirectory(fuzz)
 endif()
+
+# Generate <Package>Config.cmake after processing subdirectories because
+# ENABLE_SSL can be AUTO and is resolved in src/CMakeLists.txt.
+configure_package_config_file(
+  "PackageConfig.cmake.in"
+  "${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_CMAKEDIR}")
+
+# Generate <Package>Version.cmake
+write_basic_package_version_file(
+  "${PROJECT_NAME}ConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
+
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  DESTINATION "${CMAKE_INSTALL_CMAKEDIR}"
+  COMPONENT dev)
 
 include(CMakeCPack.cmake)

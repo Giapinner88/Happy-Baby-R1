@@ -13,6 +13,7 @@
 #include "dds/dds.h"
 #include "config_env.h"
 
+#include "dds/ddsc/dds_opcodes.h"
 #include "dds/ddsrt/heap.h"
 #include "dds/ddsrt/string.h"
 #include "dds/ddsi/ddsi_domaingv.h"
@@ -140,7 +141,8 @@ CU_TheoryDataPoints (ddsc_typebuilder, topic_desc) = {
                  &D(t25), &D(t26), &D(t27), &D(t28), &D(t29), &D(t30), &D(t31), &D(t32),
                  &D(t33), &D(t34), &D(t35), &D(t36), &D(t37), &D(t38), /* TODO &D(t39), */
                  &D(t40), &D(t41), &D(t42), &D(t43), &D(t44), &D(t45), &D(t46), &D(t47),
-                 &D(t48), &D(t49), &D(t50), &D(t51), &D(t52), &D(t53), &D(t54), &D(t55) ),
+                 &D(t48), &D(t49), &D(t50), &D(t51), &D(t52), &D(t53), &D(t54), &D(t55),
+                 &D(t56), &D(t57), &D(t58) ),
 };
 #undef D
 
@@ -301,4 +303,44 @@ CU_Test(ddsc_typebuilder, alias_toplevel, .init = typebuilder_init, .fini = type
   ddsi_topic_descriptor_fini (generated_desc);
   ddsrt_free (generated_desc);
   topic_type_unref (topic, type);
+}
+
+CU_Test(ddsc_typebuilder, union_float128_case, .init = typebuilder_init, .fini = typebuilder_fini)
+{
+  // IDLC doesn't support long double, so create the FLOAT128 case dynamically.
+  dds_dynamic_type_t dtype = dds_dynamic_type_create (g_participant, (dds_dynamic_type_descriptor_t) {
+    .kind = DDS_DYNAMIC_UNION,
+    .name = "float128_union",
+    .discriminator_type = DDS_DYNAMIC_TYPE_SPEC_PRIM (DDS_DYNAMIC_INT32)
+  });
+  CU_ASSERT_EQ_FATAL (dtype.ret, DDS_RETCODE_OK);
+
+  dds_return_t ret = dds_dynamic_type_add_member (&dtype,
+      DDS_DYNAMIC_UNION_MEMBER_PRIM (DDS_DYNAMIC_FLOAT128, "u1", 1, ((int32_t[]) { 1 })));
+  CU_ASSERT_EQ_FATAL (ret, DDS_RETCODE_OK);
+
+  dds_typeinfo_t *type_info;
+  ret = dds_dynamic_type_register (&dtype, &type_info);
+  CU_ASSERT_EQ_FATAL (ret, DDS_RETCODE_OK);
+
+  dds_topic_descriptor_t *desc;
+  ret = dds_create_topic_descriptor (DDS_FIND_SCOPE_LOCAL_DOMAIN, g_participant, type_info, 0, &desc);
+  CU_ASSERT_EQ_FATAL (ret, DDS_RETCODE_OK);
+
+  bool found_case = false;
+  for (uint32_t n = 0; n + 3 < desc->m_nops; n++)
+  {
+    if (DDS_OP (desc->m_ops[n]) == DDS_OP_JEQ4)
+    {
+      found_case = true;
+      CU_ASSERT_EQ_FATAL (DDS_OP_TYPE (desc->m_ops[n]), DDS_OP_VAL_16BY);
+      CU_ASSERT_EQ_FATAL (desc->m_ops[n + 1], 1u);
+      break;
+    }
+  }
+  CU_ASSERT_FATAL (found_case);
+
+  dds_delete_topic_descriptor (desc);
+  dds_free_typeinfo (type_info);
+  dds_dynamic_type_unref (&dtype);
 }

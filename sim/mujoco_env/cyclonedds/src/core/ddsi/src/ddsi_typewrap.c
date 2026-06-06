@@ -10,6 +10,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "dds/features.h"
 #include "dds/ddsrt/heap.h"
 #include "dds/ddsrt/md5.h"
@@ -645,6 +646,94 @@ static int xt_member_id_cmp (const void *va, const void *vb)
   return (*m1 == *m2) ? 0 : (*m1 < *m2) ? -1 : 1;
 }
 
+static int xt_union_label_cmp (const void *va, const void *vb)
+{
+  const int32_t *l1 = va, *l2 = vb;
+  return (*l1 == *l2) ? 0 : (*l1 < *l2) ? -1 : 1;
+}
+
+struct xt_union_label_range {
+  int64_t min;
+  uint64_t max;
+};
+
+static dds_return_t xt_union_label_range (const struct xt_type *disc_type, struct xt_union_label_range *range)
+{
+  if (ddsi_xt_is_unresolved (disc_type))
+  {
+    range->min = INT64_MIN;
+    range->max = UINT64_MAX;
+    return DDS_RETCODE_OK;
+  }
+
+  const struct xt_type *dt = ddsi_xt_unalias (disc_type);
+  switch (dt->_d)
+  {
+    case DDS_XTypes_TK_BOOLEAN:
+      range->min = 0; range->max = 1;
+      break;
+    case DDS_XTypes_TK_BYTE:
+    case DDS_XTypes_TK_CHAR8:
+    case DDS_XTypes_TK_UINT8:
+      range->min = 0; range->max = UINT8_MAX;
+      break;
+    case DDS_XTypes_TK_CHAR16:
+    case DDS_XTypes_TK_UINT16:
+      range->min = 0; range->max = UINT16_MAX;
+      break;
+    case DDS_XTypes_TK_INT8:
+      range->min = INT8_MIN; range->max = INT8_MAX;
+      break;
+    case DDS_XTypes_TK_INT16:
+      range->min = INT16_MIN; range->max = INT16_MAX;
+      break;
+    case DDS_XTypes_TK_INT32:
+      range->min = INT32_MIN; range->max = INT32_MAX;
+      break;
+    case DDS_XTypes_TK_INT64:
+      range->min = INT64_MIN; range->max = INT64_MAX;
+      break;
+    case DDS_XTypes_TK_UINT32:
+      range->min = 0; range->max = UINT32_MAX;
+      break;
+    case DDS_XTypes_TK_UINT64:
+      range->min = 0; range->max = UINT64_MAX;
+      break;
+    case DDS_XTypes_TK_ENUM: {
+      // Enum values are signed 32-bit integers in type objects, so the maximum value is INT32_MAX
+      const DDS_XTypes_BitBound bit_bound = dt->_u.enum_type.bit_bound;
+      range->min = 0; range->max = (bit_bound >= 31) ? INT32_MAX : ((1u << bit_bound) - 1);
+      break;
+    }
+    case DDS_XTypes_TK_BITMASK: {
+      const DDS_XTypes_BitBound bit_bound = dt->_u.bitmask.bit_bound;
+      range->min = INT64_MIN; range->max = (bit_bound >= 64) ? UINT64_MAX : (((uint64_t)1 << bit_bound) - 1);
+      break;
+    }
+    default:
+      return DDS_RETCODE_UNSUPPORTED;
+  }
+  return DDS_RETCODE_OK;
+}
+
+static bool xt_union_label_in_enum (const struct xt_type *disc_type, int32_t label)
+{
+  assert (ddsi_xt_is_resolved (disc_type) && disc_type->_d == DDS_XTypes_TK_ENUM);
+  for (uint32_t n = 0; n < disc_type->_u.enum_type.literals.length; n++)
+    if (label == disc_type->_u.enum_type.literals.seq[n].value)
+      return true;
+  return false;
+}
+
+static uint64_t xt_union_label_bitmask_allowed_mask (const struct xt_type *disc_type)
+{
+  assert (ddsi_xt_is_resolved (disc_type) && disc_type->_d == DDS_XTypes_TK_BITMASK);
+  uint64_t mask = 0;
+  for (uint32_t n = 0; n < disc_type->_u.bitmask.bitflags.length; n++)
+    mask |= (uint64_t)1 << disc_type->_u.bitmask.bitflags.seq[n].position;
+  return mask;
+}
+
 static dds_return_t xt_valid_struct_member_ids (struct ddsi_domaingv *gv, const struct xt_type *t)
 {
   assert (ddsi_xt_is_resolved (t) && t->_d == DDS_XTypes_TK_STRUCTURE);
@@ -731,16 +820,97 @@ failed:
   return ret;
 }
 
+static dds_return_t xt_valid_union_case_labels (struct ddsi_domaingv *gv, const struct xt_type *t)
+{
+  assert (ddsi_xt_is_resolved (t) && t->_d == DDS_XTypes_TK_UNION);
+  dds_return_t ret = DDS_RETCODE_OK;
+
+  uint32_t cnt = 0;
+  for (uint32_t n = 0; n < t->_u.union_type.members.length; n++)
+    cnt += t->_u.union_type.members.seq[n].label_seq._length;
+  if (cnt == 0)
+    goto empty;
+
+  int32_t *labels = ddsrt_malloc (cnt * sizeof (*labels));
+  if (labels == NULL)
+  {
+    GVTRACE ("out-of-memory while checking union case labels\n");
+    ret = DDS_RETCODE_OUT_OF_RESOURCES;
+    goto failed;
+  }
+
+  const struct xt_type *disc_type = &t->_u.union_type.disc_type->xt;
+  const struct xt_type *disc_type_resolved = ddsi_xt_is_unresolved (disc_type) ? NULL : ddsi_xt_unalias (disc_type);
+  struct xt_union_label_range range = { 0, 0 };
+  if ((ret = xt_union_label_range (disc_type, &range)) != DDS_RETCODE_OK)
+    goto failed_labels;
+  uint64_t bitmask_allowed_mask = 0;
+  if (disc_type_resolved && disc_type_resolved->_d == DDS_XTypes_TK_BITMASK)
+    bitmask_allowed_mask = xt_union_label_bitmask_allowed_mask (disc_type_resolved);
+
+  uint32_t cnt1 = 0;
+  for (uint32_t n = 0; n < t->_u.union_type.members.length; n++)
+  {
+    const DDS_XTypes_UnionCaseLabelSeq *labels1 = &t->_u.union_type.members.seq[n].label_seq;
+    for (uint32_t m = 0; m < labels1->_length; m++)
+    {
+      const int32_t label = labels1->_buffer[m];
+      if (label < range.min || (label >= 0 && (uint64_t) label > range.max))
+      {
+        GVTRACE ("union case label %"PRId32" outside discriminator range\n", label);
+        ret = DDS_RETCODE_BAD_PARAMETER;
+        goto failed_labels;
+      }
+      if (disc_type_resolved && disc_type_resolved->_d == DDS_XTypes_TK_ENUM && !xt_union_label_in_enum (disc_type_resolved, label))
+      {
+        GVTRACE ("union case label %"PRId32" not present in enum discriminator\n", label);
+        ret = DDS_RETCODE_BAD_PARAMETER;
+        goto failed_labels;
+      }
+      if (disc_type_resolved && disc_type_resolved->_d == DDS_XTypes_TK_BITMASK && (((uint64_t) (uint32_t) label) & ~bitmask_allowed_mask) != 0)
+      {
+        GVTRACE ("union case label %"PRId32" sets bits not present in bitmask discriminator\n", label);
+        ret = DDS_RETCODE_BAD_PARAMETER;
+        goto failed_labels;
+      }
+      labels[cnt1++] = labels1->_buffer[m];
+    }
+  }
+  qsort (labels, cnt, sizeof (*labels), xt_union_label_cmp);
+  for (uint32_t n = 1; n < cnt; n++)
+  {
+    if (labels[n] == labels[n - 1])
+    {
+      GVTRACE ("duplicate union case label %"PRId32"\n", labels[n]);
+      ret = DDS_RETCODE_BAD_PARAMETER;
+      goto failed_duplicate;
+    }
+  }
+
+failed_duplicate:
+failed_labels:
+  ddsrt_free (labels);
+failed:
+empty:
+  return ret;
+}
+
 static int xt_enum_value_cmp (const void *va, const void *vb)
 {
   const int32_t *m1 = va, *m2 = vb;
   return (*m1 == *m2) ? 0 : (*m1 < *m2) ? -1 : 1;
 }
 
+static int xt_namehash_cmp (const void *va, const void *vb)
+{
+  return memcmp (va, vb, sizeof (DDS_XTypes_NameHash));
+}
+
 static dds_return_t xt_valid_enum_values (struct ddsi_domaingv *gv, const struct xt_type *t)
 {
   assert (ddsi_xt_is_resolved (t) && t->_d == DDS_XTypes_TK_ENUM);
   dds_return_t ret = DDS_RETCODE_OK;
+  const int32_t max = (t->_u.enum_type.bit_bound >= 31) ? INT32_MAX : (int32_t) ((1u << t->_u.enum_type.bit_bound) - 1);
 
   uint32_t cnt = t->_u.enum_type.literals.length;
   if (cnt == 0)
@@ -757,10 +927,28 @@ static dds_return_t xt_valid_enum_values (struct ddsi_domaingv *gv, const struct
     ret = DDS_RETCODE_OUT_OF_RESOURCES;
     goto failed;
   }
+  DDS_XTypes_NameHash *name_hashes = ddsrt_malloc (cnt * sizeof (*name_hashes));
+  if (name_hashes == NULL)
+  {
+    GVTRACE ("out-of-memory while checking enum literal names\n");
+    ret = DDS_RETCODE_OUT_OF_RESOURCES;
+    goto failed_values;
+  }
 
   for (uint32_t n = 0; n < cnt; n++)
+  {
+    const int32_t value = t->_u.enum_type.literals.seq[n].value;
+    if (value < 0 || value > max)
+    {
+      GVTRACE ("enum value %"PRId32" cannot be represented by bit_bound %"PRIu16"\n", value, t->_u.enum_type.bit_bound);
+      ret = DDS_RETCODE_BAD_PARAMETER;
+      goto failed_duplicate;
+    }
     values[n] = t->_u.enum_type.literals.seq[n].value;
+    memcpy (name_hashes[n], t->_u.enum_type.literals.seq[n].detail.name_hash, sizeof (name_hashes[n]));
+  }
   qsort (values, cnt, sizeof (*values), xt_enum_value_cmp);
+  qsort (name_hashes, cnt, sizeof (*name_hashes), xt_namehash_cmp);
   for (uint32_t n = 0; n < cnt - 1; n++)
   {
     if (values[n] == values[n + 1])
@@ -769,9 +957,17 @@ static dds_return_t xt_valid_enum_values (struct ddsi_domaingv *gv, const struct
       ret = DDS_RETCODE_BAD_PARAMETER;
       goto failed_duplicate;
     }
+    if (memcmp (name_hashes[n], name_hashes[n + 1], sizeof (name_hashes[n])) == 0)
+    {
+      GVTRACE ("duplicate enum literal name hash\n");
+      ret = DDS_RETCODE_BAD_PARAMETER;
+      goto failed_duplicate;
+    }
   }
 
 failed_duplicate:
+  ddsrt_free (name_hashes);
+failed_values:
   ddsrt_free (values);
 failed:
   return ret;
@@ -802,10 +998,28 @@ static dds_return_t xt_valid_bitmask_positions (struct ddsi_domaingv *gv, const 
     ret = DDS_RETCODE_OUT_OF_RESOURCES;
     goto failed;
   }
+  DDS_XTypes_NameHash *name_hashes = ddsrt_malloc (cnt * sizeof (*name_hashes));
+  if (name_hashes == NULL)
+  {
+    GVTRACE ("out-of-memory while checking bitmask flag names\n");
+    ret = DDS_RETCODE_OUT_OF_RESOURCES;
+    goto failed_positions;
+  }
 
   for (uint32_t n = 0; n < cnt; n++)
+  {
+    if (t->_u.bitmask.bitflags.seq[n].position >= t->_u.bitmask.bit_bound)
+    {
+      GVTRACE ("bitmask position %"PRIu16" cannot be represented by bit_bound %"PRIu16"\n",
+          t->_u.bitmask.bitflags.seq[n].position, t->_u.bitmask.bit_bound);
+      ret = DDS_RETCODE_BAD_PARAMETER;
+      goto failed_duplicate;
+    }
     positions[n] = t->_u.bitmask.bitflags.seq[n].position;
+    memcpy (name_hashes[n], t->_u.bitmask.bitflags.seq[n].detail.name_hash, sizeof (name_hashes[n]));
+  }
   qsort (positions, cnt, sizeof (*positions), xt_bitmask_position_cmp);
+  qsort (name_hashes, cnt, sizeof (*name_hashes), xt_namehash_cmp);
   for (uint32_t n = 0; n < cnt - 1; n++)
   {
     if (positions[n] == positions[n + 1])
@@ -814,9 +1028,17 @@ static dds_return_t xt_valid_bitmask_positions (struct ddsi_domaingv *gv, const 
       ret = DDS_RETCODE_BAD_PARAMETER;
       goto failed_duplicate;
     }
+    if (memcmp (name_hashes[n], name_hashes[n + 1], sizeof (name_hashes[n])) == 0)
+    {
+      GVTRACE ("duplicate bitmask flag name hash\n");
+      ret = DDS_RETCODE_BAD_PARAMETER;
+      goto failed_duplicate;
+    }
   }
 
 failed_duplicate:
+  ddsrt_free (name_hashes);
+failed_positions:
   ddsrt_free (positions);
 failed:
   return ret;
@@ -1024,6 +1246,7 @@ static dds_return_t xt_validate_impl (struct ddsi_domaingv *gv, const struct xt_
     case DDS_XTypes_TK_UNION: {
       if (((ret = xt_valid_union_disc_type (gv, t)))
           || (ret = xt_valid_union_member_ids (gv, t))
+          || (ret = xt_valid_union_case_labels (gv, t))
           || (ret = xt_valid_type_flags (gv, t->_u.union_type.flags, t->_d))
           || (ret = xt_valid_member_flags (gv, t->_u.union_type.disc_flags, MEMBER_FLAG_UNION_DISC, in_key)))
         return ret;
@@ -1048,21 +1271,21 @@ static dds_return_t xt_validate_impl (struct ddsi_domaingv *gv, const struct xt_
       break;
     }
     case DDS_XTypes_TK_ENUM:
+      if (t->_u.enum_type.bit_bound == 0 || t->_u.enum_type.bit_bound > 32)
+        return DDS_RETCODE_BAD_PARAMETER;
       if ((ret = xt_valid_type_flags (gv, t->_u.enum_type.flags, t->_d))
           || (ret = xt_valid_enum_values (gv, t)))
         return ret;
-      if (t->_u.enum_type.bit_bound > 32)
-        return DDS_RETCODE_BAD_PARAMETER;
       for (uint32_t n = 0; n < t->_u.enum_type.literals.length; n++)
         if ((ret = xt_valid_member_flags (gv, t->_u.enum_type.literals.seq[n].flags, MEMBER_FLAG_ENUM_LITERAL, in_key)))
           return ret;
       break;
     case DDS_XTypes_TK_BITMASK:
+      if (t->_u.bitmask.bit_bound == 0 || t->_u.bitmask.bit_bound > 64)
+        return DDS_RETCODE_BAD_PARAMETER;
       if ((ret = xt_valid_type_flags (gv, t->_u.bitmask.flags, t->_d))
           || (ret = xt_valid_bitmask_positions (gv, t)))
         return ret;
-      if (t->_u.bitmask.bit_bound > 64)
-        return DDS_RETCODE_BAD_PARAMETER;
       for (uint32_t n = 0; n < t->_u.bitmask.bitflags.length; n++)
         if ((ret = xt_valid_member_flags (gv, t->_u.bitmask.bitflags.seq[n].flags, MEMBER_FLAG_BIT_FLAG, in_key)))
           return ret;
@@ -2515,6 +2738,8 @@ static bool xt_is_assignable_from_enum (const struct xt_type *t1, const struct x
 ddsrt_nonnull_all
 static bool xt_is_assignable_from_union (struct ddsi_domaingv *gv, const struct xt_type *t1, const struct xt_type *t2, const dds_type_consistency_enforcement_qospolicy_t *tce, struct ddsi_non_assignability_reason *reason)
 {
+  /* Note: T1 is the type of the writer, T2 is the type of the writer. These impractical names
+     are used because this is reader the definition of assignability in the specification. */
   assert (t1->_d == DDS_XTypes_TK_UNION);
   assert (t2->_d == DDS_XTypes_TK_UNION);
   if (xt_get_extensibility (t1) != xt_get_extensibility (t2))
@@ -2560,9 +2785,7 @@ static bool xt_is_assignable_from_union (struct ddsi_domaingv *gv, const struct 
       struct xt_union_member *m2 = &t2->_u.union_type.members.seq[i2 % i2_max];
       const struct xt_type *m2t = ddsi_xt_unalias (&m2->type->xt);
       if (m1->id == m2->id)
-      {
         m2_id_match = true;
-      }
 
       /* Rule: If T1 and T2 both have default labels, the type associated with T1 default member is assignable from
           the type associated with T2 default member. */
@@ -2830,10 +3053,10 @@ static bool xt_is_assignable_from_struct (struct ddsi_domaingv *gv, const struct
         - if T1 is appendable, then members with the same member_index have the same member ID, the same setting for the
           optional attribute and the T1 member type is strongly assignable from the T2 member type
         - if T1 is final, then they meet the same condition as for T1 being appendable and ... (see below) */
-    struct xt_struct_member *m2 = &te2->_u.structure.members.seq[i1];
+    struct xt_struct_member *m2 = (i1 < i2_max) ? &te2->_u.structure.members.seq[i1] : NULL;
     if ((xt_get_extensibility (te1) == DDS_XTypes_IS_APPENDABLE && i1 < i2_max) || xt_get_extensibility (te1) == DDS_XTypes_IS_FINAL)
     {
-      if (i1 >= i2_max) {
+      if (m2 == NULL) {
         xt_non_assignable (reason, DDSI_NONASSIGN_NUMBER_OF_MEMBERS, t1, t2, 0);
         goto struct_failed;
       } else if (m1->id != m2->id) {
@@ -2847,9 +3070,9 @@ static bool xt_is_assignable_from_struct (struct ddsi_domaingv *gv, const struct
       }
     }
     /* if T1 is final, or prevent type-widening is set: ... [continued] in addition T1 and T2 have the same set of member IDs */
-    if ((xt_get_extensibility (te1) == DDS_XTypes_IS_FINAL || (tce->prevent_type_widening && !(m2->flags & DDS_XTypes_IS_OPTIONAL))) && !match)
+    if ((xt_get_extensibility (te1) == DDS_XTypes_IS_FINAL || (tce->prevent_type_widening && !(m1->flags & DDS_XTypes_IS_OPTIONAL))) && !match)
     {
-      xt_non_assignable (reason, DDSI_NONASSIGN_NUMBER_OF_MEMBERS, t1, t2, m2->id);
+      xt_non_assignable (reason, DDSI_NONASSIGN_NUMBER_OF_MEMBERS, t1, t2, m1->id);
       goto struct_failed;
     }
   } /* for members in T1 */
@@ -2866,8 +3089,7 @@ static bool xt_is_assignable_from_struct (struct ddsi_domaingv *gv, const struct
     bool match = false;
     if ((!(m2->flags & DDS_XTypes_IS_OPTIONAL) && (m2->flags & DDS_XTypes_IS_MUST_UNDERSTAND))
         || (m2->flags & DDS_XTypes_IS_KEY)
-        || xt_get_extensibility (te1) == DDS_XTypes_IS_FINAL
-        || (tce->prevent_type_widening && !(m2->flags & DDS_XTypes_IS_OPTIONAL)))
+        || xt_get_extensibility (te1) == DDS_XTypes_IS_FINAL)
     {
       for (uint32_t i1 = i2; !match && i1 < i1_max + i2; i1++)
         match = (te1->_u.structure.members.seq[i1 % i1_max].id == m2->id);

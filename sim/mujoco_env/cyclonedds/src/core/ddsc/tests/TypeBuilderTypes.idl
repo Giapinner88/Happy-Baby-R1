@@ -644,4 +644,49 @@ module TypeBuilderTypes {
     t55b f2;
     t55c f3;
   };
+
+  bitmask t56_bm32pos {
+    @position(1) BM32POS_1,
+    BM32POS_2,
+    @position(3) BM32POS_3,
+    BM32POS_4,
+    BM32POS_5,
+    BM32POS_6,
+    BM32POS_7,
+    BM32POS_8,
+    BM32POS_9,
+    BM32POS_10
+  };
+
+  typedef t56_bm32pos t56_bm32pos_arr[3];
+  typedef string<3> t56_bstring;
+  typedef t56_bstring t56_bstring_arr[2];
+
+  struct t56 {
+    @key sequence<t56_bm32pos_arr> f1;
+    @optional double f2;
+    string<22> f3;
+    sequence<@try_construct(TRIM) t56_bstring_arr, 1> f4;
+  };
+
+  @bit_bound(12) bitmask t57_bm16 {
+    T57_BM16_1,
+    T57_BM16_2
+  };
+
+  typedef string<5> t57_bstring;
+
+  union t57 switch (short) {
+    case 1: @external sequence<long> u1;
+    case 2: @external sequence<long, 3> u2;
+    case 3: @external sequence<t57_bstring, 2> u3;
+    case 4: @try_construct(TRIM) @external t57_bstring u4;
+    case 5: @external t57_bm16 u5;
+  };
+
+  @mutable
+  struct t58 {
+    @id(1) @must_understand sequence<sequence<long> > f1;
+    @id(2) @must_understand sequence<long> f2[2];
+  };
 };

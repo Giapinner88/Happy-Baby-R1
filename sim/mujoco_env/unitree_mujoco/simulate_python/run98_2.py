@@ -3,12 +3,15 @@ import threading
 import numpy as np
 import onnxruntime as ort
 import pygame
+import math
 
 from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber, ChannelFactoryInitialize
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_, unitree_hg_msg_dds__LowState_
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_, LowState_
 from unitree_sdk2py.utils.crc import CRC
 from state_logger import SimStateLogger
+from fall_detector.detector import G1FallDetector
+from fall_detector.logger import IMULogger
 
 robot_state = None
 _got_first_state = False
@@ -116,6 +119,9 @@ def main():
     step = 0
     t0 = time.perf_counter()
 
+    fall_detector = G1FallDetector()
+    imu_logger = IMULogger()
+
     try:
         while True:
             with state_lock:
@@ -137,7 +143,26 @@ def main():
             # để tránh phụ thuộc vào jitter CPU. dt thực tế chỉ dùng để enforce timing.
             CTRL_DT = 0.02  # 50 Hz — khớp với training
     
-            pygame.event.pump()
+            # --- XỬ LÝ SỰ KIỆN THOÁT ---
+            exit_pressed = False
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    exit_pressed = True
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        exit_pressed = True
+
+            if joystick is not None:
+                try:
+                    # Nút X trên tay Xbox thường là button 2
+                    if joystick.get_button(2):
+                        exit_pressed = True
+                except Exception:
+                    pass
+
+            if exit_pressed:
+                print("\n>>> NHẬN LỆNH THOÁT (Phím ESC hoặc nút X trên Gamepad). Đang đóng và lưu log...")
+                break
             
             # --- ĐỌC TÍN HIỆU ĐIỀU KHIỂN ---
             raw_vx = 0.0
@@ -166,6 +191,50 @@ def main():
             # ÁP DỤNG BỘ LỌC TÍN HIỆU TOÁN HỌC (EMA)
             target_commands = np.array([raw_vx, raw_vy, raw_yaw], dtype=np.float32)
             smoothed_commands = alpha * target_commands + (1.0 - alpha) * smoothed_commands
+            
+            # Khôi phục trạng thái ngã nếu người dùng yêu cầu
+            keys = pygame.key.get_pressed()
+            reset_pressed = keys[pygame.K_r]
+            if joystick is not None:
+                try:
+                    reset_pressed = reset_pressed or joystick.get_button(1)
+                except Exception:
+                    pass
+
+            if reset_pressed:
+                print(">>> RESET TOÀN BỘ TRẠNG THÁI & KHỞI ĐỘNG LẠI SIMULATOR...")
+                
+                # 1. Gửi lệnh reset đặc biệt sang simulator (DDS)
+                with cmd_lock:
+                    cmd.motor_cmd[0].mode = 0xFF
+                
+                # Chờ publisher thread gửi đi (chu kỳ publisher là 2ms)
+                time.sleep(0.05)
+                
+                # 2. Khôi phục lại trạng thái của client
+                fall_detector.reset()
+                imu_logger.reset()
+                last_action = np.zeros(29, dtype=np.float32)
+                smoothed_commands = np.zeros(3, dtype=np.float32)
+                gait_time = 0.0
+                gait_scale = 1.0
+                step = 0
+                t0 = time.perf_counter()
+                last_print_time = 0.0
+                
+                # Khôi phục KP, KD, Q và MODE mặc định gửi xuống motor
+                with cmd_lock:
+                    for i in range(29):
+                        cmd.motor_cmd[i].mode = 0x01
+                        cmd.motor_cmd[i].q = DEFAULT_Q[i]
+                        cmd.motor_cmd[i].dq = 0.0
+                        cmd.motor_cmd[i].tau = 0.0
+                        cmd.motor_cmd[i].kp = float(KP_ARRAY[i])
+                        cmd.motor_cmd[i].kd = float(KD_ARRAY[i])
+                        
+                time.sleep(0.5) # Chống dội phím
+                last_step_time = time.perf_counter()
+                continue
     
             # --- LOGIC ĐIỀU KHIỂN CHU KỲ BƯỚC ---
             # Chỉ tiến hành tăng pha bước khi có tín hiệu vận tốc
@@ -192,6 +261,7 @@ def main():
             dq_current = np.zeros(29, dtype=np.float32)
             gyro = np.zeros(3, dtype=np.float32)
             quat = np.zeros(4, dtype=np.float32)
+            accel = np.zeros(3, dtype=np.float32)
             with state_lock:
                 rs = robot_state
                 if rs is None:
@@ -201,8 +271,38 @@ def main():
                     dq_current[i] = rs.motor_state[i].dq
                 gyro[:] = np.array(rs.imu_state.gyroscope, dtype=np.float32)
                 quat[:] = np.array(rs.imu_state.quaternion, dtype=np.float32)
+                accel[:] = np.array(rs.imu_state.accelerometer, dtype=np.float32)
             
             projected_gravity = compute_projected_gravity(quat)
+            
+            # Ghi log IMU (sẽ tự động quản lý buffer và tạo biểu đồ nếu ngã)
+            current_time = time.perf_counter()
+            imu_logger.log_step(current_time, projected_gravity, gyro, accel, dq_current)
+            
+            # --- KIỂM TRA NGÃ (FALL DETECTION) ---
+            is_fallen, is_lay_down, reasons = fall_detector.check(current_time, projected_gravity, gyro, accel, dq_current)
+            
+            if is_fallen and len(reasons) > 0:
+                print(f"\n!!! PHÁT HIỆN: {' | '.join(reasons)} !!!")
+                imu_logger.trigger_fall_event(time.perf_counter())
+                
+                with cmd_lock:
+                    for i in range(29):
+                        cmd.motor_cmd[i].kp = 0.0 # Bỏ độ cứng
+                        if is_lay_down:
+                            cmd.motor_cmd[i].kd = 0.0 # Ngắt toàn bộ momen
+                        else:
+                            # Dùng hệ số cản gốc của từng khớp thay vì 5.0 (gây rung bần bật cánh tay)
+                            cmd.motor_cmd[i].kd = float(KD_ARRAY[i]) 
+                        cmd.motor_cmd[i].tau = 0.0
+                smoothed_commands[:] = 0.0 # Xóa lệnh chạy
+                
+            if fall_detector.is_fallen:
+                step += 1
+                time_until_next = 0.02 - (time.perf_counter() - step_start)
+                if time_until_next > 0:
+                    time.sleep(time_until_next)
+                continue
     
             # Tính toán phase_ratio từ biến thời gian tích lũy
             phase_ratio = (gait_time % 0.6) / 0.6

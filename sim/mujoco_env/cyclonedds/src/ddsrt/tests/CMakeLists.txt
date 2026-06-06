@@ -13,11 +13,13 @@ include(CUnit)
 
 set(sources
   atomics.c
+  bswap.c
   bits.c
   environ.c
   heap.c
   ifaddrs.c
   sync.c
+  strtod.c
   strtoll.c
   thread.c
   thread_cleanup.c

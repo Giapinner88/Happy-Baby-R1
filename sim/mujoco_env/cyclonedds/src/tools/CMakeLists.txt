@@ -17,4 +17,7 @@ if(BUILD_IDLC)
   add_subdirectory(idlpp)
   add_subdirectory(idlc)
 endif()
-add_subdirectory(ddsperf)
+
+if(HAVE_IDLC)
+  add_subdirectory(ddsperf)
+endif()

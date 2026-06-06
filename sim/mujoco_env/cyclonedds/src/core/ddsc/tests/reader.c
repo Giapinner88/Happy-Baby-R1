@@ -3228,8 +3228,10 @@ static bool test_long_2_eq_2 (const void *vsample)
   return (sample->long_2 == 2);
 }
 
-static void do_readtake_sample_rank (const char *opname_past_tense, dds_return_t (*op) (dds_entity_t reader_or_condition, void **buf, dds_sample_info_t *si, size_t bufsz, uint32_t maxs, uint32_t mask))
+static void do_readtake_sample_rank (const char *opname_past_tense, dds_return_t (*op) (dds_entity_t reader_or_condition, void **buf, dds_sample_info_t *si, size_t bufsz, uint32_t maxs, uint32_t mask), bool verbose)
 {
+  const dds_entity_t dom = dds_create_domain (0, "<Discovery><Tag>readtake_sample_rank_${CYCLONEDDS_PID}</Tag></Discovery>");
+  CU_ASSERT_GT_FATAL (dom, 0);
   const dds_entity_t dp = dds_create_participant (0, NULL, NULL);
   CU_ASSERT_GT_FATAL (dp, 0);
   char topicname[100];
@@ -3250,17 +3252,23 @@ static void do_readtake_sample_rank (const char *opname_past_tense, dds_return_t
   while (nsamp[3] == 0)
   {
     int totsamp = 0;
-    tprintf ("samples/instance: ");
+    if (verbose)
+      tprintf ("samples/instance: ");
     for (int i = 0; nsamp[i] > 0; i++) {
       totsamp += nsamp[i];
-      printf (" %d", nsamp[i]);
+      if (verbose)
+        printf (" %d", nsamp[i]);
     }
-    printf ("\n");
-    fflush (stdout);
+    if (verbose)
+    {
+      printf ("\n");
+      fflush (stdout);
+    }
 
     for (int skip_even_long_2 = 0; skip_even_long_2 <= 1; skip_even_long_2++)
     {
-      tprintf ("  skip_even_long_2 %d\n", skip_even_long_2);
+      if (verbose)
+        tprintf ("  skip_even_long_2 %d\n", skip_even_long_2);
       int totsamp_after_maybe_skipping_even = 0;
       if (!skip_even_long_2)
         totsamp_after_maybe_skipping_even = totsamp;
@@ -3339,11 +3347,14 @@ static void do_readtake_sample_rank (const char *opname_past_tense, dds_return_t
 
         assert (rdlimit < (int) (sizeof (xs) / sizeof (xs[0])));
         int n = (int) op (rd, buf, si, (size_t) rdlimit, (uint32_t) rdlimit, (skip_even_long_2 ? DDS_NOT_READ_SAMPLE_STATE : 0));
-        tprintf ("  -- %s %d (<= %d), ranks:", opname_past_tense, n, rdlimit);
-        for (int i = 0; i < n; i++)
-          printf (" %"PRIu32, si[i].sample_rank);
-        printf ("\n");
-        fflush (stdout);
+        if (verbose)
+        {
+          tprintf ("  -- %s %d (<= %d), ranks:", opname_past_tense, n, rdlimit);
+          for (int i = 0; i < n; i++)
+            printf (" %"PRIu32, si[i].sample_rank);
+          printf ("\n");
+          fflush (stdout);
+        }
         CU_ASSERT_NEQ_FATAL (n == ((rdlimit <= totsamp_after_maybe_skipping_even) ? rdlimit : totsamp_after_maybe_skipping_even), 0);
 
         {
@@ -3383,16 +3394,18 @@ static void do_readtake_sample_rank (const char *opname_past_tense, dds_return_t
 
   rc = dds_delete (dp);
   CU_ASSERT_EQ_FATAL (rc, 0);
+  rc = dds_delete (dom);
+  CU_ASSERT_EQ_FATAL (rc, 0);
 }
 
 CU_Test (ddsc_read, sample_rank)
 {
-  do_readtake_sample_rank ("read", dds_read_mask);
+  do_readtake_sample_rank ("read", dds_read_mask, false);
 }
 
 CU_Test (ddsc_take, sample_rank)
 {
-  do_readtake_sample_rank ("took", dds_take_mask);
+  do_readtake_sample_rank ("took", dds_take_mask, false);
 }
 
 static void ddsc_peek_setup (dds_entity_t *dp, dds_entity_t *rd, dds_instance_handle_t *ih)

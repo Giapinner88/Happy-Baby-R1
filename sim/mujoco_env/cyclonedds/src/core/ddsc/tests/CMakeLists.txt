@@ -54,6 +54,7 @@ set(ddsc_test_sources
     "config.c"
     "data_avail_stress.c"
     "data_on_readers.c"
+    "debmon.c"
     "destorder.c"
     "discstress.c"
     "dispose.c"
@@ -62,7 +63,7 @@ set(ddsc_test_sources
     "entity_api.c"
     "entity_hierarchy.c"
     "entity_status.c"
-    "err.c"
+    "err_check.c"
     "filter.c"
     "instance_get_key.c"
     "instance_handle.c"
@@ -70,8 +71,10 @@ set(ddsc_test_sources
     "liveliness.c"
     "loan.c"
     "multi_sertype.c"
+    "netstat.c"
     "nwpart.c"
     "participant.c"
+    "pcap.c"
     "pp_lease_dur.c"
     "psmx.c"
     "psmxif.c"
@@ -88,8 +91,10 @@ set(ddsc_test_sources
     "reader_iterator.c"
     "read_instance.c"
     "redundantnw.c"
+    "rusage.c"
     "register.c"
     "spdp.c"
+    "statistics.c"
     "subscriber.c"
     "take_instance.c"
     "take_next_instance.c"
@@ -137,6 +142,7 @@ if(ENABLE_TYPELIB)
     "data_representation.c"
     "typebuilder.c"
     "dynamic_type.c"
+    "typewrap.c"
   )
 endif()
 
@@ -154,7 +160,8 @@ endif()
 
 if(ENABLE_QOS_PROVIDER)
   list(APPEND ddsc_test_sources
-    "qos_provider.c")
+    "qos_provider.c"
+    "sysdef_parser.c")
 endif()
 
 add_cunit_executable(cunit_ddsc ${ddsc_test_sources})
