@@ -37,7 +37,10 @@ cat >"$CYCLONEDDS_TMP" <<XML
 </CycloneDDS>
 XML
 
+set +u
 source "$ROS_SETUP"
+set -u
+
 export ROS_DOMAIN_ID
 export ROS_LOCALHOST_ONLY=0
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

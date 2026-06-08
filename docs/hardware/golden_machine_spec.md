@@ -33,23 +33,25 @@ Dự án hiện đang vận hành và nhắm mục tiêu phát triển trên phi
 | **Case** | Thermaltake View 600 TG Full Tower (không nguồn, không quạt) | Không gian lắp đặt lớn cho workstation đa GPU. |
 | **OS** | Ubuntu 20.04.x LTS (Focal Fossa) | Baseline hiện tại của nhóm; dùng ROS 2 Foxy. |
 
-### 3.1. Máy tương đương trên Lightning AI (Cloud Workstation)
+### 3.1. Máy tương đương trên Lightning AI (Cloud Training Studio)
 
-Để đảm bảo khả năng mô phỏng và huấn luyện tương đương khi làm việc trên Lightning AI, cần chọn máy ảo cloud có cấu hình tối thiểu như sau:
+Lightning AI dùng cho huấn luyện/evaluation Isaac Lab, không dùng làm node vận hành robot trực tiếp. Môi trường local của robot vẫn giữ baseline Ubuntu 20.04 LTS + ROS 2 Foxy; môi trường Lightning tách riêng thành host Studio và Docker container Isaac Lab.
 
 | Thành phần | Yêu cầu tối thiểu | Ghi chú |
 | :--- | :--- | :--- |
-| **GPU** | 2x NVIDIA GPU, mỗi GPU >= 24GB VRAM | Mục tiêu tương đương RTX 4500 Ada 24GB. |
+| **GPU** | 1x NVIDIA L4 24GB cho smoke test; ưu tiên 2x GPU >= 24GB hoặc H100 cho train dài | L4 đã đủ để xác thực Isaac Lab headless và `rsl_rl` mẫu, nhưng không phải baseline tối đa. |
 | **CPU** | >= 16 vCPU | Ưu tiên CPU hiệu năng cao cho build và mô phỏng. |
-| **RAM** | >= 64GB | Tránh nghẽn bộ nhớ khi chạy Isaac Lab + ROS2. |
-| **Storage** | >= 1TB NVMe | Lưu dataset, checkpoint, rosbag2. |
-| **OS Image** | Ubuntu 20.04 LTS | Đồng bộ môi trường với máy trạm vật lý hiện tại. |
+| **RAM** | >= 64GB | Tránh nghẽn bộ nhớ khi chạy Isaac Lab nhiều environment. |
+| **Storage** | >= 1TB NVMe | Lưu dataset, checkpoint, log training và video debug. |
+| **Host OS** | Lightning AI Studio Ubuntu 24.04 LTS | Host chỉ cung cấp Docker, GPU driver và storage. |
+| **Training runtime** | Docker Isaac Lab/Isaac Sim, thường nền Ubuntu 22.04 LTS | Không cài Isaac Lab native trên host nếu mục tiêu là training ổn định. |
 
 Checklist thiết lập trên Lightning AI:
-1. Chọn image Ubuntu 20.04 LTS, bật driver/CUDA tương thích GPU.
-2. Cài ROS 2 Foxy Desktop Full và cấu hình CycloneDDS giống máy trạm.
-3. Đồng bộ workspace bằng Git + LFS (nếu cần) và restore các dataset/model từ object storage.
-4. Đặt biến môi trường và cấu hình driver theo chuẩn Golden Machine để tránh sai lệch Sim-to-Real.
+1. Chọn Studio ở chế độ GPU trước khi dựng Docker; CPU-only Studio sẽ lỗi khi container cần NVML.
+2. Kiểm tra `nvidia-smi` trên host và `docker run --gpus all ... nvidia-smi` trước khi train.
+3. Dùng Docker Isaac Lab/NGC image đúng release thay vì trộn package native trên host.
+4. Tắt X11 forwarding trên Studio headless; dùng `--headless`, EGL/Vulkan và video offline khi cần debug.
+5. Đồng bộ workspace bằng Git + LFS nếu cần, nhưng lưu checkpoint/model về `data/models/...` hoặc object storage đã review.
 
 ### 3.2. Thiết lập Golden Machine trên Lightning AI (Team Workspace -> Hardware)
 
@@ -61,16 +63,16 @@ Quy trình đề xuất:
 3. Thiết lập quyền truy cập (Owner/Editor/Viewer) và bật audit log nếu có.
 4. Tạo Project/Studio chính, cấu hình Git repo mặc định và bật Git LFS.
 5. Chọn Studio template: "machine learning" (phù hợp pipeline huấn luyện + mô phỏng).
-6. Chọn image nền Ubuntu 20.04 LTS, sau đó cấu hình driver NVIDIA/CUDA tương thích.
+6. Chọn host Studio Ubuntu 24.04 LTS hoặc image Lightning tương thích, sau đó chạy Isaac Lab trong Docker container đúng release.
 7. Chọn phần cứng (không giới hạn budget):
    - Model máy: ưu tiên loại máy đa GPU cao cấp (ví dụ: node H100 80GB x2 hoặc H100 80GB x4).
-   - GPU: NVIDIA H100 80GB (SXM/PCIe), tối thiểu 2 GPU cho Isaac Lab và huan luyen song song.
-   - CPU: AMD EPYC 9654 (96C/192T) hoac Intel Xeon Platinum 8480+ (56C/112T).
-   - RAM: 256GB (toi thieu 128GB), uu tien DDR5 ECC.
-   - Storage: NVMe 2TB (toi thieu 1TB) cho dataset, checkpoint, rosbag2.
-8. Tạo snapshot/base image sau khi cài xong ROS 2 Foxy, MuJoCo, unitree_sdk2 và các công cụ simulation đang dùng.
+   - GPU: NVIDIA H100 80GB (SXM/PCIe), tối thiểu 2 GPU cho Isaac Lab và huấn luyện song song.
+   - CPU: AMD EPYC 9654 (96C/192T) hoặc Intel Xeon Platinum 8480+ (56C/112T).
+   - RAM: 256GB (tối thiểu 128GB), ưu tiên DDR5 ECC.
+   - Storage: NVMe 2TB (tối thiểu 1TB) cho dataset, checkpoint, log training và video debug.
+8. Tạo snapshot/base image sau khi Docker, NVIDIA Container Toolkit, NGC login và Isaac Lab container đã chạy smoke test.
 9. Thiết lập object storage và policy đồng bộ dataset/model/checkpoint theo chuẩn dự án.
-10. Kiểm tra benchmark tối thiểu (build ROS2 + chạy Isaac Lab sample) để xác nhận hiệu năng.
+10. Kiểm tra benchmark tối thiểu (`nvidia-smi` trong container + Isaac Lab headless sample) để xác nhận hiệu năng.
 
 ## 4. Lý do lựa chọn (Justification & Rationale)
 

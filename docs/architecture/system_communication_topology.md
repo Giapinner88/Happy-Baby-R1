@@ -12,7 +12,7 @@ Tài liệu này chuẩn hóa sơ đồ truyền tin giữa máy trạm, robot, 
 | :--- | :--- | :--- | :--- |
 | Máy trạm vận hành | Ubuntu 20.04 LTS | Low-level command, ROS 2 Foxy, CycloneDDS, mô phỏng local, ghi log | Có |
 | Robot Jetson Orin | Ubuntu tương thích Unitree/R1 | Nhận low-level command, phản hồi trạng thái robot | Có, thông qua máy trạm |
-| Lightning AI | Ubuntu 24.04 | Training high-level bằng Isaac Lab từ dữ liệu đầu vào/đầu ra đã chuẩn hóa | Không |
+| Lightning AI | Studio Ubuntu 24.04 host + Docker Isaac Lab/Isaac Sim container | Training high-level bằng Isaac Lab từ dữ liệu đầu vào/đầu ra đã chuẩn hóa | Không |
 | 3 máy remote nghiên cứu | Không chốt làm baseline vận hành | Nghiên cứu, phân tích, thử nghiệm thuật toán hoặc đọc dữ liệu | Không |
 
 ## 2. Luồng điều khiển và dữ liệu
@@ -24,7 +24,7 @@ Máy trạm Ubuntu 20.04
   -> robot state / telemetry
   -> Máy trạm ghi log, rosbag2, kiểm tra an toàn
   -> dữ liệu đã chuẩn hóa
-  -> Lightning AI Ubuntu 24.04 training high-level
+  -> Lightning AI Studio + Docker Isaac Lab training high-level
   -> model/output high-level quay lại pipeline kiểm thử
 ```
 
