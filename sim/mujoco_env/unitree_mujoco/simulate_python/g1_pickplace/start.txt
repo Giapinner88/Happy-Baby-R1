@@ -1,1 +1,0 @@
-cd unitree_mujoco/simulate_python/g1_pickplace
