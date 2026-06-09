@@ -1,4 +1,0 @@
-source .venv/bin/activate
-cd G1_ChatBot
-python3 chatbot_subscriber.py
-python3 keyboard_publisher.py

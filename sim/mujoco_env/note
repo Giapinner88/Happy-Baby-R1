@@ -1,9 +1,0 @@
-kích hoạt môi trường ảo: venv
-source .venv/bin/activate
-kích hoạt môi trường ảo: conda
-conda activate "tên môi trường"
-thoát môi trường ảo:
-conda deactivate
-di chuyển vào nơi có file setup: 
-pip install -e .
-
