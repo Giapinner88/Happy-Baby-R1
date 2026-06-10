@@ -275,12 +275,11 @@ def main():
             
             projected_gravity = compute_projected_gravity(quat)
             
-            # Ghi log IMU (sẽ tự động quản lý buffer và tạo biểu đồ nếu ngã)
-            current_time = time.perf_counter()
-            imu_logger.log_step(current_time, projected_gravity, gyro, accel, dq_current)
+            # Ghi log vòng lặp tròn (O(1) memory, zero overhead)
+            imu_logger.log_step(time.perf_counter(), projected_gravity, gyro, accel)
             
             # --- KIỂM TRA NGÃ (FALL DETECTION) ---
-            is_fallen, is_lay_down, reasons = fall_detector.check(current_time, projected_gravity, gyro, accel, dq_current)
+            is_fallen, is_lay_down, reasons = fall_detector.check(projected_gravity, gyro, accel)
             
             if is_fallen and len(reasons) > 0:
                 print(f"\n!!! PHÁT HIỆN: {' | '.join(reasons)} !!!")

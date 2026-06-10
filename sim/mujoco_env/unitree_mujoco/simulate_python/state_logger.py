@@ -75,8 +75,27 @@ class SimStateLogger:
     # Where logs are saved (relative to this file → simulate_python/sim_state_logs/)
     _LOG_DIR = Path(__file__).parent / "sim_state_logs"
 
-    def __init__(self, script_path: str):
+    def __init__(self, script_path: str, joint_names: list = None):
         self._LOG_DIR.mkdir(exist_ok=True)
+
+        if joint_names is None:
+            self.joint_names = JOINT_NAMES
+        else:
+            self.joint_names = joint_names
+
+        # Pre-build CSV header for this instance
+        self._header = (
+            ["step", "t_sec"]
+            + [f"target_q_{n}" for n in self.joint_names]
+            + [f"q_{n}"        for n in self.joint_names]
+            + [f"dq_{n}"       for n in self.joint_names]
+            + [f"action_{n}"   for n in self.joint_names]
+            + ["imu_quat_w", "imu_quat_x", "imu_quat_y", "imu_quat_z"]
+            + ["imu_gyro_x", "imu_gyro_y", "imu_gyro_z"]
+            + ["proj_grav_x", "proj_grav_y", "proj_grav_z"]
+            + ["cmd_vx", "cmd_vy", "cmd_yaw"]
+            + ["gait_sin", "gait_cos", "gait_scale", "gait_time"]
+        )
 
         # ── Build filename: scriptname_HH-MM_YYYY-MM-DD.csv ─────────────────
         now   = datetime.now()
@@ -103,10 +122,10 @@ class SimStateLogger:
         self,
         step:       int,
         t:          float,
-        target_q,           # np.ndarray[29] – commanded PD target (for replay)
-        q,                  # np.ndarray[29] – actual joint positions
-        dq,                 # np.ndarray[29] – actual joint velocities
-        action,             # np.ndarray[29] – raw RL network output
+        target_q,           # np.ndarray – commanded PD target (for replay)
+        q,                  # np.ndarray – actual joint positions
+        dq,                 # np.ndarray – actual joint velocities
+        action,             # np.ndarray – raw RL network output
         quat,               # np.ndarray[4]  – IMU quaternion [w,x,y,z]
         gyro,               # np.ndarray[3]  – IMU gyroscope
         proj_grav,          # np.ndarray[3]  – projected gravity vector
@@ -149,7 +168,7 @@ class SimStateLogger:
         """Drain queue and write to CSV. Runs entirely off the control-loop thread."""
         with open(self._path, "w", newline="", buffering=65536) as f:
             writer = csv.writer(f)
-            writer.writerow(_HEADER)
+            writer.writerow(self._header)
             while True:
                 row = self._q.get()      # blocks here — no CPU waste
                 if row is None:          # sentinel: flush OS buffer and exit

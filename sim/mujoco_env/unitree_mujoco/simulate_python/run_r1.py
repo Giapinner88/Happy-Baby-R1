@@ -8,11 +8,20 @@ import sys
 from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber, ChannelFactoryInitialize
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_, unitree_hg_msg_dds__LowState_
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_, LowState_
+from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_
 from unitree_sdk2py.utils.crc import CRC
 
 robot_state = None
 _got_first_state = False
 state_lock = threading.Lock()
+
+sport_state = None
+sport_state_lock = threading.Lock()
+
+def sport_state_handler(msg: SportModeState_):
+    global sport_state
+    with sport_state_lock:
+        sport_state = msg
 
 cmd = unitree_hg_msg_dds__LowCmd_()
 cmd_lock = threading.Lock()
@@ -42,13 +51,13 @@ DEFAULT_Q = np.array([
     0.35, -0.18, 0.0, 0.87, 0.0              # Tay phải (5)
 ], dtype=np.float32)
 
-# ACTION_SCALE trích xuất từ metadata chính xác của policy_r1.onnx
+# ACTION_SCALE theo r1_constants.py: 0.25 * effort_limit / stiffness
 ACTION_SCALE = np.array([
-    0.150, 0.150, 0.150, 0.150, 0.312, 0.312, # Chân trái (6)
-    0.150, 0.150, 0.150, 0.150, 0.312, 0.312, # Chân phải (6)
-    0.150, 0.150,                            # Eo (2)
-    0.375, 0.375, 0.412, 0.412, 0.412,        # Tay trái (5)
-    0.375, 0.375, 0.412, 0.412, 0.412         # Tay phải (5)
+    0.150, 0.150, 0.150, 0.150, 0.3125, 0.3125,  # Chân trái: hip(60/100)×4, ankle(50/40)×2
+    0.150, 0.150, 0.150, 0.150, 0.3125, 0.3125,  # Chân phải
+    0.150, 0.150,                                  # Eo: waist(60/100)
+    0.375, 0.375, 0.4125, 0.4125, 0.4125,         # Tay trái: shoulder_p/r(60/40), yaw/elbow/wrist(33/20)
+    0.375, 0.375, 0.4125, 0.4125, 0.4125,         # Tay phải
 ], dtype=np.float32)
 
 
@@ -70,15 +79,14 @@ def dds_publisher_loop(pub):
 
 def compute_projected_gravity(quat):
     """
-    Biến đổi vector trọng lực thế giới [0, 0, -1] về hệ tọa độ cục bộ của thân robot.
-    Quy ước Unitree SDK: quat = [w, x, y, z]
+    Chiếu vector trọng lực thế giới [0, 0, -1] vào hệ tọa độ thân robot.
+    Quy ước Unitree SDK: quat = [w, x, y, z] (body→world rotation).
+    g_body = R(q)^T @ [0, 0, -1]
     """
     w, x, y, z = quat
-    
-    gx = 2 * (w * y - x * z)
-    gy = -2 * (y * z + w * x)
-    gz = 2 * (x**2 + y**2) - 1
-    
+    gx = -2.0 * (w * y + x * z)
+    gy =  2.0 * (w * x - y * z)
+    gz =  2.0 * (x**2 + y**2) - 1.0
     return np.array([gx, gy, gz], dtype=np.float32)
 
 def main():
@@ -89,16 +97,28 @@ def main():
     pub.Init()
     sub = ChannelSubscriber("rt/lowstate", LowState_)
     sub.Init(state_handler, 10)
+    sub_sport = ChannelSubscriber("rt/sportmodestate", SportModeState_)
+    sub_sport.Init(sport_state_handler, 10)
+
+    # Ánh xạ khớp cho Simulator (24 khớp):
+    # Simulator: 12=waist_roll, 13=waist_yaw
+    # Policy:    12=waist_yaw,  13=waist_roll
+    # Chỉ cần tráo đổi index 12 <-> 13, các khớp khác map trực tiếp.
+    JOINT_IDS_MAP = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                     13, 12,
+                     14, 15, 16, 17, 18,
+                     19, 20, 21, 22, 23]
 
     # Khởi tạo tư thế mặc định của R1 (24 khớp)
     with cmd_lock:
         for i in range(24):
-            cmd.motor_cmd[i].mode = 0x01
-            cmd.motor_cmd[i].q = float(DEFAULT_Q[i])
-            cmd.motor_cmd[i].dq = 0.0
-            cmd.motor_cmd[i].tau = 0.0
-            cmd.motor_cmd[i].kp = float(KP_ARRAY[i])
-            cmd.motor_cmd[i].kd = float(KD_ARRAY[i])
+            sdk_idx = JOINT_IDS_MAP[i]
+            cmd.motor_cmd[sdk_idx].mode = 0x01
+            cmd.motor_cmd[sdk_idx].q = float(DEFAULT_Q[i])
+            cmd.motor_cmd[sdk_idx].dq = 0.0
+            cmd.motor_cmd[sdk_idx].tau = 0.0
+            cmd.motor_cmd[sdk_idx].kp = float(KP_ARRAY[i])
+            cmd.motor_cmd[sdk_idx].kd = float(KD_ARRAY[i])
 
     pub_thread = threading.Thread(target=dds_publisher_loop, args=(pub,), daemon=True)
     pub_thread.start()
@@ -125,6 +145,7 @@ def main():
     last_action = np.zeros(24, dtype=np.float32)
     smoothed_commands = np.zeros(3, dtype=np.float32)
     alpha = 0.1 # Hệ số làm mượt vận tốc
+
 
     gait_time = 0.0
     last_step_time = time.perf_counter()
@@ -159,6 +180,11 @@ def main():
 
             with state_lock:
                 have_state = robot_state is not None
+                if have_state:
+                    # Chờ cho đến khi nhận được trạng thái khớp thực tế (không phải toàn 0 khi khởi động)
+                    q_sum = sum(abs(robot_state.motor_state[JOINT_IDS_MAP[i]].q) for i in range(24))
+                    if q_sum < 0.01:
+                        have_state = False
             if not have_state:
                 time.sleep(0.002)
                 last_step_time = time.perf_counter()
@@ -227,8 +253,9 @@ def main():
                 if rs is None:
                     continue
                 for i in range(24):
-                    q_current[i] = rs.motor_state[i].q
-                    dq_current[i] = rs.motor_state[i].dq
+                    sdk_idx = JOINT_IDS_MAP[i]
+                    q_current[i] = rs.motor_state[sdk_idx].q
+                    dq_current[i] = rs.motor_state[sdk_idx].dq
                 gyro[:] = np.array(rs.imu_state.gyroscope, dtype=np.float32)
                 quat[:] = np.array(rs.imu_state.quaternion, dtype=np.float32)
             
@@ -237,30 +264,46 @@ def main():
             phase_ratio = (gait_time % 0.6) / 0.6
             gait_phase = np.array([np.sin(2 * np.pi * phase_ratio), np.cos(2 * np.pi * phase_ratio)], dtype=np.float32)
             gait_phase *= gait_scale
+            
+            # Đồng bộ với deploy.yaml / observations.h: khi không di chuyển (cmd_norm < 0.1) thì gait_phase = [0, 0]
+            cmd_norm = np.linalg.norm(smoothed_commands)
+            if cmd_norm < 0.1:
+                gait_phase = np.zeros(2, dtype=np.float32)
     
             q_rel = q_current - DEFAULT_Q
+            
+            q_rel_policy = q_rel
+            dq_policy = dq_current
     
+            pelvis_z = 0.76
+            with sport_state_lock:
+                if sport_state is not None:
+                    pelvis_z = sport_state.position[2]
+            height_scan_obs = pelvis_z * 0.2  # scale = 1/max_distance = 1/5.0, ground_z=0
+
             # Đầu vào 270 chiều của policy_r1.onnx
             obs = np.concatenate([
                 gyro,                 # 3
                 projected_gravity,    # 3
                 smoothed_commands,    # 3
                 gait_phase,           # 2
-                q_rel,                # 24
-                dq_current,           # 24
+                q_rel_policy,         # 24
+                dq_policy,            # 24
                 last_action,          # 24
-                -0.8 * np.ones(187, dtype=np.float32)  # 187 (Giả lập mặt đất phẳng cách bụng robot 0.8m)
+                height_scan_obs * np.ones(187, dtype=np.float32)
             ]).astype(np.float32)
     
             obs_tensor = np.expand_dims(obs, axis=0)
             try:
                 action = session.run(None, {input_name: obs_tensor})[0][0]
                 last_action = action.copy()
+                
                 target_q_arr = DEFAULT_Q + action * ACTION_SCALE
                 
                 with cmd_lock:
                     for i in range(24):
-                        cmd.motor_cmd[i].q = float(target_q_arr[i])
+                        sdk_idx = JOINT_IDS_MAP[i]
+                        cmd.motor_cmd[sdk_idx].q = float(target_q_arr[i])
             except Exception as e:
                 print(f"\n[LỖI NGHIÊM TRỌNG] Lỗi khi tính toán Action: {e}")
                 print(f"Kích thước obs_tensor: {obs_tensor.shape}")

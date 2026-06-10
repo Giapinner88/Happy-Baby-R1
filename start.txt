@@ -1,0 +1,7 @@
+cd ../
+cd Mujoco
+source .venv/bin/activate
+cd ../
+cd HB_Repo/sim/mujoco_env
+cd unitree_mujoco
+cd simulate_python

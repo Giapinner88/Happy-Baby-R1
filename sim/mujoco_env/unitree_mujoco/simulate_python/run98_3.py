@@ -13,6 +13,7 @@ from state_logger import SimStateLogger
 from fall_detector.detector import G1FallDetector
 from fall_detector.logger import IMULogger
 from wave_animation.controller import WaveController
+from arm_csv_player import ArmCSVPlayer
 
 robot_state = None
 _got_first_state = False
@@ -122,7 +123,7 @@ def main():
 
     fall_detector = G1FallDetector()
     imu_logger = IMULogger()
-    wave_controller = WaveController()
+    arm_player = ArmCSVPlayer()
 
     try:
         while True:
@@ -203,15 +204,26 @@ def main():
                 except Exception:
                     pass
 
-            wave_pressed = keys[pygame.K_t]
+            # --- Khớp tay CSV ---
+            wave_pressed = keys[pygame.K_v]
+            heart_pressed = keys[pygame.K_h]
+            shake_pressed = keys[pygame.K_b]
             if joystick is not None:
                 try:
-                    wave_pressed = wave_pressed or joystick.get_button(3) # Nút Y
+                    wave_pressed = wave_pressed or joystick.get_button(3)   # Nút Y -> vẫy tay
+                    heart_pressed = heart_pressed or joystick.get_button(0) # Nút A -> trái tim
+                    shake_pressed = shake_pressed or joystick.get_button(4) # Nút LB -> bắt tay
                 except Exception:
                     pass
                     
             if wave_pressed:
-                wave_controller.toggle()
+                arm_player.trigger("vaytay")
+                time.sleep(0.3) # Chống dội phím
+            elif heart_pressed:
+                arm_player.trigger("traitim")
+                time.sleep(0.3) # Chống dội phím
+            elif shake_pressed:
+                arm_player.trigger("battay")
                 time.sleep(0.3) # Chống dội phím
 
             if reset_pressed:
@@ -288,12 +300,11 @@ def main():
             
             projected_gravity = compute_projected_gravity(quat)
             
-            # Ghi log IMU (sẽ tự động quản lý buffer và tạo biểu đồ nếu ngã)
-            current_time = time.perf_counter()
-            imu_logger.log_step(current_time, projected_gravity, gyro, accel, dq_current)
+            # Ghi log vòng lặp tròn (O(1) memory, zero overhead)
+            imu_logger.log_step(time.perf_counter(), projected_gravity, gyro, accel)
             
             # --- KIỂM TRA NGÃ (FALL DETECTION) ---
-            is_fallen, is_lay_down, reasons = fall_detector.check(current_time, projected_gravity, gyro, accel, dq_current)
+            is_fallen, is_lay_down, reasons = fall_detector.check(projected_gravity, gyro, accel)
             
             if is_fallen and len(reasons) > 0:
                 print(f"\n!!! PHÁT HIỆN: {' | '.join(reasons)} !!!")
@@ -329,23 +340,45 @@ def main():
             # --- MASKING OBSERVATION CHO CÁNH TAY ĐANG VẪY ---
             # Che giấu trạng thái thực của tay phải, giả vờ như nó đang ở vị trí mặc định
             # để mạng Neural không hoảng loạn (do khác biệt quá lớn với dữ liệu huấn luyện) và phá vỡ dáng đi.
-            if getattr(wave_controller, 'blend_waving', 0.0) > 0.0:
+            if getattr(arm_player, 'blend_weight', 0.0) > 0.0:
                 q_rel_obs = q_rel.copy()
                 dq_obs = dq_current.copy()
                 last_action_obs = last_action.copy()
                 
-                q_rel_obs[22:29] = 0.0
-                dq_obs[22:29] = 0.0
-                last_action_obs[22:29] = 0.0
+                # Che giấu trạng thái thực của 2 tay (khớp 15->28)
+                q_rel_obs[15:29] = 0.0
+                dq_obs[15:29] = 0.0
+                last_action_obs[15:29] = 0.0
             else:
                 q_rel_obs = q_rel
                 dq_obs = dq_current
                 last_action_obs = last_action
 
+            # --- BÙ ĐẮP THĂNG BẰNG (BALANCE COMPENSATION) KHI CHƠI CỬ CHỈ ---
+            # Kết hợp bù trừ vận tốc tiến (vx_bias) và bù trừ góc nghiêng trọng lực (gx_bias)
+            # để "đánh lừa" robot ngửa thân về sau nhằm triệt tiêu mô-men kéo do vươn tay trước.
+            smoothed_commands_obs = smoothed_commands.copy()
+            projected_gravity_obs = projected_gravity.copy()
+            if getattr(arm_player, 'blend_weight', 0.0) > 0.0:
+                if arm_player.active_motion == "vaytay":
+                    gx_bias = 0.08
+                    vx_bias = 0.08
+                elif arm_player.active_motion == "battay":
+                    gx_bias = 0.05
+                    vx_bias = 0.05
+                elif arm_player.active_motion == "traitim":
+                    gx_bias = 0.0
+                    vx_bias = 0.0
+                else:
+                    gx_bias = 0.08
+                    vx_bias = 0.08
+                smoothed_commands_obs[0] -= vx_bias * arm_player.blend_weight
+                projected_gravity_obs[0] += gx_bias * arm_player.blend_weight
+
             obs = np.concatenate([
                 gyro,                 
-                projected_gravity,    
-                smoothed_commands,    # Sử dụng lệnh đã được lọc mượt
+                projected_gravity_obs,  # Sử dụng trọng lực đã bù trừ
+                smoothed_commands_obs,  # Sử dụng vận tốc đã bù trừ
                 gait_phase,           
                 q_rel_obs,                
                 dq_obs,           
@@ -360,8 +393,8 @@ def main():
             # Tính target_q array (dùng để log replay VÀ gửi xuống motor)
             target_q_arr = DEFAULT_Q + action * ACTION_SCALE
             
-            # --- GHI ĐÈ CHUYỂN ĐỘNG VẪY TAY CÁNH TAY PHẢI ---
-            target_q_arr = wave_controller.update_and_get_target_q(0.02, target_q_arr)
+            # --- GHI ĐÈ CHUYỂN ĐỘNG KHỚP TAY TỪ CSV ---
+            target_q_arr = arm_player.update_and_blend(0.02, target_q_arr)
             with cmd_lock:
                 for i in range(29):
                     cmd.motor_cmd[i].q = float(target_q_arr[i])
