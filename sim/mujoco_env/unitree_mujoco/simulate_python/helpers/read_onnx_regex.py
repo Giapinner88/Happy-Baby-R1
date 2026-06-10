@@ -2,7 +2,9 @@ import re
 import json
 
 def main():
-    with open("/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_python/policy_r1.onnx", "rb") as f:
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_r1.onnx")
+    with open(policy_path, "rb") as f:
         data = f.read()
 
     # Search for all ascii printables of length > 20

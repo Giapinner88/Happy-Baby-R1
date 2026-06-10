@@ -2,7 +2,9 @@ import onnxruntime as ort
 import json
 
 def main():
-    sess = ort.InferenceSession("/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_python/policy_r1_270.onnx")
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_r1_270.onnx")
+    sess = ort.InferenceSession(policy_path)
     meta = sess.get_modelmeta()
     
     print("--- ONNX Model Inputs ---")

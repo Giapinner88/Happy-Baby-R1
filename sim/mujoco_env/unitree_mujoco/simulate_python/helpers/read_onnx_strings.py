@@ -1,7 +1,9 @@
 import re
 
 def main():
-    with open("policy_motion_data.onnx", "rb") as f:
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_motion_data.onnx")
+    with open(policy_path, "rb") as f:
         data = f.read()
     
     # Extract ASCII strings

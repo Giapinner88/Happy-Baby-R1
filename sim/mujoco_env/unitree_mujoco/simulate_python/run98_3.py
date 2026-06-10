@@ -86,7 +86,11 @@ def main():
     pub_thread = threading.Thread(target=dds_publisher_loop, args=(pub,), daemon=True)
     pub_thread.start()
 
-    session = ort.InferenceSession("policy98.onnx", providers=['CPUExecutionProvider'])
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "policy", "policy98.onnx")
+    if not os.path.exists(policy_path) and os.path.exists("policy98.onnx"):
+        policy_path = "policy98.onnx"
+    session = ort.InferenceSession(policy_path, providers=['CPUExecutionProvider'])
     input_name = session.get_inputs()[0].name
     
     pygame.init()

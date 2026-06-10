@@ -16,7 +16,7 @@ MODES = [
         "name": "💃 Mimic — motion_data (run_mimic.py)",
         "desc": "Bắt chước chuyển động từ motion_data.npz",
         "cmd":  [sys.executable, "run_mimic.py",
-                 "--policy", "policy_motion_data.onnx",
+                 "--policy", "policy/policy_motion_data.onnx",
                  "--npz",    "motions/motion_data.npz"],
     },
     {
@@ -67,7 +67,7 @@ def main():
         else:
             # Chế độ tuỳ chỉnh
             print()
-            policy = input("  Đường dẫn policy ONNX (vd: policy_motion_data.onnx): ").strip()
+            policy = input("  Đường dẫn policy ONNX (vd: policy/policy_motion_data.onnx): ").strip()
             npz    = input("  Đường dẫn NPZ        (vd: motions/motion_data.npz): ").strip()
             if not policy or not npz:
                 print("  Huỷ — thiếu thông tin.")

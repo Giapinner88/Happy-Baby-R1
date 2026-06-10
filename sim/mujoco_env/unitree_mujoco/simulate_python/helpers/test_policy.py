@@ -5,9 +5,10 @@ Chạy: python test_policy.py
 import numpy as np
 import onnxruntime as ort
 
+import os
 # === Config ===
-POLICY_PATH = "policy_motion_data.onnx"
-NPZ_PATH = "motions/motion_data.npz"
+POLICY_PATH = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_motion_data.onnx")
+NPZ_PATH = os.path.join(os.path.dirname(__file__), "..", "motions", "motion_data.npz")
 
 DEFAULT_Q = np.array([-0.1, 0.0, 0.0, 0.3, -0.2, 0.0, -0.1, 0.0, 0.0, 0.3, -0.2, 0.0, 0.0, 0.0, 0.0,
                        0.35, 0.18, 0.0, 0.87, 0.0, 0.0, 0.0, 0.35, -0.18, 0.0, 0.87, 0.0, 0.0, 0.0], dtype=np.float32)

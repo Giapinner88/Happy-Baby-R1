@@ -124,7 +124,11 @@ def main():
     pub_thread.start()
 
     print("Đang nạp model ONNX...")
-    session = ort.InferenceSession("policy_r1.onnx", providers=['CPUExecutionProvider'])
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "policy", "policy_r1.onnx")
+    if not os.path.exists(policy_path) and os.path.exists("policy_r1.onnx"):
+        policy_path = "policy_r1.onnx"
+    session = ort.InferenceSession(policy_path, providers=['CPUExecutionProvider'])
     input_name = session.get_inputs()[0].name
     print("Model nạp thành công!")
     

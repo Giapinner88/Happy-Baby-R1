@@ -218,6 +218,8 @@ def parse_dimension(data, start, end):
     return None
 
 if __name__ == '__main__':
-    with open('policy_r1.onnx', 'rb') as f:
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_r1.onnx")
+    with open(policy_path, 'rb') as f:
         data = f.read()
     parse_protobuf(data, 0, len(data))

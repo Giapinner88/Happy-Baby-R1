@@ -1,5 +1,7 @@
 def main():
-    with open("/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_python/policy_motion_data.onnx", "rb") as f:
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_motion_data.onnx")
+    with open(policy_path, "rb") as f:
         data = f.read()
 
     keys = [b"joint_names", b"joint_stiffness", b"joint_damping", b"default_joint_pos", b"action_scale", b"observation_names"]

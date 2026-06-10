@@ -34,17 +34,17 @@ ACTION_SCALE = np.array([0.55,0.35,0.55,0.35,0.44,0.44, 0.55,0.35,0.55,0.35,0.44
 MODES = [
     {
         "name":   "🚶 Locomotion",
-        "policy": "policy98.onnx",
+        "policy": "policy/policy98.onnx",
         "npz":    None,
     },
     {
         "name":   "💃 Mimic Dance",
-        "policy": "policy_motion_data.onnx",
+        "policy": "policy/policy_motion_data.onnx",
         "npz":    "motions/motion_data.npz",
     },
     {
         "name":   "🎾 Mimic Tennis",
-        "policy": "policy_tennis.onnx",
+        "policy": "policy/policy_tennis.onnx",
         "npz":    "motions/unitree_g1_tennis.npz",
     },
 ]
@@ -221,10 +221,19 @@ def main():
 
     for i, m in enumerate(MODES):
         import os
-        if not os.path.exists(m["policy"]):
-            print(f"  [!] Bỏ qua mode {i+1} ({m['name']}): không tìm thấy {m['policy']}")
-            sessions[i] = None; motions[i] = None; continue
-        sessions[i] = ort.InferenceSession(m["policy"], sess_options=opts, providers=['CPUExecutionProvider'])
+        policy_path = m["policy"]
+        if not os.path.exists(policy_path):
+            alt_path = os.path.join(os.path.dirname(__file__), policy_path)
+            if os.path.exists(alt_path):
+                policy_path = alt_path
+            else:
+                base_name = os.path.basename(policy_path)
+                if os.path.exists(base_name):
+                    policy_path = base_name
+                else:
+                    print(f"  [!] Bỏ qua mode {i+1} ({m['name']}): không tìm thấy {m['policy']}")
+                    sessions[i] = None; motions[i] = None; continue
+        sessions[i] = ort.InferenceSession(policy_path, sess_options=opts, providers=['CPUExecutionProvider'])
         if m["npz"]:
             try:
                 motions[i] = MotionData(m["npz"])

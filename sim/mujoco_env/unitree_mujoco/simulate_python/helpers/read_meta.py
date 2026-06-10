@@ -1,6 +1,8 @@
 import re
 
-with open('policy_r1.onnx', 'rb') as f:
+import os
+policy_path = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_r1.onnx")
+with open(policy_path, 'rb') as f:
     data = f.read()
 
 # find "joint_names" followed by something, then '[' ... ']'

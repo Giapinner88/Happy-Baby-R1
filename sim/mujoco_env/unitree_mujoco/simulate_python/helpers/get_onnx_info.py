@@ -2,7 +2,9 @@ import re
 import json
 
 def get_meta():
-    with open('policy_r1.onnx', 'rb') as f:
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "..", "policy", "policy_r1.onnx")
+    with open(policy_path, 'rb') as f:
         data = f.read()
     
     # 1. Find joint_names

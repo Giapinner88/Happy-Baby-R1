@@ -177,8 +177,8 @@ def main():
         help="Thời gian chờ trước khi bắt đầu (mặc định: 3 giây)",
     )
     parser.add_argument(
-        "--policy", type=str, default="policy98.onnx",
-        help="File policy ONNX (mặc định: policy98.onnx)",
+        "--policy", type=str, default="policy/policy98.onnx",
+        help="File policy ONNX (mặc định: policy/policy98.onnx)",
     )
     args = parser.parse_args()
 
@@ -199,8 +199,16 @@ def main():
     # ── Load policy ──────────────────────────────────────────────────────────
     policy_path = Path(__file__).parent / args.policy
     if not policy_path.exists():
-        print(f"[replay-cmd] Không tìm thấy policy: {policy_path}", file=sys.stderr)
-        sys.exit(1)
+        alt_path = Path(__file__).parent / "policy" / args.policy
+        if alt_path.exists():
+            policy_path = alt_path
+        else:
+            alt_path2 = Path(__file__).parent / args.policy.replace("policy/", "")
+            if alt_path2.exists():
+                policy_path = alt_path2
+            else:
+                print(f"[replay-cmd] Không tìm thấy policy: {policy_path}", file=sys.stderr)
+                sys.exit(1)
     session    = ort.InferenceSession(str(policy_path), providers=["CPUExecutionProvider"])
     input_name = session.get_inputs()[0].name
     print(f"[replay-cmd] Policy: {policy_path.name}")

@@ -72,7 +72,9 @@ def main():
     pub_thread = threading.Thread(target=dds_publisher_loop, args=(pub,), daemon=True)
     pub_thread.start()
 
-    policy_path = Path(__file__).with_name("policy480.onnx")
+    policy_path = Path(__file__).parent / "policy" / "policy480.onnx"
+    if not policy_path.exists():
+        policy_path = Path(__file__).parent / "policy480.onnx"
     session = ort.InferenceSession(str(policy_path), providers=['CPUExecutionProvider'])
     input_name = session.get_inputs()[0].name
     

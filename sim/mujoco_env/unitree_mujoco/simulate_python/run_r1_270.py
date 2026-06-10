@@ -135,7 +135,11 @@ def main():
     pub_thread.start()
 
     print("Đang nạp model ONNX...")
-    session = ort.InferenceSession("policy_r1_270.onnx", providers=['CPUExecutionProvider'])
+    import os
+    policy_path = os.path.join(os.path.dirname(__file__), "policy", "policy_r1_270.onnx")
+    if not os.path.exists(policy_path) and os.path.exists("policy_r1_270.onnx"):
+        policy_path = "policy_r1_270.onnx"
+    session = ort.InferenceSession(policy_path, providers=['CPUExecutionProvider'])
     input_name = session.get_inputs()[0].name
     expected_dim = session.get_inputs()[0].shape[1]
     print(f"Model nạp thành công! Input shape dimension: {expected_dim}")

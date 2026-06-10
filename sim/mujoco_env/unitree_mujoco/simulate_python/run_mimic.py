@@ -143,7 +143,7 @@ def main():
     global robot_state, cmd
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", type=str, default="policy_motion_data.onnx")
+    parser.add_argument("--policy", type=str, default="policy/policy_motion_data.onnx")
     parser.add_argument("--npz",    type=str, default="motion_data.npz", help="File NPZ (từ csv_to_npz.py)")
     parser.add_argument("--network",type=str, default="lo")
     args = parser.parse_args()
@@ -172,7 +172,20 @@ def main():
     pub_thread = threading.Thread(target=dds_publisher_loop, args=(pub,), daemon=True)
     pub_thread.start()
 
-    session = ort.InferenceSession(args.policy, providers=['CPUExecutionProvider'])
+    import os
+    policy_path = args.policy
+    if not os.path.exists(policy_path):
+        alt_path = os.path.join(os.path.dirname(__file__), policy_path)
+        if os.path.exists(alt_path):
+            policy_path = alt_path
+        else:
+            base_name = os.path.basename(policy_path)
+            if os.path.exists(os.path.join(os.path.dirname(__file__), "policy", base_name)):
+                policy_path = os.path.join(os.path.dirname(__file__), "policy", base_name)
+            elif os.path.exists(base_name):
+                policy_path = base_name
+
+    session = ort.InferenceSession(policy_path, providers=['CPUExecutionProvider'])
     input_name = session.get_inputs()[0].name
     print(f"[ONNX] Input: {input_name}, shape: {session.get_inputs()[0].shape}")
 
