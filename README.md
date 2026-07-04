@@ -53,7 +53,10 @@ Tài liệu chính:
 - [Ubuntu 20.04 setup guide](docs/operations/ubuntu_20_04_lts_setup_guide.md)
 - [Development environment setup](docs/operations/development_environment_setup_guide.md)
 - [Third-party build](docs/operations/third-party_build.md)
+- [Isaac Lab / Unitree Sim end-to-end pipeline](docs/operations/isaaclab_installation.md)
+- [MJLab one-time setup](docs/operations/mjlab_installation.md)
 - [Unitree MuJoCo policy runtime](docs/operations/unitree_mujoco_policy_runtime.md)
+- [Quest 3 teleop cho Unitree Sim G1/Dex3](docs/operations/teleop_quest3_vi.md)
 - [Golden machine spec](docs/hardware/golden_machine_spec.md)
 
 ### 4.2. Build ROS 2 workspace
@@ -142,7 +145,7 @@ python3 test/test_unitree_dds_helloworld.py
 - Thành viên mới: [Practice index](docs/operations/practice/README.md)
 - Người vận hành: [SOP_v0.md](docs/operations/SOP_v0.md), [Safety rules](docs/safety/safety_rules.md)
 - Kỹ sư tích hợp: [Third-party build](docs/operations/third-party_build.md), [DDS implementation](docs/operations/dds_implementation.md)
-- Kỹ sư mô phỏng: [Development environment setup](docs/operations/development_environment_setup_guide.md), [Unitree MuJoCo policy runtime](docs/operations/unitree_mujoco_policy_runtime.md), [rosbag2 operation](docs/operations/rosbag2_operation.md)
+- Kỹ sư mô phỏng: [Development environment setup](docs/operations/development_environment_setup_guide.md), [Isaac Lab / Unitree Sim end-to-end pipeline](docs/operations/isaaclab_installation.md), [MJLab one-time setup](docs/operations/mjlab_installation.md), [Unitree MuJoCo policy runtime](docs/operations/unitree_mujoco_policy_runtime.md), [Quest 3 teleop cho Unitree Sim G1/Dex3](docs/operations/teleop_quest3_vi.md), [rosbag2 operation](docs/operations/rosbag2_operation.md)
 
 ## 8. An toàn vận hành
 

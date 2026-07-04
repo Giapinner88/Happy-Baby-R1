@@ -206,7 +206,15 @@ python3 scripts/run_unitree_mujoco_policy.py \
   --interface lo
 ```
 
-Tên file tương đối trong `--policy-onnx` và `--motion-csv` được resolve từ `data/models/unitree_mujoco_policy`.
+Tên file tương đối trong `--policy-onnx` và `--motion-csv` được resolve theo
+thứ tự:
+
+1. `data/models/unitree_mujoco_policy`
+2. `sim/unitree_mujoco_policy`
+3. `third_party/unitree_mujoco/simulate_python`
+
+Không dùng lại đường dẫn legacy `sim/mujoco_env`; source/vendor phải được truy
+cập qua `third_party`.
 
 ## 7. Kiểm tra kết quả
 

@@ -139,6 +139,8 @@ def main() -> int:
     env["ROBOT"] = args.robot
     env["USE_JOYSTICK"] = "0"
     env["UNITREE_MUJOCO_ROOT"] = str(UNITREE_MUJOCO_ROOT)
+    env["INIT_DEFAULT_Q"] = "1"
+    env.setdefault("MUJOCO_GL", "egl")
     policy_onnx = resolve_runtime_asset(args.policy_onnx, default_policy_for(args.policy_script))
     if policy_onnx is not None:
         env["POLICY_ONNX"] = str(policy_onnx)

@@ -118,11 +118,15 @@ def main():
 
     t_start = time.perf_counter()
     state_logger = SimStateLogger(__file__)
+    seen_first_state = False
 
     while True:
         if robot_state is None:
             time.sleep(0.002)
             continue
+        if not seen_first_state:
+            t_start = time.perf_counter()
+            seen_first_state = True
             
         step_start = time.perf_counter()
         t_current = step_start - t_start

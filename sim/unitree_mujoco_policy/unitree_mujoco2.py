@@ -1,5 +1,6 @@
 import argparse
 import csv as csvlib
+import os
 import sys
 import time
 from pathlib import Path
@@ -25,6 +26,14 @@ _JOINT_NAMES = [
     "left_elbow",         "left_wrist_roll",   "left_wrist_pitch",  "left_wrist_yaw",
     "right_shoulder_pitch","right_shoulder_roll","right_shoulder_yaw",
     "right_elbow",        "right_wrist_roll",  "right_wrist_pitch", "right_wrist_yaw",
+]
+
+DEFAULT_Q = [
+    -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
+    -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
+    0.0, 0.0, 0.0,
+    0.35, 0.18, 0.0, 0.87, 0.0, 0.0, 0.0,
+    0.35, -0.18, 0.0, 0.87, 0.0, 0.0, 0.0,
 ]
 
 
@@ -96,6 +105,19 @@ def init_state_from_csv(model, data, csv_path: str, row_index: int = 0):
         print(f"[init-csv] Thiếu cột: {missing_q}")
 
 
+def init_default_q(model, data):
+    """Match the simulator spawn pose to the policy's initial hold command."""
+    for joint_name, q in zip(_JOINT_NAMES, DEFAULT_Q):
+        joint_id = model.joint(joint_name + "_joint").id
+        qpos_adr = model.jnt_qposadr[joint_id]
+        dof_adr = model.jnt_dofadr[joint_id]
+        data.qpos[qpos_adr] = q
+        data.qvel[dof_adr] = 0.0
+
+    mujoco.mj_forward(model, data)
+    print("[init-default-q] State đã set theo DEFAULT_Q của policy.")
+
+
 # ─── Parse arguments ─────────────────────────────────────────────────────────
 _parser = argparse.ArgumentParser(description="Unitree MuJoCo Simulator")
 _parser.add_argument(
@@ -113,6 +135,9 @@ locker = threading.Lock()
 
 mj_model = mujoco.MjModel.from_xml_path(config.ROBOT_SCENE)
 mj_data = mujoco.MjData(mj_model)
+
+if os.environ.get("INIT_DEFAULT_Q", "0").lower() in {"1", "true", "yes"}:
+    init_default_q(mj_model, mj_data)
 
 
 class _HeadlessViewer:
