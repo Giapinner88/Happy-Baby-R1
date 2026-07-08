@@ -77,16 +77,22 @@ Thumbs.db
 
 # Large local data (ignore contents, keep folder with .gitkeep)
 data/datasets/*
+data/cache/*
 data/models/*
+data/policies/*
 data/processed/*
 data/rosbags/*
+data/runs/*
 data/sim_state_logs/*
 media/videos/*
 
 # Keep placeholder files inside ignored data dirs
 !data/datasets/.gitkeep
+!data/cache/.gitkeep
 !data/models/.gitkeep
+!data/policies/.gitkeep
 !data/processed/.gitkeep
 !data/rosbags/.gitkeep
+!data/runs/.gitkeep
 !data/sim_state_logs/.gitkeep
 !media/videos/.gitkeep

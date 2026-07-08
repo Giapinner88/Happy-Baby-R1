@@ -1,12 +1,12 @@
 """
-state_logger.py — Lightweight non-blocking state logger for MuJoCo G1 simulation.
+state_logger.py - Lightweight non-blocking state logger for MuJoCo R1 simulation.
 
 Architecture:
   - Control loop: calls logger.log() → queue.put_nowait()  [~100ns, non-blocking]
   - Background thread: drains the queue and writes rows to CSV [no impact on control]
   - On exit (Ctrl+C): flush remaining queue → close file → print summary
 
-Filename format: {script_stem}_{HH-MM}_{YYYY-MM-DD}.csv
+Filename format: {script_stem}_{HH-MM-SS}_{YYYY-MM-DD}.csv
   → Sorting by name puts newest (largest hour) first within the same day,
     and files are further distinguishable by date suffix.
 
@@ -23,46 +23,43 @@ from datetime import datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Joint name mapping (index 0-28 matches G1 motor_state order)
+# Joint name mapping (index 0-28 matches R1 motor_state order)
 # ---------------------------------------------------------------------------
 JOINT_NAMES = [
     "left_hip_pitch",    "left_hip_roll",    "left_hip_yaw",
     "left_knee",         "left_ankle_pitch", "left_ankle_roll",
     "right_hip_pitch",   "right_hip_roll",   "right_hip_yaw",
     "right_knee",        "right_ankle_pitch","right_ankle_roll",
-    "waist_yaw",         "waist_roll",       "waist_pitch",
+    "waist_roll",        "waist_yaw",
     "left_shoulder_pitch","left_shoulder_roll","left_shoulder_yaw",
-    "left_elbow",        "left_wrist_roll",  "left_wrist_pitch", "left_wrist_yaw",
+    "left_elbow",        "left_wrist_roll",
     "right_shoulder_pitch","right_shoulder_roll","right_shoulder_yaw",
-    "right_elbow",       "right_wrist_roll", "right_wrist_pitch","right_wrist_yaw",
-]  # 29 joints total
+    "right_elbow",       "right_wrist_roll",
+]  # 24 joints total
 
-# Pre-build CSV header once at module load (avoids repeated string ops in hot loop)
-_HEADER = (
-    ["step", "t_sec"]
-    # ── Replay columns ──────────────────────────────────────────────────────
-    + [f"target_q_{n}" for n in JOINT_NAMES]   # commanded q → use for replay
-    # ── Sensor feedback ─────────────────────────────────────────────────────
-    + [f"q_{n}"        for n in JOINT_NAMES]   # actual joint position
-    + [f"dq_{n}"       for n in JOINT_NAMES]   # actual joint velocity
-    # ── RL policy output ────────────────────────────────────────────────────
-    + [f"action_{n}"   for n in JOINT_NAMES]   # raw network output (pre-scale)
-    # ── IMU ─────────────────────────────────────────────────────────────────
-    + ["imu_quat_w", "imu_quat_x", "imu_quat_y", "imu_quat_z"]
-    + ["imu_gyro_x", "imu_gyro_y", "imu_gyro_z"]
-    + ["proj_grav_x", "proj_grav_y", "proj_grav_z"]
-    # ── Controller state ────────────────────────────────────────────────────
-    + ["cmd_vx", "cmd_vy", "cmd_yaw"]
-    + ["gait_sin", "gait_cos", "gait_scale", "gait_time"]
-)
+def _make_header(joint_names):
+    return (
+        ["step", "t_sec"]
+        + [f"target_q_{n}" for n in joint_names]
+        + [f"q_{n}" for n in joint_names]
+        + [f"dq_{n}" for n in joint_names]
+        + [f"action_{n}" for n in joint_names]
+        + ["imu_quat_w", "imu_quat_x", "imu_quat_y", "imu_quat_z"]
+        + ["imu_gyro_x", "imu_gyro_y", "imu_gyro_z"]
+        + ["proj_grav_x", "proj_grav_y", "proj_grav_z"]
+        + ["base_x", "base_y", "base_z"]
+        + ["base_vx", "base_vy", "base_vz"]
+        + ["cmd_vx", "cmd_vy", "cmd_yaw"]
+        + ["gait_sin", "gait_cos", "gait_scale", "gait_time"]
+    )
 
 
 class SimStateLogger:
     """
     Non-blocking CSV logger.
 
-    Example usage in run98_2.py:
-        logger = SimStateLogger(__file__)
+    Example usage:
+        logger = SimStateLogger(__file__, joint_names=config.MOTOR_JOINT_NAMES)
         try:
             while True:
                 ...
@@ -77,13 +74,15 @@ class SimStateLogger:
     # e.g. <repo_root>/data/sim_state_logs/
     _LOG_DIR = Path(__file__).resolve().parents[2] / "data" / "sim_state_logs"
 
-    def __init__(self, script_path: str):
+    def __init__(self, script_path: str, joint_names=None):
         self._LOG_DIR.mkdir(parents=True, exist_ok=True)
+        self._joint_names = list(joint_names or JOINT_NAMES)
+        self._header = _make_header(self._joint_names)
 
-        # ── Build filename: scriptname_HH-MM_YYYY-MM-DD.csv ─────────────────
+        # ── Build filename: scriptname_HH-MM-SS_YYYY-MM-DD.csv ──────────────
         now   = datetime.now()
         stem  = Path(script_path).stem
-        fname = f"{stem}_{now.strftime('%H-%M_%Y-%m-%d')}.csv"
+        fname = f"{stem}_{now.strftime('%H-%M-%S_%Y-%m-%d')}.csv"
         self._path = self._LOG_DIR / fname
 
         # ── Internal state ───────────────────────────────────────────────────
@@ -114,6 +113,8 @@ class SimStateLogger:
         quat,               # np.ndarray[4]  – IMU quaternion [w,x,y,z]
         gyro,               # np.ndarray[3]  – IMU gyroscope
         proj_grav,          # np.ndarray[3]  – projected gravity vector
+        base_pos,           # np.ndarray[3]  – base/world position
+        base_vel,           # np.ndarray[3]  – base/world velocity
         commands,           # np.ndarray[3]  – [vx, vy, yaw] smoothed
         gait_phase,         # np.ndarray[2]  – [sin, cos]
         gait_scale: float,
@@ -132,6 +133,8 @@ class SimStateLogger:
             + quat.tolist()
             + gyro.tolist()
             + proj_grav.tolist()
+            + base_pos.tolist()
+            + base_vel.tolist()
             + commands.tolist()
             + gait_phase.tolist()
             + [round(gait_scale, 6), round(gait_time, 6)]
@@ -163,8 +166,10 @@ class SimStateLogger:
             quat = np.array(imu_quat, dtype=np.float32)
             gyro = np.array(imu_gyro, dtype=np.float32)
             zeros_3 = np.zeros(3, dtype=np.float32)
+            nan_3 = np.full(3, np.nan, dtype=np.float32)
             zeros_2 = np.zeros(2, dtype=np.float32)
-            zeros_29 = np.zeros(29, dtype=np.float32)
+            motor_count = len(self._joint_names)
+            zeros_motor = np.zeros(motor_count, dtype=np.float32)
             q_arr = np.array(q, dtype=np.float32)
             dq_arr = np.array(dq, dtype=np.float32)
             w, x, y, z = quat
@@ -179,10 +184,12 @@ class SimStateLogger:
                 target_q=q_arr,
                 q=q_arr,
                 dq=dq_arr,
-                action=zeros_29,
+                action=zeros_motor,
                 quat=quat,
                 gyro=gyro,
                 proj_grav=proj_grav,
+                base_pos=nan_3,
+                base_vel=nan_3,
                 commands=zeros_3,
                 gait_phase=zeros_2,
                 gait_scale=0.0,
@@ -207,7 +214,7 @@ class SimStateLogger:
         """Drain queue and write to CSV. Runs entirely off the control-loop thread."""
         with open(self._path, "w", newline="", buffering=65536) as f:
             writer = csv.writer(f)
-            writer.writerow(_HEADER)
+            writer.writerow(self._header)
             while True:
                 row = self._q.get()      # blocks here — no CPU waste
                 if row is None:          # sentinel: flush OS buffer and exit

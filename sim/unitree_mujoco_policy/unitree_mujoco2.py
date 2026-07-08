@@ -11,30 +11,15 @@ import mujoco
 import importlib
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand
 
 import config
 
-# ─── Thứ tự 29 khớp (khớp với motor_state và cột CSV) ───────────────────────
-_JOINT_NAMES = [
-    "left_hip_pitch",     "left_hip_roll",     "left_hip_yaw",
-    "left_knee",          "left_ankle_pitch",  "left_ankle_roll",
-    "right_hip_pitch",    "right_hip_roll",    "right_hip_yaw",
-    "right_knee",         "right_ankle_pitch", "right_ankle_roll",
-    "waist_yaw",          "waist_roll",        "waist_pitch",
-    "left_shoulder_pitch","left_shoulder_roll","left_shoulder_yaw",
-    "left_elbow",         "left_wrist_roll",   "left_wrist_pitch",  "left_wrist_yaw",
-    "right_shoulder_pitch","right_shoulder_roll","right_shoulder_yaw",
-    "right_elbow",        "right_wrist_roll",  "right_wrist_pitch", "right_wrist_yaw",
-]
+_JOINT_NAMES = config.MOTOR_JOINT_NAMES
+DEFAULT_Q = config.DEFAULT_Q.tolist()
 
-DEFAULT_Q = [
-    -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
-    -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
-    0.0, 0.0, 0.0,
-    0.35, 0.18, 0.0, 0.87, 0.0, 0.0, 0.0,
-    0.35, -0.18, 0.0, 0.87, 0.0, 0.0, 0.0,
-]
+
+def _xml_joint_name(motor_name: str) -> str:
+    return motor_name if motor_name.endswith("_joint") else f"{motor_name}_joint"
 
 
 def init_state_from_csv(model, data, csv_path: str, row_index: int = 0):
@@ -69,7 +54,7 @@ def init_state_from_csv(model, data, csv_path: str, row_index: int = 0):
         if col not in target_row:
             missing_q.append(col)
             continue
-        joint_id  = model.joint(jname + "_joint").id
+        joint_id  = model.joint(_xml_joint_name(jname)).id
         qpos_adr  = model.jnt_qposadr[joint_id]
         data.qpos[qpos_adr] = float(target_row[col])
 
@@ -78,7 +63,7 @@ def init_state_from_csv(model, data, csv_path: str, row_index: int = 0):
         col = f"dq_{jname}"
         if col not in target_row:
             continue
-        joint_id = model.joint(jname + "_joint").id
+        joint_id = model.joint(_xml_joint_name(jname)).id
         dof_adr  = model.jnt_dofadr[joint_id]
         data.qvel[dof_adr] = float(target_row[col])
 
@@ -108,7 +93,7 @@ def init_state_from_csv(model, data, csv_path: str, row_index: int = 0):
 def init_default_q(model, data):
     """Match the simulator spawn pose to the policy's initial hold command."""
     for joint_name, q in zip(_JOINT_NAMES, DEFAULT_Q):
-        joint_id = model.joint(joint_name + "_joint").id
+        joint_id = model.joint(_xml_joint_name(joint_name)).id
         qpos_adr = model.jnt_qposadr[joint_id]
         dof_adr = model.jnt_dofadr[joint_id]
         data.qpos[qpos_adr] = q
@@ -116,6 +101,18 @@ def init_default_q(model, data):
 
     mujoco.mj_forward(model, data)
     print("[init-default-q] State đã set theo DEFAULT_Q của policy.")
+
+
+def set_hanging_equality(model, data, active: bool):
+    """Toggle the optional scene equality used by hanging/debug scenes."""
+    equality_id = mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_EQUALITY, "r1_hanging_connect"
+    )
+    if equality_id < 0:
+        return
+    data.eq_active[equality_id] = 1 if active else 0
+    state = "active" if active else "disabled"
+    print(f"[sim-config] r1_hanging_connect {state}.")
 
 
 # ─── Parse arguments ─────────────────────────────────────────────────────────
@@ -128,13 +125,41 @@ _parser.add_argument(
     "--init-row", type=int, default=0, metavar="N",
     help="Hàng trong CSV để đọc trạng thái (mặc định: 0 = hàng đầu tiên)."
 )
+_parser.add_argument("--robot", default=None, help="Must be r1 for this local policy runtime.")
+_parser.add_argument("--scene", default=None, help="Override scene file, e.g. scene.xml or scene_hanging.xml.")
+_parser.add_argument("--domain-id", type=int, default=None, help="Override DDS domain id.")
+_parser.add_argument("--interface", default=None, help="Override DDS network interface.")
 _args, _unknown = _parser.parse_known_args()
+
+if _args.robot:
+    if _args.robot != "r1":
+        raise ValueError("sim/unitree_mujoco_policy is R1-only; do not run it with G1/other robots.")
+    config.ROBOT = _args.robot
+    config.USE_HG_IDL = True
+if _args.scene:
+    os.environ["ROBOT_SCENE_NAME"] = _args.scene
+    config.ROBOT_SCENE_NAME = _args.scene
+    config.ROBOT_SCENE = str(config._resolve_robot_scene())
+if _args.domain_id is not None:
+    config.DOMAIN_ID = _args.domain_id
+if _args.interface:
+    config.INTERFACE = _args.interface
+
+from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand
 
 
 locker = threading.Lock()
 
+print(
+    f"[sim-config] robot={config.ROBOT} scene={config.ROBOT_SCENE} "
+    f"domain={config.DOMAIN_ID} interface={config.INTERFACE} hg_idl={config.USE_HG_IDL}"
+)
 mj_model = mujoco.MjModel.from_xml_path(config.ROBOT_SCENE)
 mj_data = mujoco.MjData(mj_model)
+
+disable_hanging_equality = os.environ.get("DISABLE_HANGING_EQUALITY", "0").lower()
+if disable_hanging_equality in {"1", "true", "yes"}:
+    set_hanging_equality(mj_model, mj_data, active=False)
 
 if os.environ.get("INIT_DEFAULT_Q", "0").lower() in {"1", "true", "yes"}:
     init_default_q(mj_model, mj_data)
@@ -165,7 +190,7 @@ try:
         mujoco_viewer = importlib.import_module('mujoco.viewer')
         if config.ENABLE_ELASTIC_BAND:
             elastic_band = ElasticBand()
-            if config.ROBOT == "h1" or config.ROBOT == "g1":
+            if config.ROBOT in config.HUMANOID_HG_ROBOTS:
                 band_attached_link = mj_model.body("torso_link").id
             else:
                 band_attached_link = mj_model.body("base_link").id
@@ -197,7 +222,7 @@ def SimulationThread():
     unitree = UnitreeSdk2Bridge(mj_model, mj_data, data_lock=locker)
 
     if config.USE_JOYSTICK:
-        unitree.SetupJoystick(device_id=0, js_type=config.JOYSTICK_TYPE)
+        unitree.SetupJoystick(device_id=config.JOYSTICK_DEVICE, js_type=config.JOYSTICK_TYPE)
     if config.PRINT_SCENE_INFORMATION:
         unitree.PrintSceneInformation()
 

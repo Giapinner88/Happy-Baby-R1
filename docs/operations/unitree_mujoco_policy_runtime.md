@@ -1,246 +1,168 @@
 # Unitree MuJoCo Policy Runtime
-**Project:** Unitree - Happy Baby (R1 Humanoid Research)
+**Project:** Unitree - Happy Baby R1
 **Document ID:** HB-SPEC-006
-**Author:** Integration Lead
-**Status:** Draft / Working
+**Status:** Working
 
-Tài liệu này chuẩn hóa cách chạy policy nội bộ của Happy-Baby-R1 trên Unitree MuJoCo mà vẫn giữ `third_party/unitree_mujoco` sạch theo upstream.
+Tài liệu này chuẩn hóa runtime MuJoCo local cho R1. `third_party/unitree_mujoco`
+và `third_party/unitree_rl_mjlab` chỉ là nguồn tham chiếu/upstream, không sửa.
+Mọi model, log, cache, kết quả chạy được đưa về `data/`.
 
-## 1. Ranh giới thư mục
+## 1. Cấu trúc runtime
 
-| Thư mục | Vai trò |
+| Đường dẫn | Vai trò |
 | :--- | :--- |
-| `third_party/unitree_mujoco` | Vendor upstream từ `https://github.com/unitreerobotics/unitree_mujoco.git`; không chứa script local |
-| `third_party/unitree_rl_mjlab` | Vendor upstream từ `https://github.com/unitreerobotics/unitree_rl_mjlab.git`; chứa policy ONNX mẫu, motion artifact, training/play/deploy code |
-| `sim/unitree_mujoco_policy` | Script vận hành nội bộ: policy runner, simulator glue, logger, replay helper |
-| `data/models/unitree_mujoco_policy` | ONNX policy và motion CSV |
-| `data/sim_state_logs` | CSV trạng thái sinh ra khi chạy policy |
-| `scripts/run_unitree_mujoco_policy.py` | Launcher ghép simulator và policy trên cùng DDS domain/interface |
-| `scripts/run_unitree_mujoco_official_g1.py` | Launcher chạy controller C++ chính thức của `unitree_rl_mjlab` với MuJoCo bridge local |
+| `asset/mujoco/unitree_robots/r1/` | MJCF R1 local dùng chung cho MuJoCo runtime và MJLab training |
+| `sim/unitree_mujoco_policy/config.py` | Chọn policy, scene, joint order, default pose, gains, action scale |
+| `sim/unitree_mujoco_policy/policy_runner.py` | Runner policy duy nhất |
+| `sim/unitree_mujoco_policy/unitree_mujoco2.py` | MuJoCo simulator bridge theo kiểu Unitree |
+| `sim/unitree_mujoco_policy/unitree_sdk2py_bridge.py` | Cầu nối Unitree DDS lowcmd/lowstate |
+| `scripts/run_unitree_mujoco_policy.py` | Launcher chạy policy runner và simulator cùng DDS domain/interface |
+| `data/models/unitree_mujoco_policy/` | ONNX policy deploy |
+| `data/runs/unitree_mujoco_policy/` | Log của launcher |
+| `data/sim_state_logs/` | CSV state/action log từ policy runner |
 
-Không sửa trực tiếp `third_party/unitree_mujoco/simulate_python` để thêm logic policy. Nếu cần thay đổi hành vi chạy policy, sửa hoặc thêm file trong `sim/unitree_mujoco_policy`.
+Runtime này là R1-only. Không map policy sang G1 và không dùng lại các script
+`run98.py`, `run98_2.py`, `run_dance.py`.
 
-## 2. Điều kiện môi trường
+## 2. Policy hiện tại
 
-Máy chạy policy cần có Conda env `r1_env` với các package chính:
+Policy được chọn trong `sim/unitree_mujoco_policy/config.py`:
 
-```bash
-python -c "import mujoco, onnxruntime, pygame, unitree_sdk2py; print('policy env OK')"
+```python
+POLICY_NAME = "r1_velocity"
 ```
 
-Nếu chạy DDS loopback trên máy local, dùng interface `lo` và domain riêng để tránh lẫn với buổi vận hành thật.
+`r1_velocity` bám theo cấu hình deploy R1 velocity của
+`third_party/unitree_rl_mjlab/deploy/robots/r1/config/policy/velocity/v0/params/deploy.yaml`:
 
-## 3. Chuẩn bị policy của Unitree RL Mjlab
+- `step_dt = 0.02`, tức control 50 Hz.
+- Observation dim: `83`.
+- Action dim: `24`.
+- Observation gồm: gyro, projected gravity, velocity command, gait phase,
+  joint position relative, joint velocity, last action.
+- Action điều khiển đúng 24 joint R1 của training model. Runtime không còn
+  dùng model 29 motor/dummy joint.
+- Action scale khớp training: leg/waist `0.15`, ankle `0.3125`,
+  shoulder pitch/roll `0.375`, shoulder yaw/elbow/wrist roll `0.4125`.
 
-Sau khi clone `third_party/unitree_rl_mjlab`, symlink policy mẫu của Unitree về thư mục model chuẩn của dự án:
-
-```bash
-mkdir -p ~/Projects/Happy-Baby-R1/data/models/unitree_mujoco_policy
-cd ~/Projects/Happy-Baby-R1
-
-ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/velocity/v0/exported/policy.onnx \
-  data/models/unitree_mujoco_policy/policy98.onnx
-ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/velocity/v0/exported/policy.onnx \
-  data/models/unitree_mujoco_policy/policy.onnx
-
-ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/mimic/dance1_subject2/exported/policy.onnx \
-  data/models/unitree_mujoco_policy/policy_dance.onnx
-ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/mimic/dance1_subject2/exported/policy.onnx.data \
-  data/models/unitree_mujoco_policy/policy.onnx.data
-ln -sfn ~/Projects/Happy-Baby-R1/third_party/unitree_rl_mjlab/deploy/robots/g1/config/policy/mimic/dance1_subject2/params/dance1_subject2.npz \
-  data/models/unitree_mujoco_policy/dance1_subject2.npz
-```
-
-Kiểm tra ONNX load được:
-
-```bash
-load_ml
-python - <<'PY'
-from pathlib import Path
-import onnxruntime as ort
-
-for path in sorted(Path("data/models/unitree_mujoco_policy").glob("*.onnx")):
-    session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
-    print(path.name)
-    print("  inputs ", [(i.name, i.shape, i.type) for i in session.get_inputs()])
-    print("  outputs", [(o.name, o.shape, o.type) for o in session.get_outputs()])
-PY
-```
-
-Kỳ vọng hiện tại:
+ONNX mặc định:
 
 ```text
-policy98.onnx      obs [1, 98]  -> actions [1, 29]
-policy.onnx        obs [1, 98]  -> actions [1, 29]
-policy_dance.onnx  obs [1, 154] -> actions [1, 29]
+data/models/unitree_mujoco_policy/r1_velocity.onnx
 ```
 
-## 4. Chạy G1 velocity bằng controller chính thức
+Sau khi train/export được policy tốt, copy hoặc symlink ONNX vào path trên.
+Nếu muốn thêm policy R1 khác, thêm entry mới vào `POLICIES` trong `config.py`,
+rồi đổi `POLICY_NAME`.
 
-Đây là đường ưu tiên khi cần kiểm tra policy mẫu của Unitree. Controller C++ dùng đúng FSM và `ManagerBasedRLEnv` của `unitree_rl_mjlab`, nên đáng tin hơn runner Python nội bộ.
+## 2.1. Đồng bộ model train và runtime
 
-Build controller:
+Model R1 chuẩn của workspace nằm tại:
 
-```bash
-cmake -S third_party/unitree_rl_mjlab/deploy/robots/g1 \
-  -B third_party/unitree_rl_mjlab/deploy/robots/g1/build
-cmake --build third_party/unitree_rl_mjlab/deploy/robots/g1/build -j"$(nproc)"
+```text
+asset/mujoco/unitree_robots/r1/R1.xml
 ```
 
-Chạy mô phỏng bằng auto FSM:
+File này được sync từ R1 training model của `unitree_rl_mjlab`, rồi bổ sung
+actuator/sensor cần cho Unitree MuJoCo bridge. Không sửa `third_party`.
+
+Khi cần refresh asset local:
 
 ```bash
-python3 scripts/run_unitree_mujoco_official_g1.py \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/sync_r1_mujoco_asset.py
+```
+
+`scripts/r1_mjlab_train.py` và `scripts/r1_mjlab_play.py` monkey-patch task
+`Unitree-R1-*` để MJLab dùng chính `asset/mujoco/unitree_robots/r1/R1.xml`.
+Kỳ vọng compile hiện tại:
+
+```text
+nq=31, nv=30, nu=24, nsensor=77
+```
+
+## 3. Chạy simulator bridge không policy
+
+Dùng lệnh này để kiểm tra riêng R1 model + DDS bridge:
+
+```bash
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_r1_unitree_mujoco_bridge.py \
+  --scene scene_hanging.xml \
   --duration 20 \
   --interface lo \
-  --auto-sim \
-  --auto-passive-seconds 0.5 \
-  --auto-fixstand-seconds 3.0 \
-  --viewer
-```
-
-Kỳ vọng trong log:
-
-```text
-FSM: Change state from Passive to FixStand
-FSM: Change state from FixStand to Velocity
-```
-
-`g1_ctrl` của Unitree hardcode DDS domain `0`, vì vậy launcher này cũng chạy simulator trên `DOMAIN_ID=0`. Dùng `--auto-sim` chỉ cho mô phỏng; khi chạy controller theo upstream với gamepad thật thì bỏ cờ này.
-
-## 5. Chạy policy G1 velocity bằng runner Python thử nghiệm
-
-**Thứ tự an toàn:** luôn bật policy/controller trước simulator. Nếu simulator chạy trước khi policy publish lệnh ổn định, robot trong MuJoCo có thể rơi ngay từ trạng thái spawn ban đầu.
-
-Runner Python dưới đây dùng để debug/log nhanh, nhưng không phải bản exact của `unitree_rl_mjlab`. Nếu robot rung mạnh hoặc có xu hướng ngã, dừng runner Python và quay lại controller C++ ở mục 4.
-
-Từ root repo:
-
-```bash
-python3 scripts/run_unitree_mujoco_policy.py \
-  --duration 20 \
-  --policy-script run98_2.py \
-  --policy-onnx policy.onnx \
-  --policy-warmup 2.0 \
-  --policy-fade 2.0 \
-  --policy-action-clip 0.6 \
-  --policy-target-rate-limit 4.0 \
   --domain-id 1 \
-  --interface lo
+  --init-default-q
 ```
 
-Launcher sẽ chạy `sim/unitree_mujoco_policy/unitree_mujoco2.py` và `run98_2.py` cùng `DOMAIN_ID=1`, `INTERFACE=lo`. `run98_2.py` là bản ưu tiên để đứng/đi ổn định vì nó dùng gait clock cố định 20ms, khóa state/cmd giữa các thread, giảm `gait_phase` về 0 khi không có lệnh điều khiển, có pha `FixStand` warmup trước khi bật ONNX policy, và có preset an toàn để fade/clip/rate-limit output ONNX. `run98.py` là bản đơn giản hơn; robot có thể rung vì gait phase vẫn chạy theo wall-clock ngay cả khi đang đứng yên.
+Kỳ vọng log có:
 
 ```text
-Dùng policy: policy.onnx
-FixStand warmup 2.0s trước khi bật ONNX policy.
-FixStand warmup xong. Bật ONNX policy.
-[state-log] logging -> run98_2_<timestamp>.csv
+[sim-config] robot=r1 ... hg_idl=True
+[init-default-q] State da set theo DEFAULT_Q cua policy.
 ```
 
-Policy velocity trong `unitree_rl_mjlab` không được thiết kế để nhảy thẳng từ spawn sang state Velocity. Luồng deploy chính thức đi qua `Passive -> FixStand -> Velocity`; `FixStand` giữ/ramp robot về `default_joint_pos` trong khoảng 2 giây trước khi RL policy nhận quyền. Nếu robot vẫn rung ở đầu phiên, thử tăng:
+Đây chưa phải test policy. Nếu bridge pass, mới nối ONNX policy vào launcher.
+
+## 4. Chạy R1 policy
+
+Đảm bảo đã có:
 
 ```bash
---policy-warmup 3.0
+ls -lh data/models/unitree_mujoco_policy/r1_velocity.onnx
 ```
 
-Nếu robot rung mạnh hoặc có xu hướng ngã, dừng phiên bằng `Ctrl-C` rồi chạy preset thận trọng hơn:
+Chạy smoke runtime:
 
 ```bash
-python3 scripts/run_unitree_mujoco_policy.py \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
   --duration 20 \
-  --policy-script run98_2.py \
-  --policy-onnx policy.onnx \
-  --policy-warmup 3.0 \
-  --policy-fade 4.0 \
-  --policy-action-clip 0.35 \
+  --interface lo \
+  --domain-id 1
+```
+
+Launcher sẽ:
+
+1. Start `policy_runner.py`.
+2. Chờ `--startup-wait`.
+3. Start `unitree_mujoco2.py`.
+4. Ghi `policy.log` và `sim.log` vào `data/runs/unitree_mujoco_policy/<timestamp>/`.
+5. Ghi CSV state/action vào `data/sim_state_logs/`.
+
+Mặc định runner bật policy trực tiếp giống deploy MJLab: không FixStand warmup,
+không fade-in action, không raw action clip. Với R1 asset hiện tại, `DEFAULT_Q`
+đơn lẻ không phải bộ đứng ổn định trên mặt phẳng; warmup/clip có thể làm robot
+ngã trước khi policy kịp cân bằng.
+
+Preset giảm tốc target nếu cần kiểm tra thận trọng hơn:
+
+```bash
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
+  --duration 20 \
   --policy-target-rate-limit 2.0 \
-  --domain-id 1 \
   --interface lo \
-  --policy-window
+  --domain-id 1
 ```
 
-Nếu preset thận trọng vẫn rung/ngã, không tiếp tục tăng lực hoặc ép chạy lâu. Khi đó cần chạy controller C++ chính thức trong `third_party/unitree_rl_mjlab/deploy/robots/g1` để phân biệt lỗi policy/model với sai khác trong runtime Python.
+Thêm `--policy-window` nếu muốn điều khiển bằng bàn phím/gamepad qua pygame.
+Thêm `--viewer` nếu muốn mở MuJoCo viewer.
 
-Nếu không có gamepad, policy tự chuyển sang chế độ bàn phím. Mặc định launcher chạy headless nên cửa sổ pygame `GAMEPAD CONTROL` không hiện ra. Muốn điều khiển bằng bàn phím trong cửa sổ pygame, chạy:
+## 5. Kiểm tra kết quả
+
+Log launcher:
 
 ```bash
-python3 scripts/run_unitree_mujoco_policy.py \
-  --duration 20 \
-  --policy-script run98_2.py \
-  --policy-onnx policy.onnx \
-  --policy-warmup 2.0 \
-  --policy-fade 2.0 \
-  --policy-action-clip 0.6 \
-  --policy-target-rate-limit 4.0 \
-  --domain-id 1 \
-  --interface lo \
-  --policy-window
+find data/runs/unitree_mujoco_policy -maxdepth 2 -type f -name '*.log' | sort | tail
 ```
 
-Nếu muốn thử mở cả MuJoCo viewer, thêm `--viewer` khi phiên desktop/display hỗ trợ. Không ép `MUJOCO_GL=egl` nếu máy không hỗ trợ EGL.
-
-`scripts/run_unitree_mujoco_policy.py` mặc định start policy trước, chờ `--startup-wait`, rồi mới start simulator. Không đảo thứ tự này khi chạy humanoid policy.
-
-Để tắt cửa sổ điều khiển, bấm nút đóng cửa sổ hoặc nhấn `Esc`. Policy sẽ thoát và launcher sẽ tự dừng simulator. Nếu chạy không có cửa sổ, dùng `Ctrl-C` trong terminal launcher.
-
-## 6. Chạy policy khác
-
-```bash
-python3 scripts/run_unitree_mujoco_policy.py \
-  --duration 20 \
-  --policy-script run98.py \
-  --policy-onnx policy98.onnx \
-  --domain-id 1 \
-  --interface lo
-```
-
-Với policy dance của `unitree_rl_mjlab`, ONNX có input shape `[1, 154]`. Chỉ chạy qua script dance khi observation builder của script khớp shape này:
-
-```bash
-python3 scripts/run_unitree_mujoco_policy.py \
-  --duration 20 \
-  --policy-script run_dance.py \
-  --policy-onnx policy_dance.onnx \
-  --domain-id 1 \
-  --interface lo
-```
-
-Tên file tương đối trong `--policy-onnx` và `--motion-csv` được resolve theo
-thứ tự:
-
-1. `data/models/unitree_mujoco_policy`
-2. `sim/unitree_mujoco_policy`
-3. `third_party/unitree_mujoco/simulate_python`
-
-Không dùng lại đường dẫn legacy `sim/mujoco_env`; source/vendor phải được truy
-cập qua `third_party`.
-
-## 7. Kiểm tra kết quả
-
-Sau khi chạy, kiểm tra CSV mới:
+CSV state/action:
 
 ```bash
 ls -lh data/sim_state_logs
-tail -n 5 data/sim_state_logs/run98_*.csv
 ```
 
-Kỳ vọng:
+Nếu robot ngã ngay:
 
-* Policy log báo đã load ONNX từ `data/models/unitree_mujoco_policy`.
-* Simulator và policy dùng cùng `DOMAIN_ID` và `INTERFACE`.
-* CSV trong `data/sim_state_logs` có nhiều hơn 1 dòng.
-
-## 8. Quy tắc an toàn
-
-* Không dùng policy runtime này để điều khiển robot thật nếu chưa có checklist an toàn và người giám sát.
-* Không dùng cùng DDS domain/interface với robot thật khi chỉ đang mô phỏng.
-* Không commit CSV, ONNX, hoặc wandb runtime log trừ khi có lý do nghiên cứu rõ ràng.
-* Trước khi nghi ngờ policy lỗi, kiểm tra trước DDS domain/interface và log `data/sim_state_logs`.
-* Nếu runner Python làm robot rung/ngã, không tiếp tục tinh chỉnh bằng cách tăng gain hoặc tăng biên action. Chạy controller C++ chính thức trước để có mốc so sánh.
-
-## 9. Liên kết
-
-* Third-party build: [third-party_build.md](third-party_build.md)
-* DDS implementation: [dds_implementation.md](dds_implementation.md)
-* State/control simulation practice: [practice/08_state_control_sim.md](practice/08_state_control_sim.md)
+- Kiểm tra `policy.log` trước, đặc biệt input/output shape ONNX.
+- Kiểm tra `sim.log` có đúng scene R1 local.
+- Kiểm tra `sim.log` báo `nu=24`/sensor order R1 nếu vừa sync asset.
+- Chạy lại bridge-only ở mục 3 để tách lỗi asset/bridge khỏi lỗi policy.
+- Không dùng policy G1 để test R1 runtime.

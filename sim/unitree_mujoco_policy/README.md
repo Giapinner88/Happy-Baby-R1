@@ -1,39 +1,63 @@
-# Unitree MuJoCo Policy Runtime
+# R1 Unitree MuJoCo Policy Runtime
 
-This directory contains local Happy-Baby-R1 runtime scripts for running trained
-policies against Unitree MuJoCo.
+This directory is the local Happy-Baby-R1 runtime for one policy runner:
 
-Keep `third_party/unitree_mujoco` as a clean upstream vendor checkout. Local
-policy scripts, logging, replay helpers, and modified simulator glue live here.
+- `config.py` selects the R1 policy and defines joint order, default pose, gains,
+  action scale, scene, and ONNX path.
+- `policy_runner.py` is the only Python policy process.
+- `unitree_mujoco2.py` runs the local R1 MuJoCo bridge.
+- `unitree_sdk2py_bridge.py` connects MuJoCo state/control to Unitree DDS.
+- `state_logger.py` writes runtime CSV logs to `data/sim_state_logs/`.
 
-Policy/model artifacts are stored outside source code:
+Do not put policy outputs or logs in this source directory. Use:
 
-- `data/models/unitree_mujoco_policy/` for `.onnx` policies and motion CSVs
-- `data/sim_state_logs/` for runtime CSV logs
+- `data/models/unitree_mujoco_policy/` for deployable ONNX policies.
+- `data/runs/unitree_mujoco_policy/` for launcher logs.
+- `data/sim_state_logs/` for per-step CSV state logs.
 
-The default G1 velocity and dance policy artifacts come from
-`third_party/unitree_rl_mjlab`. Symlink them into `data/models` using the
-commands in `docs/operations/unitree_mujoco_policy_runtime.md`.
+The default config expects:
 
-Run the default G1 policy smoke test from the repository root:
-
-```bash
-python3 scripts/run_unitree_mujoco_policy.py \
-  --duration 20 \
-  --policy-script run98_2.py \
-  --policy-onnx policy.onnx \
-  --policy-warmup 2.0 \
-  --domain-id 1 \
-  --interface lo
+```text
+data/models/unitree_mujoco_policy/r1_velocity.onnx
 ```
 
-The launcher starts the policy before the simulator. Keep that order for
-humanoid policies so the robot does not fall before the controller publishes.
-`run98_2.py` also holds a FixStand-style warmup before ONNX inference. Increase
-`--policy-warmup` to `3.0` or `4.0` if the robot still shakes right after spawn.
+To switch policy, edit `POLICY_NAME` and `POLICIES` in `config.py`. The launcher
+does not choose between old scripts anymore.
 
-By default the pygame control window is hidden for headless smoke tests. Add
-`--policy-window` to show the `GAMEPAD CONTROL` window for keyboard control.
-Close the window or press `Esc` to stop the policy and simulator.
+Training and runtime use the same local R1 MJCF:
 
-Use `--policy-onnx` to override the default model picked for a policy script.
+```text
+asset/mujoco/unitree_robots/r1/R1.xml
+```
+
+Refresh it from the MJLab training source with:
+
+```bash
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/sync_r1_mujoco_asset.py
+```
+
+Run from repo root:
+
+```bash
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
+  --duration 20 \
+  --interface lo \
+  --domain-id 1
+```
+
+The default launcher starts the policy directly, matching the MJLab deploy
+configuration: no FixStand warmup, no action fade, and no raw action clip.
+`DEFAULT_Q` alone is not a stable standing controller for this R1 asset.
+
+Useful runtime controls:
+
+```bash
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
+  --duration 20 \
+  --policy-target-rate-limit 2.0 \
+  --interface lo \
+  --domain-id 1
+```
+
+Add `--policy-window` to show the pygame keyboard/gamepad control window. Add
+`--viewer` only when the desktop/OpenGL session is ready for MuJoCo viewer.
