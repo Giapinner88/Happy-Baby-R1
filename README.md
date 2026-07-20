@@ -1,9 +1,9 @@
 # Happy Baby R1
 
-[![Project Status: Active](https://img.shields.io/badge/Project%20Status-Active-brightgreen)](#)
-[![Hardware: Unitree R1](https://img.shields.io/badge/Hardware-Unitree%20R1-orange)](#)
-[![Middleware: ROS%202%20Foxy](https://img.shields.io/badge/Middleware-ROS%202%20Foxy-blueviolet)](#)
-[![OS: Ubuntu 20.04](https://img.shields.io/badge/OS-Ubuntu%2020.04-lightgrey)](#)
+[![Project Status: Active](<https://img.shields.io/badge/Project%20Status-Active-brightgreen>)](#)
+[![Hardware: Unitree R1](<https://img.shields.io/badge/Hardware-Unitree%20R1-orange>)](#)
+[![Middleware: ROS%202%20Foxy](<https://img.shields.io/badge/Middleware-ROS%202%20Foxy-blueviolet>)](#)
+[![OS: Ubuntu 20.04](<https://img.shields.io/badge/OS-Ubuntu%2020.04-lightgrey>)](#)
 
 > **Confidentiality Notice:** Đây là dự án nội bộ của AiRA-Laboratory. Không chia sẻ mã nguồn, tài liệu, log vận hành, hình ảnh robot hoặc dữ liệu test ra bên ngoài khi chưa được phép.
 
@@ -13,36 +13,46 @@
 
 > **Lưu ý:** ROS 2 Foxy đã EOL. Baseline này được chọn để khớp máy Ubuntu 20.04 hiện tại. Nếu cần ROS 2 Humble, hãy dùng Ubuntu 22.04 hoặc container/VM riêng.
 
-![Unitree R1 specification](asset/fig/Unitree_R1_Specs-729x1024.jpg)
+![Happy Baby R1 workspace](media/images/Unitree_R1_Specs-729x1024.jpg)
 
 ## 2. Stack kỹ thuật
 
-| Nhóm | Công nghệ / cấu hình |
-| :--- | :--- |
-| Robot | Unitree R1 |
-| Host OS | Ubuntu 20.04 LTS |
-| Middleware | ROS 2 Foxy, CycloneDDS |
-| Python | System Python 3.8 cho ROS 2, Conda env riêng cho AI/Simulation |
-| Build | colcon, ament_cmake |
+| Nhóm                | Công nghệ / cấu hình                                                           |
+| :------------------- | :--------------------------------------------------------------------------------- |
+| Robot                | Unitree R1                                                                         |
+| Host OS              | Ubuntu 20.04 LTS                                                                   |
+| Middleware           | ROS 2 Foxy, CycloneDDS                                                             |
+| Python               | System Python 3.8 cho ROS 2, Conda env riêng cho AI/Simulation                    |
+| Build                | colcon, ament_cmake                                                                |
 | Simulation hiện có | Python local simulator, UDP state/control simulator, Unitree MuJoCo policy runtime |
-| Data / operation | rosbag2, test log, SOP vận hành |
+| Data / operation     | rosbag2, test log, SOP vận hành                                                  |
 
 ## 3. Cấu trúc repo
 
 ```text
 .
-├── asset/                  # Hình ảnh minh họa, layout, specs
-├── config/                 # Cấu hình network/DDS
-├── data/                   # Datasets, models, processed data, rosbags, sim logs
-├── docs/                   # Tài liệu vận hành, an toàn, hardware, architecture
-├── media/                  # Video hoặc tư liệu demo
-├── sim/                    # Mô phỏng state/control và policy runtime cục bộ
-├── src/                    # ROS 2 packages thử nghiệm/tích hợp
-├── test/                   # Script kiểm thử môi trường, DDS, SDK
+├── ai_modules/             # Vision/voice modules, tách khỏi robot control loop
+├── assets/                 # R1 USD/URDF, meshes và MuJoCo scenes — nguồn tĩnh dùng chung
+├── config/                 # DDS, mạng và cấu hình máy chủ
+├── data/                   # Datasets, models, checkpoints, rosbags, cache và log chạy
+├── docs/                   # SOP, safety, kiến trúc, hướng dẫn và báo cáo
+├── hardware/               # Tài sản/cấu hình dành riêng cho robot thật (không chứa secret)
+├── media/                  # Ảnh và video minh họa
+├── Operation_Khanh/        # Gói high/low-level triển khai và vận hành trên máy tính nhúng
+├── policies/               # Vùng tương thích artefact cũ; dùng data/policies cho run mới
+├── reports/                # Báo cáo train/eval/bridge theo mốc, không phải source code
+├── scripts/                # Entry points theo training, simulation, bridge và asset sync
+├── sim/                    # Mã mô phỏng nội bộ và MuJoCo policy runtime
+├── src/                    # ROS 2 packages cho build colcon và hardware integration
+├── test/                   # Smoke test môi trường, DDS và SDK
+├── training/               # R1 task/config overlay cho MJLab và Isaac Lab
+├── third_party/            # Upstream/vendor, không chỉnh sửa trực tiếp
 └── README.md
 ```
 
 Các thư mục `build/`, `install/`, `log/` là output cục bộ của ROS 2/colcon và không nên được dùng như nguồn tài liệu chính.
+Các README trong từng thư mục do dự án sở hữu mô tả ranh giới và nơi đặt file mới;
+không thêm README vào vendor hoặc output tái sinh.
 
 ## 4. Quick Start
 
@@ -108,7 +118,7 @@ python3 sim/unitree_r1_controller_sim.py --duration 12
 Chạy thử policy trong Unitree MuJoCo:
 
 ```bash
-python3 scripts/run_unitree_mujoco_official_g1.py \
+python3 scripts/simulation/run_unitree_mujoco_official_g1.py \
   --duration 20 \
   --interface lo \
   --auto-sim \
@@ -117,7 +127,7 @@ python3 scripts/run_unitree_mujoco_official_g1.py \
   --viewer
 ```
 
-Quy ước hiện tại: `third_party/unitree_mujoco` giữ sạch theo upstream, `third_party/unitree_rl_mjlab` là nguồn policy ONNX/motion artifact của Unitree, còn script runtime local nằm trong `sim/unitree_mujoco_policy`; ONNX/motion symlink nằm trong `data/models/unitree_mujoco_policy`. Ưu tiên controller C++ chính thức của `unitree_rl_mjlab`; runner Python chỉ dùng để debug/log nhanh.
+Quy ước hiện tại: `third_party/unitree_mujoco` giữ sạch theo upstream, `third_party/unitree_rl_mjlab` là nguồn policy ONNX/motion artifact của Unitree, còn script runtime local nằm trong `sim/unitree_mujoco_policy`; ONNX/motion symlink nằm trong `data/models/unitree_mujoco_policy`. Ưu tiên controller C++ chính thức của `unitree_rl_mjlab`; runner Python chỉ dùng để debug/log nhanh. Xem README ở từng thư mục trước khi thêm file mới.
 
 Tài liệu thực hành: [08_state_control_sim.md](docs/operations/practice/08_state_control_sim.md)
 

@@ -30,8 +30,8 @@ Trong workspace nay, khong chay truc tiep de ghi log vao vendor tree. Dung
 wrapper:
 
 ```bash
-python scripts/r1_policy_workspace.py train mjlab --terrain flat --num-envs 4096
-python scripts/r1_policy_workspace.py collect mjlab
+python scripts/training/r1_policy_workspace.py train mjlab --terrain flat --num-envs 4096
+python scripts/training/r1_policy_workspace.py collect mjlab
 ```
 
 Wrapper chay script goc cua Unitree nhung dat working directory vao
@@ -122,7 +122,7 @@ dinh dung flat cho smoke va baseline dau tien vi de debug hon.
 train. Neu chay:
 
 ```bash
-python scripts/r1_policy_workspace.py train mjlab --terrain rough --num-envs 1000
+python scripts/training/r1_policy_workspace.py train mjlab --terrain rough --num-envs 1000
 ```
 
 thi khong phai mot con R1 duy nhat di 1000 lan lien tiep. Dung hon la 1000 ban
@@ -359,13 +359,13 @@ Setup mot dong:
 Kiem tra workspace:
 
 ```bash
-python scripts/r1_policy_workspace.py status
+python scripts/training/r1_policy_workspace.py status
 ```
 
 Smoke test nho:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/r1_policy_workspace.py train mjlab \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/training/r1_policy_workspace.py train mjlab \
   --terrain flat \
   --num-envs 1 \
   --max-iterations 1 \
@@ -377,7 +377,7 @@ PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/r1_policy_workspace.py tra
 Train GPU baseline:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/r1_policy_workspace.py train mjlab \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/training/r1_policy_workspace.py train mjlab \
   --terrain flat \
   --num-envs 4096 \
   --max-iterations 10001 \
@@ -387,7 +387,7 @@ PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/r1_policy_workspace.py tra
 Train rough terrain sau khi flat da on:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/r1_policy_workspace.py train mjlab \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/training/r1_policy_workspace.py train mjlab \
   --terrain rough \
   --num-envs 4096 \
   --max-iterations 10001 \
@@ -397,7 +397,7 @@ PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/r1_policy_workspace.py tra
 Collect policy ve thu muc deploy artifact cua workspace:
 
 ```bash
-python scripts/r1_policy_workspace.py collect mjlab
+python scripts/training/r1_policy_workspace.py collect mjlab
 ```
 
 Ket qua mong doi:
@@ -445,13 +445,13 @@ co `go2`, `b2`, `b2w`, `h1`, `go2w`, `g1`, `h2`; chua coi R1 la robot upstream
 chinh thuc o file config do. Repo Happy-Baby-R1 co asset MuJoCo R1 rieng o:
 
 ```text
-asset/mujoco/unitree_robots/r1/
+assets/mujoco/unitree_robots/r1/
 ```
 
 va script load/test model:
 
 ```bash
-python scripts/run_r1_mujoco_model.py --env flat --duration 10
+python scripts/simulation/run_r1_mujoco_model.py --env flat --duration 10
 ```
 
 Vi vay can tach hai viec:

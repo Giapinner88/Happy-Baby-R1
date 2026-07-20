@@ -11,12 +11,12 @@ Mọi model, log, cache, kết quả chạy được đưa về `data/`.
 
 | Đường dẫn | Vai trò |
 | :--- | :--- |
-| `asset/mujoco/unitree_robots/r1/` | MJCF R1 local dùng chung cho MuJoCo runtime và MJLab training |
+| `assets/mujoco/unitree_robots/r1/` | MJCF R1 local dùng chung cho MuJoCo runtime và MJLab training |
 | `sim/unitree_mujoco_policy/config.py` | Chọn policy, scene, joint order, default pose, gains, action scale |
 | `sim/unitree_mujoco_policy/policy_runner.py` | Runner policy duy nhất |
 | `sim/unitree_mujoco_policy/unitree_mujoco2.py` | MuJoCo simulator bridge theo kiểu Unitree |
 | `sim/unitree_mujoco_policy/unitree_sdk2py_bridge.py` | Cầu nối Unitree DDS lowcmd/lowstate |
-| `scripts/run_unitree_mujoco_policy.py` | Launcher chạy policy runner và simulator cùng DDS domain/interface |
+| `scripts/bridge/run_unitree_mujoco_policy.py` | Launcher chạy policy runner và simulator cùng DDS domain/interface |
 | `data/models/unitree_mujoco_policy/` | ONNX policy deploy |
 | `data/runs/unitree_mujoco_policy/` | Log của launcher |
 | `data/sim_state_logs/` | CSV state/action log từ policy runner |
@@ -60,7 +60,7 @@ rồi đổi `POLICY_NAME`.
 Model R1 chuẩn của workspace nằm tại:
 
 ```text
-asset/mujoco/unitree_robots/r1/R1.xml
+assets/mujoco/unitree_robots/r1/R1.xml
 ```
 
 File này được sync từ R1 training model của `unitree_rl_mjlab`, rồi bổ sung
@@ -69,11 +69,11 @@ actuator/sensor cần cho Unitree MuJoCo bridge. Không sửa `third_party`.
 Khi cần refresh asset local:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/sync_r1_mujoco_asset.py
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/assets/sync_r1_mujoco_asset.py
 ```
 
-`scripts/r1_mjlab_train.py` và `scripts/r1_mjlab_play.py` monkey-patch task
-`Unitree-R1-*` để MJLab dùng chính `asset/mujoco/unitree_robots/r1/R1.xml`.
+`scripts/training/r1_mjlab_train.py` và `scripts/training/r1_mjlab_play.py` monkey-patch task
+`Unitree-R1-*` để MJLab dùng chính `assets/mujoco/unitree_robots/r1/R1.xml`.
 Kỳ vọng compile hiện tại:
 
 ```text
@@ -85,7 +85,7 @@ nq=31, nv=30, nu=24, nsensor=77
 Dùng lệnh này để kiểm tra riêng R1 model + DDS bridge:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_r1_unitree_mujoco_bridge.py \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/bridge/run_r1_unitree_mujoco_bridge.py \
   --scene scene_hanging.xml \
   --duration 20 \
   --interface lo \
@@ -113,7 +113,7 @@ ls -lh data/models/unitree_mujoco_policy/r1_velocity.onnx
 Chạy smoke runtime:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/bridge/run_unitree_mujoco_policy.py \
   --duration 20 \
   --interface lo \
   --domain-id 1
@@ -135,7 +135,7 @@ ngã trước khi policy kịp cân bằng.
 Preset giảm tốc target nếu cần kiểm tra thận trọng hơn:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/bridge/run_unitree_mujoco_policy.py \
   --duration 20 \
   --policy-target-rate-limit 2.0 \
   --interface lo \

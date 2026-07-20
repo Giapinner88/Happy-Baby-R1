@@ -10,14 +10,14 @@ All generated outputs stay under `data/`:
 ## Quick Checks
 
 ```bash
-python scripts/r1_policy_workspace.py status
+python scripts/training/r1_policy_workspace.py status
 ```
 
 ## Train With Mjlab
 
 ```bash
 cd /home/ubuntu22/Projects/Happy-Baby-R1
-python scripts/r1_policy_workspace.py train mjlab --terrain flat --num-envs 4096
+python scripts/training/r1_policy_workspace.py train mjlab --terrain flat --num-envs 4096
 ```
 
 Mjlab already has R1 tasks:
@@ -39,7 +39,7 @@ The workspace wrapper defaults MJLab to `--agent.logger=tensorboard` so local ru
 
 ```bash
 cd /home/ubuntu22/Projects/Happy-Baby-R1
-python scripts/r1_policy_workspace.py train rl_lab --num-envs 4096 --max-iterations 10001
+python scripts/training/r1_policy_workspace.py train rl_lab --num-envs 4096 --max-iterations 10001
 ```
 
 The workspace overlay registers:
@@ -55,13 +55,13 @@ without editing `third_party/unitree_rl_lab`.
 For mjlab, collect an already exported policy:
 
 ```bash
-python scripts/r1_policy_workspace.py collect mjlab
+python scripts/training/r1_policy_workspace.py collect mjlab
 ```
 
 For Unitree RL Lab, run play once in headless one-frame mode so upstream export creates both JIT and ONNX files, then collect them:
 
 ```bash
-python scripts/r1_policy_workspace.py export rl_lab
+python scripts/training/r1_policy_workspace.py export rl_lab
 ```
 
 Collected outputs are placed under:

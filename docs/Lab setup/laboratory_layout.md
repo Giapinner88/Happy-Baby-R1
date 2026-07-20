@@ -7,7 +7,7 @@
 
 Tài liệu này mô tả bố cục phòng lab phục vụ vận hành, ghi hình và thử nghiệm robot R1.
 
-![](../../asset/fig/Lab_layout.png)
+![](../../assets/fig/Lab_layout.png)
 
 ## 1. Kích thước phòng
 

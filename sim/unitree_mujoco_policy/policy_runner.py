@@ -79,6 +79,59 @@ def smoothstep01(value: float) -> float:
     return value * value * (3.0 - 2.0 * value)
 
 
+def command_limit_array() -> np.ndarray:
+    return np.array(
+        [
+            max(0.0, get_float_env("POLICY_CMD_LIMIT_VX", 0.0)),
+            max(0.0, get_float_env("POLICY_CMD_LIMIT_VY", 0.0)),
+            max(0.0, get_float_env("POLICY_CMD_LIMIT_YAW", 0.0)),
+        ],
+        dtype=np.float32,
+    )
+
+
+def command_slew_array() -> np.ndarray:
+    return np.array(
+        [
+            max(0.0, get_float_env("POLICY_CMD_SLEW_VX", 0.0)),
+            max(0.0, get_float_env("POLICY_CMD_SLEW_VY", 0.0)),
+            max(0.0, get_float_env("POLICY_CMD_SLEW_YAW", 0.0)),
+        ],
+        dtype=np.float32,
+    )
+
+
+def clamp_command(command: np.ndarray, limits: np.ndarray) -> np.ndarray:
+    clamped = command.astype(np.float32, copy=True)
+    active = limits > 0.0
+    clamped[active] = np.clip(clamped[active], -limits[active], limits[active])
+    return clamped
+
+
+def filter_command(
+    raw_command: np.ndarray,
+    previous_command: np.ndarray,
+    *,
+    alpha: float,
+    dt: float,
+    limits: np.ndarray,
+    slew_limits: np.ndarray,
+) -> np.ndarray:
+    desired = clamp_command(raw_command, limits)
+    filtered = alpha * desired + (1.0 - alpha) * previous_command
+    active_slew = slew_limits > 0.0
+    if np.any(active_slew):
+        max_delta = slew_limits * dt
+        delta = filtered - previous_command
+        delta[active_slew] = np.clip(
+            delta[active_slew],
+            -max_delta[active_slew],
+            max_delta[active_slew],
+        )
+        filtered = previous_command + delta
+    return clamp_command(filtered, limits)
+
+
 def state_handler(msg: LowState_) -> None:
     global robot_state
     first_state = False
@@ -310,9 +363,21 @@ def main() -> None:
     target_rate_limit = max(0.0, get_float_env("POLICY_TARGET_RATE_LIMIT", 4.0))
     fall_guard_gravity_z = get_float_env("POLICY_FALL_GUARD_GRAVITY_Z", -0.55)
     spin_threshold = max(0.0, get_float_env("SLEEP_SPIN_THRESHOLD", 0.0005))
+    command_limits = command_limit_array()
+    command_slew_limits = command_slew_array()
+    print(
+        "[policy] safety "
+        f"cmd_limit={command_limits.tolist()} "
+        f"cmd_slew={command_slew_limits.tolist()} "
+        f"target_rate_limit={target_rate_limit:g} "
+        f"fall_guard_gravity_z={fall_guard_gravity_z:g}"
+    )
+    # Gait clock must match the training `phase` observation: period 0.6 s and a
+    # stand gate at ||command|| < 0.1 (see mjlab velocity task observations.phase).
+    gait_period = max(1e-3, get_float_env("POLICY_GAIT_PERIOD", 0.6))
+    gait_stand_threshold = max(0.0, get_float_env("POLICY_GAIT_STAND_THRESHOLD", 0.1))
 
     gait_time = 0.0
-    gait_scale = 0.0
     warmup_done = warmup_seconds == 0.0
     warmup_start: float | None = None
     warmup_q0: np.ndarray | None = None
@@ -364,7 +429,6 @@ def main() -> None:
                     smoothed_commands.fill(0.0)
                     previous_target_q = config.DEFAULT_Q.copy()
                     gait_time = 0.0
-                    gait_scale = 0.0
                     policy_start = time.perf_counter()
                     next_step_time = time.perf_counter()
                     print("[policy] warmup complete; ONNX policy enabled.")
@@ -382,14 +446,20 @@ def main() -> None:
                 smoothed_commands.fill(0.0)
                 previous_target_q = config.DEFAULT_Q.copy()
                 gait_time = 0.0
-                gait_scale = 0.0
                 set_motor_position_targets(config.DEFAULT_Q)
                 next_step_time += config.CONTROL_DT
                 continue
 
             raw_command = read_command(joystick, step_start - t0)
-            smoothed_commands = alpha * raw_command + (1.0 - alpha) * smoothed_commands
-            if np.any(np.abs(smoothed_commands) > np.array([0.01, 0.01, 0.01], dtype=np.float32)):
+            smoothed_commands = filter_command(
+                raw_command,
+                smoothed_commands,
+                alpha=alpha,
+                dt=config.CONTROL_DT,
+                limits=command_limits,
+                slew_limits=command_slew_limits,
+            )
+            if np.linalg.norm(smoothed_commands) >= gait_stand_threshold:
                 now = time.perf_counter()
                 if now - last_command_print > 0.5:
                     print(
@@ -397,23 +467,23 @@ def main() -> None:
                         f"vy={smoothed_commands[1]:.2f} yaw={smoothed_commands[2]:.2f}"
                     )
                     last_command_print = now
-                gait_time += config.CONTROL_DT
-                gait_scale = min(1.0, gait_scale + config.CONTROL_DT / 0.3)
-            else:
-                remainder = gait_time % 0.6
-                if 0.02 < remainder < 0.58:
-                    gait_time += config.CONTROL_DT
-                    gait_scale = min(1.0, gait_scale + config.CONTROL_DT / 0.3)
-                else:
-                    gait_time = round(gait_time / 0.6) * 0.6
-                    gait_scale = max(0.0, gait_scale - config.CONTROL_DT / 0.3)
 
-            phase_ratio = (gait_time % 0.6) / 0.6
-            gait_phase = np.array(
-                [np.sin(2 * np.pi * phase_ratio), np.cos(2 * np.pi * phase_ratio)],
-                dtype=np.float32,
-            )
-            gait_phase *= gait_scale
+            # Match the training `phase` observation exactly
+            # (unitree_rl_mjlab src/tasks/velocity/mdp/observations.py):
+            #   * free-running clock that always advances by the control dt,
+            #   * hard on/off gate by command norm (no gait_scale amplitude ramp),
+            #   * unit-amplitude sin/cos when walking, zero when standing.
+            # The previous ramped/snapped clock fed out-of-distribution phase
+            # amplitudes right as a command turned on, which destabilised the gait.
+            gait_time += config.CONTROL_DT
+            phase_ratio = (gait_time % gait_period) / gait_period
+            if np.linalg.norm(smoothed_commands) < gait_stand_threshold:
+                gait_phase = np.zeros(2, dtype=np.float32)
+            else:
+                gait_phase = np.array(
+                    [np.sin(2 * np.pi * phase_ratio), np.cos(2 * np.pi * phase_ratio)],
+                    dtype=np.float32,
+                )
 
             q_rel = q_current[controlled] - default_controlled_q
             dq_rel = dq_current[controlled]
@@ -456,6 +526,10 @@ def main() -> None:
                 )
             previous_target_q = target_q.copy()
             set_motor_position_targets(target_q)
+            # Feed the applied action back as the `last_action` observation next
+            # step. Without this it stayed zero, corrupting the final 24 obs values
+            # and destabilising the gait (direct-eval sets this; the bridge did not).
+            last_action = action.copy()
 
             action_full = np.zeros(len(config.MOTOR_JOINT_NAMES), dtype=np.float32)
             action_full[controlled] = action
@@ -473,7 +547,7 @@ def main() -> None:
                 base_vel=base_vel,
                 commands=smoothed_commands,
                 gait_phase=gait_phase,
-                gait_scale=gait_scale,
+                gait_scale=float(np.linalg.norm(gait_phase) > 0.0),
                 gait_time=gait_time,
             )
 

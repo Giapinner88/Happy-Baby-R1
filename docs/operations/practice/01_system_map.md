@@ -48,7 +48,7 @@ Operator
 ### 3.4. Lớp mô phỏng/policy nội bộ
 
 * `sim/unitree_mujoco_policy`: script chạy policy, logger, replay helper, simulator glue nội bộ.
-* `scripts/run_unitree_mujoco_policy.py`: launcher ghép simulator và policy trên cùng DDS domain/interface.
+* `scripts/bridge/run_unitree_mujoco_policy.py`: launcher ghép simulator và policy trên cùng DDS domain/interface.
 
 ### 3.5. Lớp dữ liệu
 

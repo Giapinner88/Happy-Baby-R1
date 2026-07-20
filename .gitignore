@@ -96,3 +96,13 @@ media/videos/*
 !data/runs/.gitkeep
 !data/sim_state_logs/.gitkeep
 !media/videos/.gitkeep
+!data/datasets/README.md
+!data/cache/README.md
+!data/models/README.md
+!data/policies/README.md
+!data/processed/README.md
+!data/rosbags/README.md
+!data/runs/README.md
+!data/sim_state_logs/README.md
+!data/sim_state_logs/MUJOCO_LOG.txt
+!media/videos/README.md

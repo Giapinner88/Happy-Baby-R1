@@ -3,12 +3,15 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_NAME="${ENV_NAME:-r1_env}"
-PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
+PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
 INSTALL_MJLAB="${INSTALL_MJLAB:-1}"
 INSTALL_ISAACLAB_DOCKER="${INSTALL_ISAACLAB_DOCKER:-1}"
 BUILD_ISAACLAB_DOCKER="${BUILD_ISAACLAB_DOCKER:-1}"
 ISAACLAB_DOCKER_IMAGE="${ISAACLAB_DOCKER_IMAGE:-unitree-sim:latest}"
 PIP_CACHE_DIR="${PIP_CACHE_DIR:-$ROOT_DIR/data/cache/pip}"
+RECREATE_CONDA_ENV="${RECREATE_CONDA_ENV:-0}"
+MIN_FREE_GB="${MIN_FREE_GB:-10}"
+R1_ENV_ONLY=0
 
 export PYTHONNOUSERSITE=1
 export PIP_CACHE_DIR
@@ -23,12 +26,49 @@ die() {
   exit 1
 }
 
+usage() {
+  cat <<'EOF'
+Usage:
+  ./setup_env.sh
+  ./setup_env.sh --recreate-r1-env
+
+Options:
+  --recreate-r1-env  Remove and recreate r1_env, install only the host MJLab/MuJoCo stack,
+                      and skip IsaacLab Docker setup.
+  -h, --help          Show this help.
+
+Environment overrides:
+  ENV_NAME, PYTHON_VERSION, RECREATE_CONDA_ENV, MIN_FREE_GB,
+  INSTALL_MJLAB, INSTALL_ISAACLAB_DOCKER, BUILD_ISAACLAB_DOCKER.
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --recreate-r1-env)
+        [[ "$ENV_NAME" == "r1_env" ]] || die "--recreate-r1-env requires ENV_NAME=r1_env (got $ENV_NAME)."
+        RECREATE_CONDA_ENV=1
+        R1_ENV_ONLY=1
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        die "Unknown option: $1. Run $0 --help."
+        ;;
+    esac
+    shift
+  done
+}
+
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Missing command: $1"
 }
 
 conda_run() {
-  conda run -n "$ENV_NAME" "$@"
+  conda run --no-capture-output -n "$ENV_NAME" "$@"
 }
 
 docker_cmd() {
@@ -54,10 +94,28 @@ docker_cmd() {
 ensure_conda_env() {
   need_cmd conda
   if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+    if [[ "$RECREATE_CONDA_ENV" == "1" ]]; then
+      log "Removing existing conda env: $ENV_NAME"
+      conda env remove -n "$ENV_NAME" -y
+      log "Creating conda env: $ENV_NAME python=$PYTHON_VERSION"
+      conda create -n "$ENV_NAME" "python=$PYTHON_VERSION" -y
+      return 0
+    fi
     log "Using existing conda env: $ENV_NAME"
   else
     log "Creating conda env: $ENV_NAME python=$PYTHON_VERSION"
     conda create -n "$ENV_NAME" "python=$PYTHON_VERSION" -y
+  fi
+}
+
+require_free_space() {
+  local available_kb
+  [[ "$MIN_FREE_GB" =~ ^[0-9]+$ ]] || die "MIN_FREE_GB must be a non-negative integer (got $MIN_FREE_GB)."
+  available_kb="$(df -Pk "$ROOT_DIR" | awk 'NR == 2 {print $4}')"
+  [[ "$available_kb" =~ ^[0-9]+$ ]] || die "Unable to determine free disk space for $ROOT_DIR."
+
+  if (( available_kb < MIN_FREE_GB * 1024 * 1024 )); then
+    die "Only $(( available_kb / 1024 / 1024 )) GiB is free on the workspace filesystem; need at least ${MIN_FREE_GB} GiB before recreating $ENV_NAME. Free disk space first, then rerun."
   fi
 }
 
@@ -125,7 +183,7 @@ install_isaaclab_docker_stack() {
     log "IsaacLab Docker image is missing and BUILD_ISAACLAB_DOCKER=$BUILD_ISAACLAB_DOCKER, so it was not built."
   fi
 
-  log "IsaacLab training will run through scripts/run_r1_isaaclab_docker.sh"
+  log "IsaacLab training will run through scripts/simulation/run_r1_isaaclab_docker.sh"
 }
 
 verify_mjlab() {
@@ -156,15 +214,15 @@ print_next_steps() {
 Setup complete for env: $ENV_NAME
 
 MJLab smoke train:
-  PYTHONNOUSERSITE=1 conda run -n $ENV_NAME python scripts/r1_policy_workspace.py train mjlab \\
+  PYTHONNOUSERSITE=1 conda run -n $ENV_NAME python scripts/training/r1_policy_workspace.py train mjlab \\
     --terrain flat --num-envs 1 --max-iterations 1 --run-name smoke \\
     --agent.save-interval=1 --gpu-ids None
 
 Collect policy:
-  python scripts/r1_policy_workspace.py collect mjlab
+  python scripts/training/r1_policy_workspace.py collect mjlab
 
 IsaacLab short train through Docker:
-  scripts/run_r1_isaaclab_docker.sh python scripts/r1_policy_workspace.py train rl_lab \\
+  scripts/simulation/run_r1_isaaclab_docker.sh python scripts/training/r1_policy_workspace.py train rl_lab \\
     --num-envs 1 --max-iterations 1
 
 All generated outputs go under:
@@ -175,7 +233,15 @@ EOF
 }
 
 main() {
+  parse_args "$@"
   cd "$ROOT_DIR"
+  if [[ "$R1_ENV_ONLY" == "1" ]]; then
+    INSTALL_ISAACLAB_DOCKER=0
+    BUILD_ISAACLAB_DOCKER=0
+  fi
+  if [[ "$RECREATE_CONDA_ENV" == "1" ]]; then
+    require_free_space
+  fi
   ensure_dirs
   ensure_conda_env
   install_mjlab_stack

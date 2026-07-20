@@ -32,7 +32,7 @@ Repo Happy-Baby-R1 hiện có các ranh giới liên quan sau:
 | :--- | :--- |
 | `sim/isaac_lab_env/` | Placeholder cho Isaac Lab env nội bộ, hiện chỉ có `.gitkeep` |
 | `sim/unitree_mujoco_policy/` | Runtime policy MuJoCo nội bộ, không phải Isaac Lab training stack |
-| `scripts/run_unitree_mujoco_policy.py` | Launcher MuJoCo policy local |
+| `scripts/bridge/run_unitree_mujoco_policy.py` | Launcher MuJoCo policy local |
 | `data/models/unitree_mujoco_policy/` | ONNX/motion artifact cho MuJoCo policy |
 | `data/models/isaac_lab/` | Chưa có trong checkout hiện tại; tạo khi export checkpoint/model từ Isaac Lab |
 | `third_party/unitree_mujoco` | Vendor upstream, giữ sạch |

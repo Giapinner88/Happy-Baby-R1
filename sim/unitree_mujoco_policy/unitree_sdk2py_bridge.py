@@ -1,5 +1,6 @@
 import mujoco
 import numpy as np
+import os
 import pygame
 import sys
 import struct
@@ -45,6 +46,23 @@ class UnitreeSdk2Bridge:
         self.have_frame_sensor_ = False
         self.dt = self.mj_model.opt.timestep
         self.idl_type = config.USE_HG_IDL  # 0: unitree_go, 1: unitree_hg
+        self.actuator_mode = os.environ.get(
+            "UNITREE_BRIDGE_ACTUATOR_MODE", "torque"
+        ).strip().lower()
+        if self.actuator_mode not in {"torque", "position"}:
+            print(
+                f"[bridge] invalid UNITREE_BRIDGE_ACTUATOR_MODE={self.actuator_mode!r}; "
+                "using torque."
+            )
+            self.actuator_mode = "torque"
+        self.clamp_position_targets = os.environ.get(
+            "UNITREE_BRIDGE_CLAMP_POSITION_TARGETS", "1"
+        ).lower() in {"1", "true", "yes", "on"}
+        self.ctrl_min = np.asarray(self.mj_model.actuator_ctrlrange[:, 0], dtype=np.float64)
+        self.ctrl_max = np.asarray(self.mj_model.actuator_ctrlrange[:, 1], dtype=np.float64)
+        print(f"[bridge] actuator_mode={self.actuator_mode}")
+        if self.actuator_mode == "position":
+            print(f"[bridge] clamp_position_targets={self.clamp_position_targets}")
 
         self.joystick = None
 
@@ -117,16 +135,24 @@ class UnitreeSdk2Bridge:
         if self.mj_data != None:
             with self._locked():
                 for i in range(self.num_motor):
-                    self.mj_data.ctrl[i] = (
-                        msg.motor_cmd[i].tau
-                        + msg.motor_cmd[i].kp
-                        * (msg.motor_cmd[i].q - self.mj_data.sensordata[i])
-                        + msg.motor_cmd[i].kd
-                        * (
-                            msg.motor_cmd[i].dq
-                            - self.mj_data.sensordata[i + self.num_motor]
+                    if self.actuator_mode == "position":
+                        target = float(msg.motor_cmd[i].q)
+                        if not np.isfinite(target):
+                            continue
+                        if self.clamp_position_targets:
+                            target = float(np.clip(target, self.ctrl_min[i], self.ctrl_max[i]))
+                        self.mj_data.ctrl[i] = target
+                    else:
+                        self.mj_data.ctrl[i] = (
+                            msg.motor_cmd[i].tau
+                            + msg.motor_cmd[i].kp
+                            * (msg.motor_cmd[i].q - self.mj_data.sensordata[i])
+                            + msg.motor_cmd[i].kd
+                            * (
+                                msg.motor_cmd[i].dq
+                                - self.mj_data.sensordata[i + self.num_motor]
+                            )
                         )
-                    )
 
     def PublishLowState(self):
         if self.mj_data != None:

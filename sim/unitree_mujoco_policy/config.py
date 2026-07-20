@@ -8,7 +8,7 @@ UNITREE_MUJOCO_ROOT = Path(
     os.environ.get("UNITREE_MUJOCO_ROOT", REPO_ROOT / "third_party" / "unitree_mujoco")
 ).expanduser()
 LOCAL_MUJOCO_ROOT = Path(
-    os.environ.get("LOCAL_MUJOCO_ROOT", REPO_ROOT / "asset" / "mujoco")
+    os.environ.get("LOCAL_MUJOCO_ROOT", REPO_ROOT / "assets" / "mujoco")
 ).expanduser()
 MODEL_ROOT = Path(
     os.environ.get("UNITREE_MUJOCO_POLICY_MODEL_ROOT", REPO_ROOT / "data" / "models" / "unitree_mujoco_policy")
@@ -147,17 +147,27 @@ DEFAULT_Q = np.array(
 KP_BY_JOINT = {}
 KD_BY_JOINT = {}
 ACTION_SCALE_BY_JOINT = {}
+# These MUST mirror the tuned MJLab actuators in training/mjlab/robot.py.
+# scale = 0.25 * effort_limit / stiffness (MJLab R1_ACTION_SCALE convention).
+#   hip        kp=100 kd=3 eff=88  -> scale 0.22
+#   knee       kp=100 kd=3 eff=139 -> scale 0.3475
+#   ankle      kp=40  kd=3 eff=50  -> scale 0.3125
+#   waist_yaw  kp=100 kd=3 eff=88  -> scale 0.22
+#   waist_roll kp=100 kd=3 eff=50  -> scale 0.125
+#   arm (shoulder/elbow/wrist) kp=40 kd=2 eff=25 -> scale 0.15625
 for name in MOTOR_JOINT_NAMES:
-    if any(key in name for key in ("hip", "knee")):
-        kp, kd, scale = 100.0, 2.0, 0.15
+    if "knee" in name:
+        kp, kd, scale = 100.0, 3.0, 0.3475
+    elif "hip" in name:
+        kp, kd, scale = 100.0, 3.0, 0.22
     elif "ankle" in name:
-        kp, kd, scale = 40.0, 2.0, 0.3125
-    elif "waist" in name:
-        kp, kd, scale = 100.0, 2.0, 0.15
-    elif "shoulder_pitch" in name or "shoulder_roll" in name:
-        kp, kd, scale = 40.0, 2.0, 0.375
-    elif "shoulder_yaw" in name or "elbow" in name or "wrist_roll" in name:
-        kp, kd, scale = 20.0, 1.0, 0.4125
+        kp, kd, scale = 40.0, 3.0, 0.3125
+    elif "waist_yaw" in name:
+        kp, kd, scale = 100.0, 3.0, 0.22
+    elif "waist_roll" in name:
+        kp, kd, scale = 100.0, 3.0, 0.125
+    elif "shoulder" in name or "elbow" in name or "wrist" in name:
+        kp, kd, scale = 40.0, 2.0, 0.15625
     else:
         kp, kd, scale = 20.0, 1.0, 0.0
     KP_BY_JOINT[name] = kp

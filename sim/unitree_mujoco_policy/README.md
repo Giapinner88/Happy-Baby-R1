@@ -27,19 +27,19 @@ does not choose between old scripts anymore.
 Training and runtime use the same local R1 MJCF:
 
 ```text
-asset/mujoco/unitree_robots/r1/R1.xml
+assets/mujoco/unitree_robots/r1/R1.xml
 ```
 
 Refresh it from the MJLab training source with:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/sync_r1_mujoco_asset.py
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/assets/sync_r1_mujoco_asset.py
 ```
 
 Run from repo root:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/bridge/run_unitree_mujoco_policy.py \
   --duration 20 \
   --interface lo \
   --domain-id 1
@@ -52,7 +52,7 @@ configuration: no FixStand warmup, no action fade, and no raw action clip.
 Useful runtime controls:
 
 ```bash
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/run_unitree_mujoco_policy.py \
+PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/bridge/run_unitree_mujoco_policy.py \
   --duration 20 \
   --policy-target-rate-limit 2.0 \
   --interface lo \
