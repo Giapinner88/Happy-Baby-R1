@@ -1,0 +1,11 @@
+[project]
+name = "robot-hanh-phuc-r1"
+version = "0.1.0"
+description = "Robot Hanh Phuc R1 OpenAI Realtime voice app"
+requires-python = ">=3.11"
+dependencies = [
+    "pipecat-ai[openai,runner,webrtc]>=1.5.0,<2.0.0",
+]
+
+[tool.uv]
+package = false
