@@ -1,0 +1,9 @@
+# 💻 terminal 1
+export ROBOT=unitree@192.168.12.2
+cd ~/Documents/HB/Mujoco/HB/high_level_2
+./scripts/deploy_to_robot.sh
+ssh -Y $ROBOT "cd ~/HB/high_level_2/build && ./run_r1"
+
+# 💻 terminal 2 (song song)
+cd ~/Documents/HB/Mujoco/HB/high_level_2
+./scripts/probe_robot.sh

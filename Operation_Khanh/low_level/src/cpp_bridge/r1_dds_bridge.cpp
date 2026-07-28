@@ -9,13 +9,11 @@
 #include <cstring>
 #include <csignal>
 
-// Socket headers
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
-// DDS headers
 #include <unitree/robot/channel/channel_factory.hpp>
 #include <unitree/robot/channel/channel_publisher.hpp>
 #include <unitree/robot/channel/channel_subscriber.hpp>
@@ -27,7 +25,6 @@ using namespace unitree::robot;
 using namespace unitree::common;
 using namespace unitree_hg::msg::dds_;
 
-// Standard Unitree CRC32 Checksum
 inline uint32_t Crc32Core(uint32_t *ptr, uint32_t len) {
     uint32_t xbit = 0;
     uint32_t data = 0;
@@ -50,33 +47,31 @@ inline uint32_t Crc32Core(uint32_t *ptr, uint32_t len) {
     return CRC32;
 }
 
-// Joint mapping
 const std::array<int, 26> joint_idx = {
-    0, 1, 2, 3, 4, 5,       // Left leg (0-5)
-    6, 7, 8, 9, 10, 11,     // Right leg (6-11)
-    12, 13,                 // Waist (12-13)
-    15, 16, 17, 18, 19,     // Left arm (14-18)
-    22, 23, 24, 25, 26,     // Right arm (19-23)
-    29, 30                  // Head (24-25)
+    0, 1, 2, 3, 4, 5,
+    6, 7, 8, 9, 10, 11,
+    12, 13,
+    15, 16, 17, 18, 19,
+    22, 23, 24, 25, 26,
+    29, 30
 };
 
-// Default gains
 const std::array<float, 26> kp_array_default = {
-    200.0f, 200.0f, 200.0f, 200.0f, 200.0f, 200.0f,  // Left leg (0-5)
-    200.0f, 200.0f, 200.0f, 200.0f, 200.0f, 200.0f,  // Right leg (6-11)
-    300.0f, 300.0f,                                  // Waist (12-13)
-    100.0f, 100.0f, 100.0f, 100.0f, 50.0f,           // Left arm (14-18)
-    100.0f, 100.0f, 100.0f, 100.0f, 50.0f,           // Right arm (19-23)
-    50.0f,  10.0f                                    // Head (24-25)
+    200.0f, 200.0f, 200.0f, 200.0f, 200.0f, 200.0f,
+    200.0f, 200.0f, 200.0f, 200.0f, 200.0f, 200.0f,
+    300.0f, 300.0f,
+    100.0f, 100.0f, 100.0f, 100.0f, 50.0f,
+    100.0f, 100.0f, 100.0f, 100.0f, 50.0f,
+    50.0f,  10.0f
 };
 
 const std::array<float, 26> kd_array_default = {
-    3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f,              // Left leg
-    3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f,              // Right leg
-    5.0f, 5.0f,                                      // Waist
-    2.0f, 2.0f, 2.0f, 2.0f, 2.0f,                    // Left arm
-    2.0f, 2.0f, 2.0f, 2.0f, 2.0f,                    // Right arm
-    2.0f, 0.1f                                       // Head
+    3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f,
+    3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f,
+    5.0f, 5.0f,
+    2.0f, 2.0f, 2.0f, 2.0f, 2.0f,
+    2.0f, 2.0f, 2.0f, 2.0f, 2.0f,
+    2.0f, 0.1f
 };
 
 std::mutex bms_mutex;
@@ -133,7 +128,6 @@ struct BridgeCommand {
 };
 #pragma pack(pop)
 
-// Global states
 std::atomic<bool> got_state{false};
 std::atomic<uint8_t> mode_machine{0};
 std::array<float, 35> current_q = {};
@@ -145,7 +139,6 @@ std::array<float, 26> target_kp = {};
 std::array<float, 26> target_kd = {};
 std::mutex cmd_mutex;
 
-// Sockets
 int sock_send = -1;
 int sock_recv = -1;
 struct sockaddr_in addr_python_state;
@@ -161,7 +154,6 @@ void StateHandler(const void* message) {
     
     bs.mode_machine = low_state.mode_machine();
     
-    // Extract BMS
     if (got_bms) {
         std::lock_guard<std::mutex> lock(bms_mutex);
         bs.soc = current_bms_state.soc();
@@ -177,7 +169,6 @@ void StateHandler(const void* message) {
         bs.bms_status = 0;
     }
     
-    // Extract IMU data
     const auto& imu = low_state.imu_state();
     auto rpy = imu.rpy();
     auto gyro = imu.gyroscope();
@@ -221,7 +212,6 @@ void StateHandler(const void* message) {
         }
     }
     
-    // Send state to Python over UDP
     if (sock_send >= 0) {
         sendto(sock_send, &bs, sizeof(bs), 0, (struct sockaddr*)&addr_python_state, sizeof(addr_python_state));
     }
@@ -235,29 +225,21 @@ void CommandReceiverLoop() {
     while (running) {
         int bytes = recvfrom(sock_recv, &bc, sizeof(bc), 0, nullptr, nullptr);
         if (bytes == sizeof(bc)) {
-            bool prev_enabled = motors_enabled;
-            {
-                std::lock_guard<std::mutex> lock(cmd_mutex);
-                motors_enabled = (bc.motors_enabled != 0);
-                for (int i = 0; i < 26; ++i) {
-                    target_q[i] = bc.target_q[i];
-                    target_kp[i] = bc.target_kp[i];
-                    target_kd[i] = bc.target_kd[i];
-                }
-            }
-            
-            if (motors_enabled != prev_enabled) {
-                std::cout << "DEBUG: motors_enabled changed to: " << (motors_enabled ? "TRUE (ENABLED)" : "FALSE (DISABLED)") << std::endl;
+            std::lock_guard<std::mutex> lock(cmd_mutex);
+            motors_enabled = (bc.motors_enabled != 0);
+            for (int i = 0; i < 26; ++i) {
+                target_q[i] = bc.target_q[i];
+                target_kp[i] = bc.target_kp[i];
+                target_kd[i] = bc.target_kd[i];
             }
             
             packet_counter++;
             if (packet_counter % 200 == 0) {
-                std::cout << "DEBUG: UDP received 200 packets from Python. motors_enabled=" 
-                          << (motors_enabled ? "TRUE" : "FALSE") 
-                          << ", target_q[24](head)=" << bc.target_q[24] << " rad, Kp[0]=" << bc.target_kp[0] << std::endl;
+                std::cout << "[Bridge] UDP commands received: " << packet_counter 
+                          << " packets. Enabled=" << (motors_enabled ? "Y" : "N") << std::endl;
             }
         } else if (bytes > 0) {
-            std::cout << "WARNING: Received packet of invalid size from Python: " << bytes << " bytes (Expected " << sizeof(bc) << ")" << std::endl;
+            std::cout << "[Bridge] Warning: Invalid packet size: " << bytes << " bytes." << std::endl;
         }
     }
 }
@@ -269,22 +251,18 @@ void PublisherLoop(ChannelPublisherPtr<LowCmd_> publisher) {
     std::array<float, 26> commanded_q = {};
     bool prev_enabled = false;
     
-    // Max velocities (rad/s) for safety
     std::array<float, 26> max_vel = {};
     for (int i = 0; i < 26; i++) {
         if (i < 12) {
-            // Legs: max 1.0 rad/s (~57 deg/s)
             max_vel[i] = 1.0f;
         } else if (i < 14) {
-            // Waist: max 1.0 rad/s (~57 deg/s)
             max_vel[i] = 1.0f;
         } else {
-            // Arms & Head: max 1.5 rad/s (~86 deg/s)
             max_vel[i] = 1.5f;
         }
     }
     
-    const float dt = 0.005f; // 200 Hz
+    const float dt = 0.005f;
     
     while (running) {
         bool enabled = false;
@@ -308,19 +286,17 @@ void PublisherLoop(ChannelPublisherPtr<LowCmd_> publisher) {
             }
         }
         
-        // Initialize commanded_q to physical current angles on enable
         if (enabled && !prev_enabled) {
             for (int i = 0; i < 26; i++) {
                 int sdk_idx = joint_idx[i];
                 commanded_q[i] = current_qs_snapshot[sdk_idx];
             }
-            std::cout << "DEBUG: Ramping initialized. Commanded angles snapped to current physical angles." << std::endl;
+            std::cout << "[Bridge] Transition: Synced targets to physical joint angles." << std::endl;
         }
         prev_enabled = enabled;
         
         lowcmd.mode_machine() = mode_machine;
         
-        // Zero all commands initially
         for (int i = 0; i < 35; i++) {
             lowcmd.motor_cmd()[i].mode() = 0x00;
             lowcmd.motor_cmd()[i].q() = 0.0f;
@@ -334,7 +310,6 @@ void PublisherLoop(ChannelPublisherPtr<LowCmd_> publisher) {
             for (int i = 0; i < 26; i++) {
                 int sdk_idx = joint_idx[i];
                 
-                // Rate limiter / Interpolation
                 float diff = targets[i] - commanded_q[i];
                 float max_step = max_vel[i] * dt;
                 
@@ -349,7 +324,6 @@ void PublisherLoop(ChannelPublisherPtr<LowCmd_> publisher) {
                 lowcmd.motor_cmd()[sdk_idx].mode() = 0x01;
                 lowcmd.motor_cmd()[sdk_idx].q() = commanded_q[i];
                 lowcmd.motor_cmd()[sdk_idx].dq() = 0.0f;
-                // Set kp and kd
                 lowcmd.motor_cmd()[sdk_idx].kp() = kps[i];
                 lowcmd.motor_cmd()[sdk_idx].kd() = kds[i];
                 lowcmd.motor_cmd()[sdk_idx].tau() = 0.0f;
@@ -361,10 +335,10 @@ void PublisherLoop(ChannelPublisherPtr<LowCmd_> publisher) {
         
         dds_pub_counter++;
         if (dds_pub_counter % 200 == 0 && enabled) {
-            std::cout << "DEBUG: DDS publisher sending (RAMPED). mode_machine=" << (int)mode_machine << std::endl;
+            std::cout << "[Bridge] Sending commands. mode_machine=" << (int)mode_machine << std::endl;
         }
         
-        std::this_thread::sleep_for(std::chrono::milliseconds(5)); // 200Hz
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
 
@@ -372,7 +346,6 @@ void HandleExit(int sig) {
     std::cout << "\n🛑 Đang dừng bridge và ngắt toàn bộ động cơ..." << std::endl;
     running = false;
     
-    // Send dummy command to break recvfrom blocking read
     int s = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -396,41 +369,36 @@ int main(int argc, char** argv) {
     std::signal(SIGINT, HandleExit);
     std::signal(SIGTERM, HandleExit);
     
-    // Setup UDP sockets
     sock_send = socket(AF_INET, SOCK_DGRAM, 0);
     sock_recv = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock_send < 0 || sock_recv < 0) {
-        std::cerr << "❌ Failed to create sockets!" << std::endl;
+        std::cerr << "❌ Socket creation failed!" << std::endl;
         return 1;
     }
     
-    // Destination socket for Python state
     memset(&addr_python_state, 0, sizeof(addr_python_state));
     addr_python_state.sin_family = AF_INET;
     addr_python_state.sin_port = htons(12345);
     addr_python_state.sin_addr.s_addr = inet_addr("127.0.0.1");
     
-    // Bind receive socket for Python command
     memset(&addr_bridge_cmd, 0, sizeof(addr_bridge_cmd));
     addr_bridge_cmd.sin_family = AF_INET;
     addr_bridge_cmd.sin_port = htons(12346);
     addr_bridge_cmd.sin_addr.s_addr = inet_addr("127.0.0.1");
     
     if (bind(sock_recv, (struct sockaddr*)&addr_bridge_cmd, sizeof(addr_bridge_cmd)) < 0) {
-        std::cerr << "❌ Failed to bind receive socket to port 12346!" << std::endl;
+        std::cerr << "❌ Socket bind to port 12346 failed!" << std::endl;
         close(sock_send);
         close(sock_recv);
         return 1;
     }
     
-    // Initialize target Kp and Kd arrays with default safe values
     for (int i = 0; i < 26; i++) {
         target_kp[i] = kp_array_default[i];
         target_kd[i] = kd_array_default[i];
     }
     
-    // Initialize DDS
-    std::cout << "📡 Initializing DDS with interface: " << interface << std::endl;
+    std::cout << "[Bridge] Initializing DDS on: " << interface << std::endl;
     if (interface == "lo") {
         ChannelFactory::Instance()->Init(1, interface);
     } else {
@@ -445,34 +413,28 @@ int main(int argc, char** argv) {
     lowstate_subscriber->InitChannel(std::bind(StateHandler, std::placeholders::_1), 1);
     bmsstate_subscriber->InitChannel(std::bind(BmsStateHandler, std::placeholders::_1), 1);
     
-    // Start command receiver thread
     std::thread recv_thread(CommandReceiverLoop);
-    
-    // Start DDS publisher loop
     std::thread pub_thread(PublisherLoop, lowcmd_publisher);
     
-    std::cout << "✅ R1 DDS UDP Bridge initialized!" << std::endl;
-    std::cout << "   - Listening on port 12346 for Commands" << std::endl;
-    std::cout << "   - Streaming States on port 12345" << std::endl;
-    std::cout << "   - Waiting for DDS connection..." << std::endl;
+    std::cout << "✅ DDS Bridge Initialized" << std::endl;
+    std::cout << "   - Port 12346 for commands" << std::endl;
+    std::cout << "   - Port 12345 for states" << std::endl;
     
     while (!got_state && running) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     
     if (running) {
-        std::cout << "🟢 Connection established! Bridge is active." << std::endl;
+        std::cout << "[Bridge] Connection established. Active." << std::endl;
     }
     
     while (running) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     
-    // Cleanup
-    if (recv_thread.joinable()) recv_thread.join();
-    if (pub_thread.joinable()) pub_thread.join();
+    recv_thread.join();
+    pub_thread.join();
     
-    // Reset DDS entities before closing sockets
     lowstate_subscriber.reset();
     bmsstate_subscriber.reset();
     lowcmd_publisher.reset();
@@ -481,6 +443,6 @@ int main(int argc, char** argv) {
     close(sock_send);
     close(sock_recv);
     
-    std::cout << "🛑 Bridge stopped successfully." << std::endl;
+    std::cout << "[Bridge] Stopped." << std::endl;
     return 0;
 }

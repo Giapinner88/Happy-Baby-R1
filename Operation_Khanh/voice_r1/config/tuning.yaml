@@ -1,0 +1,57 @@
+# Đồng bộ từ máy dev; không đặt API key tại đây. Sửa xong restart hb_voice.
+
+openai:
+  # Đang chạy ổn định; chỉ đổi model trong đợt kiểm thử riêng.
+  # Model Realtime (speech-to-speech) ngon nhất của OpenAI, ưu tiên từ trên xuống:
+  #   - "gpt-realtime-2.1"        : mới nhất, reasoning + tool use.
+  #   - "gpt-realtime-2.1-mini"   : bản mini của 2.1, rẻ/nhanh hơn.
+  #   - "gpt-realtime-2"          : reasoning + tool use, trước bản 2.1.
+  #   - "gpt-realtime-1.5"        : giọng tốt nhất, không reasoning.
+  #   - "gpt-realtime-translate"  : chuyên dịch giọng nói trực tiếp.
+  model: "gpt-realtime"
+
+  # Gợi ý: marin/cedar. Khác: alloy, ash, ballad, coral, echo, sage, shimmer, verse.
+  voice: "echo"
+
+  # 0.25-1.5; gợi ý sự kiện: 0.95-1.05.
+  speed: 1.0
+  language: "vi"
+
+  # 1-4096; 512 phù hợp câu trả lời tối đa 3 câu.
+  max_response_tokens: 512
+
+input:
+  # r1_multicast hoặc alsa_usb; USB cần ALSA_DEVICE trong /etc/hb/stack.env.
+  source: "r1_multicast"
+
+  # -12 đến +12 dB; +6 dB tăng biên độ mic khoảng 2 lần.
+  gain_db: 6.0
+
+  # auto: mic robot=far_field, mic USB=near_field. Hoặc: near_field/far_field/off.
+  noise_reduction: "auto"
+
+audio:
+  # 0-100; hiện tối đa. Nếu quá lớn/rè, giảm về 75-85.
+  response_volume_percent: 100
+
+  # 0.0-1.0; chỉ giảm PCM, không khuếch đại để tránh vỡ tiếng.
+  response_gain: 1.0
+
+activation:
+  # both | high_disarmed | high_armed
+  mode: "both"
+
+  # Cho voice hoạt động trong lúc high-level đang khởi động.
+  allow_during_startup: true
+  startup_grace_s: 100
+
+resilience:
+  # Hết thời gian này mà OpenAI chưa sẵn sàng thì tạo session mới.
+  connect_timeout_s: 12
+  reconnect_initial_s: 2
+  reconnect_max_s: 30
+  watchdog_interval_s: 1
+
+logging:
+  # Chỉ bật khi chẩn đoán audio.
+  audio_debug: false

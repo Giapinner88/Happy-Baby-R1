@@ -9,19 +9,18 @@ import numpy as np
 import pygame
 
 class Theme:
-    BG_MAIN = (11, 14, 20)        # #0B0E14
-    BG_PANEL = (19, 26, 36)       # #131A24
-    BDR_DEFAULT = (35, 43, 58)    # #232B3A
-    BDR_SELECTED = (242, 169, 59) # #F2A93B
-    TXT_TITLE = (230, 234, 242)   # #E6EAF2
-    TXT_LABEL = (107, 118, 134)   # #6B7686
-    VAL_REAL = (95, 227, 139)     # #5FE38B
-    VAL_TGT = (79, 195, 242)      # #4FC3F2
-    ALERT = (242, 85, 90)         # #F2555A
-    ACCENT = (242, 169, 59)       # #F2A93B
-    # Darker "physical edge" borders for the two big action buttons
-    BDR_ALERT = (193, 58, 62)     # #C13A3E - darker edge for STOP
-    BDR_ACCENT_DK = (196, 133, 15)  # #C4850F - darker edge for ENABLE
+    BG_MAIN = (11, 14, 20)
+    BG_PANEL = (19, 26, 36)
+    BDR_DEFAULT = (35, 43, 58)
+    BDR_SELECTED = (242, 169, 59)
+    TXT_TITLE = (230, 234, 242)
+    TXT_LABEL = (107, 118, 134)
+    VAL_REAL = (95, 227, 139)
+    VAL_TGT = (79, 195, 242)
+    ALERT = (242, 85, 90)
+    ACCENT = (242, 169, 59)
+    BDR_ALERT = (193, 58, 62)
+    BDR_ACCENT_DK = (196, 133, 15)
 
 def lighten(color, amt):
     return tuple(min(255, int(c + (255 - c) * amt)) for c in color)
@@ -32,7 +31,6 @@ def darken(color, amt):
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
-# Joint definitions for R1 (26 joints)
 JOINT_NAMES = [
     "left_hip_pitch", "left_hip_roll", "left_hip_yaw", "left_knee", "left_ankle_pitch", "left_ankle_roll",
     "right_hip_pitch", "right_hip_roll", "right_hip_yaw", "right_knee", "right_ankle_pitch", "right_ankle_roll",
@@ -42,58 +40,54 @@ JOINT_NAMES = [
     "head_pitch", "head_yaw"
 ]
 
-# Map from joint index (0-25) to Unitree SDK motor index
 JOINT_IDX = [
-    0, 1, 2, 3, 4, 5,       # Left leg (0-5)
-    6, 7, 8, 9, 10, 11,     # Right leg (6-11)
-    12, 13,                 # Waist (12-13)
-    15, 16, 17, 18, 19,     # Left arm (14-18)
-    22, 23, 24, 25, 26,     # Right arm (19-23)
-    29, 30                  # Head (24-25)
+    0, 1, 2, 3, 4, 5,
+    6, 7, 8, 9, 10, 11,
+    12, 13,
+    15, 16, 17, 18, 19,
+    22, 23, 24, 25, 26,
+    29, 30
 ]
 
-# Safe limits: General joints at 90% range, Head at max range, Shoulder roll clamped to avoid hip collision
 SAFE_LIMITS = [
-    [-152.0, 130.0],  # 0: left_hip_pitch
-    [-52.0, 92.0],    # 1: left_hip_roll
-    [-141.0, 141.0],  # 2: left_hip_yaw
-    [-2.0, 131.0],    # 3: left_knee
-    [-45.0, 28.0],    # 4: left_ankle_pitch
-    [-13.0, 13.0],    # 5: left_ankle_roll
-    [-152.0, 130.0],  # 6: right_hip_pitch
-    [-92.0, 52.0],    # 7: right_hip_roll
-    [-141.0, 141.0],  # 8: right_hip_yaw
-    [-2.0, 131.0],    # 9: right_knee
-    [-45.0, 28.0],    # 10: right_ankle_pitch
-    [-13.0, 13.0],    # 11: right_ankle_roll
-    [-27.0, 27.0],    # 12: waist_roll
-    [-135.0, 135.0],  # 13: waist_yaw
-    [-165.0, 105.0],  # 14: left_shoulder_pitch
-    [5.0, 134.0],     # 15: left_shoulder_roll (Clamped min to 5.0 instead of -13.0 to avoid hip collision)
-    [-99.0, 99.0],    # 16: left_shoulder_yaw
-    [-46.0, 116.0],   # 17: left_elbow
-    [-99.0, 99.0],    # 18: left_wrist_roll
-    [-165.0, 105.0],  # 19: right_shoulder_pitch
-    [-134.0, -5.0],   # 20: right_shoulder_roll (Clamped max to -5.0 instead of 13.0 to avoid hip collision)
-    [-99.0, 99.0],    # 21: right_shoulder_yaw
-    [-46.0, 116.0],   # 22: right_elbow
-    [-99.0, 99.0],    # 23: right_wrist_roll
-    [-20.0, 20.0],    # 24: head_pitch (Max raw range)
-    [-34.0, 34.0]     # 25: head_yaw (Max raw range)
+    [-152.0, 130.0],
+    [-52.0, 92.0],
+    [-141.0, 141.0],
+    [-2.0, 131.0],
+    [-45.0, 28.0],
+    [-13.0, 13.0],
+    [-152.0, 130.0],
+    [-92.0, 52.0],
+    [-141.0, 141.0],
+    [-2.0, 131.0],
+    [-45.0, 28.0],
+    [-13.0, 13.0],
+    [-27.0, 27.0],
+    [-135.0, 135.0],
+    [-165.0, 105.0],
+    [5.0, 134.0],
+    [-99.0, 99.0],
+    [-46.0, 116.0],
+    [-99.0, 99.0],
+    [-165.0, 105.0],
+    [-134.0, -5.0],
+    [-99.0, 99.0],
+    [-46.0, 116.0],
+    [-99.0, 99.0],
+    [-20.0, 20.0],
+    [-34.0, 34.0]
 ]
 
-# Global variables for communication
 robot_state = None
 state_lock = threading.Lock()
 cmd_lock = threading.Lock()
 motors_enabled = False
-target_q = None # Will initialize to current angles upon first received state
+target_q = None
 running = True
 
-# UDP configuration
 UDP_IP = "127.0.0.1"
-PORT_SEND = 12346  # Sending commands to C++
-PORT_RECV = 12345  # Receiving state from C++
+PORT_SEND = 12346
+PORT_RECV = 12345
 
 STRUCT_STATE_FMT = '<B104f6f'
 STRUCT_CMD_FMT = '<B26f'
@@ -129,8 +123,6 @@ def udp_receiver_loop():
             data, addr = sock_recv.recvfrom(2048)
             if len(data) == 441:
                 mode_val, *floats = struct.unpack(STRUCT_STATE_FMT, data)
-
-                # Extract joints data
                 joint_data = []
                 for i in range(26):
                     offset = i * 4
@@ -139,15 +131,12 @@ def udp_receiver_loop():
                     tau = floats[offset+2]
                     temp = floats[offset+3]
                     joint_data.append((q, dq, tau, temp))
-
-                # Extract IMU data
                 imu_data = floats[104:110]
-
                 with state_lock:
                     robot_state = DummyState(mode_val, joint_data, imu_data)
                     if target_q is None:
                         target_q = [jd[0] for jd in joint_data]
-                        print(">>> Đã nhận dữ liệu khớp thực tế từ Bridge C++. Khởi tạo vị trí đích an toàn!")
+                        print(">>> Synced targets to physical joint angles.")
         except socket.timeout:
             continue
         except Exception as e:
@@ -164,34 +153,25 @@ def udp_publisher_loop():
                 sock_send.sendto(data, (UDP_IP, PORT_SEND))
             except Exception as e:
                 pass
-        time.sleep(0.005) # 200 Hz
+        time.sleep(0.005)
 
-# ---------------------------------------------------------------------------
-# Responsive font system
-# ---------------------------------------------------------------------------
-# Fonts are rebuilt only when the layout (card size) actually changes -
-# never inside the per-frame draw calls - so resizing stays cheap.
-REFERENCE_COL_W = 245.0   # card width the base sizes below were designed for
+REFERENCE_COL_W = 245.0
 FONT_MIN_SCALE = 0.62
 FONT_MAX_SCALE = 1.25
 
 BASE_SIZES = {
-    "joint_name": 14,  # joint card name (inside the card, scales with card size)
-    "label": 12,       # small gray labels (Limit:, Real:, ...) - scales with card size
-    "mono_bold": 13,   # Real/Tgt values (bold, emphasized) - scales with card size
-    "mono": 12,        # Vel/Trq/Temp values - scales with card size
+    "joint_name": 14,
+    "label": 12,
+    "mono_bold": 13,
+    "mono": 12,
 }
 
-# Fixed sizes for chrome elements (status bar, column headers, bottom control
-# panel) whose position is hand-tuned in pixels. Letting these grow with the
-# card grid would push them into neighboring elements, so they are built
-# once and never rebuilt on resize.
 UI_SIZES = {
-    "status": 16,        # top bar status / selected joint text
-    "header": 14,        # column headers ("LEFT LEG"...), panel section titles
-    "small": 13,         # button labels, instructions
-    "button_title": 18,  # STOP / ENABLE MOTORS main label
-    "button_sub": 13,    # STOP / ENABLE MOTORS sub label
+    "status": 16,
+    "header": 14,
+    "small": 13,
+    "button_title": 18,
+    "button_sub": 13,
 }
 
 def build_ui_fonts():
@@ -213,10 +193,7 @@ def build_fonts(scale):
         "mono": pygame.font.SysFont("Courier New", s(BASE_SIZES["mono"]), bold=True),
     }
 
-def draw_button(screen, rect, base_color, border_color, label_lines, label_colors,
-                 fonts, hover=False, pressed=False):
-    """Draws a flat button with a physical-looking border, hover glow and
-    a pressed state (thicker border) - no gradients/drop shadows."""
+def draw_button(screen, rect, base_color, border_color, label_lines, label_colors, fonts, hover=False, pressed=False):
     fill = lighten(base_color, 0.12) if hover else base_color
     border = lighten(border_color, 0.25) if hover else border_color
     border_w = 4 if pressed else 2
@@ -224,7 +201,6 @@ def draw_button(screen, rect, base_color, border_color, label_lines, label_color
     pygame.draw.rect(screen, fill, rect, border_radius=8)
     pygame.draw.rect(screen, border, rect, width=border_w, border_radius=8)
 
-    # small triangular "power" indicator in the corner instead of an external icon font
     tri_cx, tri_cy = rect.right - 18, rect.top + 16
     tri_color = darken(fill, 0.35)
     pygame.draw.polygon(
@@ -247,35 +223,29 @@ def draw_button(screen, rect, base_color, border_color, label_lines, label_color
 def main():
     global motors_enabled, target_q, running
 
-    # Parse interface argument
     interface = "eno1"
     if len(sys.argv) >= 2:
         interface = sys.argv[1]
 
-    print(f"📡 Đang kết nối GUI với Bridge C++ qua localhost...")
-    print(f">>> Interface mạng (hiển thị): {interface}")
+    print(f"📡 Connecting to C++ bridge...")
+    print(f">>> Network interface: {interface}")
 
-    # Start background UDP threads
     pub_thread = threading.Thread(target=udp_publisher_loop, daemon=True)
     pub_thread.start()
 
     recv_thread = threading.Thread(target=udp_receiver_loop, daemon=True)
     recv_thread.start()
 
-    # Initialize Pygame GUI
     pygame.init()
     screen_w, screen_h = 1600, 1200
     screen = pygame.display.set_mode((screen_w, screen_h), pygame.RESIZABLE)
-    pygame.display.set_caption("R1 Low-Level Joint Tuning GUI (C++ Bridge)")
-    clock = pygame.time.Clock()
+    pygame.display.set_caption("R1 Low-Level Joint Tuning GUI")
+    clock = clock = pygame.time.Clock()
 
-    # Fonts start at scale 1.0; rebuilt whenever the computed card width changes
     fonts = build_fonts(1.0)
     last_font_col_w = None
-    # Fixed-size chrome fonts (status bar, headers, panel) - built once, never resized
     fonts_ui = build_ui_fonts()
 
-    # Grouping columns layout
     groups = [
         {"name": "LEFT LEG", "joints": list(range(0, 6))},
         {"name": "RIGHT LEG", "joints": list(range(6, 12))},
@@ -286,19 +256,16 @@ def main():
 
     current_w, current_h = screen_w, screen_h
 
-    # Navigation parameters
-    selected_joint = 24 # Default to head_pitch
-    step_size = 3.0     # Default step size in degrees
-    speed_dps = 5.0     # Default continuous speed in degrees/second
+    selected_joint = 24
+    step_size = 3.0
+    speed_dps = 5.0
 
-    # UI Control bounds
     btn_steps = [1.0, 3.0, 5.0, 7.0]
     btn_speeds = [3.0, 5.0, 10.0, 15.0]
 
     while running:
-        dt = clock.tick(60) / 1000.0 # Delta time in seconds
+        dt = clock.tick(60) / 1000.0
 
-        # Read current physical angles from State
         curr_q_deg = [0.0] * 26
         with state_lock:
             if robot_state is not None:
@@ -306,14 +273,10 @@ def main():
                     sdk_idx = JOINT_IDX[i]
                     curr_q_deg[i] = math.degrees(robot_state.motor_state[sdk_idx].q)
 
-        # Grid parameters calculated dynamically
         margin_x = 20
         margin_y = 15
         spacing_x = 15
         spacing_y = 10
-        # Reserve enough room below the 50px status bar for the column
-        # header text (fixed-size font) plus breathing room on both sides,
-        # so headers never collide with the bar above or the cards below.
         header_font_h = fonts_ui["header"].get_height()
         bar_bottom = 50
         header_gap_top = 12
@@ -324,7 +287,6 @@ def main():
         col_w = (current_w - 2 * margin_x - 5 * spacing_x) / 6.0
         card_h = (grid_h - 5 * spacing_y) / 6.0
 
-        # --- Rebuild fonts only when card size actually changed (cheap check) ---
         rounded_col_w = round(col_w)
         if rounded_col_w != last_font_col_w:
             scale = clamp(col_w / REFERENCE_COL_W, FONT_MIN_SCALE, FONT_MAX_SCALE)
@@ -336,14 +298,10 @@ def main():
         font_mono_bold = fonts["mono_bold"]
         font_mono_normal = fonts["mono"]
 
-        # Real width of the two panel titles, computed once per frame and
-        # shared by both click-hit-testing and drawing below, so the
-        # buttons are always exactly where they visually appear.
         _speed_title_w = fonts_ui["header"].size("CONTINUOUS MOVE (W/S, speed 1-4):")[0]
         _step_title_w = fonts_ui["header"].size("STEP MOVE (A/D, step 5-8):")[0]
         btns_start_x = 20 + max(_speed_title_w, _step_title_w) + 30
 
-        # Event loop
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -354,11 +312,8 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 elif event.key == pygame.K_SPACE:
-                    # EMERGENCY STOP
                     motors_enabled = False
                     print("🛑 EMERGENCY STOP: Motors Disabled!")
-
-                # Single-press Step Adjustments using A/D
                 elif event.key == pygame.K_d:
                     if target_q is not None and motors_enabled:
                         with cmd_lock:
@@ -373,8 +328,6 @@ def main():
                             val_deg = math.degrees(target_q[selected_joint]) - step_size
                             val_deg = np.clip(val_deg, lim_min, lim_max)
                             target_q[selected_joint] = math.radians(val_deg)
-
-                # Enable motors / Lock position using Enter or E key
                 elif event.key == pygame.K_RETURN or event.key == pygame.K_e:
                     if robot_state is not None:
                         with cmd_lock:
@@ -383,11 +336,9 @@ def main():
                                 sdk_idx = JOINT_IDX[i]
                                 target_q[i] = robot_state.motor_state[sdk_idx].q
                             motors_enabled = True
-                            print("🟢 Motors Enabled! Posture locked at current position.")
+                            print("🟢 Motors Enabled! Locked at current position.")
                     else:
                         print("⚠️ Cannot enable motors: No State packet received yet!")
-
-                # Speed settings keys 1-4
                 elif event.key == pygame.K_1:
                     speed_dps = 3.0
                 elif event.key == pygame.K_2:
@@ -396,8 +347,6 @@ def main():
                     speed_dps = 10.0
                 elif event.key == pygame.K_4:
                     speed_dps = 15.0
-
-                # Step size settings keys 5-8
                 elif event.key == pygame.K_5:
                     step_size = 1.0
                 elif event.key == pygame.K_6:
@@ -406,8 +355,6 @@ def main():
                     step_size = 5.0
                 elif event.key == pygame.K_8:
                     step_size = 7.0
-
-                # Column navigation keys
                 elif event.key == pygame.K_LEFT:
                     for gi, g in enumerate(groups):
                         if selected_joint in g["joints"]:
@@ -443,8 +390,6 @@ def main():
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = event.pos
-
-                # Check clicks on Joint Cards
                 for col_idx, g in enumerate(groups):
                     x = margin_x + col_idx * (col_w + spacing_x)
                     for row_idx, j_id in enumerate(g["joints"]):
@@ -453,25 +398,21 @@ def main():
                         if card_rect.collidepoint(mx, my):
                             selected_joint = j_id
 
-                # Check clicks on Speed Preset buttons
                 for bi, val in enumerate(btn_speeds):
                     btn_rect = pygame.Rect(btns_start_x + bi * 85, current_h - 150, 75, 35)
                     if btn_rect.collidepoint(mx, my):
                         speed_dps = val
 
-                # Check clicks on Step Preset buttons
                 for bi, val in enumerate(btn_steps):
                     btn_rect = pygame.Rect(btns_start_x + bi * 85, current_h - 100, 75, 35)
                     if btn_rect.collidepoint(mx, my):
                         step_size = val
 
-                # Check clicks on Emergency STOP button (Spacebar)
                 btn_stop = pygame.Rect(current_w * 0.42, current_h - 150, current_w * 0.13, 100)
                 if btn_stop.collidepoint(mx, my):
                     motors_enabled = False
                     print("🛑 EMERGENCY STOP: Motors Disabled!")
 
-                # Check clicks on Enable / Snap button
                 btn_enable = pygame.Rect(current_w * 0.56, current_h - 150, current_w * 0.13, 100)
                 if btn_enable.collidepoint(mx, my):
                     if robot_state is not None:
@@ -481,11 +422,10 @@ def main():
                                 sdk_idx = JOINT_IDX[i]
                                 target_q[i] = robot_state.motor_state[sdk_idx].q
                             motors_enabled = True
-                            print("🟢 Motors Enabled! Posture locked at current position.")
+                            print("🟢 Motors Enabled! Locked at current position.")
                     else:
                         print("⚠️ Cannot enable motors: No State packet received yet!")
 
-        # Continuous adjustments (while keys are held down)
         keys_pressed = pygame.key.get_pressed()
         if target_q is not None and motors_enabled:
             adjust_dir = 0.0
@@ -501,13 +441,9 @@ def main():
                     val_deg = np.clip(val_deg, lim_min, lim_max)
                     target_q[selected_joint] = math.radians(val_deg)
 
-        # Draw UI background directly to the screen
         screen.fill(Theme.BG_MAIN)
-
-        # Get mouse position
         mx, my = pygame.mouse.get_pos()
 
-        # 1. Top Status Bar
         bar_rect = pygame.Rect(0, 0, current_w, 50)
         pygame.draw.rect(screen, Theme.BG_PANEL, bar_rect)
         pygame.draw.line(screen, Theme.BDR_DEFAULT, (0, 50), (current_w, 50), 1)
@@ -536,17 +472,15 @@ def main():
         lbl_net = fonts_ui["small"].render(net_text, True, Theme.TXT_LABEL)
         screen.blit(lbl_net, (current_w - lbl_net.get_width() - 20, 17))
 
-        # 2. Draw columns and cards
-        # --- fixed vertical anatomy of a card, computed once per frame ---
         card_top_pad = 8
         name_block_h = font_sans_bold.get_height() + 6
         bar_h = 4
-        bar_bottom_pad = 10          # gap from bottom edge of card to the bar
-        bar_top_gap = 6              # minimum gap between last text row and the bar
+        bar_bottom_pad = 10
+        bar_top_gap = 6
         content_top = card_top_pad + name_block_h
         content_bottom = card_h - bar_bottom_pad - bar_h - bar_top_gap
         content_h = max(20, content_bottom - content_top)
-        row_h = content_h / 4.0      # 4 rows: Limit | Real/Tgt | Vel | Trq/Temp
+        row_h = content_h / 4.0
         bar_y_offset = card_h - bar_bottom_pad - bar_h
 
         header_y = bar_bottom + header_gap_top
@@ -575,7 +509,6 @@ def main():
                 pygame.draw.rect(screen, bg_color, card_rect, border_radius=6)
                 pygame.draw.rect(screen, border_color, card_rect, width=border_width, border_radius=6)
 
-                # Joint name
                 j_name_clean = f"[{j_id}] {JOINT_NAMES[j_id]}"
                 text_name = font_sans_bold.render(j_name_clean, True, Theme.TXT_TITLE)
                 screen.blit(text_name, (x + 12, y + card_top_pad))
@@ -639,7 +572,6 @@ def main():
                 screen.blit(text_tmp_lbl, (x + half_col + 4, row_y))
                 screen.blit(text_tmp_val, (x + half_col + 44, row_y))
 
-                # Progress-bar gauge - now always sits below content_bottom, never overlaps text
                 range_span = lim_max - lim_min
                 pct = 0.5
                 if range_span > 0:
@@ -654,7 +586,6 @@ def main():
                     fill_rect = pygame.Rect(x + 12, y + bar_y_offset, fill_w, bar_h)
                     pygame.draw.rect(screen, Theme.VAL_REAL, fill_rect, border_radius=2)
 
-        # 3. Draw IMU Telemetry in Column 5
         imu_x = margin_x + 5 * (col_w + spacing_x)
         imu_y = grid_y_start
         imu_h = 4 * card_h + 3 * spacing_y
@@ -720,7 +651,6 @@ def main():
         screen.blit(lbl_gz_lbl, (imu_x + 12, imu_y + 20 + 6 * line_imu_h))
         screen.blit(lbl_gz_val, (imu_x + 65, imu_y + 20 + 6 * line_imu_h))
 
-        # 4. Draw bottom control panel
         panel_rect = pygame.Rect(0, current_h - 180, current_w, 180)
         pygame.draw.rect(screen, Theme.BG_PANEL, panel_rect)
         pygame.draw.line(screen, Theme.BDR_DEFAULT, (0, current_h - 180), (current_w, current_h - 180), 1)
@@ -730,7 +660,6 @@ def main():
         screen.blit(text_speed_title, (20, current_h - 142))
         screen.blit(text_step_title, (20, current_h - 92))
 
-        # btns_start_x computed earlier this frame (shared with click hit-testing)
         for bi, val in enumerate(btn_speeds):
             btn_rect = pygame.Rect(btns_start_x + bi * 85, current_h - 150, 75, 35)
             is_active = (abs(speed_dps - val) < 0.1)
@@ -761,7 +690,6 @@ def main():
             lbl_rect = lbl.get_rect(center=btn_rect.center)
             screen.blit(lbl, lbl_rect)
 
-        # --- Emergency STOP button (Spacebar) ---
         btn_stop = pygame.Rect(current_w * 0.42, current_h - 150, current_w * 0.13, 100)
         stop_hover = btn_stop.collidepoint(mx, my)
         stop_pressed = keys_pressed[pygame.K_SPACE]
@@ -772,7 +700,6 @@ def main():
             fonts_ui, hover=stop_hover, pressed=stop_pressed
         )
 
-        # --- Enable / Snap button ---
         btn_enable = pygame.Rect(current_w * 0.56, current_h - 150, current_w * 0.13, 100)
         enable_hover = btn_enable.collidepoint(mx, my)
         enable_pressed = keys_pressed[pygame.K_RETURN] or keys_pressed[pygame.K_e]
@@ -791,12 +718,8 @@ def main():
             fonts_ui, hover=enable_hover, pressed=enable_pressed
         )
 
-        # (Instruction block removed - shortcut hints now live inline in
-        # each control's own label instead of a separate legend.)
-
         pygame.display.flip()
 
-    # Disable all motors on exit
     motors_enabled = False
     print("🛑 Exiting... Disabling all motors.")
     time.sleep(0.1)

@@ -1,0 +1,721 @@
+
+=== File: src/main.cpp ===
+Line   1: Entry point for HB R1 High-Level Runner
+Line  14: SIGTERM (systemctl stop/restart, reboot) và SIGINT (Ctrl-C) chỉ đặt cờ atomic —
+Line  15: async-signal-safe. Vòng lặp chính thấy cờ -> thoát êm -> Damping() cuối Run() chạy
+Line  16: (nếu đã armed), thay vì bị kill giữa lúc đang giữ robot đứng -> rơi cứng.
+Line  19: Get project root directory based on the executable path
+Line  30: namespace
+
+=== File: src/util/Filters.hpp ===
+Line   6: Bộ lọc thông thấp bậc 1 (First-order low-pass filter)
+Line  11: Truyền thẳng (bỏ lọc)
+Line  34: Bộ lọc thông thấp bậc 1 dạng vector
+
+=== File: src/estimation/StateEstimator.hpp ===
+Line  13: Trạng thái robot đã chuẩn hóa
+Line  15: Thứ tự khớp của policy
+Line  16: Vận tốc khớp đã lọc
+Line  19: IMU pelvis (wxyz)
+Line  20: Vận tốc góc đã lọc
+Line  31: Đọc LowState_ thô và chuẩn hóa thành RobotState cho các module khác
+Line  51: Map khớp từ SDK sang thứ tự policy
+Line  63: Lọc thông số IMU
+Line  67: Quat đã bù pitch — luôn dùng cho projected_gravity (locomotion + fall-detector).
+Line  69: state_.quat chỉ bị trim khi bật cờ -> khi đó dance/Mimic (TorsoQuat) mới thấy bù pitch.
+Line  82: Tính projected gravity theo hệ tọa độ robot (từ quat đã bù pitch)
+
+=== File: src/gait/GaitScheduler.hpp ===
+Line   8: Đồng hồ tạo pha di chuyển (gait clock)
+Line  18: Trả về pha obs (sin/cos) dựa trên chuẩn hóa lệnh
+
+=== File: src/safety/BatteryMonitor.hpp ===
+Line  33: % pin, 0-100
+Line  34: âm = đang xả
+Line  35: đã từng nhận gói nào chưa
+Line  37: true nếu gói pin gần nhất còn "tươi" (nhận trong stale_s giây gần đây).
+Line  38: Subscribe nhầm topic -> không nhận gì -> Fresh() = false -> Application cảnh báo,
+Line  39: tránh "im lặng" bị hiểu nhầm là "pin đầy".
+
+=== File: src/safety/FallDetector.hpp ===
+Line  11: Bộ phát hiện ngã (Fall Detector) có debounce tránh spike nhiễu
+Line  21: Lớp an toàn tốc độ góc khớp (ngoài độ nghiêng): vung loạn -> ngã.
+Line  35: Kiểm tra góc nghiêng, vận tốc góc thân, và tốc độ góc khớp (max|dq|) để phát hiện ngã/
+Line  36: vung loạn. max_joint_speed = max|dq| trên toàn bộ khớp, do caller tính sẵn (kèm chỉ số
+Line  37: khớp worst_joint để ghi log; -1 nếu không có).
+
+=== File: src/audio/MusicPlayer.hpp ===
+Line  22: Quản lý loa phát nhạc và giọng nói thông báo
+Line  39: Khởi tạo AudioClient
+Line  55: Phát nhạc nền từ file
+Line  60: Phát giọng nói (nếu là đường dẫn file sẽ phát file, ngược lại dùng TTS)
+Line  66: Dừng phát âm thanh
+
+=== File: src/config/Tuning.hpp ===
+Line   9: Struct chứa các tham số có thể tune (load từ tuning.yaml)
+Line  11: Mạng / giao tiếp
+Line  14: Cấu hình điều khiển headless
+Line  17: Bộ lọc IMU & khớp
+Line  18: Dải thử: 15-25 Hz. 0.0 để tắt.
+Line  19: Dải thử: 10-20 Hz. 0.0 để tắt.
+Line  20: Bù góc pitch cho gravity. Dải thử: ±1..4°.
+Line  21: false = trim chỉ ảnh hưởng projected_gravity (locomotion + fall-detector) — dance KHÔNG bị đụng.
+Line  22: true  = trim áp thẳng vào state_.quat -> dance/Mimic (TorsoQuat) cũng chịu bù pitch.
+Line  25: Gains khi không chạy policy
+Line  31: Tỉ lệ scale gains policy (mặc định 1.0)
+Line  35: Giới hạn tốc độ đi bộ (vx, vy, yaw)
+Line  39: Giới hạn gia tốc lệnh di chuyển (tăng tốc / đổi hướng)
+Line  44: Giới hạn giảm tốc lệnh (khi lệnh về 0 — thả stick); < accel = lướt hãm mềm
+Line  49: Chuyển trạng thái & blend tư thế
+Line  58: Thời gian chờ robot dừng hẳn trước khi chuyển trạng thái
+Line  62: Phát voice "đã khóa đứng" TRƯỚC, chờ ngần này rồi mới ép cứng (người đỡ kịp phản ứng).
+Line  63: Khi đến từ đi bộ, robot chờ DƯỚI POLICY nên vẫn tự giữ thăng bằng.
+Line  66: Sau khi huỷ điệu nhảy, khóa lệnh "khóa cứng" trong ngần này giây — tránh bấm 0 hai
+Line  67: lần quá nhanh làm robot gồng cứng giữa sàn khi chưa ai kịp tới đỡ.
+Line  70: Sau khi VỪA vào STAND LOCK, chặn lệnh "ngồi" (L2+X) trong ngần này giây — chống bấm
+Line  71: dội / kẹt phím / gói tay cầm nhiễu khiến robot vừa đứng xong lại ngồi ngay lập tức.
+Line  74: Giới hạn tốc độ thay đổi góc khớp policy (khuyến nghị >= 15)
+Line  77: Bộ phát hiện ngã
+Line  81: hạ 6->4: bắt lurch bàn giao (33°+~4.6rad/s)
+Line  84: Lớp an toàn tốc độ góc khớp: max|dq| trên 24 khớp vượt limit liên tục quá debounce
+Line  85: -> coi như "vung loạn" -> Damping (giống ngã). Ngưỡng tạm cao để khỏi báo oan giữa bài.
+Line  87: rad/s
+Line  90: Cấu hình ngồi ghế (Nút 9 / L2+X, và tự động khi pin cạn — KHÔNG AI ĐỠ, phải tự cân bằng)
+Line  91: Tư thế đích: gập hông + gối. Thân ĐỔ VỀ TRƯỚC và tay VƯƠN RA để giữ trọng tâm
+Line  92: trên bàn chân trong suốt lúc hạ (nếu giữ thân thẳng đứng, trọng tâm lùi ra sau gót -> ngã ngửa).
+Line  94: HAI ĐỘ SÂU TÁCH BẠCH (bài học từ lần ngã khi trộn lẫn 2 khái niệm này):
+Line  95: - "desc" (sit_hip_deg/sit_knee_deg/sit_spread): tư thế lúc HẠ, KHI CHƯA CHẮC GHẾ ĐÃ ĐỠ
+Line  96: -> PHẢI tự cân bằng được (đã kiểm MuJoCo: 150/100 + lean58 -> biên +9.2cm, xem
+Line  97: docs/PLAN_sit_balanced.md). ĐỪNG đổi các số này nếu chưa re-verify bằng mô phỏng.
+Line  98: - "rest" (sit_rest_*): tư thế NGỒI CUỐI sau khi ghế ĐÃ đỡ trọng lượng (đo trên robot
+Line  99: thật, limp, đã ngồi ổn) — nông hơn, dạng chân + xoay mũi chân, tay trên đùi. Chỉ áp
+Line 100: dụng ở pha 2 (giao lực) trở đi, không dùng làm đích cho pha hạ.
+Line 101: [DESC] Độ gập hông lúc hạ -> ghế ~43cm. Dải thử: 130-160.
+Line 102: [DESC] Độ gập gối lúc hạ. Dải thử: 90-115.
+Line 103: [DESC] Dạng chân NHẸ lúc hạ (rad, đã kiểm an toàn).
+Line 104: [REST] Độ gập hông CUỐI, đo thực trên ghế (ghế đã đỡ).
+Line 105: [REST] Độ gập gối CUỐI, đo thực.
+Line 106: [REST] Dạng chân CUỐI, đo thực (~26°, ghế đã đỡ nên an toàn).
+Line 107: [REST] Xoay mũi chân ra CUỐI, đo thực (~26°).
+Line 108: Đổ thân về trước khi hạ. Dải thử: 40 - 70.
+Line 109: Đổ thân còn lại sau khi mông chạm ghế.
+Line 110: Vai vươn ra trước khi hạ (rad, âm = ra trước).
+Line 111: Khuỷu duỗi bớt khi vươn tay (rad).
+Line 112: Tư thế tay CUỐI khi ngồi hẳn = TAY ĐẶT TRÊN ĐÙI (đo thực): vai buông ~0, khuỷu cong nhẹ.
+Line 113: Vai lúc ngồi hẳn (rad). 0 = buông thẳng xuống.
+Line 114: Khuỷu lúc ngồi hẳn (rad) để bàn tay chạm đùi.
+Line 115: Bám mặt đất bằng IMU. 0 = tắt, 1 = ép phẳng tuyệt đối.
+Line 117: Thời gian giao trọng lượng cho ghế + thu tay.
+Line 125: Đứng lên / Nằm xuống (L2+X) — phát lại quỹ đạo ghi từ built-in (xem
+Line 126: tools/record_motion.cpp). PD thuần, KHÔNG có policy cân bằng, nên lần chạy
+Line 127: thật đầu tiên phải có người đứng đỡ. Đường dẫn tương đối proj_dir.
+Line 136: nội suy êm từ tư thế hiện tại sang frame đầu clip
+Line 138: tốc độ phát lại (1.0 = đúng nhịp lúc ghi)
+Line 140: chặn bấm dội sau khi vừa xong 1 chiều
+Line 141: Bù cổ chân theo IMU khi phát lại (giữ lòng bàn chân phẳng với sàn dù thân lệch so
+Line 142: với lúc ghi). 0 = tắt, 0.4-0.6 nên dùng. Cần file .npz có 'torso_quat' (ghi bằng
+Line 143: bản record_motion mới); file cũ không có -> tự tắt.
+Line 145: rỗng = không phát
+Line 148: Chế độ an toàn khi mất điều khiển
+Line 152: ── P0-1: cổng chống xung đột built-in (kDisarmed) ──
+Line 153: Bật cổng: run_r1 KHÔNG publish gì tới khi built-in (bo .161) đã nhả quyền.
+Line 154: false = hành vi cũ (CHỈ dùng khi chắc chắn đã vào dev mode thủ công trước).
+Line 155: mặc định TẮT tới khi verify trên robot
+Line 156: lớp 1: phải giữ R1+R2 mới arm (chống boot-race)
+Line 157: giữ R1+R2 liên tục bấy nhiêu = ý định người
+Line 158: lớp 2: built-in im lowcmd bấy nhiêu = đã nhả
+Line 159: lớp 2-bis: chỉ tin "im" sau khi ĐÃ nghe built-in
+Line 160: số gói lowcmd built-in tối thiểu phải thấy
+Line 161: Ngắt xung đột: chỉ nhả quyền khi thấy >= arm_conflict_min gói lạ trong cửa sổ ms này.
+Line 162: Chống 1 gói lạc gây nhả oan; built-in thật phun ~621Hz nên vượt ngưỡng trong vài ms.
+Line 165: false = phát hiện conflict thì CHỈ log, KHÔNG nhả quyền (dùng khi chắc chắn built-in đã
+Line 166: tắt hẳn — để chạy/test dù có self-echo). true = nhả quyền như cũ (an toàn mặc định).
+Line 168: Nếu sau bao nhiêu giây không thấy gói built-in nào → bỏ qua điều kiện
+Line 169: arm_require_seen_builtin (robot đã ở Dev Mode từ trước khi service start).
+Line 170: 0 = tắt bypass. Khuyến nghị: 15.0s (boot bình thường built-in phát < 1s).
+Line 173: ── P0-3: giám sát pin (topic RIÊNG rt/lf/bmsstate) ──
+Line 178: sit | damp | voice
+Line 182: Âm thanh tiếng Việt
+Line 187: Hoãn voice_startup ngần này giây sau khi arm, tránh đè voice "Development Mode" của
+Line 188: built-in (phát khi giữ L2+R2 vào dev mode). 0 = phát ngay.
+Line 195: Các voice này để rỗng "" = không phát (user tự chèn file/câu sau).
+Line 196: khi chuyển sang tốc độ nhanh
+Line 197: khi chuyển sang tốc độ chậm
+Line 198: P0-1: phát hiện xung đột, đã nhả quyền
+Line 199: (arm xong không cần voice riêng — vào kIdle sẽ phát voice_startup)
+Line 200: P0-3: pin thấp (ngưỡng cảnh báo)
+Line 201: P0-3: pin cạn (ngưỡng nguy cấp)
+Line 202: L2+Y: xả lực hoàn toàn (kZeroTorque)
+Line 204: Giữ combo tay cầm bao lâu (giây) thì mới kích hoạt các động tác nguy hiểm
+Line 205: (L2+X nằm/đứng dậy, L2+Trái ngồi ghế) — chống bấm nhầm.
+Line 208: Watchdogs
+Line 213: Điệu nhảy (mimic)
+Line 216: Dải bám tốt: 0.6 - 0.85.
+Line 223: Soft-start: thời gian policy mimic tự đưa robot từ tư thế đứng vào tư thế mở màn
+Line 224: của clip (clip đứng yên trong lúc này, nhạc bật khi xong). Dải thử: 0.8 - 2.0 s.
+Line 227: Soft-stop: khi huỷ / hết điệu, mimic policy tự đưa robot VỀ tư thế đứng trong ngần
+Line 228: này giây rồi mới giao cho locomotion. Không có nó, locomotion nhận nguyên tư thế nhảy
+Line 229: (sâu, bất đối xứng) -> đạp loạn để gượng. Đây là MỐC TRẦN. Dải thử: 0.8 - 2.0
+Line 232: Bàn giao mimic->locomotion theo điều kiện: đứng đủ yên (nghiêng ngang < tilt VÀ
+Line 233: |gyro| thân < gyro) sau min_s -> giao ngay; nếu không thì tối đa mimic_cooldown_s.
+Line 234: sin(nghiêng ngang), ~7°
+Line 235: rad/s
+Line 236: cooldown tối thiểu trước khi cho giao sớm
+Line 238: Telemetry sim2real: tự mở một CSV cho mỗi điệu, ghi trên writer thread riêng.
+Line 240: 1..500; 100 Hz đủ phân tích rung >5 Hz.
+Line 241: giữ log sau handover để đo transient.
+Line 246: Khớp đầu
+Line 250: Nạp cấu hình từ file yaml
+
+=== File: src/config/Tuning.cpp ===
+Line  21: namespace
+Line 148: voice_mimic_2 -> idx 0
+Line 176: Parse dance_N folder name
+Line 200: Bỏ comment
+Line 213: Bỏ ngoặc kép
+
+=== File: src/config/RobotSpec.hpp ===
+Line   7: Kích thước mảng dữ liệu
+Line   8: Số khớp policy điều khiển
+Line   9: Số motor trong LowCmd/LowState
+Line  14: Thứ tự khớp của policy (khớp với ONNX metadata):
+Line  15: 0-5: Chân trái
+Line  16: 6-11: Chân phải
+Line  17: 12-13: Waist (roll, yaw)
+Line  18: 14-18: Tay trái
+Line  19: 19-23: Tay phải
+Line  21: Chân trái
+Line  22: Chân phải
+Line  23: Waist
+Line  24: Tay trái
+Line  25: Tay phải
+Line  28: Vị trí SDK joint -> motor index trong mảng IDL (LowCmd/LowState)
+Line  30: Chân trái
+Line  31: Chân phải
+Line  32: Waist
+Line  33: Tay trái
+Line  34: Tay phải
+Line  35: Đầu (yaw, pitch)
+Line  38: Hàm map từ index policy sang index motor IDL
+Line  49: Tư thế mặc định (default joint position)
+Line  51: Chân trái
+Line  52: Chân phải
+Line  53: Waist
+Line  54: Tay trái
+Line  55: Tay phải
+Line  58: Tỉ lệ tỷ lệ hành động (action scale)
+Line  60: Chân trái
+Line  61: Chân phải
+Line  62: Waist
+Line  63: Tay trái
+Line  64: Tay phải
+Line  67: PD gains cố định lúc huấn luyện policy
+Line  69: Chân trái
+Line  70: Chân phải
+Line  71: Waist
+Line  72: Tay trái
+Line  73: Tay phải
+Line  76: Hip/knee/waist dùng damping 3.0 (r1_constants.py đổi 2.0 -> 3.0 ngày 2026-07-09),
+Line  77: ankle/tay giữ 2.0. Policy mimic KHÔNG mang metadata nên rơi thẳng vào mảng này —
+Line  78: sai ở đây là chân bị under-damped so với lúc train.
+Line  80: Chân trái: hip x3, knee | ankle x2
+Line  81: Chân phải
+Line  82: Waist
+Line  83: Tay trái
+Line  84: Tay phải
+Line  87: Chu kỳ gait (gait period) cố định
+Line  91: Tần số điều khiển (500Hz DDS loop, 50Hz policy inference)
+Line  96: Index của torso trong dance clip (dance*.npz)
+Line  99: namespace spec
+
+=== File: src/policy/LocomotionController.hpp ===
+Line   5: Controller cho chính sách đi bộ (Locomotion flat policy)
+Line  12: Xây dựng vector quan sát 83 chiều (Flat Obs) khớp với ONNX metadata
+
+=== File: src/policy/OnnxPolicy.hpp ===
+Line  12: Lớp wrapper cho ONNX Runtime Session để load model và thực thi inference
+Line  20: Đọc một mảng metadata từ model (ví dụ: action scale, default position)
+
+=== File: src/policy/PolicyController.hpp ===
+Line  14: Dữ liệu điều khiển cung cấp cho controller tại mỗi bước
+Line  23: Lớp cơ sở cho các bộ điều khiển dựa trên chính sách (Policy Controller)
+Line  37: Ưu tiên nạp thông số từ ONNX metadata (nếu có), nếu không rơi về fallback
+Line  44: Thiếu metadata = deploy phải ĐOÁN gains. Đoán sai thì policy chạy sai trong im
+Line  45: lặng — đúng lỗi đã khiến mimic mất thăng bằng trên robot thật (mimic không có
+Line  46: metadata nên nuốt phải Kd=2.0 cũ trong khi train dùng 3.0).
+Line  47: Thà không chạy còn hơn chạy sai. Xem docs/PLAN_mimic_sim2real.md.
+Line  74: Thực hiện 1 bước inference (chạy ở 50Hz)
+Line  98: Trả về true nếu đọc được từ metadata; false nếu phải rơi về fallback.
+
+=== File: src/policy/OnnxPolicy.cpp ===
+Line  12: Get input dimensions and validate obs size
+Line  26: Check if model contains metadata
+
+=== File: src/policy/MimicController.hpp ===
+Line  10: Controller thực thi động tác nhảy (Mimic / Dance policy)
+Line  22: Đang soft-stop thì CHƯA coi là xong — Application phải chờ robot đứng thẳng đã.
+Line  25: Tư thế khớp của clip tại frame bắt đầu ("tư thế mở màn")
+Line  30: Soft-start đã xong -> clip bắt đầu chạy (đây là lúc bật nhạc)
+Line  33: SOFT-STOP: dừng clip, kéo reference từ tư thế nhảy hiện tại về tư thế ĐỨNG.
+Line  34: Policy mimic VẪN CHẠY nên nó tự đưa robot về đứng thẳng và tự giữ thăng bằng.
+Line  35: Đứng thẳng xong mới giao cho locomotion -> locomotion không phải nhận một tư thế
+Line  36: nhảy sâu/bất đối xứng (nó chưa từng thấy) và đạp loạn để gượng.
+Line  43: Xuất phát từ ĐÚNG reference vừa phát ra -> không nhảy bậc, sai số vẫn liên tục
+Line  47: Đích torso: thẳng đứng, giữ nguyên hướng yaw robot đang quay
+Line  53: Cooldown đã chạy tối thiểu min_s chưa — để cho phép bàn giao SỚM cho locomotion khi
+Line  54: robot đã đứng đủ yên, thay vì chờ hết cool_s_ (lúc đó có bài robot đã chúi sắp ngã).
+Line  57: Chỉ phục vụ telemetry read-only; không thay đổi phase/controller.
+Line  76: Đang soft-stop thì chưa coi là xong (tránh Application chuyển trạng thái sớm)
+Line  84: Đồng bộ hướng yaw của robot với frame bắt đầu trong clip
+Line  89: Soft-start: reference xuất phát từ CHÍNH tư thế robot đang đứng (sai số = 0),
+Line  90: rồi trượt dần sang tư thế mở màn. Policy vẫn chạy nên nó tự giữ thăng bằng
+Line  91: trong lúc chân di chuyển — thay vì bị ép open-loop khi policy đang tắt.
+Line  94: Quat sao cho sai số torso ở t=0 bằng 0: init_quat_ * ref0 == torso thật
+Line 104: Xây dựng vector quan sát 129 chiều (Mimic Obs) với nội suy theo tốc độ phát speed_
+Line 114: SOFT-STOP: clip dừng hẳn. Reference trượt từ tư thế nhảy hiện tại về tư thế
+Line 115: ĐỨNG. Policy vẫn chạy -> nó tự đưa robot đứng thẳng lên mà không mất thăng bằng.
+Line 129: SOFT-START: clip đứng yên. Reference trượt từ tư thế robot lúc bật policy
+Line 130: sang tư thế mở màn. Sai số policy thấy luôn ~0 -> không văng; và vì policy
+Line 131: đang chạy nên nó tự giữ thăng bằng khi chân đổi tư thế.
+Line 133: smoothstep: êm 2 đầu
+Line 134: đạo hàm -> vận tốc ref
+Line 145: Ghi phase của reference dùng cho inference tick N trước khi phase_ tăng sang N+1.
+Line 164: Nhớ reference vừa phát ra, để soft-stop có điểm xuất phát liên tục
+Line 168: Tính ma trận xoay tương đối của torso (motion_anchor_ori_b)
+Line 212: Soft-start: đưa robot vào tư thế mở màn bằng CHÍNH policy (xem Reset)
+Line 218: Soft-stop: đưa robot TỪ tư thế nhảy VỀ đứng thẳng, cũng bằng chính policy
+Line 227: Reference vừa phát ra ở tick trước — để soft-stop nối tiếp không bị nhảy bậc
+
+=== File: src/motion/MotionData.hpp ===
+Line  11: Lớp nạp và lưu trữ dữ liệu chuyển động từ file NPZ
+Line  29: Tìm frame bắt đầu êm nhất trong N frame đầu (giảm thiểu giật chân/torso)
+
+=== File: src/motion/JointTrajectory.hpp ===
+Line  11: Quỹ đạo khớp thuần (không quat/vel) dùng để phát lại trực tiếp bằng PD, KHÔNG
+Line  12: qua policy RL — dùng cho đứng lên / nằm xuống (ghi bằng tools/record_motion.cpp).
+Line  13: Tách riêng khỏi MotionData (dance/mimic) vì không cần body_quat_w/joint_vel cho
+Line  14: obs của policy ONNX.
+Line  17: npz cần key "joint_pos" (frames, kNumJoints); key "fps" (double) tùy chọn,
+Line  18: mặc định 50.0 nếu thiếu.
+Line  27: Nội suy tuyến tính giữa 2 frame gần nhất theo thời gian t (giây, kể từ frame 0).
+Line  28: t ngoài khoảng [0, duration_s()] bị kẹp về 2 đầu.
+Line  31: Có dữ liệu hướng thân (torso_quat) để bù cổ chân không (file cũ thì không).
+Line  33: Trọng lực chiếu vào thân (projected gravity) tại thời điểm t — tư thế thân LÚC GHI.
+Line  34: Dùng để so với gravity ĐO ĐƯỢC lúc phát lại -> bù cổ chân giữ bàn chân phẳng với sàn.
+Line  42: projected gravity mỗi frame (từ torso_quat)
+
+=== File: src/motion/JointTrajectory.cpp ===
+Line  37: Hướng thân (tuỳ chọn): file cũ không có -> bỏ qua bù cổ chân. Tính projected gravity
+Line  38: = trọng lực world (0,0,-1) chiếu vào hệ thân, để so với gravity đo được lúc phát lại.
+Line  47: wxyz
+Line  49: gravity trong hệ thân
+
+=== File: src/motion/MotionData.cpp ===
+Line  74: 2 legs only
+
+=== File: src/app/Application.cpp ===
+Line  19: P0-2: cờ dừng đặt bởi signal handler (SIGTERM/SIGINT). Chỉ atomic store trong handler.
+Line  68: namespace
+Line 100: " + uri).c_str(), 1);
+Line 110: P0-1: nghe rt/lowcmd để phát hiện built-in (gói CRC không trùng gói mình gửi).
+Line 112: có cửa sổ quan sát tối thiểu, không arm tức thì
+Line 118: P0-3: giám sát pin qua topic riêng.
+Line 140: P0-1: chạy trên thread DDS. Gói lowcmd có CRC trùng gói mình vừa gửi -> của mình, bỏ qua.
+Line 141: Không trùng -> của built-in. Ghi mốc thời gian + đếm.
+Line 142: Xung đột chỉ bật khi thấy >= arm_conflict_min gói lạ TRONG arm_conflict_window_ms — một
+Line 143: gói lạc (đến trễ lúc bàn giao / trùng CRC hi hữu) KHÔNG làm nhả quyền oan. Built-in thật
+Line 144: phun ~621Hz nên vượt ngưỡng trong vài ms.
+Line 155: Đếm gói lạ trong cửa sổ trượt: quá xa gói trước -> reset chuỗi.
+Line 167: P0-1: trạng thái chờ arm. TUYỆT ĐỐI KHÔNG publish gì (không Send, không Damping) ->
+Line 168: im lặng trên rt/lowcmd, không có gì đè built-in. Arm khi CẢ HAI lớp đúng.
+Line 170: Lớp 1 — ý định người: giữ R1+R2 liên tục ≥ arm_hold_s (combo arm run_r1, TÁCH khỏi
+Line 171: L2+R2 của built-in). Đọc trực tiếp gamepad qua HoldingArmCombo().
+Line 179: Bypass: nếu sau arm_no_builtin_timeout_s giây vẫn CHƯA nghe đủ gói built-in để xác nhận
+Line 180: nó còn sống (foreign_seen < arm_min_foreign_seen), coi như robot đã ở Dev Mode → bỏ
+Line 181: điều kiện can_hear. An toàn vì ok_silence VẪN đòi im >= arm_silence_ms: nếu built-in còn
+Line 182: phát thật (621Hz) thì foreign_seen vọt qua ngưỡng trong vài ms, bypass không đụng tới.
+Line 183: ⚠ Phải là "< min" chứ KHÔNG phải "== 0": nếu built-in kịp phát 1-4 gói rồi im (vào dev
+Line 184: mode ngay lúc run_r1 khởi động) thì "== 0" sẽ KẸT vĩnh viễn ở kDisarmed (phím vô hiệu).
+Line 210: Không phát voice riêng ở đây: tiếp theo vào kIdle sẽ phát voice_startup.
+Line 226: KHÔNG publish gì
+Line 229: P0-1: built-in quay lại lúc đang armed. Hành động DUY NHẤT không xung đột là NGỪNG publish
+Line 230: (KHÔNG Damp — Damp cũng ghi lowcmd). Latch kConflict, chờ arm lại có chủ đích.
+Line 248: keys 2-8
+Line 273: Khoảng lệch giữa tư thế đứng (default_q) và tư thế mở màn của clip -- chính là
+Line 274: quãng đường mà soft-start phải đưa robot đi qua (xem mimic_warmup_s).
+Line 275: Lệch ở CHÂN (0-11) mới đáng lo; lệch ở tay/waist gần như vô hại vì tay không chịu lực.
+Line 276: Chân lệch nhiều -> tăng mimic_warmup_s cho policy có thêm thời gian dịch chân.
+Line 294: Đứng lên / Nằm xuống: không fatal nếu chưa ghi — chỉ log, HandleTransitions sẽ
+Line 295: chặn trigger nếu con trỏ null (xem tools/record_motion.cpp để ghi file).
+Line 331: P0-1: bật cổng → khởi đầu ở kDisarmed, KHÔNG publish gì tới khi built-in đã nhả.
+Line 341: disarmed/conflict -> KHÔNG publish (đè built-in)
+Line 364: P0-1: chỉ xả lực nếu đang là nguồn lệnh hợp lệ. Nếu disarmed/conflict (built-in đang
+Line 365: giữ quyền) thì Damping cũng là ghi rt/lowcmd -> lại đè built-in -> KHÔNG damp.
+Line 388: P0-1: gói lowcmd LẠ xuất hiện khi đang điều khiển = built-in quay lại -> nhả quyền NGAY.
+Line 389: Kiểm ĐẦU TIÊN, trước mọi thứ có thể publish.
+Line 394: Nếu sent_count>0 và IsOurCrc(recheck)=1 => gói của CHÍNH MÌNH (self-echo), ko phải built-in.
+Line 404: arm_conflict_release=false: BỎ QUA, tiếp tục lái (dùng khi chắc built-in đã tắt hẳn).
+Line 408: im tuyệt đối, latch
+Line 410: đọc tay cầm (R1+R2 arm combo) từ lowstate dù chưa armed
+Line 426: Hoãn voice_startup để không đè lên voice "Development Mode" của built-in (built-in
+Line 427: tự phát khi được đưa vào dev mode bằng L2+R2 — KHÁC combo R1+R2 arm run_r1).
+Line 428: startup_voice_delay_s <= 0 -> phát ngay.
+Line 438: Voice khởi động đã tới hẹn -> phát (sau khi built-in nói xong "Development Mode").
+Line 455: Watchdog check
+Line 468: Zero-torque là trạng thái thụ động; watchdog ở trên bỏ qua nó. Nhưng E-stop (L2+B)
+Line 469: vẫn phải thoát được -> về Damping (không để kẹt, chỉ L2+Y mới ra).
+Line 474: L2+Y: chỉ từ kIdle → kZeroTorque (xả lực hoàn toàn). Toggle lại: kZeroTorque → kIdle.
+Line 475: (Stand-lock L2+Lên cũng thoát được zero-torque — xử lý trong HandleTransitions.)
+Line 480: Thoát zero torque về Damping — KHÔNG phát voice_safe_stop (sai ngữ cảnh).
+Line 491: Voice khi ĐỔI chế độ tốc độ (nhanh<->chậm). Bỏ qua lần đầu để không phát lúc khởi động.
+Line 548: Đang nhảy: soft-stop trước (mimic policy tự đứng thẳng lên), bàn giao xong mới settle.
+Line 549: KHÔNG quăng thẳng tư thế nhảy cho locomotion — nó chưa từng thấy tư thế đó.
+Line 556: Báo TRƯỚC khi gồng cứng. Phát ngay đây (policy còn chạy, robot còn tự đứng được)
+Line 557: và chờ hết stand_lock_warn_s trong lúc settle -> người đỡ kịp phản ứng mà robot không ngã.
+Line 567: Huỷ điệu nhảy. KHÔNG tắt policy, KHÔNG gồng cứng: robot đang đứng một mình giữa sàn.
+Line 568: Soft-stop: GIỮ policy mimic chạy, kéo reference của nó về tư thế đứng -> chính nó đưa
+Line 569: robot đứng thẳng lên (vẫn tự giữ thăng bằng). Đứng thẳng xong mới giao cho locomotion,
+Line 570: nên locomotion không phải nhận một tư thế nhảy sâu và đạp loạn để gượng.
+Line 576: KHÔNG reset music_started_ ở đây: WarmupDone() vẫn true nên điều kiện bật nhạc sẽ
+Line 577: phát LẠI ngay trong lúc cooldown. Cờ được reset ở RunReturning khi điệu MỚI bắt đầu.
+Line 596: đứng lên -> không còn nằm
+Line 597: Đến từ đi bộ thì voice đã phát và đã chờ xong DƯỚI POLICY -> ép cứng ngay.
+Line 598: Đến từ idle/ngồi thì phát voice ở đây rồi giữ nguyên tư thế chờ người đỡ.
+Line 621: ngồi ghế != nằm sàn
+Line 636: BƯỚC 1 của đứng dậy (L2+Lên khi đang NẰM): gồng cứng đưa robot từ tư thế nằm (rũ
+Line 637: mềm sau damping) về ĐÚNG tư thế đầu của clip getup (tư thế nằm-chuẩn) rồi GIỮ, chờ
+Line 638: bấm L2+X để phát chuỗi đứng dậy. KHÔNG xử lý ngã thật — chỉ đối xứng với tư thế nằm
+Line 639: mà chính robot vừa tự vào qua BeginLieDown.
+Line 652: 0=blend về tư thế nằm-chuẩn, sau đó 1=giữ chờ L2+X
+Line 662: Nằm xuống (từ STAND LOCK / locomotion): phát lại liedown.npz, xong tự vào DAMPING
+Line 663: (rũ mềm, nằm nghỉ trên sàn) — đứng dậy lại bằng L2+Lên (chuẩn bị) rồi L2+X.
+Line 696: Đang nhảy: robot đứng MỘT MÌNH giữa sàn -> chỉ huỷ điệu, KHÔNG gồng cứng.
+Line 697: Muốn gồng cứng thì bấm lần nữa (lúc đó đã ở kLocomotion, và đã tới đỡ robot).
+Line 707: Robot đang NẰM (vừa nằm xuống + damping): L2+Lên = BƯỚC 1 đứng dậy —
+Line 708: gồng cứng về tư thế nằm-chuẩn rồi giữ, chờ L2+X phát chuỗi đứng dậy.
+Line 713: Từ zero-torque: L2+Lên vừa thoát limp vừa đứng dậy gồng cứng (không cần L2+Y trước).
+Line 721: L2+X: có ghế
+Line 727: L2+X: có ghế
+Line 735: BƯỚC 2 đứng dậy: đang giữ ở tư thế nằm-chuẩn -> bắt đầu phát getup.npz.
+Line 747: đang ĐỨNG -> nằm xuống
+Line 751: dừng dưới policy rồi nằm
+Line 753: Đang nằm/idle mà bấm L2+X thẳng: nhắc phải bấm L2+Lên (chuẩn bị) trước.
+Line 764: Gồng cứng: phải chờ hết cả thời gian cảnh báo, và chờ NGAY TẠI ĐÂY vì policy còn chạy.
+Line 862: Bresenham-style accumulator: hỗ trợ mọi tần số 1..500 mà không yêu cầu 500 % Hz == 0.
+Line 927: kZeroTorque là trạng thái thụ động có chủ ý (nghỉ/bị đỡ), không cần safe-stop.
+Line 952: P0-3: đọc pin từ topic riêng. Cảnh báo khi thấp, tự NGỒI khi cạn (không damp lúc đứng).
+Line 956: Chỉ hành động khi đang đứng/đi/nhảy (có gì để bảo vệ). Idle/đang ngồi thì bỏ qua.
+Line 961: Vừa chuyển sang active -> cho phép cảnh báo NGAY nếu pin đã thấp (không chờ hết chu kỳ).
+Line 965: Mất tín hiệu pin (subscribe nhầm topic / bo pin im) -> cảnh báo, KHÔNG hiểu nhầm là đầy.
+Line 976: Nguy cấp: tự ngồi xuống (một lần). Đi qua đúng luồng ngồi 4 pha đang chạy dưới policy.
+Line 984: Pin cạn = TỰ ĐỘNG, KHÔNG có ghế, KHÔNG ai đỡ -> has_chair=false: robot hạ tới
+Line 985: tư thế đã kiểm mô phỏng tự cân bằng rồi GIỮ NGUYÊN đó, không relax sang ghế.
+Line 996: Cảnh báo (throttle).
+Line 1009: Pha cảnh báo (chỉ đường từ idle/ngồi — robot đang nằm/treo, giữ nguyên tư thế là vô hại).
+Line 1010: Đường từ đi bộ đã chờ xong dưới policy nên stand_warn_timer_ vào đây đã đầy.
+Line 1042: max|dq| trên toàn bộ khớp + chỉ số khớp nhanh nhất (cho lớp an toàn tốc độ khớp).
+Line 1075: Về tư thế đứng (tĩnh ổn định). KHÔNG ép robot vào tư thế mở màn của clip ở đây:
+Line 1076: tư thế đó bất đối xứng / bàn chân nghiêng, mà lúc này policy đang TẮT nên không có
+Line 1077: gì giữ thăng bằng. Việc vào tư thế mở màn để chính policy mimic lo (soft-start).
+Line 1091: nhạc chỉ bật khi soft-start xong
+Line 1092: Reset() đã xoá cờ cooldown trong controller
+Line 1101: Tầm cổ chân của R1 (đo từ model): pitch [-50, +33] deg. Vượt tầm là lệnh vô nghĩa.
+Line 1104: ── Hai độ sâu TÁCH BẠCH (bài học từ lần ngã trước) ──────────────────────────
+Line 1105: "desc" (descent) = độ gập lúc HẠ, KHI CHƯA CHẮC GHẾ ĐÃ ĐỠ — phải là tư thế TỰ CÂN
+Line 1106: BẰNG được (đã kiểm bằng mô phỏng MuJoCo: hip150/knee100/lean58 → biên +9.2cm).
+Line 1107: "rest" (final) = tư thế NGỒI CUỐI sau khi ghế đã chắc chắn đỡ trọng lượng (đo trên
+Line 1108: robot thật, limp, đã có ghế đỡ) — nông hơn, dạng chân + xoay mũi chân, tay trên đùi.
+Line 1109: KHÔNG được dùng "rest" làm đích cho pha hạ: ghế cũ 43cm calibrate cho "desc" sâu;
+Line 1110: tư thế "rest" nông hơn -> hông chưa hạ đủ thấp để chạm ghế đúng lúc hết giờ pha 1 ->
+Line 1111: robot dựng thân lại (pha 2) khi CHƯA có ghế đỡ -> chúi trước, ngã.
+Line 1112: dạng chân lúc hạ (nhỏ, an toàn)
+Line 1113: hông lúc hạ (sâu, tự cân bằng)
+Line 1115: dạng chân CUỐI (đo thực)
+Line 1116: xoay mũi chân CUỐI (đo thực)
+Line 1117: hông CUỐI (đo thực, nông hơn)
+Line 1119: đổ người khi hạ
+Line 1120: sau khi ngồi hẳn
+Line 1133: Thu chân: về ĐÚNG tư thế khóa cứng/mặc định (chân song song, thẳng) — chuẩn bị,
+Line 1134: chưa dạng chân, chưa gập.
+Line 1143: HẠ NGƯỜI CÓ CÂN BẰNG (CHƯA CHẮC CÓ GHẾ ĐỠ, dù manual hay auto): gập hông+gối
+Line 1144: tới độ sâu ĐÃ KIỂM MÔ PHỎNG (tự cân bằng), dạng chân NHẸ, đổ thân + vươn tay.
+Line 1154: Có ghế (L2+X): sang pha 2, nới sang tư thế CUỐI (ghế đỡ rồi, an toàn).
+Line 1155: KHÔNG ghế (tự động, không ai đỡ): GIỮ NGUYÊN tư thế "desc" tự cân bằng —
+Line 1156: KHÔNG relax sang rest (rest chỉ an toàn khi có ghế đỡ trọng lượng).
+Line 1161: CHỈ vào đây khi sit_has_chair_ (đảm bảo ở nhánh trên). Ghế ĐÃ đỡ trọng lượng
+Line 1162: -> nới sang tư thế ngồi CUỐI (nông hơn, dạng chân + xoay mũi chân, tay trên đùi).
+Line 1174: Phase 3 GIỮ VÔ HẠN. Có ghế -> giữ tư thế CUỐI (rest). KHÔNG ghế (tự động, không
+Line 1175: ai đỡ) -> GIỮ NGUYÊN tư thế "desc" đã kiểm mô phỏng, trọng tâm luôn trên 2 chân.
+Line 1199: Bàn chân phẳng theo MẶT ĐẤT (không phải theo hông). Góc nghiêng hông đo từ IMU;
+Line 1200: sai lệch so với góc đổ mong muốn được bù vào cổ chân để lòng bàn chân không bị vênh.
+Line 1210: Cổng chân roll bù hip roll để lòng bàn chân phẳng; clamp tránh vượt tầm khi dạng rộng.
+Line 1231: giữ vô hạn; không quay lại nhánh này nữa
+Line 1237: Phát lại quỹ đạo ghi bằng tools/record_motion.cpp — PD thuần, KHÔNG chạy policy
+Line 1238: cân bằng. KHÔNG gọi fall_detector_.Check ở đây (tilt lớn là bình thường lúc nằm/
+Line 1239: đứng dậy), giống RunStandUp/RunSafeShutdown đã bỏ qua nó.
+Line 1240: Bù cổ chân theo IMU: so trọng lực đo được với trọng lực tham chiếu (tư thế thân LÚC
+Line 1241: GHI tại cùng thời điểm) rồi lệch cổ chân để lòng bàn chân bám sàn. No-op nếu clip
+Line 1242: không có torso_quat (file cũ) hoặc gain=0.
+Line 1268: vị trí tham chiếu để bù cổ chân (0 khi blend/giữ)
+Line 1271: BƯỚC 1: gồng cứng blend từ tư thế hiện tại (rũ mềm) về tư thế nằm-chuẩn (frame 0).
+Line 1278: sang GIỮ, chờ L2+X
+Line 1282: GIỮ tư thế nằm-chuẩn (frame 0) chờ L2+X (HandleTransitions chuyển sang pha 2).
+Line 1285: BƯỚC 2: phát getup.npz -> đứng. Xong -> giao cho LOCOMOTION để policy cân bằng.
+Line 1308: Phát lại liedown.npz; hết clip thì tự vào DAMPING (rũ mềm, nằm nghỉ) và đặt lying_.
+Line 1329: Nằm xong: vào DAMPING (rũ mềm nghỉ trên sàn). Đặt lying_ SAU EnterIdle
+Line 1330: vì EnterIdle xoá cờ này. Không phát voice_safe_stop (sai ngữ cảnh) -> tự
+Line 1331: in log, EnterIdle vẫn phát voice_safe_stop; chấp nhận, hoặc dùng damping trực tiếp.
+Line 1394: Soft-start xong -> robot đã vào tư thế mở màn, clip bắt đầu chạy -> vào nhạc.
+Line 1395: !dance_stopping_: không bật nhạc khi đang soft-stop (điệu đã kết thúc / bị huỷ).
+Line 1405: Hết clip: cũng phải soft-stop. Frame cuối clip vẫn là tư thế nhảy, không phải đứng.
+Line 1409: Bàn giao cho locomotion THEO ĐIỀU KIỆN: hễ robot đã đứng đủ yên (nghiêng ngang nhỏ VÀ
+Line 1410: gyro thân nhỏ) và cooldown đã qua min_s -> giao NGAY (locomotion vào lúc còn gần thẳng);
+Line 1411: nếu mãi không yên thì tối đa vẫn giao khi CooldownDone(). Tránh có bài (vd Pokemon) trong
+Line 1412: lúc cooldown robot chúi tới ~33° rồi mới nhả -> locomotion nhận thân đang ngã, đá loạn.
+Line 1434: chạy policy = robot đã đứng, không còn nằm
+Line 1567: Readout hiệu chỉnh: robot limp, bẻ chân về tư thế mong muốn rồi đọc góc THỰC.
+Line 1568: Thứ tự mỗi chân: hip_pitch, hip_roll, hip_yaw, knee, ank_pitch, ank_roll.
+Line 1576: Tay (rad — vì sit_arm_forward/sit_arm_elbow trong config là radian).
+Line 1577: Thứ tự mỗi tay: shoulder_pitch, shoulder_roll, shoulder_yaw, elbow, wrist.
+
+=== File: src/app/Application.hpp ===
+Line  32: Trạng thái chính của máy trạng thái điều khiển
+Line  34: cổng an toàn: KHÔNG publish gì tới khi built-in đã nhả (P0-1)
+Line  35: built-in quay lại lúc đang chạy: ngừng publish, latch (P0-1)
+Line  38: mode=1 kp=kd=tau=0: motor hoàn toàn thụ động (limp). Chỉ từ kIdle.
+Line  45: L2+X từ tư thế nằm: phát lại getup.npz -> STAND LOCK
+Line  46: L2+X từ STAND LOCK: phát lại liedown.npz, giữ vô hạn ở frame cuối
+Line  49: Hành động chờ sau khi robot dừng hẳn dưới chính sách
+Line  57: Ứng dụng điều khiển trung tâm (vòng lặp 500Hz)
+Line  63: Gọi từ signal handler (SIGTERM/SIGINT) — chỉ set cờ atomic, async-signal-safe.
+Line  70: P0-1: nghe rt/lowcmd để phát hiện built-in
+Line  72: P0-1: chờ arm, KHÔNG publish
+Line  73: P0-1: built-in quay lại -> nhả quyền
+Line  76: has_chair (chỉ dùng khi act==kToSit): true = L2+X (có ghế, sẽ nới sang tư thế CUỐI
+Line  77: sau khi ghế đỡ). false = tự động/pin cạn (không ghế, không ai đỡ) -> giữ nguyên tư
+Line  78: thế hạ đã kiểm mô phỏng, tự cân bằng, không relax.
+Line  82: warn_first = true: đã phát voice, giữ nguyên tư thế chờ người đỡ rồi mới ép cứng.
+Line  83: false: đã chờ sẵn dưới policy (đường từ đi bộ) -> ép cứng ngay.
+Line  85: has_chair: xem RequestFromPolicy ở trên.
+Line  87: Đứng lên (từ nằm, phát lại getup.npz) / Nằm xuống (từ đứng, phát lại liedown.npz).
+Line  91: P0-3: cảnh báo pin thấp / tự ngồi khi cạn
+Line  99: Bù cổ chân theo IMU để lòng bàn chân bám sàn khi phát lại getup/liedown (dùng
+Line 100: torso_quat đã ghi làm tham chiếu). No-op nếu clip không có torso_quat hoặc gain=0.
+Line 105: L2+Y: mode=1, kp=kd=0, chỉ từ kIdle
+Line 114: Cấu hình / hạ tầng
+Line 121: Hạ tầng DDS subscriber
+Line 128: Các module chức năng
+Line 144: Trạng thái điều khiển
+Line 155: Đứng dậy
+Line 158: chờ sau voice cảnh báo, trước khi ép cứng
+Line 160: Chặn "khóa cứng" một lúc sau khi vừa huỷ điệu nhảy (tránh bấm 0 hai lần quá nhanh)
+Line 163: Chặn "ngồi" một lúc sau khi VỪA vào STAND LOCK (tránh bấm dội / kẹt phím / gói tay
+Line 164: cầm nhiễu làm robot vừa đứng xong lại ngồi luôn, không kịp phản ứng)
+Line 167: Đang soft-stop: mimic policy đang tự đưa robot về đứng thẳng, chưa giao cho locomotion
+Line 170: Logger mỗi điệu: accumulator cho sample-rate không cần chia hết 500 Hz, và cửa
+Line 171: sổ hậu handover để bắt transient mimic -> locomotion.
+Line 176: Ngồi ghế (0=thu chân, 1=hạ người, 2=nới sang tư thế cuối [chỉ khi có ghế], 3=giữ)
+Line 180: true = L2+X (có ghế). false = tự động/pin cạn (không ghế, không ai đỡ) -> giữ nguyên
+Line 181: tư thế hạ tự cân bằng, KHÔNG relax sang tư thế ngồi-trên-ghế nông hơn.
+Line 183: giữ has_chair xuyên qua giai đoạn settle (RequestFromPolicy)
+Line 185: Đứng lên / Nằm xuống (L2+X): phát lại quỹ đạo ghi từ built-in (tools/record_motion.cpp).
+Line 186: nullptr nếu chưa nạp được file (chưa ghi) — không fatal, chỉ chặn trigger + log.
+Line 191: tư thế lúc Begin* (điểm đầu blend-in)
+Line 193: kGetUp:  0=blend về tư thế nằm-chuẩn, 1=GIỮ chờ L2+X, 2=đang phát getup.npz
+Line 194: kLieDown: 0=blend về frame đầu clip, 1=đang phát liedown.npz
+Line 196: chặn bấm dội sau khi vừa xong 1 chiều
+Line 197: robot đang nằm (sau khi nằm xuống + damping) -> L2+Lên = chuẩn bị đứng dậy
+Line 199: Blend tư thế khi bật policy
+Line 203: Quản lý việc đọc tên điệu nhảy trước khi thực hiện
+Line 207: Nhạc chỉ bật khi mimic soft-start xong (lúc clip thật sự bắt đầu chạy)
+Line 210: Chờ robot dừng vững
+Line 214: Watchdog cho mất tín hiệu điều khiển (safe-stop)
+Line 220: ── P0-2: dừng êm khi nhận SIGTERM/SIGINT ──
+Line 223: ── P0-1: cổng chống xung đột built-in ──
+Line 225: true = được phép publish. Cổng bật -> khởi đầu false.
+Line 226: giữ R1+R2 liên tục bao lâu (lớp 1)
+Line 227: đã giữ đủ -> chốt vĩnh viễn
+Line 228: mốc thời gian gói lowcmd LẠ gần nhất
+Line 229: tổng số gói lowcmd của built-in đã thấy
+Line 230: built-in quay lại lúc đang armed
+Line 231: Cửa sổ trượt đếm gói lạ (chống 1 gói lạc gây nhả quyền oan). first/last đọc chéo thread.
+Line 234: CHỈ chạm trên thread DDS (OnLowCmdSeen)
+Line 235: chẩn đoán: CRC gói vừa bị coi là "lạ"
+Line 236: chỉ log chẩn đoán conflict 1 lần
+Line 237: để tính uptime kDisarmed
+Line 239: ── Voice tăng/giảm tốc (edge) ──
+Line 243: ── Voice khởi động phát TRỄ ──
+Line 244: Built-in (.161) tự phát "Development Mode" khi giữ L2+R2 vào dev mode; nếu phát
+Line 245: voice_startup ngay lúc arm sẽ đè lên nhau. Hoãn ngần startup_voice_delay_s giây.
+Line 249: ── P0-3: giám sát pin ──
+Line 251: throttle voice cảnh báo
+Line 252: đang ở trạng thái cần giám sát pin (edge)
+
+=== File: src/logging/MimicTelemetryLogger.cpp ===
+Line  51: namespace
+
+=== File: src/logging/MimicTelemetryLogger.hpp ===
+Line  14: Một sample telemetry đã được copy hoàn toàn khỏi control loop. Writer thread chỉ
+Line  15: làm việc trên struct này, không chạm DDS/controller nên không thể giữ lock điều khiển.
+Line  23: -1=ngoài mimic, 0=warmup, 1=clip, 2=cooldown, 3=finished
+Line  27: pelvis IMU, wxyz
+Line  28: torso reference trong world, wxyz
+Line  45: CSV writer bất đồng bộ. Producer là control loop (100 Hz mặc định); consumer là
+Line  46: một thread riêng. Queue có giới hạn để disk chậm không bao giờ làm phình RAM vô hạn.
+
+=== File: src/robot/LowCmdSender.hpp ===
+Line  26: Lớp gửi lệnh LowCmd_ xuống robot qua kênh DDS rt/lowcmd
+Line  36: Đồng bộ lệnh trước đó với vị trí hiện tại của robot
+Line  42: Gửi vị trí khớp mục tiêu kèm gains và giới hạn tốc độ (rate limit)
+Line  69: Đặt vị trí đầu cố định
+Line  79: Xả lực toàn bộ motor (Damping): mode=0 — firmware motor tự giữ kd nội bộ nhỏ
+Line  80: để tránh motor quay tự do. Robot sẽ hơi cứng khi đứng yên, nhưng an toàn hơn.
+Line  81: ⚠ PHẢI truyền mode_machine từ LowState, nếu 0 firmware BỎ QUA gói -> giữ nguyên
+Line  82: lệnh Kp cũ -> khớp vẫn cứng (bẻ không được).
+Line 100: Zero Torque: mode=1, kp=kd=tau=0 — motor HOÀN TOÀN thụ động (limp), không có lực nào cả.
+Line 101: Khác Damping() ở chỗ mode=1 bypass kd nội bộ của firmware → tay chân kéo tự do được.
+Line 102: ⚠ Chỉ dùng khi robot đã nằm/được đỡ. Đứng thẳng → NGÃ NGAY.
+Line 103: ⚠ PHẢI truyền mode_machine từ LowState (nếu 0 firmware BỎ QUA gói -> giữ Kp cũ -> cứng).
+Line 108: ← mode=1 thay vì 0, bypass kd nội bộ firmware
+Line 125: P0-1: gói rt/lowcmd nhận về có CRC trùng gói mình vừa gửi không? (phân biệt built-in)
+Line 126: Đọc từ thread DDS -> mỗi slot atomic. Dùng acquire ghép với release ở RecordCrc để
+Line 127: thread DDS CHẮC CHẮN thấy CRC vừa ghi (aarch64 bộ nhớ yếu: relaxed có thể chưa nhìn thấy
+Line 128: -> gói của chính mình bị coi là "lạ" -> tự ngắt oan).
+Line 135: Chẩn đoán: số gói run_r1 đã publish (nếu >0 lúc conflict = self-echo, ko phải built-in).
+Line 159: Tính CRC32 checksum theo tiêu chuẩn của Unitree
+Line 184: Ring CRC của các gói vừa publish (để detector nhận ra gói của chính mình)
+Line 188: chẩn đoán self-echo
+
+=== File: src/input/InputCommand.hpp ===
+Line   3: Cấu trúc chứa lệnh điều khiển chuẩn hóa từ gamepad / bàn phím
+Line   7: 0 = no dance, 2-8 = dance key
+Line  10: L2+X: đứng lên (từ nằm) / nằm xuống (từ đứng), tùy trạng thái
+Line  13: L2+Y: xả lực hoàn toàn (mode=1, kp=kd=0), chỉ từ kIdle
+
+=== File: src/input/InputManager.hpp ===
+Line  11: Bộ trộn và làm mượt lệnh điều khiển từ Gamepad và Bàn phím
+Line  28: Trộn lệnh và giới hạn gia tốc (accel limit)
+Line  74: Chọn accel khi ra xa 0 (tăng tốc), decel khi tiến gần 0 hơn (thả stick).
+
+=== File: src/input/GamepadR3.hpp ===
+Line  11: Cấu trúc map dữ liệu tay cầm Unitree R3-1 (40 byte)
+Line  34: Đọc và parse lệnh từ tay cầm R3-1
+Line  53: P0-1: combo arm run_r1 = R1+R2 (TÁCH KHỎI L2+R2 của built-in để không toggle nhầm).
+Line  54: Quy trình: L2+R2 đưa BUILT-IN vào dev mode (nó im) -> giữ R1+R2 để run_r1 tiếp quản.
+Line  69: Xử lý các tổ hợp phím điều khiển
+Line  84: Ngồi ghế (L2+Trái) và Nằm/Đứng dậy (L2+X): tránh bấm nhầm động tác nguy hiểm ->
+Line  85: phải GIỮ combo liên tục hold_s_ giây mới kích hoạt (bắn 1 lần mỗi lần giữ).
+Line  98: Ngồi ghế: giữ L2+Trái
+Line 100: Nằm/Đứng dậy: giữ L2+X
+Line 104: Xử lý deadzone và chiều tay gạt stick
+Line 119: Giữ-để-kích-hoạt cho L2+X (nằm/đứng dậy) và L2+Trái (ngồi ghế).
+
+=== File: src/input/KeyboardX11.cpp ===
+Line  33: namespace
+
+=== File: src/input/KeyboardX11.hpp ===
+Line  13: Bộ đọc bàn phím qua cửa sổ X11 (hỗ trợ SSH -Y)
+Line  23: Đăng ký hàm xả lực khẩn cấp khi đứt kết nối X11
+Line  33: Cập nhật giao diện hướng dẫn phím bấm
+Line  42: Trạng thái các phím di chuyển
+Line  46: Sự kiện phím chức năng
+
+=== File: scripts/deploy_to_robot.sh ===
+Line   1: !/usr/bin/env bash
+Line   2: Deploy code to robot's onboard computer and build
+
+=== File: scripts/install_service.sh ===
+Line   1: !/usr/bin/env bash
+Line   2: Install systemd service for HB high_level on the robot to autostart
+
+=== File: scripts/probe_robot.sh ===
+Line   1: !/usr/bin/env bash
+Line   2: Đo sim2real gap trên robot thật — "terminal 2" của quy trình đo.
+Line   4: Terminal 1:  ssh robot -> ./run_r1   (đứng dậy, sẵn sàng bấm điệu nhảy)
+Line   5: Terminal 2:  ./scripts/probe_robot.sh
+Line   7: Script này: build dds_probe trên robot -> chạy nó -> Ctrl-C để dừng -> in báo cáo
+Line   8: -> tự kéo file CSV về máy này.
+Line  10: dds_probe CHỈ NGHE DDS, KHÔNG GỬI GÌ. An toàn chạy song song run_r1 lúc robot đang nhảy.
+Line  11: Chi tiết: docs/PLAN_mimic_sim2real.md (mục C2, C3).
+Line  19: Lấy card mạng từ chính tuning.yaml để luôn khớp với run_r1
+Line  39: -t để Ctrl-C truyền được xuống dds_probe trên robot
+
+=== File: scripts/dump_onnx_metadata.py ===
+Line   1: !/usr/bin/env python3
+
+=== File: scripts/build.sh ===
+Line   1: !/usr/bin/env bash
+Line   2: Local build script for high_level_2
+
+=== File: scripts/_find_robot.sh ===
+Line   1: !/usr/bin/env bash
+Line   2: Dò địa chỉ robot. Source từ các script khác; đặt sẵn biến ROBOT để bỏ qua bước dò.
+Line   3: ROBOT=unitree@192.168.12.2 ./scripts/probe_robot.sh
+
+=== File: tools/record_motion.cpp ===
+Line   1: record_motion — ghi quỹ đạo khớp trong lúc điều khiển robot bằng built-in (R3-1),
+Line   2: dùng làm dữ liệu cho chức năng đứng lên / nằm xuống (getup.npz / liedown.npz).
+Line   4: CHỈ NGHE rt/lowstate, KHÔNG GỬI GÌ. An toàn để chạy song song built-in (giống
+Line   5: tools/dds_probe.cpp). Tự động phát hiện từng đoạn chuyển động: đứng yên -> di
+Line   6: chuyển -> đứng yên trở lại (theo ngưỡng |dq| của 24 khớp), tự lưu mỗi đoạn thành
+Line   7: 1 file .npz riêng, kèm nhãn là tổ hợp phím đang giữ lúc bắt đầu đoạn (đọc từ
+Line   8: wireless_remote trong lowstate — trường này luôn phát dù ai đang giữ quyền lowcmd).
+Line  10: ./record_motion [network_interface] [output_dir] [move_thresh] [still_thresh]
+Line  11: Ctrl-C để dừng.
+Line  13: Quy trình: chạy tool này, rồi dùng tay cầm/built-in cho robot nằm xuống, đứng lên
+Line  14: vài lần. Mỗi lần tool tự đóng 1 đoạn sẽ in ra thời lượng + nhãn phím + đường dẫn
+Line  15: file. Đối chiếu log với động tác vừa làm, rồi tự đổi tên file đúng thành
+Line  16: motions/getup.npz / motions/liedown.npz theo config/tuning.yaml.
+Line  44: Bit layout gói tay cầm R3-1 — giống src/input/GamepadR3.hpp. Định nghĩa lại tối
+Line  45: giản ở đây để tool này độc lập, không kéo theo Tuning/InputManager (như
+Line  46: tools/dds_probe.cpp đã làm với RobotSpec).
+Line  88: namespace
+Line  93: rad/s -> coi là đang chuyển động
+Line  94: rad/s -> coi là đứng yên
+Line  96: đứng yên liên tục bấy nhiêu -> đóng đoạn
+Line  97: đoạn ngắn hơn -> bỏ (lọc nhiễu/rung)
+Line  98: 500Hz -> 50Hz khi lưu (đủ mượt, file nhỏ)
+Line  99: gom phím giữ trong khoảng đầu đoạn để gán nhãn
+Line 102: bỏ qua lỗi EEXIST
+Line 115: hướng thân (IMU wxyz) mỗi frame
+Line 146: Hướng thân (IMU quaternion wxyz) — để playback bù cổ chân giữ bàn chân phẳng với sàn.
+Line 177: IMU quaternion wxyz (hướng thân)
+
+=== File: tools/dds_probe.cpp ===
+Line   1: dds_probe — đo sim2real gap trên robot thật (mục C2 + C3 của docs/PLAN_mimic_sim2real.md)
+Line   3: CHỈ NGHE, KHÔNG GỬI GÌ. An toàn để chạy song song với run_r1 trong lúc robot đang nhảy.
+Line   4: Nó bắt cả rt/lowcmd (q_des, kp, kd — thứ run_r1 ra lệnh) lẫn rt/lowstate (q, dq, tau_est —
+Line   5: thứ robot thực sự làm), rồi đối chiếu hai bên.
+Line   7: ./dds_probe [network_interface] [file.csv]
+Line   8: Ctrl-C để dừng và in báo cáo.
+Line  10: Trả lời 3 câu hỏi:
+Line  11: 1. Khớp nào bám lệnh kém / trễ pha nhiều nhất?   (nghi phạm: ankle pitch)
+Line  12: 2. Khớp nào bão hoà moment?                      (tau_est so với effort limit lúc train)
+Line  13: 3. Vòng điều khiển có thật sự chạy đều 500Hz?    (jitter = gap sim2real không ai để ý)
+Line  37: 300 s @ 500 Hz
+Line  38: quét trễ 0..25 mẫu = 0..50 ms
+Line  47: Effort limit lúc train (r1_constants.py) — dùng để phát hiện bão hoà moment.
+Line  49: chân trái
+Line  50: chân phải
+Line  51: waist roll, yaw
+Line  52: tay trái
+Line  53: tay phải
+Line  65: q_des từ lowcmd
+Line  66: q thực từ lowstate
+Line  73: thời điểm nhận lowcmd gần nhất
+Line  79: tuổi của lowcmd tại thời điểm lowstate tới
+Line  81: Thống kê phân vị trên vector đã sort
+Line  88: namespace
+Line 116: chờ run_r1 bắt đầu ra lệnh
+Line 153: ─── Ghi CSV ─────────────────────────────────────────────────────────
+Line 172: ─── 1. Nhịp vòng điều khiển ─────────────────────────────────────────
+Line 173: Train giả định policy step đúng 20 ms, lowcmd đều đặn 2 ms. Jitter lớn = gap thật.
+Line 187: ─── 2. Bám lệnh + trễ + bão hoà ─────────────────────────────────────
+Line 209: Biên độ lệnh: khớp gần như đứng yên thì đo trễ vô nghĩa.
+Line 217: Trễ vòng KÍN: lag làm q(t) khớp qd(t-lag) nhất. Đây là TỔNG của trễ truyền
+Line 218: và động học PD, không phải trễ truyền thuần tuý — nhưng đúng là cái policy
+Line 219: "cảm nhận" được, nên là con số cần cho DR.
+Line 237: 1 mẫu = 2 ms
+Line 248: ─── 3. Nhiễu dq ─────────────────────────────────────────────────────
+Line 249: Train cộng nhiễu đều ±0.5 rad/s vào joint_vel. Nếu nhiễu thật NHỎ HƠN mức đó thì
+Line 250: policy đã quen rồi -> KHÔNG cần bật lọc (bật lọc chỉ thêm trễ). Xem mục 8 của plan.

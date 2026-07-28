@@ -1,0 +1,306 @@
+# Card mạng DDS (mặc định eth10, override bằng argv[1])
+network_interface: eth10
+
+# Lọc thông thấp gyro (500Hz). Dải thử: 15-25 Hz. 0.0 để tắt.
+imu_gyro_lpf_hz: 0.0
+
+# Lọc thông thấp dq (vận tốc khớp). Dải thử: 10-20 Hz. 0.0 để tắt.
+joint_vel_lpf_hz: 0.0
+
+# Bù góc nghiêng pitch (độ). Dải thử: ±1..4°.
+imu_pitch_trim_deg: 0.0
+# 2 công tắc bật/tắt độc lập — có thể chỉ bật 1 trong 2 (vd chỉ trim dance, không đụng locomotion):
+# imu_pitch_trim_affects_locomotion: true (mặc định) = trim áp vào projected_gravity (locomotion + fall-detector)
+imu_pitch_trim_affects_locomotion: false
+# imu_pitch_trim_affects_dance: false (mặc định) = trim KHÔNG áp vào state_.quat (dance/Mimic)
+imu_pitch_trim_affects_dance: true
+
+# Gains khi đứng dậy / khóa đứng (không chạy policy)
+stand_kp_leg: 200.0
+stand_kp_waist: 200.0
+stand_kp_arm: 40.0
+stand_kd: 3.0
+
+# Tỉ lệ scale gains cho policy (mặc định 1.0)
+policy_kp_scale: 1.0
+policy_kd_scale: 1.0
+
+# Giới hạn tốc độ di chuyển (vx, vy, yaw). Cần tương thích với dải huấn luyện của policy (mới: vx -1..2, vy ±0.8, yaw ±1.5).
+slow_vx: 1.0
+slow_vy: 0.5
+slow_yaw: 1.5
+slow_vx_back: 0.5
+fast_vx: 1.5
+fast_vy: 0.8
+fast_yaw: 1.7
+fast_vx_back: 0.8
+
+# Giới hạn gia tốc lệnh di chuyển (khi TĂNG tốc/đổi hướng lệnh)
+cmd_accel_vx: 2.5
+cmd_accel_vy: 2.0
+cmd_accel_yaw: 3.0
+
+# Giới hạn giảm tốc lệnh di chuyển (khi tiến về 0) để robot dừng êm ái hơn.
+cmd_decel_vx: 1.2
+cmd_decel_vy: 1.2
+cmd_decel_yaw: 1.5
+
+# ── Heading-hold: giữ hướng khi đi thẳng (khử drift do deploy chạy open-loop yaw) ──
+# Robot tự chốt hướng mặt lúc bắt đầu đi thẳng rồi bẻ lái nhẹ để giữ đúng hướng đó.
+# Nhả ngay khi người lái bẻ yaw; tắt khi đứng/mimic. false = y hệt hành vi cũ.
+# ⚠ LẦN ĐI THẲNG ĐẦU TIÊN: có người đứng gần / sẵn tay tóm. Nếu robot tự xoay SAI chiều
+#   (thay vì giữ thẳng) = SAI DẤU -> trong Application.cpp::ApplyHeadingHold đổi
+#   "WrapPi(heading_ref_ - yaw_now)" thành "WrapPi(yaw_now - heading_ref_)", build lại.
+#   An toàn: correction kẹp ±max_yaw (0.4 rad/s ~23°/s, xoay chậm, tóm/tắt kịp).
+# Bật/tắt tính năng. false = deploy chạy như cũ (open-loop, sẽ drift hướng).
+heading_hold_enabled: true
+
+# Độ MẠNH kéo về hướng đã chốt. Công thức: lệnh_sửa(rad/s) = kp × sai_lệch_hướng(rad).
+# VD lệch 0.2 rad (~11°) × 0.8 = 0.16 rad/s xoay về. Để = heading_control_stiffness
+# lúc train (0.8) cho khớp phân phối policy đã học.
+#  ↑ cao (1.2): sửa nhanh/dứt khoát nhưng dễ lắc quanh hướng đích (over-correct).
+#  ↓ thấp (0.5): êm hơn nhưng lệch lâu mới về.
+heading_hold_kp: 0.9
+
+# TRẦN lệnh sửa (rad/s). Kẹp để dù sai_lệch lớn (hoặc IMU lỗi/sai dấu) robot cũng
+# KHÔNG xoay nhanh — 0.4 rad/s ~23°/s, xoay chậm, người tóm/tắt kịp.
+#  ↑ cao: kéo về từ góc lệch lớn nhanh hơn, nhưng nguy hiểm hơn nếu dấu sai.
+#  ↓ thấp: an toàn hơn nhưng sửa lệch lớn chậm.
+heading_hold_max_yaw: 0.5
+
+# Ngưỡng tốc độ đi ngang/dọc = sqrt(vx²+vy²) để BẬT giữ hướng. Dưới mức này coi như
+# đứng yên -> tắt (đứng không cần giữ hướng, tránh dậm chân vặn tại chỗ).
+#  ↑ cao: chỉ giữ hướng khi đi đủ nhanh.  ↓ thấp: giữ cả khi đi rất chậm.
+heading_hold_move_min: 0.15
+
+# Sau khi bẻ lái rồi thả stick, thân còn QUÁN TÍNH xoay. Nếu |gyro_z| (tốc độ xoay
+# thân) còn lớn hơn mức này thì CHƯA chốt hướng mới — đợi thân đứng yên hẳn rồi chốt,
+# để không "khóa" nhầm vào hướng đang lố đà.
+#  ↑ cao (0.5): chốt sớm hơn (kể cả khi còn xoay chút) -> vào giữ-hướng nhanh nhưng
+#     dễ chốt lệch.  ↓ thấp (0.2): đợi yên hẳn mới chốt -> hướng chuẩn hơn, vào trễ hơn.
+heading_hold_relatch_gyro: 0.3
+
+# (2 hằng số khác nằm CỨNG trong Application.cpp::ApplyHeadingHold, ít cần chỉnh:
+#   - 0.05 rad/s: |cmd_yaw| trên mức này = người đang bẻ lái -> nhả giữ-hướng.
+#   - 1.0 rad (~57°): lệch quá mức này = IMU nhảy/bị xoay tay -> chốt lại, không kéo giật.)
+
+# Thời gian và giới hạn tốc độ chuyển trạng thái
+stand_up_time_s: 2.5
+blend_time_s: 0.5
+stand_rate_limit: 5.0
+lock_rate_limit: 0.2
+return_rate_limit: 1.5
+stand_lock_spread: 0.08
+return_pos_tol: 0.12
+
+# Settle time (đứng yên dưới policy trước khi chuyển trạng thái)
+settle_time_s: 1.0
+settle_gyro_max: 0.5
+
+# Thời gian phát cảnh báo "đã khóa đứng" trước khi ép cứng khớp.
+stand_lock_warn_s: 1.5
+
+# Thời gian chặn lệnh khóa cứng sau khi hủy điệu nhảy (tránh bấm nhầm liên tiếp).
+dance_abort_lock_block_s: 2.0
+
+# Thời gian chặn lệnh ngồi (L2+X) ngay sau khi vào STAND LOCK.
+stand_lock_sit_block_s: 1.0
+
+# Giới hạn tốc độ thay đổi góc khớp của policy (khuyến nghị >= 15)
+policy_rate_limit: 30.0
+
+# Bộ phát hiện ngã
+fall_enabled: true
+fall_tilt_deg: 50.0
+fall_flip_tilt_deg: 30.0
+# Ngưỡng gyro để phát hiện lật nhanh (nghiêng lớn kết hợp xoay nhanh).
+fall_flip_gyro: 4.0
+fall_debounce_ms: 30.0
+
+# Tự chuyển về Damping khi max|dq| của khớp vượt quá giới hạn liên tục trong khoảng debounce.
+joint_speed_guard_enabled: true
+joint_speed_limit: 25.0
+joint_speed_debounce_ms: 30.0
+
+# Watchdog timeouts (ms)
+state_timeout_ms: 1000.0
+# Theo SDK Unitree và đo thật: dropout ngắn ~2,7s; tắt R3-1 tạo gói 0 liên tục >15s.
+remote_timeout_ms: 3000.0
+remote_recover_ms: 200.0
+remote_require_neutral: true
+x11_release_ms: 2500.0
+
+# Policy đi bộ (.onnx)
+flat_model: policy_5.onnx
+
+# Cấu hình các điệu nhảy tương ứng với phím 2-8, kèm tốc độ và âm lượng.
+dance_2: xexe_1
+dance_speed_2: 1.0
+dance_volume_2: 1.0
+# Trim pitch theo từng bài nhảy (độ). Khi vào Mimic, giá trị tương ứng sẽ thay
+# imu_pitch_trim_deg; khi trở lại locomotion, runner tự trả về imu_pitch_trim_deg.
+dance_trim_deg_2: 0.0
+
+dance_3: xexe_2
+dance_speed_3: 1.0
+dance_volume_3: 1.0
+dance_trim_deg_3: -0.1
+
+dance_4: pokemon
+dance_speed_4: 1.0
+dance_volume_4: 1.0
+dance_trim_deg_4: 0.0
+
+dance_5: doremon
+dance_speed_5: 1.0
+dance_volume_5: 1.0
+dance_trim_deg_5: -1.72
+
+dance_6: pokemon_2
+dance_speed_6: 1.0
+dance_volume_6: 1.0
+dance_trim_deg_6: 0.0
+
+# Cấu hình dance chung
+dance_start_frame: -1
+dance_start_search_frames: 200
+mimic_announce_delay_s: 2.0      # chỉ dùng khi announce KHÔNG có voice (fallback)
+mimic_announce_min_s: 0.3        # sàn: chờ tối thiểu để voice kịp bắt đầu
+mimic_announce_timeout_s: 20.0   # trần an toàn: chờ voice tối đa rồi vẫn nhảy
+
+# Thời gian khởi động mềm (soft-start) để policy tự đưa robot từ tư thế đứng default sang tư thế mở màn của điệu nhảy.
+mimic_warmup_s: 1.5
+
+# Thời gian dừng mềm (soft-stop) để policy đưa robot từ tư thế nhảy về tư thế đứng thẳng trước khi chuyển sang locomotion.
+mimic_cooldown_s: 1.8     # 1.2->1.8: thêm thời gian trượt về default cho bài kết thúc còn trớn (doremon)
+
+# Điều kiện bàn giao sớm từ mimic sang locomotion khi robot đứng thẳng đủ yên (nghiêng ngang < tilt, gyro < gyro, cooldown > min_s).
+mimic_handover_tilt: 0.15     # sin(nghiêng ngang); 0.12 ~ 7°
+mimic_handover_gyro: 0.5      # rad/s (norm gyro thân)
+mimic_handover_min_s: 0.3     # cooldown tối thiểu trước khi cho giao sớm
+# TRẦN cứng: nếu robot chưa yên thì mimic GIỮ default chờ tối đa bấy nhiêu giây rồi vẫn giao.
+# Chặn cú "ép giao khi còn loạng choạng" làm ngã lúc kết thúc doremon. Nên >= mimic_cooldown_s.
+# REVERT hành vi cũ: đặt = mimic_cooldown_s (1.8) -> giao ngay khi cooldown xong như trước.
+mimic_handover_max_s: 3.0
+
+# Cấu hình ghi log telemetry cho các điệu nhảy phục vụ phân tích sim2real.
+mimic_telemetry_enabled: true
+mimic_telemetry_hz: 100
+mimic_telemetry_post_s: 5.0
+mimic_telemetry_dir: logs/telemetry
+
+# Cấu hình dev
+dev_no_keyboard: true
+
+# Safe-stop khi mất tín hiệu điều khiển
+safe_stop_enabled: true
+safe_stop_debounce_ms: 300.0
+
+# Cấu hình chống xung đột và bàn giao quyền điều khiển từ built-in sang run_r1.
+arm_gate_enabled: true
+arm_require_button: true         # BẮT BUỘC giữ R1+R2 mới arm (bàn giao tường minh, chống arm mù)
+arm_hold_s: 3.0                  # giữ R1+R2 liên tục bấy nhiêu giây = ý định người
+arm_silence_ms: 3000.0           # built-in phải im >= 3s (sau khi bạn L2+R2) mới coi là đã buông
+arm_require_seen_builtin: true   # BẮT BUỘC nghe built-in sống trước rồi mới tin "im = buông"
+arm_min_foreign_seen: 5
+arm_conflict_min: 3              # thấy >= bấy nhiêu gói built-in trong cửa sổ dưới -> ngắt ngay
+arm_conflict_window_ms: 150.0    # cửa sổ đếm gói (1 gói lạc ko gây ngắt oan; 3 gói@621Hz ~5ms)
+arm_conflict_release: true       # BẬT lớp an toàn: thấy built-in QUAY LẠI lúc đang armed -> NHẢ QUYỀN
+                                 # (ngừng publish) ngay + latch kConflict. Trước đây tắt vì báo động
+                                 # GIẢ 3/3 lần arm; nguyên nhân thật (đã vá 2026-07-21): bộ nghe rt/lowcmd
+                                 # sống trong khe hở khởi động lúc armed_ còn mặc định=true -> đếm gói
+                                 # built-in lúc boot là "xung đột" rồi chốt cứng cờ, bắn ngay khi arm.
+                                 # Vá: disarm TRƯỚC khi bật bộ nghe + reset trạng thái xung đột lúc arm.
+# Thời gian chờ tối đa nếu không thấy gói built-in trước khi arm mù (0 để tắt hẳn, yêu cầu an toàn tuyệt đối).
+arm_no_builtin_timeout_s: 0
+
+# Cấu hình giám sát pin qua topic rt/lf/bmsstate
+battery_monitor_enabled: true
+battery_topic: "rt/lf/bmsstate"
+battery_warn_pct: 20             # Ngưỡng pin yếu để phát cảnh báo
+battery_critical_pct: 5          # Ngưỡng pin cạn để tự động thực hiện hành động khẩn cấp
+battery_critical_action: sit     # sit | damp | voice
+battery_announce_period_s: 60.0
+battery_stale_s: 30.0            # Thời gian timeout khi mất kết nối pin
+
+# Cấu hình tư thế ngồi (L2+X có ghế, hoặc tự động hạ khi pin cạn).
+#
+# Phân biệt tư thế hạ người desc (tự cân bằng) và tư thế ngồi rest (áp dụng khi ghế đã đỡ).
+#  sit_rest_* ("rest") = tư thế NGỒI CUỐI, CHỈ áp dụng SAU KHI GHẾ ĐÃ ĐỠ trọng lượng (L2+X).
+#  Auto-sit (pin cạn) KHÔNG dùng rest — giữ nguyên "desc" vì không có gì đỡ cả.
+sit_hip_deg: 130.0           # [DESC] Gập hông lúc hạ -> ghế ~43cm. Đã kiểm mô phỏng, biên +9.2cm.
+sit_knee_deg: 82.0           # [DESC] Gập gối lúc hạ. Đã kiểm mô phỏng.
+sit_spread: 0.08             # [DESC] Dạng chân NHẸ lúc hạ (rad) — đã kiểm an toàn.
+sit_rest_hip_deg: 87.0       # [REST] Gập hông CUỐI, đo thực trên robot (ghế đã đỡ, limp).
+sit_rest_knee_deg: 82.0      # [REST] Gập gối CUỐI, đo thực.
+sit_rest_spread: 0.45        # [REST] Dạng chân CUỐI, đo thực (L −26°/R +26°, ghế đã đỡ nên an toàn).
+sit_rest_hip_yaw: 0.45       # [REST] Xoay mũi chân ra CUỐI, đo thực (L −26°/R +26°).
+sit_lean_deg: 58.0           # Đổ thân về trước khi hạ. Dải thử: 40 - 70
+sit_seated_lean_deg: 20.0    # Thân còn đổ bao nhiêu sau khi ngồi hẳn (chỉ khi có ghế)
+sit_arm_forward: -1.5        # Vai vươn ra trước KHI HẠ (rad, âm = ra trước) — để cân bằng lúc xuống
+sit_arm_elbow: 0.3           # Khuỷu khi vươn tay lúc hạ (rad)
+# Tư thế tay CUỐI khi ngồi hẳn CÓ GHẾ = TAY ĐẶT TRÊN ĐÙI (đo thực trên robot):
+sit_seated_arm_pitch: 0.0    # Vai buông thẳng xuống (rad)
+sit_seated_arm_elbow: 0.42   # Khuỷu cong nhẹ để bàn tay chạm đùi (rad)
+sit_ankle_gravity_gain: 0.4 # Bàn chân bám MẶT ĐẤT theo IMU. 0 = tắt, 1 = ép phẳng tuyệt đối
+sit_descent_time_s: 4.0
+sit_settle_time_s: 1.5      # Giao trọng lượng cho ghế + thu tay
+sit_hold_s: 0.5
+sit_release_after: false
+sit_kp_leg: 200.0
+sit_kd: 3.0
+sit_rate_limit: 3.0
+sit_gather_time_s: 1.5
+
+# Cấu hình phát lại quỹ đạo chuyển động đứng dậy/nằm xuống (PD thuần, không policy).
+getup_motion_file: motions/getup.npz
+liedown_motion_file: motions/liedown.npz
+getup_kp_leg: 220.0
+getup_kp_waist: 200.0
+getup_kp_arm: 60.0
+getup_kd: 4.0
+getup_rate_limit: 6.0
+liedown_rate_limit: 4.0
+getup_blend_time_s: 0.6
+liedown_blend_time_s: 0.6
+getup_speed: 1.0
+liedown_speed: 1.0
+getup_liedown_block_s: 1.0
+# Hệ số bù góc cổ chân theo IMU để giữ bàn chân phẳng với sàn khi đứng/nằm.
+getup_ankle_gravity_gain: 0.5
+# Ngưỡng nghiêng thân (độ) để IMU coi robot ĐANG NẰM (nằm thật ~82°, đứng ~0-2°).
+# L2+X dựa vào đây: đang nằm -> chuẩn bị / đứng dậy; đang đứng -> nằm xuống.
+lying_tilt_deg: 60.0
+# Thời gian giữ tổ hợp nút để tránh bấm nhầm
+hold_to_trigger_s: 3.0
+
+# Đường dẫn file âm thanh tiếng Việt và cấu hình âm lượng
+voice_enabled: true
+voice_volume: 0.95
+voice_speaker_id: 0
+voice_startup: "src/audio/start.mp3"
+# Thời gian hoãn phát âm thanh chào mừng sau khi arm
+startup_voice_delay_s: 0
+voice_stand_lock: "src/audio/khoacung.mp3"
+voice_locomotion: "src/audio/batchedodichuyen.mp3"
+voice_sit_down: "src/audio/dangangngoixuong.mp3"
+voice_safe_stop: "src/audio/kichhoatchedoantoan.mp3"
+voice_mimic_2: "src/audio/embevietnam.mp3"
+voice_mimic_3: "src/audio/embevietnam.mp3"
+voice_mimic_4: "src/audio/voice_pokemon.mp3"
+voice_mimic_5: "src/audio/voice_doremon.mp3"
+
+voice_fast_speed: "src/audio/tangtoc.mp3"
+voice_slow_speed: "src/audio/giamtoc.mp3"
+voice_conflict: "src/audio/xungdot.mp3"
+voice_battery_low: "src/audio/pinthap.mp3"
+voice_battery_critical: "src/audio/pincan.mp3"
+voice_zero_torque: "src/audio/zero.mp3"      # L2+Y xả lực hoàn toàn — chèn mp3 vào nếu muốn có tiếng
+voice_get_up: ""      # L2+X đứng lên — rỗng = không phát, chèn mp3 nếu muốn có tiếng
+voice_lie_down: ""    # L2+X nằm xuống — rỗng = không phát, chèn mp3 nếu muốn có tiếng
+
+# Gains điều khiển đầu
+head_yaw_kp: 20.0
+head_yaw_kd: 10.0
+head_pitch_kp: 10.0
+head_pitch_kd: 1.0

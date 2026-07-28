@@ -9,20 +9,18 @@ from gui.grouped_main_window import GroupedMainWindow
 
 def main():
     parser = argparse.ArgumentParser(description="R1 Diagnostic Dashboard - Grouped GUI")
-    parser.add_argument("interface", nargs="?", default="auto", help="Network interface (auto, lo, eth0, wlan0)")
+    parser.add_argument("interface", nargs="?", default="auto", help="Network interface")
     args = parser.parse_args()
 
-    print("🚀 Starting R1 Diagnostic Dashboard (Grouped View)...")
+    print("🚀 Khởi động R1 Diagnostic Dashboard (Grouped View)...")
 
-    # Start UDP Client
     udp_client = UDPClient()
     try:
         udp_client.start()
     except RuntimeError as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n❌ Lỗi: {e}")
         sys.exit(1)
 
-    # Start GUI
     app = QApplication(sys.argv)
     window = GroupedMainWindow(udp_client=udp_client, interface=args.interface)
     window.show()
@@ -30,7 +28,7 @@ def main():
     try:
         ret = app.exec()
     finally:
-        print("\n🛑 Cleaning up...")
+        print("\n🛑 Đang dọn dẹp...")
         udp_client.stop()
         
     sys.exit(ret)

@@ -1,0 +1,8 @@
+[Unit]
+Description=HB R1 complete autonomous runtime stack
+Wants=hb_integration.service hb_high_level.service hb_voice.service
+After=hb_integration.service hb_high_level.service hb_voice.service
+
+[Install]
+WantedBy=multi-user.target
+

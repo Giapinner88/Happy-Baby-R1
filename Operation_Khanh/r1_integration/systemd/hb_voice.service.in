@@ -1,0 +1,27 @@
+[Unit]
+Description=HB R1 voice runtime (PTT, high-level audio priority)
+After=network-online.target
+Wants=network-online.target hb_integration.service hb_high_level.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+WorkingDirectory=@HB_ROOT@/voice_r1
+Environment=HB_ROOT=@HB_ROOT@
+EnvironmentFile=-/etc/hb/stack.env
+RuntimeDirectory=hb
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+ExecStartPre=/bin/bash @HB_ROOT@/r1_integration/scripts/preflight.sh voice
+ExecStart=/bin/bash @HB_ROOT@/r1_integration/scripts/run_voice.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=12
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/hb
+
+[Install]
+WantedBy=hb-stack.target
