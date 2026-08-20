@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "status": "not_assessed",
+  "framework": "rl_lab",
+  "task": "Unitree-R1-Velocity",
+  "source_checkpoint_sha256": "replace-with-collected-checkpoint-sha256",
+  "r1_usd_sha256": "replace-with-current-assets/R1/R1.usd-sha256",
+  "observation_action_signature": {
+    "inputs": "record names, shapes, ordering, units, and normalization",
+    "outputs": "record names, shapes, ordering, units, and action scale"
+  },
+  "simulation_evidence": "link a valid experiment run or evaluation record before setting status to passed"
+}

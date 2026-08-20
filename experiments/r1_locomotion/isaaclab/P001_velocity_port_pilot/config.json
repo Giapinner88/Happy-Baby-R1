@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "experiment_id": "P001_velocity_port_pilot",
+  "title": "Archived R1 velocity-task port pilot",
+  "framework": "rl_lab",
+  "task": "Unitree-R1-Velocity",
+  "environment": "unitree_sim_env",
+  "r1_usd": "assets/R1/R1.usd",
+  "training": {
+    "num_envs": 512,
+    "max_iterations": 3000,
+    "save_interval": 200,
+    "seed": 42,
+    "run_name": "P001_velocity_port_pilot"
+  },
+  "execution": {
+    "cuda_visible_devices": "1"
+  },
+  "command_distribution": {
+    "standing_probability": 1.0,
+    "lin_vel_x_mps": [0.0, 0.0],
+    "lin_vel_y_mps": [0.0, 0.0],
+    "yaw_rate_radps": [0.0, 0.0]
+  },
+  "environment_protocol": {
+    "terrain": "plane",
+    "disable_terrain_curriculum": true,
+    "disable_velocity_curriculum": true,
+    "disable_interval_pushes": true
+  },
+  "capture": {
+    "record_training_video": true,
+    "training_video_length_steps": 1000,
+    "training_video_interval_steps": 5000,
+    "convert_tensorboard_to_csv_and_plots": true,
+    "raw_evaluation_trace_required": true,
+    "evaluation_video_required": true
+  },
+  "artifacts": {
+    "export_policy_after_training": true
+  },
+  "evaluation_plan": {
+    "required_before_promotion": true,
+    "standing_command_mps": 0.0,
+    "walking_commands_mps": [-0.05, 0.05, -0.1, 0.1],
+    "note": "Set episode count, duration, fall criterion, and tracking-error threshold in a separate evaluation record before interpreting the pilot."
+  }
+}

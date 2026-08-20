@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "experiment_id": "I002_nominal_stand",
+  "title": "R1 IsaacLab nominal stable-standing baseline",
+  "framework": "rl_lab",
+  "task": "Unitree-R1-Stand",
+  "environment": "unitree_sim_env",
+  "r1_usd": "assets/R1/R1.usd",
+  "training": {
+    "num_envs": 512,
+    "max_iterations": 3000,
+    "save_interval": 200,
+    "seed": 42,
+    "run_name": "I002_nominal_stand"
+  },
+  "execution": {
+    "cuda_visible_devices": "1"
+  },
+  "command_distribution": {
+    "standing_probability": 1.0,
+    "lin_vel_x_mps": [0.0, 0.0],
+    "lin_vel_y_mps": [0.0, 0.0],
+    "yaw_rate_radps": [0.0, 0.0]
+  },
+  "nominal_conditions": {
+    "terrain": "plane",
+    "disable_terrain_curriculum": true,
+    "disable_velocity_curriculum": true,
+    "disable_interval_pushes": true,
+    "disable_startup_material_randomization": true,
+    "disable_startup_base_mass_randomization": true,
+    "reset_joint_velocity_radps": [0.0, 0.0],
+    "reset_base_xy_yaw": [0.0, 0.0],
+    "disable_policy_observation_corruption": true
+  },
+  "capture": {
+    "record_training_video": true,
+    "training_video_length_steps": 250,
+    "training_video_interval_steps": 10000,
+    "convert_tensorboard_to_csv_and_plots": true,
+    "raw_evaluation_trace_required": true,
+    "evaluation_video_required": true
+  },
+  "artifacts": {
+    "export_policy_after_training": true
+  },
+  "evaluation_plan": {
+    "required_before_positive_conclusion": true,
+    "duration_s": 20.0,
+    "settling_window_s": 2.0,
+    "max_tilt_rad": 0.35,
+    "minimum_base_height_m": 0.68,
+    "maximum_xy_speed_rms_mps": 0.10,
+    "note": "The deterministic standing replay is the only declared performance gate. Passing it does not demonstrate disturbance robustness, walking, MuJoCo compatibility, or hardware readiness."
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "protocol_id": "P001_checkpoint_diagnostic_v1",
+  "purpose": "Read-only, deterministic, one-environment diagnostic of an archived P001 checkpoint.",
+  "task": "Unitree-R1-Velocity",
+  "execution": {
+    "cuda_visible_devices": "0",
+    "num_envs": 1,
+    "seed": 42,
+    "headless": true,
+    "policy_observation_corruption": false
+  },
+  "duration_s": 20.0,
+  "cases": [
+    {
+      "case_id": "stand",
+      "command": {
+        "vx_mps": 0.0,
+        "vy_mps": 0.0,
+        "yaw_rate_radps": 0.0
+      }
+    },
+    {
+      "case_id": "forward_005",
+      "command": {
+        "vx_mps": 0.05,
+        "vy_mps": 0.0,
+        "yaw_rate_radps": 0.0
+      }
+    },
+    {
+      "case_id": "forward_010",
+      "command": {
+        "vx_mps": 0.1,
+        "vy_mps": 0.0,
+        "yaw_rate_radps": 0.0
+      }
+    }
+  ],
+  "outputs": [
+    "protocol_snapshot.json",
+    "manifest.json",
+    "status.json",
+    "case/*/trace.csv",
+    "case/*/trace.npz",
+    "case/*/tracking.png",
+    "case/*/orientation.png",
+    "case/*/video/*.mp4",
+    "summary.csv"
+  ],
+  "interpretation_rule": "Diagnostic evidence only. Do not promote a P001 policy from these cases alone."
+}

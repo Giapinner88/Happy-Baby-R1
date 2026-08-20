@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "migrated_at": "2026-07-28",
+  "source_experiment_id": "I001_flat_stand_walk",
+  "archive_experiment_id": "P001_velocity_port_pilot",
+  "reason": "The ported velocity-task pilot did not establish stable standing and is archived before I002 begins.",
+  "run_directory_mapping": {
+    "I001_flat_stand_walk_20260727T033124Z": "P001_velocity_port_pilot_20260727T033124Z",
+    "I001_flat_stand_walk_20260728T025316Z": "P001_velocity_port_pilot_20260728T025316Z",
+    "I001_flat_stand_walk_20260728T025327Z": "P001_velocity_port_pilot_20260728T025327Z"
+  },
+  "preservation_note": "Checkpoint bytes, videos, event files, exported policy files, resolved snapshots, and generated manifests were moved without content edits. Their embedded historic I001 paths/names remain valid only through this mapping."
+}

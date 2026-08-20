@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "description": "Authoritative list of experiments. Every reporting and validation tool reads this file; nothing discovers experiments by scanning directories.",
+  "experiments": [
+    {
+      "id": "r1_teleop/quest3_sim_v1",
+      "title": "R1 Quest 3 teleop simulation v1",
+      "root": "experiments/r1_teleop/quest3_sim_v1",
+      "record": "experiment.md",
+      "module": "teleop/r1/",
+      "environment": "tv (Quest bridge) + unitree_sim_env (Isaac Sim)",
+      "how_to_run": "scripts/teleop/README.md",
+      "layout": "protocol-owned",
+      "run_root": "T001/runs",
+      "run_roots": {
+        "t001_a": "T001/runs",
+        "t001_b": "T001/runs",
+        "t002": "T002/runs",
+        "t003_a": "T003/runs",
+        "t003_b": "T003/runs",
+        "t003": "T003/runs",
+        "t004": "T004/runs",
+        "t005": "T005/runs",
+        "t006": "T006/runs",
+        "t007": "T007/runs",
+        "t008": "T008/runs"
+      },
+      "protocol_records": {
+        "t001_a": "T001/T001-A.md",
+        "t001_b": "T001/T001-B.md",
+        "t002": "T002/T002.md",
+        "t003_a": "T003/T003-A.md",
+        "t003_b": "T003/T003-B.md",
+        "t003": "T003/T003-legacy.md",
+        "t004": "T004/T004.md",
+        "t005": "T005/T005.md",
+        "t006": "T006/T006.md",
+        "t007": "T007/T007.md",
+        "t008": "T008/T008.md"
+      },
+      "pipeline": "arm_wrist_simulation_study_plan.md",
+      "protocols": [
+        "t001_a",
+        "t001_b",
+        "t002",
+        "t003_a",
+        "t003_b",
+        "t003",
+        "t004",
+        "t005",
+        "t006",
+        "t007",
+        "t008",
+        "t009",
+        "t010"
+      ]
+    },
+    {
+      "id": "r1_locomotion/isaaclab",
+      "title": "R1 IsaacLab locomotion",
+      "root": "experiments/r1_locomotion/isaaclab",
+      "record": "experiment.md",
+      "module": "training/isaaclab/",
+      "environment": "unitree_sim_env",
+      "how_to_run": "experiments/r1_locomotion/isaaclab/I002_nominal_stand/README.md",
+      "layout": "protocol",
+      "run_root": "runs",
+      "protocols": [
+        "I002_nominal_stand",
+        "P001_velocity_port_pilot"
+      ]
+    },
+    {
+      "id": "r1_locomotion/mjlab",
+      "title": "R1 MJLab locomotion",
+      "root": "experiments/r1_locomotion/mjlab",
+      "record": "experiment.md",
+      "module": "training/mjlab/",
+      "environment": "mjlab_env",
+      "how_to_run": "experiments/r1_locomotion/mjlab/M001_flat_stand_walk/README.md",
+      "layout": "protocol",
+      "run_root": "runs",
+      "protocols": [
+        "M001_flat_stand_walk"
+      ]
+    }
+  ]
+}

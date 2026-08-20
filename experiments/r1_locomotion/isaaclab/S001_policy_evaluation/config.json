@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "study_id": "S001_policy_evaluation",
+  "framework": "rl_lab",
+  "task": "Unitree-R1-Velocity",
+  "environment": "unitree_sim_env",
+  "backend": "isaacsim",
+  "candidates": [
+    {
+      "id": "P001_latest",
+      "checkpoint": "experiments/r1_locomotion/isaaclab/runs/P001_velocity_port_pilot_20260728T025327Z/logs/rsl_rl/r1_velocity/2026-07-28_09-53-34_I001_flat_stand_walk/model_2499.pt"
+    },
+    {
+      "id": "P001_checkpoint_2000",
+      "checkpoint": "experiments/r1_locomotion/isaaclab/runs/P001_velocity_port_pilot_20260728T025327Z/logs/rsl_rl/r1_velocity/2026-07-28_09-53-34_I001_flat_stand_walk/model_2000.pt"
+    }
+  ],
+  "cases": [
+    {"id": "stand", "command_mps_radps": [0.0, 0.0, 0.0]},
+    {"id": "forward_0p05", "command_mps_radps": [0.05, 0.0, 0.0]},
+    {"id": "backward_0p05", "command_mps_radps": [-0.05, 0.0, 0.0]},
+    {"id": "forward_0p10", "command_mps_radps": [0.1, 0.0, 0.0]},
+    {"id": "backward_0p10", "command_mps_radps": [-0.1, 0.0, 0.0]}
+  ],
+  "seeds": [11, 29, 47],
+  "duration_s": 20.0,
+  "video_required": true,
+  "mujo_co_status": "blocked_pending_observation_action_controller_compatibility_gate",
+  "decision_rule": "Rank candidates by complete per-case trace metrics; a termination before the configured duration is a scientific failure. No promotion threshold is declared by S001."
+}
