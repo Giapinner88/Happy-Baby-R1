@@ -1,0 +1,101 @@
+{
+  "schema_version": 2,
+  "experiment_family": "t003",
+  "title": "R1 arm/wrist trajectory: atomic nominal and safety cases",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "source_workspace_evidence": "experiments/r1_teleop/quest3_sim_v1/T002/runs/t002_nocollide_20260802T120645Z/targets.json",
+  "frames": {
+    "target_frame": "waist_yaw_link",
+    "endpoint_link_suffix": "_wrist_roll_link",
+    "end_effector_offset_m": [0.0, 0.0, 0.0],
+    "compatibility": "Legacy wrist-joint-origin endpoint retained to reproduce the recorded T002/T003 evidence.",
+    "units": {"position": "m", "angle": "rad", "time": "s"}
+  },
+  "ik": {
+    "position_tolerance_m": 0.002,
+    "roll_tolerance_rad": 0.01,
+    "max_iterations": 400,
+    "damping": 0.01,
+    "posture_weight": 0.2,
+    "max_joint_step_rad": 0.1,
+    "posture_tolerance_rad": 0.0001
+  },
+  "trajectory_limiter": {
+    "max_joint_velocity_rad_s": 1.0,
+    "max_joint_acceleration_rad_s2": 2.0,
+    "max_joint_jerk_rad_s3": 10.0,
+    "profile": "synchronized_rest_to_rest_minimum_jerk",
+    "scope": "exploratory simulation-only command-target envelope; not a hardware safety limit"
+  },
+  "mapper": {
+    "command_timeout_s": 0.5,
+    "source_frame": "quest_headset",
+    "base_velocity_source": "constant_zero"
+  },
+  "trajectory": {
+    "side": "right",
+    "initial_target": {"position_m": [0.1333333333, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+    "waypoints": [
+      {"name": "reach", "position_m": [0.2166666667, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "reach_hold", "hold_s": 1.0},
+      {"name": "return", "position_m": [0.1333333333, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "horizontal_out", "position_m": [0.2166666667, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "horizontal_back", "position_m": [0.1333333333, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "vertical_up", "position_m": [0.2166666667, -0.1666666667, 0.2166666667], "wrist_roll_rad": 0.0},
+      {"name": "vertical_down", "position_m": [0.2166666667, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "wrist_roll_out", "position_m": [0.2166666667, -0.1666666667, 0.2166666667], "wrist_roll_rad": 0.8},
+      {"name": "wrist_roll_return", "position_m": [0.2166666667, -0.1666666667, 0.2166666667], "wrist_roll_rad": 0.0}
+    ]
+  },
+  "simulation": {
+    "physics_hz": 200.0,
+    "control_hz": 50.0,
+    "pelvis_pinned": true,
+    "self_collisions_enabled": false,
+    "video_fps": 15.0
+  },
+  "validity": {
+    "invalid_if": [
+      "the runner crashes or any required raw trace/config/provenance/status file is missing",
+      "a lower-body or base-velocity command is dispatched",
+      "a required waypoint has no converged IK solution",
+      "the emitted nominal trajectory target exceeds its configured velocity, acceleration or jerk envelope"
+    ],
+    "scientific_outcome": "unassessed until the atomic case trace is inspected; no dynamic tracking threshold is inferred from T002 static settling"
+  },
+  "cases": [
+    {
+      "case_id": "nominal",
+      "protocol_id": "t003_a",
+      "run_prefix": "t003_a_nominal",
+      "question": "Does the rate-limited trajectory track under normal valid input?",
+      "required_safety_events": [],
+      "safety_injections": []
+    },
+    {
+      "case_id": "deadman",
+      "protocol_id": "t003_b",
+      "run_prefix": "t003_b_deadman",
+      "question": "Does a deadman release freeze the last arm target?",
+      "required_safety_events": ["deadman_released"],
+      "safety_injections": [{"name": "deadman_release", "at_active_trajectory_s": 2.0, "duration_s": 0.5, "reason": "deadman_released"}]
+    },
+    {
+      "case_id": "timeout",
+      "protocol_id": "t003_b",
+      "run_prefix": "t003_b_timeout",
+      "question": "Does a stale command timeout freeze the last arm target?",
+      "required_safety_events": ["command_timeout"],
+      "safety_injections": [{"name": "stale_packet", "at_active_trajectory_s": 2.0, "duration_s": 0.5, "reason": "command_timeout"}]
+    },
+    {
+      "case_id": "sequence",
+      "protocol_id": "t003_b",
+      "run_prefix": "t003_b_sequence",
+      "question": "Does a non-increasing sequence ID freeze the last arm target?",
+      "required_safety_events": ["sequence_id_not_increasing"],
+      "safety_injections": [{"name": "sequence_violation", "at_active_trajectory_s": 2.0, "duration_s": 0.5, "reason": "sequence_id_not_increasing"}]
+    }
+  ]
+}

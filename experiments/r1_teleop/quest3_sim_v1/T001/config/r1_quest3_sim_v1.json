@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "mode": "simulation_only",
+  "source_frame": "quest_headset",
+  "robot_frame": "r1_base",
+  "command_timeout_s": 0.5,
+  "velocity": {
+    "enabled": false,
+    "requires_evaluation_manifest": true
+  },
+  "calibration": {
+    "translation_m": [0.0, 0.0, 0.0],
+    "yaw_rad": 0.0
+  },
+  "notes": [
+    "This is a simulation-only provisional configuration.",
+    "Robot-specific joint and velocity limits must be supplied by a reviewed experiment configuration before a simulator controller applies them."
+  ]
+}

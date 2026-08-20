@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "experiment_id": "t002",
+  "title": "R1 arm/wrist reachable workspace and self-collision behaviour",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+
+  "frames": {
+    "target_frame": "waist_yaw_link",
+    "endpoint_link_suffix": "_wrist_roll_link",
+    "end_effector_offset_m": [0.0, 0.0, 0.0],
+    "compatibility": "Legacy wrist-joint-origin endpoint retained to reproduce schema-1 T002 evidence; current T007 uses the vendor R1-A5 virtual EE offset [0.20, 0, 0] m.",
+    "units": {"position": "m", "angle": "rad", "time": "s"}
+  },
+
+  "ik": {
+    "position_tolerance_m": 0.002,
+    "roll_tolerance_rad": 0.01,
+    "max_iterations": 400,
+    "damping": 0.01,
+    "posture_weight": 0.2,
+    "max_joint_step_rad": 0.1,
+    "posture_tolerance_rad": 0.0001,
+    "notes": [
+      "The method record leaves every numeric threshold to this experiment.",
+      "position_tolerance_m 0.002 is 2 mm, about 0.35% of the 0.57 m measured arm reach.",
+      "damping 0.01 keeps the damped-least-squares step bounded near singular configurations.",
+      "posture_tolerance_rad 1e-4 is the settling criterion for the redundant degree of freedom; without it the solver stops on position alone and the solution depends on the seed.",
+      "max_joint_step_rad 0.1 bounds one solver iteration. This is a solver step limit, not a robot rate limit; joint rate limiting is out of scope for a static grid sweep and is declared by T003."
+    ]
+  },
+
+  "workspace_grid": {
+    "left": {
+      "x_range_m": [0.05, 0.30],
+      "y_range_m": [0.05, 0.40],
+      "z_range_m": [-0.05, 0.35],
+      "counts": [4, 4, 4],
+      "wrist_roll_rad": 0.0
+    },
+    "right": {
+      "x_range_m": [0.05, 0.30],
+      "y_range_m": [-0.40, -0.05],
+      "z_range_m": [-0.05, 0.35],
+      "counts": [4, 4, 4],
+      "wrist_roll_rad": 0.0
+    },
+    "notes": [
+      "Bounds are derived from a measured envelope, not chosen freely: 20,000 random joint samples inside the URDF limits put the left endpoint in x [-0.330, 0.330], y [-0.121, 0.443], z [-0.120, 0.539] with reach up to 0.570 m from the waist.",
+      "The grid deliberately extends towards the envelope edge so some targets are unreachable. An unreachable target is a valid recorded result about the workspace boundary, not a failure to hide.",
+      "Right-arm y is mirrored because the shoulder-roll range is mirrored between arms."
+    ]
+  },
+
+  "self_collision_probe": {
+    "enabled": true,
+    "compare_runs": ["self_collisions_enabled", "self_collisions_disabled"],
+    "joint_tracking_error_threshold_rad": 0.05,
+    "notes": [
+      "The R1 USD blocks the head joints when articulation self-collisions are enabled; whether the arm chain is affected the same way is unestablished and is the second question of T002.",
+      "The probe is a controlled A/B: the identical target grid is swept twice, changing only enabled_self_collisions, and the achieved joint positions are compared against the commanded ones.",
+      "joint_tracking_error_threshold_rad 0.05 separates settling error from mechanical blocking. It is a reporting threshold for the comparison, not an acceptance criterion for the workspace."
+    ]
+  },
+
+  "simulation": {
+    "physics_hz": 200.0,
+    "settle_steps_per_target": 60,
+    "pelvis_pinned": true,
+    "notes": [
+      "settle_steps_per_target is 0.3 s of simulated time at 200 Hz, long enough for the implicit position actuators to settle before the achieved joint positions are read.",
+      "The pelvis is pinned so the arm base frame is fixed; the waist joints belong to locomotion and are held at their default."
+    ]
+  },
+
+  "validity": {
+    "invalid_if": [
+      "the runner crashes or any evidence file is missing",
+      "a base-velocity command is dispatched",
+      "the forward kinematics disagrees with the simulator endpoint beyond the declared tolerance"
+    ],
+    "valid_scientific_failure": [
+      "an unreachable target with a converged solver refusal",
+      "a joint-limit saturated solution",
+      "a self-collision that prevents a reachable target from being held"
+    ]
+  }
+}

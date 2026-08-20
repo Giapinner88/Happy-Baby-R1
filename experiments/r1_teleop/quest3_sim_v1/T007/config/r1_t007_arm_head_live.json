@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "experiment_id": "t007",
+  "title": "Quest live bilateral arm/head simulation pilot",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "fixed_base": true,
+  "arm_head": {
+    "neutral_instruction": "Press and release the left trigger to return the simulated arms/head to joint zero. Hold the right trigger to apply the vendor's absolute waist-frame wrist poses; the first sample starts the session but does not redefine arm neutral.",
+    "startup_pose": "declared_neutral_joint_position",
+    "controlled_endpoint": "vendor R1_A5 virtual EE: 0.20 m along wrist_roll_link local +x",
+    "neutral_joint_position_rad": [0.0, 0.0, 0.0, 0.0, 0.0],
+    "left_neutral_position_m": [0.328371, 0.13860574468679437, -0.018035188737750694],
+    "right_neutral_position_m": [0.328371, -0.13860574468679437, -0.018035188737750694],
+    "position_scale": 1.0,
+    "mapping_mode": "absolute_vendor_pose",
+    "allow_projected_position_solution": true,
+    "allow_clamped_roll_solution": true,
+    "workspace_policy": "ik_joint_limit_only",
+    "enforce_workspace": false,
+    "allow_converged_joint_limit_solution": true,
+    "left_workspace": {"lower_m": [0.05, 0.05, -0.05], "upper_m": [0.30, 0.40, 0.35]},
+    "right_workspace": {"lower_m": [0.05, -0.40, -0.05], "upper_m": [0.30, -0.05, 0.35]},
+    "max_joint_velocity_rad_s": 3.5,
+    "max_joint_acceleration_rad_s2": 5.0,
+    "rate_limit_source": "T007 offline replay of t007_live_arm_head_20260817T114118Z: 1.5 rad/s and 4.0 rad/s^2 reduced mean target-to-limited-command endpoint error from 0.128/0.131 m (left/right) to 0.078/0.080 m while remaining below the R1 URDF motor velocity limits. Simulation-only tuning; not a hardware safety limit.",
+    "ik": {
+      "position_tolerance_m": 0.002,
+      "roll_tolerance_rad": 0.01,
+      "max_iterations": 400,
+      "damping": 0.01,
+      "posture_weight": 0.2,
+      "max_joint_step_rad": 0.1,
+      "posture_tolerance_rad": 0.0001
+    }
+  },
+  "validity": {
+    "invalid_if": ["base velocity is dispatched", "required evidence is missing", "self collisions are enabled", "the neutral session record is missing"],
+    "scientific_failure_if": ["either arm IK is refused", "head/arm dynamic tracking must be assessed from recorded traces before a pass claim"],
+    "joint_limit_policy": "T007 simulation dispatches exact IK solutions and bounded best-effort projections for poses outside the reachable set. Position residual, solver status and clamped joints are recorded. Wrist roll is clamped to its URDF limit. This is not a hardware policy.",
+    "collision_status": "inconclusive because functional arm tracking requires the documented self-collision workaround"
+  }
+}

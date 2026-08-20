@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "experiment_id": "t005",
+  "mode": "simulation_only",
+  "command_timeout_s": 0.5,
+  "scope": "deterministic mapper + SimulationOnlyAdapter replay; T003-B supplies prior Isaac physical hold evidence for the same three hold reasons",
+  "cases": [
+    {"case_id":"jitter_within_timeout","events":[{"kind":"command","sequence_id":0,"timestamp_s":1.00,"received_s":1.02},{"kind":"command","sequence_id":1,"timestamp_s":1.10,"received_s":1.23},{"kind":"command","sequence_id":2,"timestamp_s":1.20,"received_s":1.25},{"kind":"command","sequence_id":3,"timestamp_s":1.30,"received_s":1.49}],"expected_holds":[],"must_recover":false},
+    {"case_id":"packet_drop_below_timeout","events":[{"kind":"command","sequence_id":0,"timestamp_s":1.00,"received_s":1.00},{"kind":"command","sequence_id":3,"timestamp_s":1.35,"received_s":1.42}],"expected_holds":[],"must_recover":false},
+    {"case_id":"packet_loss_watchdog_timeout","events":[{"kind":"command","sequence_id":0,"timestamp_s":1.00,"received_s":1.00},{"kind":"watchdog_tick","received_s":1.60},{"kind":"command","sequence_id":1,"timestamp_s":1.70,"received_s":1.70}],"expected_holds":["command_timeout"],"must_recover":true},
+    {"case_id":"stale_packet","events":[{"kind":"command","sequence_id":0,"timestamp_s":1.00,"received_s":1.00},{"kind":"command","sequence_id":1,"timestamp_s":0.60,"received_s":1.20},{"kind":"command","sequence_id":2,"timestamp_s":1.30,"received_s":1.30}],"expected_holds":["command_timeout"],"must_recover":true},
+    {"case_id":"deadman_release","events":[{"kind":"command","sequence_id":0,"timestamp_s":1.00,"received_s":1.00},{"kind":"command","sequence_id":1,"timestamp_s":1.10,"received_s":1.10,"deadman_enabled":false},{"kind":"command","sequence_id":2,"timestamp_s":1.20,"received_s":1.20}],"expected_holds":["deadman_released"],"must_recover":true},
+    {"case_id":"sequence_violation","events":[{"kind":"command","sequence_id":0,"timestamp_s":1.00,"received_s":1.00},{"kind":"command","sequence_id":0,"timestamp_s":1.10,"received_s":1.10},{"kind":"command","sequence_id":1,"timestamp_s":1.20,"received_s":1.20}],"expected_holds":["sequence_id_not_increasing"],"must_recover":true}
+  ]
+}

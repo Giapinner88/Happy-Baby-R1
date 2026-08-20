@@ -19,6 +19,9 @@ CTestConfiguration.ini
 CTestCustom.cmake
 CTestTestfile.cmake
 Makefile
+# ...nhưng Makefile GỐC là entry point của dự án (make teleop), không phải do
+# CMake sinh ra. Makefile của CMake nằm trong build/ nên đã bị luật build/ chặn.
+!/Makefile
 install_manifest.txt
 symlink_install_manifest.txt
 
@@ -41,6 +44,7 @@ env/
 .env
 .env.*
 *.local
+.agents
 
 # IDE / Editor settings
 .vscode/*
@@ -85,6 +89,14 @@ data/rosbags/*
 data/runs/*
 data/sim_state_logs/*
 media/videos/*
+results/demo/*
+results/smoke/*
+experiments/**/runs/*
+experiments/**/artifacts/*
+
+# Ảnh chụp pháp chứng kéo từ robot về: giữ trên máy trạm để phân tích, không
+# đưa binary ARM64 và bản source đã sync vào lịch sử git.
+archive/
 
 # Keep placeholder files inside ignored data dirs
 !data/datasets/.gitkeep
@@ -106,3 +118,7 @@ media/videos/*
 !data/sim_state_logs/README.md
 !data/sim_state_logs/MUJOCO_LOG.txt
 !media/videos/README.md
+!results/demo/README.md
+!results/smoke/README.md
+!experiments/**/runs/README.md
+!experiments/**/artifacts/README.md

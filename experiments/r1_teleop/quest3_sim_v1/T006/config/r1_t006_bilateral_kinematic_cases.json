@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "experiment_id": "t006",
+  "title": "Bilateral arm/wrist kinematic and ownership screening",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "scope": "Deterministic bilateral mapper-input reconstruction plus project IK and ownership audit. No Isaac dynamics, collision/contact simulation, transport, rendering, DDS, or hardware channel is opened.",
+  "sources": {
+    "t003_waypoints": "experiments/r1_teleop/quest3_sim_v1/T003/runs/t003_a_nominal_20260811T034825Z/waypoints.json",
+    "t002_workspace_config": "experiments/r1_teleop/quest3_sim_v1/T002/config/r1_t002_workspace.json"
+  },
+  "frames": {
+    "target_frame": "waist_yaw_link",
+    "endpoint_link_suffix": "_wrist_roll_link",
+    "end_effector_offset_m": [0.0, 0.0, 0.0],
+    "compatibility": "Legacy wrist-joint-origin endpoint required by the immutable T002/T003 source records.",
+    "units": {"position": "m", "angle": "rad"}
+  },
+  "ik": {
+    "position_tolerance_m": 0.002,
+    "roll_tolerance_rad": 0.01,
+    "max_iterations": 400,
+    "damping": 0.01,
+    "posture_weight": 0.2,
+    "max_joint_step_rad": 0.1,
+    "posture_tolerance_rad": 0.0001,
+    "left_seed_q_rad": [0.0, 0.0, 0.0, 0.0, 0.0],
+    "right_seed_q_rad": [0.0, 0.0, 0.0, 0.0, 0.0],
+    "left_nominal_q_rad": [0.0, 0.0, 0.0, 0.0, 0.0],
+    "right_nominal_q_rad": [0.0, 0.0, 0.0, 0.0, 0.0]
+  },
+  "validity": {
+    "execution_failure_if": [
+      "a declared source record is missing or malformed",
+      "a target is non-finite",
+      "the left/right arm ownership sets overlap or touch lower-body ownership",
+      "required evidence or provenance files are missing",
+      "two deterministic evaluations disagree beyond repeatability_tolerance_rad"
+    ],
+    "scientific_failure_if": [
+      "either arm fails to converge at any simultaneous step",
+      "either solved arm is clamped at a joint limit"
+    ],
+    "kinematic_screen_pass_rule": "every simultaneous step converges, no solved joint is clamped, and bilateral arm ownership is disjoint and complete; this does not establish collision clearance or dynamic tracking",
+    "repeatability_tolerance_rad": 1e-12
+  },
+  "limitations": {
+    "collision_status": "inconclusive",
+    "collision_reason": "The R1 USD self-collision defect mechanically blocks functional arm tracking when self collisions are enabled. Functional dynamic runs disable self collisions, so they cannot establish contact/collision clearance.",
+    "endpoint_separation_metric": "Wrist-endpoint Euclidean separation is reported as a kinematic diagnostic only; it is not a geometry-to-geometry clearance or collision metric.",
+    "video": "not applicable to this kinematic runner; a future physics-valid collision experiment needs its own evidence including video and contact events."
+  },
+  "cases": [
+    {
+      "case_id": "mirror_t003",
+      "description": "Both arms traverse the recorded T003-A move waypoints simultaneously; the left source is the declared Y-mirror of the recorded right source.",
+      "source_kind": "t003_mirrored_waypoints",
+      "waypoint_pairs": [["initial", "initial"], ["reach", "reach"], ["vertical_up", "vertical_up"], ["wrist_roll_out", "wrist_roll_out"], ["wrist_roll_return", "wrist_roll_return"]]
+    },
+    {
+      "case_id": "asymmetric_t003",
+      "description": "Both arms use declared T003-A waypoints but do not move symmetrically, exercising independent continuous seeds and wrist-roll commands.",
+      "source_kind": "t003_mirrored_waypoints",
+      "waypoint_pairs": [["initial", "vertical_up"], ["reach", "vertical_down"], ["vertical_up", "reach"], ["wrist_roll_out", "wrist_roll_return"]]
+    },
+    {
+      "case_id": "inward_t002_grid",
+      "description": "Both endpoints approach the torso midline using values from T002's declared grid. This is an inward approach, not a collision test.",
+      "source_kind": "t002_workspace_grid",
+      "steps": [
+        {"name": "inward_start", "left_target_position_m": [0.13333333333333333, 0.16666666666666669, 0.08333333333333334], "right_target_position_m": [0.13333333333333333, -0.16666666666666669, 0.08333333333333334], "left_wrist_roll_rad": 0.0, "right_wrist_roll_rad": 0.0},
+        {"name": "inward_reach", "left_target_position_m": [0.21666666666666667, 0.16666666666666669, 0.08333333333333334], "right_target_position_m": [0.21666666666666667, -0.16666666666666669, 0.08333333333333334], "left_wrist_roll_rad": 0.0, "right_wrist_roll_rad": 0.0},
+        {"name": "inward_up_with_roll", "left_target_position_m": [0.21666666666666667, 0.16666666666666669, 0.21666666666666667], "right_target_position_m": [0.21666666666666667, -0.16666666666666669, 0.21666666666666667], "left_wrist_roll_rad": 0.8, "right_wrist_roll_rad": -0.8}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+# File env thật không bao giờ được commit hay sync.
+*.env
+!*.env.example

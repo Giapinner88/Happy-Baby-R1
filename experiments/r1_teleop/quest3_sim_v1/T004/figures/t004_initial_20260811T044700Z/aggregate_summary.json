@@ -1,0 +1,18 @@
+{
+  "aggregation_rule": "Every declared case is included exactly once; no case is filtered by success or scientific outcome.",
+  "case_count_expected_and_selected": 22,
+  "clamped_case_count": 0,
+  "config": "experiments/r1_teleop/quest3_sim_v1/T004/config/r1_t004_calibration_study.json",
+  "execution_status_counts": {
+    "completed": 22
+  },
+  "interpretation": "not performed by this aggregation",
+  "nonconverged_case_count": 0,
+  "repeatability_failure_count": 0,
+  "schema_version": 1,
+  "scientific_outcome_counts": {
+    "unassessed": 22
+  },
+  "study_id": "t004",
+  "usable_by_declared_ik_rule_count": 22
+}

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "study_id": "t004",
+  "title": "Calibration yaw and translation sensitivity of the mirrored T003-A trace",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "source_t003_run": "experiments/r1_teleop/quest3_sim_v1/T003/runs/t003_a_nominal_20260811T034825Z",
+  "source_waypoints_file": "waypoints.json",
+  "source_trace_contract": "T003-A right-arm move waypoints are treated as a synthetic Quest source-frame trace under identity calibration. The left condition mirrors source Y. Neither condition is live Quest data.",
+  "frames": {
+    "source_frame": "quest_headset",
+    "robot_frame": "r1_base",
+    "target_frame": "waist_yaw_link",
+    "end_effector_offset_m": [0.0, 0.0, 0.0],
+    "compatibility": "Legacy wrist-joint-origin endpoint required by the immutable T003 source trace.",
+    "units": {"position": "m", "angle": "rad"}
+  },
+  "ik": {
+    "position_tolerance_m": 0.002,
+    "roll_tolerance_rad": 0.01,
+    "max_iterations": 400,
+    "damping": 0.01,
+    "posture_weight": 0.2,
+    "max_joint_step_rad": 0.1,
+    "posture_tolerance_rad": 0.0001,
+    "seed_q_rad": [0.0, 0.0, 0.0, 0.0, 0.0],
+    "nominal_q_rad": [0.0, 0.0, 0.0, 0.0, 0.0]
+  },
+  "case_validity": {
+    "execution_failure_if": [
+      "source T003 waypoint evidence cannot be loaded",
+      "any source waypoint is malformed or non-finite",
+      "mapper disables a valid synthetic source command",
+      "required evidence/provenance files are missing"
+    ],
+    "scientific_failure_if": [
+      "any waypoint does not converge",
+      "any solved waypoint is clamped at a joint limit"
+    ],
+    "usable_trace_rule": "all waypoints converge and no solved waypoint is clamped at a joint limit; this is an IK screening rule, not a hardware safety margin",
+    "identity_mapping_tolerance_m": 1e-12,
+    "repeatability_tolerance_rad": 1e-12
+  },
+  "numerical_validity": {
+    "repeat_each_case": 2,
+    "criterion": "the two deterministic evaluations of every waypoint must agree in joint position within repeatability_tolerance_rad; disagreement invalidates the case",
+    "solver": "project damped-least-squares IK, fixed to T003 settings"
+  },
+  "design": {
+    "comparison": "one calibration perturbation at a time against the identity baseline, evaluated separately for mirrored left and recorded right T003-A traces",
+    "fixed_conditions": ["T003-A source waypoint record", "identity source orientation", "base velocity zero", "T003 IK settings", "continuous seed within each trace"],
+    "not_evaluated": ["Quest transport", "Isaac Lab tracking dynamics", "self collision", "contact", "hardware"]
+  },
+  "cases": [
+    {"case_id": "right_baseline", "side": "right", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "left_baseline", "side": "left", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "right_yaw_neg10deg", "side": "right", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": -0.17453292519943295}, "changed_variables": {"yaw_rad": -0.17453292519943295, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "left_yaw_neg10deg", "side": "left", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": -0.17453292519943295}, "changed_variables": {"yaw_rad": -0.17453292519943295, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "right_yaw_neg5deg", "side": "right", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": -0.08726646259971647}, "changed_variables": {"yaw_rad": -0.08726646259971647, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "left_yaw_neg5deg", "side": "left", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": -0.08726646259971647}, "changed_variables": {"yaw_rad": -0.08726646259971647, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "right_yaw_pos5deg", "side": "right", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": 0.08726646259971647}, "changed_variables": {"yaw_rad": 0.08726646259971647, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "left_yaw_pos5deg", "side": "left", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": 0.08726646259971647}, "changed_variables": {"yaw_rad": 0.08726646259971647, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "right_yaw_pos10deg", "side": "right", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": 0.17453292519943295}, "changed_variables": {"yaw_rad": 0.17453292519943295, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "left_yaw_pos10deg", "side": "left", "calibration": {"translation_m": [0.0, 0.0, 0.0], "yaw_rad": 0.17453292519943295}, "changed_variables": {"yaw_rad": 0.17453292519943295, "translation_m": [0.0, 0.0, 0.0]}},
+    {"case_id": "right_tx_neg30mm", "side": "right", "calibration": {"translation_m": [-0.03, 0.0, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [-0.03, 0.0, 0.0]}},
+    {"case_id": "left_tx_neg30mm", "side": "left", "calibration": {"translation_m": [-0.03, 0.0, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [-0.03, 0.0, 0.0]}},
+    {"case_id": "right_tx_pos30mm", "side": "right", "calibration": {"translation_m": [0.03, 0.0, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.03, 0.0, 0.0]}},
+    {"case_id": "left_tx_pos30mm", "side": "left", "calibration": {"translation_m": [0.03, 0.0, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.03, 0.0, 0.0]}},
+    {"case_id": "right_ty_neg30mm", "side": "right", "calibration": {"translation_m": [0.0, -0.03, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, -0.03, 0.0]}},
+    {"case_id": "left_ty_neg30mm", "side": "left", "calibration": {"translation_m": [0.0, -0.03, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, -0.03, 0.0]}},
+    {"case_id": "right_ty_pos30mm", "side": "right", "calibration": {"translation_m": [0.0, 0.03, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.03, 0.0]}},
+    {"case_id": "left_ty_pos30mm", "side": "left", "calibration": {"translation_m": [0.0, 0.03, 0.0], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.03, 0.0]}},
+    {"case_id": "right_tz_neg30mm", "side": "right", "calibration": {"translation_m": [0.0, 0.0, -0.03], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.0, -0.03]}},
+    {"case_id": "left_tz_neg30mm", "side": "left", "calibration": {"translation_m": [0.0, 0.0, -0.03], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.0, -0.03]}},
+    {"case_id": "right_tz_pos30mm", "side": "right", "calibration": {"translation_m": [0.0, 0.0, 0.03], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.0, 0.03]}},
+    {"case_id": "left_tz_pos30mm", "side": "left", "calibration": {"translation_m": [0.0, 0.0, 0.03], "yaw_rad": 0.0}, "changed_variables": {"yaw_rad": 0.0, "translation_m": [0.0, 0.0, 0.03]}}
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 3,
+  "experiment_id": "t007",
+  "title": "Quest live coupled R1-A5 whole-upper-body simulation pilot",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/r1_upper_body_ik.md",
+  "fixed_base": true,
+  "comparability": "Incompatible with schema-2 independent-arm T007 runs: waist_yaw participates in both wrist and head tasks and wrist orientation is now a weighted task. Also incompatible with schema-3 runs made before 2026-08-18: unreachable targets are now projected and dispatched instead of freezing all controlled joints, and waist_roll may be controlled.",
+  "whole_upper_body": {
+    "controlled_joint_order": [
+      "waist_yaw_joint",
+      "left_shoulder_pitch_joint",
+      "left_shoulder_roll_joint",
+      "left_shoulder_yaw_joint",
+      "left_elbow_joint",
+      "left_wrist_roll_joint",
+      "right_shoulder_pitch_joint",
+      "right_shoulder_roll_joint",
+      "right_shoulder_yaw_joint",
+      "right_elbow_joint",
+      "right_wrist_roll_joint",
+      "head_pitch_joint",
+      "head_yaw_joint"
+    ],
+    "fixed_joints": ["waist_roll_joint", "all_leg_joints"],
+    "urdf_path": "assets/R1.urdf",
+    "source_target_frame": "neutral_waist_yaw_link",
+    "nominal_joint_position_rad": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "max_joint_velocity_rad_s": 1.5,
+    "max_joint_acceleration_rad_s2": 4.0,
+    "rate_limit_source": "Carried from the schema-2 T007 offline replay; simulation-only tuning, not a hardware safety limit.",
+    "allow_nonconverged_solution": false,
+    "body_mode": "waist_yaw",
+    "body_mode_note": "Which torso joints the solver owns. 'arms_head' freezes the torso and drives both arms + head only (12-vector nominal); 'waist_yaw' is the hardware-common R1-A5 set (13-vector); 'full_upper_body' adds waist_roll as a declared simulation-only deviation (14-vector) that is NOT hardware-comparable and whose pitch/yaw-only head task cannot represent a rolled head. nominal_joint_position_rad and fixed_joints must match the selected mode. The runner's --body-mode overrides this and is recorded in the resolved config.",
+    "seed_restart_residual_m": 0.02,
+    "seed_restart_note": "Re-solve once from the declared nominal when a continuation solve stalls above this residual AND both targets are inside the arms' conservative reach bound. Source: offline replay of t007_whole_upper_body_20260818T114338Z, where bringing the hands in to the body trapped the solver in a folded-posture local minimum the continuation seed could not cross. Mean position residual for targets within 0.32 m of the shoulder fell from 0.3815 m to 0.0010 m (max 0.5943 -> 0.0025 m), and the reach gate kept mean solve cost at 149.6 ms versus 156.8 ms unchanged. Iterations, step size, damping and task weights had no effect on this failure; only the seed did. Simulation-only tuning, not a hardware limit.",
+    "allow_projected_position_solution": true,
+    "projection_policy": "A wrist target outside the bounded joint workspace has no exact root. The solver returns the closest reachable iterate (status projected_to_reachable_boundary, or iteration_budget_exhausted when it was still improving at the cap) and this profile dispatches it, recording solver_solution_kind=projected with its residual. Before 2026-08-18 such a target froze all controlled joints, which is why large extensions stopped tracking. singular_system and other genuine solver failures are still refused and still hold.",
+    "ik": {
+      "position_tolerance_m": 0.002,
+      "wrist_orientation_tolerance_rad": 3.141592653589793,
+      "head_orientation_tolerance_rad": 0.03,
+      "max_iterations": 40,
+      "damping": 0.02,
+      "posture_weight": 0.05,
+      "max_joint_step_rad": 0.12,
+      "finite_difference_rad": 0.00001,
+      "position_weight": 10.0,
+      "wrist_orientation_weight": 0.1,
+      "head_orientation_weight": 0.5
+    },
+    "wrist_orientation_policy": "Weighted best fit is recorded but does not gate acceptance: each physical arm has five joints and cannot realize an arbitrary independent 6-DoF wrist pose. The pi tolerance makes that policy explicit in schema 3.",
+    "numerical_pilot_note": "The 40-iteration cap is a simulation pilot setting. Offline replay of the 26 enabled synthetic targets from the pre-revision T000000Z smoke converged all targets in at most 11 iterations and averaged 14.0 ms/target on this workstation after task-only convergence was adopted; this is not Quest timing evidence."
+  },
+  "validity": {
+    "invalid_if": [
+      "base velocity is dispatched",
+      "the root is not fixed",
+      "required evidence or the resolved configuration is missing",
+      "the controlled joint order differs from the declared 13-joint order"
+    ],
+    "scientific_failure_if": [
+      "a reachable position/head target is refused",
+      "a projected (non-exact) target is reported as exact tracking",
+      "the achieved control rate or tracking residual does not meet a separately declared acceptance criterion"
+    ],
+    "hardware_claim": "none"
+  }
+}

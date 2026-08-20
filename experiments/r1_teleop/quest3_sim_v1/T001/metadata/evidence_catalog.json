@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "record_type": "editable_protocol_case_catalog",
+  "experiment_id": "r1_teleop/quest3_sim_v1/T001",
+  "purpose": "Canonical editable metadata for protocol, evaluation-part, case, run, selection and exclusion relationships. Raw run metadata.json, status.json and measurements remain immutable provenance.",
+  "catalog_rules": {
+    "run_directory_is_an_execution_unit": true,
+    "case_may_select_a_record_subset_from_one_execution_unit": true,
+    "raw_evidence_is_never_moved_or_rewritten_to_reclassify_it": true,
+    "selected_for_follow_up_requires_an_explicit_reason": true
+  },
+  "artifact_relocations": [
+    {
+      "migrated_at": "2026-08-11",
+      "reason": "T001-B bridge sidecars normalized into their owning immutable execution unit; contents unchanged.",
+      "files": [
+        {"from": "legacy central runs/t001_b_20260802_quest01.bridge.jsonl", "to": "T001/runs/t001_b_20260802_quest01/bridge_connection.jsonl"},
+        {"from": "legacy central runs/t001_b_20260802_quest02.bridge.jsonl", "to": "T001/runs/t001_b_20260802_quest02/bridge_connection.jsonl"},
+        {"from": "legacy central runs/t001_b_20260802T105934Z.bridge.jsonl", "to": "T001/runs/t001_b_20260802T105934Z/bridge_connection.jsonl"},
+        {"from": "legacy central runs/t001_b_20260802T111348Z.bridge.jsonl", "to": "T001/runs/t001_b_20260802T111348Z/bridge_connection.jsonl"},
+        {"from": "legacy central runs/t001_b_20260802T113303Z.bridge.jsonl", "to": "T001/runs/t001_b_20260802T113303Z/bridge_connection.jsonl"},
+        {"from": "legacy central runs/t001_b_20260802T113518Z.bridge.jsonl", "to": "T001/runs/t001_b_20260802T113518Z/bridge_connection.jsonl"}
+      ]
+    }
+  ],
+  "protocols": [
+    {
+      "protocol_id": "t001_a",
+      "evaluation_part": "quest_transport_capture",
+      "cases": [
+        {
+          "case_id": "t001_a_capture_quest01",
+          "source_runs": [{"run_id": "t001_a_20260802_quest01", "record_selector": "all transport_samples.jsonl"}],
+          "execution_status": "completed",
+          "scientific_outcome": "no_transport_data_received",
+          "selected_for_follow_up": false,
+          "selection_reason": "No motion-ready sample was received."
+        },
+        {
+          "case_id": "t001_a_capture_quest02",
+          "source_runs": [{"run_id": "t001_a_20260802_quest02", "record_selector": "all transport_samples.jsonl"}],
+          "execution_status": "completed",
+          "scientific_outcome": "transport_data_received",
+          "selected_for_follow_up": true,
+          "selection_reason": "Declared motion-ready and finite-pose criteria met; opens T001-B."
+        }
+      ]
+    },
+    {
+      "protocol_id": "t001_b",
+      "evaluation_part": "live_quest_bridge_to_isaac_sim",
+      "cases": [
+        {
+          "case_id": "t001_b_partial_path_and_deadman",
+          "source_runs": [{"run_id": "t001_b_20260802_quest01", "record_selector": "all run records"}],
+          "execution_status": "completed",
+          "scientific_outcome": "partial",
+          "selected_for_follow_up": false,
+          "selection_reason": "End-to-end and deadman evidence exists, but disconnect/reconnect was not exercised."
+        },
+        {
+          "case_id": "t001_b_no_immersive_session_first",
+          "source_runs": [{"run_id": "t001_b_20260802_quest02", "record_selector": "all run records"}],
+          "execution_status": "completed",
+          "scientific_outcome": "no_connection",
+          "selected_for_follow_up": false,
+          "selection_reason": "No motion-ready sample or emitted command."
+        },
+        {
+          "case_id": "t001_b_no_immersive_session_second",
+          "source_runs": [{"run_id": "t001_b_20260802T105934Z", "record_selector": "all run records"}],
+          "execution_status": "completed",
+          "scientific_outcome": "no_connection",
+          "selected_for_follow_up": false,
+          "selection_reason": "No motion-ready sample or emitted command."
+        },
+        {
+          "case_id": "t001_b_stale_pose_defect",
+          "source_runs": [{"run_id": "t001_b_20260802T111348Z", "record_selector": "all run records"}],
+          "execution_status": "completed",
+          "scientific_outcome": "protocol_defect_observed",
+          "selected_for_follow_up": false,
+          "selection_reason": "Pre-fix run showed headset removal without a bridge timeout hold."
+        },
+        {
+          "case_id": "t001_b_preselection_repeat",
+          "source_runs": [{"run_id": "t001_b_20260802T113303Z", "record_selector": "all run records"}],
+          "execution_status": "completed",
+          "scientific_outcome": "superseded",
+          "selected_for_follow_up": false,
+          "selection_reason": "Superseded by the selected post-fix run."
+        },
+        {
+          "case_id": "t001_b_selected_end_to_end",
+          "source_runs": [{"run_id": "t001_b_20260802T113518Z", "record_selector": "all run records"}],
+          "execution_status": "completed",
+          "scientific_outcome": "pass",
+          "selected_for_follow_up": true,
+          "selection_reason": "Observed dispatch, deadman hold, timeout hold, reconnect, complete evidence and zero base dispatch."
+        }
+      ]
+    }
+  ]
+}

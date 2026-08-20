@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "experiment_id": "t003",
+  "title": "R1 right arm/wrist rate-limited trajectory replay",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "source_workspace_evidence": "experiments/r1_teleop/quest3_sim_v1/T002/runs/t002_nocollide_20260802T120645Z/targets.json",
+  "frames": {
+    "target_frame": "waist_yaw_link",
+    "endpoint_link_suffix": "_wrist_roll_link",
+    "units": {"position": "m", "angle": "rad", "time": "s"}
+  },
+  "ik": {
+    "position_tolerance_m": 0.002,
+    "roll_tolerance_rad": 0.01,
+    "max_iterations": 400,
+    "damping": 0.01,
+    "posture_weight": 0.2,
+    "max_joint_step_rad": 0.1,
+    "posture_tolerance_rad": 0.0001
+  },
+  "trajectory_limiter": {
+    "max_joint_velocity_rad_s": 1.0,
+    "max_joint_acceleration_rad_s2": 2.0,
+    "max_joint_jerk_rad_s3": 10.0,
+    "profile": "synchronized_rest_to_rest_minimum_jerk",
+    "notes": [
+      "These are the selected exploratory T003 simulation values: qdot=1.0 rad/s, qddot=2.0 rad/s^2, jerk=10.0 rad/s^3.",
+      "They are command-target envelopes for this Isaac Sim experiment, not motor limits and not approved hardware safety limits.",
+      "The duration of every move is derived analytically from the largest joint displacement, so no fixed-duration trajectory silently exceeds the declared envelope."
+    ]
+  },
+  "mapper": {
+    "command_timeout_s": 0.5,
+    "source_frame": "quest_headset",
+    "base_velocity_source": "constant_zero"
+  },
+  "trajectory": {
+    "side": "right",
+    "initial_target": {"position_m": [0.1333333333, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+    "waypoints": [
+      {"name": "reach", "position_m": [0.2166666667, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "reach_hold", "hold_s": 1.0},
+      {"name": "return", "position_m": [0.1333333333, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "horizontal_out", "position_m": [0.2166666667, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "horizontal_back", "position_m": [0.1333333333, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "vertical_up", "position_m": [0.2166666667, -0.1666666667, 0.2166666667], "wrist_roll_rad": 0.0},
+      {"name": "vertical_down", "position_m": [0.2166666667, -0.1666666667, 0.0833333333], "wrist_roll_rad": 0.0},
+      {"name": "wrist_roll_out", "position_m": [0.2166666667, -0.1666666667, 0.2166666667], "wrist_roll_rad": 0.8},
+      {"name": "wrist_roll_return", "position_m": [0.2166666667, -0.1666666667, 0.2166666667], "wrist_roll_rad": 0.0}
+    ],
+    "notes": [
+      "All position waypoints are right-arm targets that converged and tracked below 0.05 rad in the selected T002 no-self-collision run.",
+      "The replay is deliberately unilateral. Bilateral interaction and cross-body clearance remain T006; this keeps T003's rate-limit result discriminating."
+    ]
+  },
+  "safety_injections": [
+    {"name": "deadman_release", "at_active_trajectory_s": 2.0, "duration_s": 0.5, "reason": "deadman_released"},
+    {"name": "stale_packet", "at_active_trajectory_s": 4.0, "duration_s": 0.5, "reason": "command_timeout"},
+    {"name": "sequence_violation", "at_active_trajectory_s": 6.0, "duration_s": 0.5, "reason": "sequence_id_not_increasing"}
+  ],
+  "simulation": {
+    "physics_hz": 200.0,
+    "control_hz": 50.0,
+    "pelvis_pinned": true,
+    "self_collisions_enabled": false,
+    "video_fps": 15.0
+  },
+  "validity": {
+    "invalid_if": [
+      "the runner crashes or any required raw trace/config/provenance/status file is missing",
+      "a lower-body or base-velocity command is dispatched",
+      "a required waypoint has no converged IK solution",
+      "the emitted trajectory target exceeds its configured velocity, acceleration or jerk envelope outside an explicitly recorded fail-closed hold"
+    ],
+    "required_safety_events": ["deadman_released", "command_timeout", "sequence_id_not_increasing"],
+    "scientific_outcome": "unassessed_until_the_completed_trace_is_inspected; no tracking or vibration threshold is invented from T002 static-settle data"
+  }
+}

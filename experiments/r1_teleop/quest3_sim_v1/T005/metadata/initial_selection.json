@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "record_type": "editable_case_run_selection",
+  "experiment_id": "t005",
+  "selected_runs": {
+    "jitter_within_timeout": "t005_jitter_within_timeout_20260811T045805Z",
+    "packet_drop_below_timeout": "t005_packet_drop_below_timeout_20260811T045805Z",
+    "packet_loss_watchdog_timeout": "t005_packet_loss_watchdog_timeout_20260811T045805Z",
+    "stale_packet": "t005_stale_packet_20260811T045805Z",
+    "deadman_release": "t005_deadman_release_20260811T045805Z",
+    "sequence_violation": "t005_sequence_violation_20260811T045805Z"
+  },
+  "excluded_runs": {
+    "t005_jitter_within_timeout_20260811T045718Z": "execution failure: sink-event serialization error; retained with failure_record.json and superseded by the selected fresh jitter case"
+  }
+}
