@@ -34,8 +34,11 @@ def yaw_matrix(yaw_rad: float) -> list[list[float]]:
     return [[c, -s, 0.0, 0.0], [s, c, 0.0, 0.0], [0.0, 0.0, 1.0, 1.5], [0.0, 0.0, 0.0, 1.0]]
 
 
-def pose_matrix(x_m: float, y_m: float, z_m: float) -> list[list[float]]:
-    return [[1.0, 0.0, 0.0, x_m], [0.0, 1.0, 0.0, y_m], [0.0, 0.0, 1.0, z_m], [0.0, 0.0, 0.0, 1.0]]
+def pose_matrix(
+    x_m: float, y_m: float, z_m: float, yaw_rad: float = 0.0
+) -> list[list[float]]:
+    c, s = math.cos(yaw_rad), math.sin(yaw_rad)
+    return [[c, -s, 0.0, x_m], [s, c, 0.0, y_m], [0.0, 0.0, 1.0, z_m], [0.0, 0.0, 0.0, 1.0]]
 
 
 def main() -> int:
@@ -52,6 +55,10 @@ def main() -> int:
     parser.add_argument(
         "--arm-sweep", action="store_true",
         help="Sweep both virtual EEs from (0.40, +/-0.20, 0.10) m to the reachable wide pose (0.25, +/-0.55, 0.10) m.",
+    )
+    parser.add_argument(
+        "--wrist-orientation-sweep", action="store_true",
+        help="Add a smooth +/-0.6 rad wrist-yaw sweep to exercise the strict-priority null-space task.",
     )
     parser.add_argument("--realtime", action="store_true", help="Sleep between samples to mimic a live stream.")
     args = parser.parse_args()
@@ -74,11 +81,16 @@ def main() -> int:
         extension = 0.5 - 0.5 * math.cos(2.0 * math.pi * min(phase, 1.0)) if args.arm_sweep else 0.0
         wrist_x = 0.40 - 0.15 * extension
         wrist_y = 0.20 + 0.35 * extension
+        wrist_yaw = (
+            0.6 * math.sin(4.0 * math.pi * min(phase, 1.0))
+            if args.wrist_orientation_sweep
+            else 0.0
+        )
         sample = QuestTransportSample(
             motion_data_ready=True,
             head_pose_matrix=yaw_matrix(yaw),
-            left_wrist_pose_matrix=pose_matrix(wrist_x, wrist_y, 0.10),
-            right_wrist_pose_matrix=pose_matrix(wrist_x, -wrist_y, 0.10),
+            left_wrist_pose_matrix=pose_matrix(wrist_x, wrist_y, 0.10, wrist_yaw),
+            right_wrist_pose_matrix=pose_matrix(wrist_x, -wrist_y, 0.10, -wrist_yaw),
             deadman_pressed=index < sweep_count,
         )
         command = bridge.build(sample, time.monotonic())

@@ -54,35 +54,6 @@
         "t009",
         "t010"
       ]
-    },
-    {
-      "id": "r1_locomotion/isaaclab",
-      "title": "R1 IsaacLab locomotion",
-      "root": "experiments/r1_locomotion/isaaclab",
-      "record": "experiment.md",
-      "module": "training/isaaclab/",
-      "environment": "unitree_sim_env",
-      "how_to_run": "experiments/r1_locomotion/isaaclab/I002_nominal_stand/README.md",
-      "layout": "protocol",
-      "run_root": "runs",
-      "protocols": [
-        "I002_nominal_stand",
-        "P001_velocity_port_pilot"
-      ]
-    },
-    {
-      "id": "r1_locomotion/mjlab",
-      "title": "R1 MJLab locomotion",
-      "root": "experiments/r1_locomotion/mjlab",
-      "record": "experiment.md",
-      "module": "training/mjlab/",
-      "environment": "mjlab_env",
-      "how_to_run": "experiments/r1_locomotion/mjlab/M001_flat_stand_walk/README.md",
-      "layout": "protocol",
-      "run_root": "runs",
-      "protocols": [
-        "M001_flat_stand_walk"
-      ]
     }
   ]
 }

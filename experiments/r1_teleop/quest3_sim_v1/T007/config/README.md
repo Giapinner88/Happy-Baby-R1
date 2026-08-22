@@ -15,3 +15,24 @@ identical-protocol replicates.
 `waist_yaw_joint`, both five-joint arms, and both head joints to one IK solve.
 It is not directly comparable with schema-2 independent-arm runs and is not a
 hardware configuration.
+
+`r1_t007_differential_live.json` is the active schema-4 live profile used by
+`make teleop` and `make teleop-arms`. It replaces the per-command iterative
+pose solve with one differential DLS step, uses strict wrist-position before
+wrist-orientation priority, and projects wrists outside the URDF-derived
+conservative reach sphere before the Jacobian is evaluated. Its current scale
+0.75, 3 rad/s and 30 rad/s² bounds, wrist-position/head feedforward, and
+box-constrained DLS were selected by exact-timing Isaac replay of the
+2026-08-20 Quest trace. The replay passed the simulation gate, but a new live
+Quest run is still required before any hardware-facing claim.
+The current Isaac Sim 5.1 environment has no JAX installation, so the effective
+backend is the validated NumPy central-difference implementation and that fact
+is preserved in every run snapshot.
+
+`r1_t007_mujoco_trajectory_replay.json` is the editable schema-4 offline
+validation definition. It replays an immutable T007 Quest trace through a
+100 Hz velocity-feedforward Cartesian controller in the repository's MuJoCo
+R1 model. Its relative calibration, 0.4 workspace scale, reconstructed MuJoCo
+head articulation, and CPU backend make it deliberately non-comparable with
+the earlier absolute 1:1 IsaacLab runs. Every result snapshots this profile and
+the generated resolved MuJoCo XML without changing the canonical asset.

@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -36,7 +37,11 @@ from teleop.r1 import (
 from teleop.r1.mapping import R1TeleopTargets
 from teleop.r1.schema import BaseVelocity
 from scripts.teleop.quest_bridge import _deadman_pressed, _trigger_state
-from scripts.teleop.run_r1_quest3_live import _head_tracking_error, build_parser
+from scripts.teleop.run_r1_quest3_live import (
+    _head_tracking_error,
+    _load_replay_payloads,
+    build_parser,
+)
 
 
 IDENTITY = [
@@ -436,6 +441,25 @@ class EndToEndFailClosedTests(unittest.TestCase):
 
 
 class RunnerEvidenceTests(unittest.TestCase):
+    def test_replay_loader_requires_strict_source_timing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "raw_commands.jsonl"
+            path.write_text(
+                '{"sequence_id": 4, "timestamp_monotonic_s": 10.0}\n'
+                '{"sequence_id": 5, "timestamp_monotonic_s": 10.1}\n',
+                encoding="utf-8",
+            )
+            payloads = _load_replay_payloads(path)
+            self.assertEqual([item["sequence_id"] for item in payloads], [4, 5])
+
+            path.write_text(
+                '{"sequence_id": 4, "timestamp_monotonic_s": 10.0}\n'
+                '{"sequence_id": 5, "timestamp_monotonic_s": 10.0}\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "timestamps must increase"):
+                _load_replay_payloads(path)
+
     def test_live_runner_accepts_a_graceful_stop_file(self) -> None:
         args = build_parser().parse_args(["--output-dir", "example-run", "--stop-file", "example-run.stop"])
         self.assertEqual(args.stop_file, Path("example-run.stop"))

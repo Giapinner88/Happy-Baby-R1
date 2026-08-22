@@ -1,0 +1,103 @@
+{
+  "schema_version": 4,
+  "experiment_id": "t007",
+  "title": "Recorded Quest trajectory replay with differential Cartesian tracking in MuJoCo",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/Cơ sở lý thuyết và thuật toán Teleoperation từ Meta Quest 3 sang cánh tay Unitree R1.md",
+  "source_run": "experiments/r1_teleop/quest3_sim_v1/T007/runs/t007_whole_upper_body_20260819T030356Z",
+  "source_selection": {
+    "deadman_segment": "longest_contiguous_enabled_segment",
+    "maximum_duration_s": null
+  },
+  "calibration": {
+    "mode": "relative_first_sample_to_declared_robot_neutral",
+    "position_scale": 0.4,
+    "position_scale_basis": "Largest simple 0.1-grid scale that keeps every selected wrist sample inside the URDF-derived conservative shoulder reach bound. A controlled 0.35 follow-up removed shoulder-roll constraint activation but caused a right-arm branch transition with 0.410 m peak error, so it was rejected.",
+    "orientation_mode": "relative_rotation_from_first_sample",
+    "head_mode": "relative_yaw_pitch_from_first_sample"
+  },
+  "simulation": {
+    "backend": "mujoco_cpu",
+    "canonical_model": "assets/mujoco/unitree_robots/r1/R1.xml",
+    "kinematic_model": "assets/R1.urdf",
+    "physics_hz": 500.0,
+    "control_hz": 100.0,
+    "fixed_base": true,
+    "self_collisions": false,
+    "arm_actuator_stiffness_nm_rad": 40.0,
+    "arm_actuator_damping_nm_s_rad": 2.0,
+    "head_actuator_stiffness_nm_rad": 20.0,
+    "head_actuator_damping_nm_s_rad": 1.0,
+    "head_effort_limit_nm": 33.0,
+    "note": "The canonical MuJoCo asset has fixed visual head meshes but no head joints. The runner materializes the two URDF head joints and actuators in resolved_mujoco_model.xml; it does not modify the canonical asset."
+  },
+  "transport": {
+    "replay_latency_s": 0.017,
+    "prediction_horizon_limit_s": 0.05,
+    "velocity_filter_alpha": 0.35,
+    "basis": "17 ms approximates the fresh-command mean recorded by the T007 source run; source packet timing and recorded command ages are preserved separately."
+  },
+  "controller": {
+    "body_mode": "arms_head",
+    "position_gain_s": 8.0,
+    "wrist_orientation_gain_s": 1.0,
+    "head_orientation_gain_s": 8.0,
+    "damping": 0.1,
+    "finite_difference_rad": 0.00001,
+    "position_weight": 10.0,
+    "wrist_orientation_weight": 0.01,
+    "head_orientation_weight": 0.5,
+    "max_joint_velocity_rad_s": 3.5,
+    "max_joint_acceleration_rad_s2": 10.0,
+    "max_reference_lead_rad": 0.25,
+    "posture_gain_s": 0.2,
+    "tuning_basis": "Controlled follow-up to t007_mujoco_replay_20260820T121122Z, t007_mujoco_replay_20260820T121523Z, and the ablation t007_mujoco_replay_20260820T122119Z: wrist orientation is a secondary 0.01 task for the 5-DoF arms. Damping 0.1 and acceleration 10 rad/s^2 remove the observed near-singular right-arm oscillation. Scale 0.35 was rejected after a branch transition caused 0.410 m peak error; 0.5x arm feedforward was rejected because it increased constraint activation above 0.5%; linear latency prediction was worse. Full arm feedforward improved the left wrist but worsened right-wrist position and both velocity RMSE values, so the selected hybrid uses pose feedback for both arms and filtered angular-velocity feedforward only for the kinematically separate head."
+  },
+  "cases": [
+    {
+      "name": "pose_feedback_only",
+      "velocity_feedforward": false,
+      "latency_prediction": false
+    },
+    {
+      "name": "velocity_feedforward",
+      "velocity_feedforward": true,
+      "latency_prediction": false
+    },
+    {
+      "name": "arm_pose_head_velocity_feedforward",
+      "velocity_feedforward": true,
+      "velocity_feedforward_task": "head_only",
+      "latency_prediction": false
+    },
+    {
+      "name": "velocity_feedforward_prediction",
+      "velocity_feedforward": true,
+      "latency_prediction": true
+    }
+  ],
+  "primary_case": "arm_pose_head_velocity_feedforward",
+  "acceptance_criteria": {
+    "wrist_position_rmse_m_max": 0.03,
+    "wrist_velocity_rmse_mps_max": 0.25,
+    "head_angle_rmse_rad_max": 0.04,
+    "controller_compute_p95_ms_max": 10.0,
+    "joint_limit_activation_fraction_max": 0.005,
+    "base_motion_allowed": false
+  },
+  "validity": {
+    "hardware_claim": "none",
+    "invalid_if": [
+      "the source trace hash or selected segment is missing",
+      "the fixed base moves",
+      "the resolved MuJoCo model or configuration snapshot is missing",
+      "a reported tracking metric includes a deadman-disabled interval"
+    ],
+    "limitations": [
+      "This is MuJoCo CPU evidence and is not interchangeable with the existing IsaacLab T007 runs.",
+      "The head articulation is reconstructed from assets/R1.urdf because the canonical R1 MuJoCo XML contains fixed head visuals only.",
+      "The 0.4 spatial scale preserves the recorded path shape and timing but not 1:1 human workspace amplitude.",
+      "Collision avoidance, balance, hardware backlash, DDS, and real Quest network execution are outside this replay."
+    ]
+  }
+}

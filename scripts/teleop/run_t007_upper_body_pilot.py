@@ -28,7 +28,7 @@ from teleop.r1.launcher import PilotLaunchSpec, run_pilot  # noqa: E402
 EXPERIMENT_ROOT = ROOT / "experiments" / "r1_teleop" / "quest3_sim_v1" / "T007"
 RUN_ROOT = EXPERIMENT_ROOT / "runs"
 PROTOCOL = "t007_whole_upper_body"
-DEFAULT_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_whole_upper_body_live.json"
+DEFAULT_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_differential_live.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -53,8 +53,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_PROFILE,
         help="Editable T007 schema-3 coupled upper-body profile.",
     )
-    parser.add_argument("--physics-hz", type=float, default=100.0)
-    parser.add_argument("--control-hz", type=float, default=20.0)
+    parser.add_argument("--physics-hz", type=float, default=200.0)
+    parser.add_argument("--control-hz", type=float, default=30.0)
+    parser.add_argument(
+        "--video-fps",
+        type=float,
+        default=10.0,
+        help="Evidence-video rate; 10 fps preserves the validated 30 Hz control loop.",
+    )
     parser.add_argument(
         "--trigger-value-threshold",
         type=float,
@@ -101,7 +107,12 @@ def main() -> int:
     if not profile.is_file():
         raise SystemExit(f"Whole-upper-body profile does not exist: {profile}")
 
-    extra = ["--whole-upper-body-config", str(profile)]
+    extra = [
+        "--whole-upper-body-config",
+        str(profile),
+        "--video-fps",
+        str(args.video_fps),
+    ]
     if not args.single_view:
         extra.append("--dual-view")
     if args.body_mode:

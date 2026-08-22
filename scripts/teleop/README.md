@@ -8,11 +8,13 @@ or recording experiment evidence.
 |---|---|---|
 | `capture_quest_transport.py` | `tv` | T001-A: capture-only Quest transport data; emits no command. |
 | `run_t001_b_pilot.py` | host Python 3 | **T001-B launcher.** Allocates one run id and starts both processes below. |
-| `run_t007_upper_body_pilot.py` | host Python 3 | **T007 coupled upper-body launcher**, also reachable as `make teleop`. Same allocation, plus the schema-3 profile and dual-view video. |
+| `run_t007_upper_body_pilot.py` | host Python 3 | **T007 coupled upper-body launcher**, also reachable as `make teleop`. Uses the schema-4 differential-DLS profile with pre-solve workspace projection and dual-view video. |
 | `quest_bridge.py` | `tv` | T001-B input bridge: Quest telemetry to `R1TeleopCommand` JSONL on stdout. |
 | `run_r1_quest3_live.py` | `unitree_sim_env` | T001-B head-only, legacy T007 arm/head, or schema-3 T007 coupled upper-body simulation selected by mutually exclusive config flags. |
 | `plot_r1_quest3_telemetry.py` | `r1_env` | Derives and plots head/left-wrist/right-wrist 3D position, velocity, and acceleration from a completed live run. |
 | `run_r1_quest3_sim.py` | host Python 3 | Deterministic trace replay through the mapper with `FakeIsaacLabSink`. |
+| `run_r1_t007_mujoco_replay.py` | `r1_env` | Replays recorded T007 Quest motion through 100 Hz velocity-feedforward Cartesian tracking in fixed-base MuJoCo and plots position, velocity, joints, compute cost, and signal rate. |
+| `render_r1_t007_mujoco_replay.py` | `r1_env` | Renders a dual-view MP4 from a completed T007 replay, with desired/actual wrist markers, instantaneous error, and target/actual head angles. |
 | `make_preflight_command_stream.py` | any | Synthetic command stream for plumbing preflight; **not** experiment evidence. |
 
 ## Why the live pilot is two processes
@@ -123,3 +125,20 @@ wrist and right wrist columns; x/y/z are separate curves. The CSV retains the
 source timestamps, deadman state and segment ID. Derivatives are central finite
 differences and are not calculated across gaps longer than 0.2 s, so reconnect
 or dropped-command gaps appear as `NaN` rather than artificial spikes.
+
+## Render a completed T007 trajectory replay
+
+Create a visual check from the recorded state of an accepted MuJoCo replay. The
+renderer does not rerun the controller and writes only to a new derived-analysis
+directory, leaving the source run unchanged:
+
+```bash
+MUJOCO_GL=egl conda run --no-capture-output -n r1_env \
+  python scripts/teleop/render_r1_t007_mujoco_replay.py \
+  --run-dir experiments/r1_teleop/quest3_sim_v1/T007/runs/<replay-run>
+```
+
+Cyan/green are the desired/actual left wrist; magenta/orange are the
+desired/actual right wrist. The overlay reports instantaneous wrist error and
+target/actual head pitch/yaw. `video_manifest.json` hashes the source trace,
+resolved model, metrics, and output video.

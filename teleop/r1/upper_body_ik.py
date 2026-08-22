@@ -180,9 +180,16 @@ class UpperBodyIKResult:
         return bool(self.clamped_joints)
 
 
-def _task_error(
+def upper_body_task_error(
     model: R1A5UpperBodyModel, q: np.ndarray, target: UpperBodyIKTarget
 ) -> np.ndarray:
+    """Return the 15-vector Cartesian task error used by IK and tracking.
+
+    Keeping this public lets the high-rate differential tracker use exactly the
+    same frame, endpoint, and SO(3) conventions as the pose-IK solver instead
+    of reimplementing a subtly different error downstream.
+    """
+
     state = model.forward_kinematics(q)
     return np.concatenate(
         (
@@ -215,7 +222,8 @@ def upper_body_task_jacobian(
         plus[index] += finite_difference_rad
         minus[index] -= finite_difference_rad
         jacobian[:, index] = (
-            _task_error(model, plus, target) - _task_error(model, minus, target)
+            upper_body_task_error(model, plus, target)
+            - upper_body_task_error(model, minus, target)
         ) / (2.0 * finite_difference_rad)
     return jacobian
 
@@ -258,7 +266,7 @@ def solve_upper_body_ik(
     stagnant = 0
 
     for iterations in range(1, config.max_iterations + 1):
-        error = _task_error(model, q, target)
+        error = upper_body_task_error(model, q, target)
         weighted_error = weights * error
         score = float(weighted_error @ weighted_error)
         if score < best_score - 1e-14:
@@ -310,7 +318,7 @@ def solve_upper_body_ik(
     else:
         q = best_q.copy()
 
-    final_error = _task_error(model, q, target)
+    final_error = upper_body_task_error(model, q, target)
     left_pos, right_pos, left_ori, right_ori, head_ori = _residuals(final_error)
     converged = (
         status == "converged"
@@ -345,5 +353,6 @@ __all__ = [
     "quaternion_xyzw_to_matrix",
     "so3_log",
     "solve_upper_body_ik",
+    "upper_body_task_error",
     "upper_body_task_jacobian",
 ]

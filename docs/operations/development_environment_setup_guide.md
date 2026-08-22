@@ -1,4 +1,5 @@
 # Development Environment & Workflow Setup Guide
+
 **Project:** Unitree - Happy Baby (R1 Humanoid Research)
 **Document ID:** HB-SPEC-003 (Extended Setup Guide)
 **Author:** Integration Lead (Nguyễn Trọng Giáp)

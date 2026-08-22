@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import queue
@@ -27,6 +28,8 @@ import time
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -88,6 +91,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--render-every-control-step",
+        action="store_true",
+        help=(
+            "Refresh the viewport at every control tick. By default rendering is "
+            "decoupled to the evidence-video rate so RTX work does not reduce the "
+            "differential-controller update rate."
+        ),
+    )
+    parser.add_argument(
         "--disable-self-collisions",
         action="store_true",
         help=(
@@ -106,6 +118,47 @@ def build_parser() -> argparse.ArgumentParser:
         "--stop-file",
         type=Path,
         help="A path that must not exist at startup; create it to request a graceful live stop.",
+    )
+    parser.add_argument(
+        "--replay-command-file",
+        type=Path,
+        help=(
+            "Replay a recorded raw_commands.jsonl stream instead of stdin. "
+            "Source timing is preserved while monotonic timestamps are retimed "
+            "to this process so watchdog and latency semantics remain valid."
+        ),
+    )
+    parser.add_argument(
+        "--replay-speed",
+        type=float,
+        default=1.0,
+        help="Wall-clock replay speed multiplier; 1.0 preserves source timing.",
+    )
+    parser.add_argument(
+        "--position-scale",
+        type=float,
+        help=(
+            "Override differential relative-session wrist translation scale. "
+            "The effective value is recorded in resolved_config.json."
+        ),
+    )
+    parser.add_argument(
+        "--velocity-feedforward-task",
+        choices=("none", "head_only", "wrist_position_head", "all"),
+        help=(
+            "Override which differential Cartesian tasks use measured target "
+            "velocity feedforward; recorded in resolved_config.json."
+        ),
+    )
+    parser.add_argument(
+        "--max-joint-velocity-rad-s",
+        type=float,
+        help="Override the differential controller velocity box limit.",
+    )
+    parser.add_argument(
+        "--max-joint-acceleration-rad-s2",
+        type=float,
+        help="Override the differential controller acceleration box limit.",
     )
     return parser
 
@@ -137,6 +190,9 @@ def _source_hashes() -> dict[str, str]:
         ROOT / "teleop" / "r1" / "upper_body_kinematics.py",
         ROOT / "teleop" / "r1" / "upper_body_ik.py",
         ROOT / "teleop" / "r1" / "whole_upper_body.py",
+        ROOT / "teleop" / "r1" / "differential_tracking.py",
+        ROOT / "teleop" / "r1" / "differential_live.py",
+        ROOT / "teleop" / "r1" / "workspace_projection.py",
     )
     return {str(path.relative_to(ROOT)): _sha256(path) for path in files}
 
@@ -174,6 +230,158 @@ def _head_tracking_error(target_records: list[dict[str, object]]) -> dict[str, o
     }
 
 
+def _numeric_summary(values: list[float]) -> dict[str, object]:
+    finite = np.asarray(values, dtype=float)
+    finite = finite[np.isfinite(finite)]
+    if len(finite) == 0:
+        return {"count": 0, "mean": None, "median": None, "p95": None, "max": None}
+    return {
+        "count": int(len(finite)),
+        "mean": float(np.mean(finite)),
+        "median": float(np.median(finite)),
+        "p95": float(np.quantile(finite, 0.95)),
+        "max": float(np.max(finite)),
+    }
+
+
+def _arm_straightness_deg(model: object, q: np.ndarray, side: str) -> float:
+    """Return the shoulder-elbow-endpoint angle (180 deg is a straight arm)."""
+
+    if side not in {"left", "right"}:
+        raise ValueError(f"Unsupported arm side: {side}")
+    values = np.asarray(q, dtype=float)
+    chain = getattr(model, f"{side}_arm")
+    arm_slice = getattr(model, f"{side}_arm_slice")
+    waist = model.waist_transform_from_q(values)
+    arm_q = values[arm_slice]
+    shoulder = (waist @ np.append(chain.shoulder_origin(), 1.0))[:3]
+    # Joint four is the elbow in the R1-A5 five-joint arm chain.  Its
+    # cumulative transform has the same origin before and after its rotation.
+    elbow = (waist @ chain.link_transforms(arm_q)[3])[:3, 3]
+    endpoint = (waist @ chain.forward_kinematics(arm_q))[:3, 3]
+    upper = shoulder - elbow
+    lower = endpoint - elbow
+    denominator = float(np.linalg.norm(upper) * np.linalg.norm(lower))
+    if denominator <= 1.0e-12:
+        return float("nan")
+    cosine = float(np.clip(np.dot(upper, lower) / denominator, -1.0, 1.0))
+    return float(np.degrees(np.arccos(cosine)))
+
+
+def _differential_tracking_metrics(
+    target_records: list[dict[str, object]], model: object
+) -> dict[str, object] | None:
+    rows = []
+    for record in target_records:
+        application = dict(record.get("whole_upper_body", {}))
+        if application.get("accepted") and application.get("controller_type") == "differential_dls":
+            rows.append((record, application))
+    if not rows:
+        return None
+    times = np.asarray([float(record["elapsed_s"]) for record, _ in rows])
+    control_steps = np.asarray(
+        [int(record["control_step"]) for record, _ in rows], dtype=int
+    )
+    # Deadman release and reconnects intentionally create gaps between accepted
+    # samples.  Those gaps are not controller periods and would under-report the
+    # live update rate by folding operator inactivity into the timing metric.
+    consecutive = np.diff(control_steps) == 1
+    periods = np.diff(times)[consecutive]
+    compute_ms = [float(application["controller_compute_ms"]) for _, application in rows]
+    joint_error: list[float] = []
+    left_error: list[float] = []
+    right_error: list[float] = []
+    straightness = {"left": [], "right": []}
+    target_reach = {"left": [], "right": []}
+    projection_left = 0
+    projection_right = 0
+    velocity_saturated = 0
+    acceleration_saturated = 0
+    lead_clamped = 0
+    joint_limit_active = 0
+    joint_samples = 0
+    for record, application in rows:
+        actual_q = np.asarray(record["post_physics_whole_upper_body_position_rad"], dtype=float)
+        reference_q = np.asarray(application["joint_position_reference_rad"], dtype=float)
+        joint_error.extend(np.abs(reference_q - actual_q).tolist())
+        state = model.forward_kinematics(actual_q)
+        left_target = np.asarray(application["left_target_position_pelvis_m"], dtype=float)
+        right_target = np.asarray(application["right_target_position_pelvis_m"], dtype=float)
+        left_error.append(float(np.linalg.norm(left_target - state.left_end_effector[:3, 3])))
+        right_error.append(float(np.linalg.norm(right_target - state.right_end_effector[:3, 3])))
+        waist = model.waist_transform_from_q(actual_q)
+        for side, target in (("left", left_target), ("right", right_target)):
+            chain = getattr(model, f"{side}_arm")
+            shoulder = (waist @ np.append(chain.shoulder_origin(), 1.0))[:3]
+            straightness[side].append(_arm_straightness_deg(model, actual_q, side))
+            target_reach[side].append(float(np.linalg.norm(target - shoulder)))
+        projection = dict(application["workspace_projection"])
+        projection_left += int(bool(projection["left_projected"]))
+        projection_right += int(bool(projection["right_projected"]))
+        for key, accumulator in (
+            ("velocity_saturated", "velocity"),
+            ("acceleration_saturated", "acceleration"),
+            ("reference_lead_clamped", "lead"),
+            ("joint_limit_active", "limit"),
+        ):
+            count = int(np.count_nonzero(np.asarray(application[key], dtype=bool)))
+            if accumulator == "velocity":
+                velocity_saturated += count
+            elif accumulator == "acceleration":
+                acceleration_saturated += count
+            elif accumulator == "lead":
+                lead_clamped += count
+            else:
+                joint_limit_active += count
+        joint_samples += len(reference_q)
+    sample_count = len(rows)
+    extension_metrics: dict[str, object] = {}
+    for side in ("left", "right"):
+        reach = np.asarray(target_reach[side], dtype=float)
+        angles = np.asarray(straightness[side], dtype=float)
+        farthest_index = int(np.nanargmax(reach))
+        farthest_threshold = float(np.nanquantile(reach, 0.95))
+        farthest_angles = angles[reach >= farthest_threshold]
+        extension_metrics[side] = {
+            "straightness_deg": _numeric_summary(angles.tolist()),
+            "target_shoulder_distance_m": _numeric_summary(reach.tolist()),
+            "straightness_at_max_target_reach_deg": float(angles[farthest_index]),
+            "max_target_shoulder_distance_m": float(reach[farthest_index]),
+            "straightness_over_farthest_5pct_deg": _numeric_summary(farthest_angles.tolist()),
+            "definition": "shoulder-elbow-endpoint angle; 180 deg is straight",
+        }
+    return {
+        "controller_type": "differential_dls",
+        "jacobian_backend": rows[0][1]["jacobian_backend"],
+        "accepted_sample_count": sample_count,
+        "effective_update_hz": (float(1.0 / np.mean(periods)) if len(periods) else None),
+        "update_period_ms": _numeric_summary((1000.0 * periods).tolist()),
+        "controller_compute_ms": _numeric_summary(compute_ms),
+        "wrist_position_error_m": {
+            "left": _numeric_summary(left_error),
+            "right": _numeric_summary(right_error),
+        },
+        "arm_extension": extension_metrics,
+        "joint_reference_tracking_error_rad": _numeric_summary(joint_error),
+        "workspace_projection_fraction": {
+            "left": projection_left / sample_count,
+            "right": projection_right / sample_count,
+            "either": sum(
+                int(bool(dict(application["workspace_projection"])["left_projected"]))
+                or int(bool(dict(application["workspace_projection"])["right_projected"]))
+                for _, application in rows
+            )
+            / sample_count,
+        },
+        "constraint_activation_fraction": {
+            "velocity": velocity_saturated / joint_samples,
+            "acceleration": acceleration_saturated / joint_samples,
+            "reference_lead": lead_clamped / joint_samples,
+            "joint_limit": joint_limit_active / joint_samples,
+        },
+    }
+
+
 def _stdin_reader(sink: "queue.Queue[str | None]") -> None:
     """Feed stdin lines to the control loop without blocking the simulator."""
 
@@ -181,6 +389,62 @@ def _stdin_reader(sink: "queue.Queue[str | None]") -> None:
         line = line.strip()
         if line:
             sink.put(line)
+    sink.put(None)
+
+
+def _load_replay_payloads(path: Path) -> list[dict[str, object]]:
+    """Load and validate a recorded command stream before Isaac starts."""
+
+    payloads: list[dict[str, object]] = []
+    previous_timestamp: float | None = None
+    previous_sequence: int | None = None
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+            timestamp = float(payload["timestamp_monotonic_s"])
+            sequence = int(payload["sequence_id"])
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"invalid replay command at line {line_number}: {exc}") from exc
+        if previous_timestamp is not None and timestamp <= previous_timestamp:
+            raise ValueError(
+                f"replay timestamps must increase strictly (line {line_number})"
+            )
+        if previous_sequence is not None and sequence <= previous_sequence:
+            raise ValueError(
+                f"replay sequence_id must increase strictly (line {line_number})"
+            )
+        payloads.append(payload)
+        previous_timestamp = timestamp
+        previous_sequence = sequence
+    if not payloads:
+        raise ValueError("replay command file contains no commands")
+    return payloads
+
+
+def _replay_reader(
+    payloads: list[dict[str, object]],
+    sink: "queue.Queue[str | None]",
+    replay_speed: float,
+) -> None:
+    """Emit recorded commands in real time with valid local monotonic stamps."""
+
+    source_origin = float(payloads[0]["timestamp_monotonic_s"])
+    replay_origin = time.monotonic()
+    for source in payloads:
+        source_offset = (
+            float(source["timestamp_monotonic_s"]) - source_origin
+        ) / replay_speed
+        due = replay_origin + source_offset
+        while True:
+            remaining = due - time.monotonic()
+            if remaining <= 0.0:
+                break
+            time.sleep(min(0.002, remaining))
+        payload = dict(source)
+        payload["timestamp_monotonic_s"] = due
+        sink.put(json.dumps(payload, sort_keys=True))
     sink.put(None)
 
 
@@ -218,6 +482,16 @@ def main() -> int:
 
     if args.duration_s <= 0.0 or args.control_hz <= 0.0 or args.physics_hz <= 0.0:
         raise SystemExit("--duration-s, --control-hz and --physics-hz must be positive.")
+    if not np.isfinite(args.replay_speed) or args.replay_speed <= 0.0:
+        raise SystemExit("--replay-speed must be finite and positive.")
+    if args.position_scale is not None and (
+        not np.isfinite(args.position_scale) or args.position_scale <= 0.0
+    ):
+        raise SystemExit("--position-scale must be finite and positive.")
+    for name in ("max_joint_velocity_rad_s", "max_joint_acceleration_rad_s2"):
+        value = getattr(args, name)
+        if value is not None and (not np.isfinite(value) or value <= 0.0):
+            raise SystemExit(f"--{name.replace('_', '-')} must be finite and positive.")
     if args.physics_hz < args.control_hz:
         raise SystemExit("--physics-hz must be at least --control-hz.")
     if args.stop_file is not None and args.stop_file.expanduser().exists():
@@ -225,6 +499,17 @@ def main() -> int:
     output_dir = args.output_dir.expanduser().resolve()
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite T001 evidence: {output_dir}")
+    replay_path = (
+        args.replay_command_file.expanduser().resolve()
+        if args.replay_command_file is not None
+        else None
+    )
+    replay_payloads: list[dict[str, object]] | None = None
+    if replay_path is not None:
+        try:
+            replay_payloads = _load_replay_payloads(replay_path)
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"Cannot load replay command file {replay_path}: {exc}") from exc
 
     try:
         config = json.loads(args.config.expanduser().resolve().read_text(encoding="utf-8"))
@@ -241,7 +526,6 @@ def main() -> int:
     simulation_app = app_launcher.app
 
     import isaaclab.sim as sim_utils  # noqa: E402
-    import numpy as np  # noqa: E402
     import torch  # noqa: E402
     from isaaclab.assets import Articulation  # noqa: E402
     from isaaclab.sensors import Camera, CameraCfg  # noqa: E402
@@ -265,6 +549,11 @@ def main() -> int:
     from teleop.r1.whole_upper_body import (  # noqa: E402
         WholeUpperBodyIsaacLabSink,
         WholeUpperBodyLiveConfig,
+    )
+    from teleop.r1.differential_tracking import DifferentialTrackingConfig  # noqa: E402
+    from teleop.r1.differential_live import (  # noqa: E402
+        DifferentialWholeUpperBodyIsaacLabSink,
+        DifferentialWholeUpperBodyLiveConfig,
     )
     from training.isaaclab.robot import UNITREE_R1_CFG  # noqa: E402
 
@@ -376,7 +665,6 @@ def main() -> int:
         if experiment_config_payload.get("experiment_id") != "t007" or experiment_config_payload.get("mode") != "simulation_only":
             raise SystemExit("--whole-upper-body-config must be a T007 simulation-only configuration.")
         declared = dict(experiment_config_payload["whole_upper_body"])
-        ik_declared = dict(declared["ik"])
         urdf_path = (ROOT / str(declared["urdf_path"])).resolve()
         profile_body_mode = str(declared.get("body_mode", "waist_yaw"))
         body_mode = str(args.body_mode or profile_body_mode)
@@ -394,27 +682,92 @@ def main() -> int:
                 )
             except KinematicsError as exc:
                 raise SystemExit(f"Cannot apply --body-mode {body_mode}: {exc}") from exc
-        whole_config = WholeUpperBodyLiveConfig(
-            urdf_path=urdf_path,
-            nominal_joint_position_rad=nominal,
-            max_joint_velocity_rad_s=float(declared["max_joint_velocity_rad_s"]),
-            max_joint_acceleration_rad_s2=float(declared["max_joint_acceleration_rad_s2"]),
-            control_dt_s=1.0 / args.control_hz,
-            ik=UpperBodyIKConfig(**ik_declared),
-            source_target_frame=str(declared["source_target_frame"]),
-            allow_nonconverged_solution=bool(declared.get("allow_nonconverged_solution", False)),
-            body_mode=body_mode,
-            fixed_waist_yaw_rad=fixed_waist_yaw_rad,
-            seed_restart_residual_m=(
-                float(declared["seed_restart_residual_m"])
-                if declared.get("seed_restart_residual_m") is not None
-                else None
-            ),
-            allow_projected_position_solution=bool(
-                declared.get("allow_projected_position_solution", False)
-            ),
-        )
-        sink = WholeUpperBodyIsaacLabSink(handle, whole_config)
+        controller_declared = dict(declared.get("controller") or {})
+        controller_type = str(controller_declared.get("type", "iterative_pose_ik"))
+        if controller_type == "differential_dls":
+            projection_declared = dict(declared.get("workspace_projection") or {})
+            calibration_declared = dict(declared.get("calibration") or {})
+            tracker_fields = {
+                key: float(controller_declared[key])
+                for key in (
+                    "position_gain_s",
+                    "wrist_orientation_gain_s",
+                    "head_orientation_gain_s",
+                    "damping",
+                    "finite_difference_rad",
+                    "position_weight",
+                    "wrist_orientation_weight",
+                    "head_orientation_weight",
+                    "max_joint_velocity_rad_s",
+                    "max_joint_acceleration_rad_s2",
+                    "max_reference_lead_rad",
+                    "posture_gain_s",
+                )
+            }
+            if args.max_joint_velocity_rad_s is not None:
+                tracker_fields["max_joint_velocity_rad_s"] = float(
+                    args.max_joint_velocity_rad_s
+                )
+            if args.max_joint_acceleration_rad_s2 is not None:
+                tracker_fields["max_joint_acceleration_rad_s2"] = float(
+                    args.max_joint_acceleration_rad_s2
+                )
+            whole_config = DifferentialWholeUpperBodyLiveConfig(
+                urdf_path=urdf_path,
+                nominal_joint_position_rad=nominal,
+                tracker=DifferentialTrackingConfig(
+                    dt_s=1.0 / args.control_hz,
+                    task_priority=str(
+                        controller_declared.get("task_priority", "weighted")
+                    ),
+                    **tracker_fields,
+                ),
+                source_target_frame=str(declared["source_target_frame"]),
+                body_mode=body_mode,
+                fixed_waist_yaw_rad=fixed_waist_yaw_rad,
+                workspace_projection_margin_m=float(projection_declared["margin_m"]),
+                mapping_mode=str(calibration_declared.get("mapping_mode", "relative_session")),
+                position_scale=float(
+                    args.position_scale
+                    if args.position_scale is not None
+                    else calibration_declared.get("position_scale", 0.85)
+                ),
+                velocity_feedforward_task=str(
+                    args.velocity_feedforward_task
+                    if args.velocity_feedforward_task is not None
+                    else controller_declared.get("velocity_feedforward_task", "none")
+                ),
+                source_rate_hz=float(controller_declared.get("source_rate_hz", 30.0)),
+                velocity_filter_alpha=float(
+                    controller_declared.get("velocity_filter_alpha", 0.35)
+                ),
+            )
+            sink = DifferentialWholeUpperBodyIsaacLabSink(handle, whole_config)
+        elif controller_type == "iterative_pose_ik":
+            ik_declared = dict(declared["ik"])
+            whole_config = WholeUpperBodyLiveConfig(
+                urdf_path=urdf_path,
+                nominal_joint_position_rad=nominal,
+                max_joint_velocity_rad_s=float(declared["max_joint_velocity_rad_s"]),
+                max_joint_acceleration_rad_s2=float(declared["max_joint_acceleration_rad_s2"]),
+                control_dt_s=1.0 / args.control_hz,
+                ik=UpperBodyIKConfig(**ik_declared),
+                source_target_frame=str(declared["source_target_frame"]),
+                allow_nonconverged_solution=bool(declared.get("allow_nonconverged_solution", False)),
+                body_mode=body_mode,
+                fixed_waist_yaw_rad=fixed_waist_yaw_rad,
+                seed_restart_residual_m=(
+                    float(declared["seed_restart_residual_m"])
+                    if declared.get("seed_restart_residual_m") is not None
+                    else None
+                ),
+                allow_projected_position_solution=bool(
+                    declared.get("allow_projected_position_solution", False)
+                ),
+            )
+            sink = WholeUpperBodyIsaacLabSink(handle, whole_config)
+        else:
+            raise SystemExit(f"Unsupported whole-upper-body controller type: {controller_type}")
         ownership = R1A5WholeUpperBodyOwnership(body_mode=whole_config.body_mode)
     else:
         sink = HeadOnlyIsaacLabSink(handle)
@@ -460,7 +813,14 @@ def main() -> int:
         )
 
     commands: "queue.Queue[str | None]" = queue.Queue()
-    threading.Thread(target=_stdin_reader, args=(commands,), daemon=True).start()
+    if replay_payloads is None:
+        threading.Thread(target=_stdin_reader, args=(commands,), daemon=True).start()
+    else:
+        threading.Thread(
+            target=_replay_reader,
+            args=(replay_payloads, commands, args.replay_speed),
+            daemon=True,
+        ).start()
 
     raw_lines: list[str] = []
     target_records: list[dict[str, object]] = []
@@ -481,9 +841,12 @@ def main() -> int:
     max_catchup_steps = steps_per_control * 4
     sim_time_s = 0.0
     physics_step_count = 0
-    # A GUI run needs its viewport refreshed every control step; a headless run
-    # only renders when it is about to grab an evidence frame.
-    render_each_control_step = not bool(getattr(args, "headless", False))
+    # Rendering is intentionally decoupled from control. The video timestamps
+    # remain wall-clock scheduled, while an expensive viewport refresh cannot
+    # silently turn a requested 30 Hz controller into a 20 Hz controller.
+    render_each_control_step = bool(args.render_every_control_step) and not bool(
+        getattr(args, "headless", False)
+    )
     video_period_s = 1.0 / args.video_fps
     next_video_time = 0.0
     stop_reason = "duration_elapsed"
@@ -705,8 +1068,42 @@ def main() -> int:
         "body_mode": whole_config.body_mode if whole_upper_body_mode else None,
         "body_mode_cli_override": args.body_mode if whole_upper_body_mode else None,
         "controlled_joint_names": list(sink.model.joint_names) if whole_upper_body_mode else None,
+        "controller_type": (
+            str(dict(experiment_config_payload["whole_upper_body"]).get("controller", {}).get("type", "iterative_pose_ik"))
+            if whole_upper_body_mode
+            else None
+        ),
+        "effective_position_scale": (
+            whole_config.position_scale
+            if whole_upper_body_mode
+            and isinstance(whole_config, DifferentialWholeUpperBodyLiveConfig)
+            else None
+        ),
+        "position_scale_cli_override": args.position_scale,
+        "effective_velocity_feedforward_task": (
+            whole_config.velocity_feedforward_task
+            if whole_upper_body_mode
+            and isinstance(whole_config, DifferentialWholeUpperBodyLiveConfig)
+            else None
+        ),
+        "velocity_feedforward_task_cli_override": args.velocity_feedforward_task,
+        "max_joint_velocity_rad_s_cli_override": args.max_joint_velocity_rad_s,
+        "max_joint_acceleration_rad_s2_cli_override": (
+            args.max_joint_acceleration_rad_s2
+        ),
+        "jax_available_in_runtime": importlib.util.find_spec("jax") is not None,
+        "command_source": "recorded_replay" if replay_path is not None else "stdin_live",
+        "replay_command_file": str(replay_path) if replay_path is not None else None,
+        "replay_command_sha256": _sha256(replay_path) if replay_path is not None else None,
+        "replay_speed": args.replay_speed if replay_path is not None else None,
+        "replay_timestamp_policy": (
+            "source intervals preserved; timestamps retimed to local monotonic clock"
+            if replay_path is not None
+            else None
+        ),
         "pelvis_pinned": True,
         "video_fps": args.video_fps if not args.no_video else None,
+        "render_every_control_step": render_each_control_step,
         "video_resolution": (
             None
             if args.no_video
@@ -807,6 +1204,10 @@ def main() -> int:
             "body_com_trace_definition": "Per-link center-of-mass positions in world frame; not a mass-weighted whole-robot COM.",
             "body_count": len(robot.data.body_names),
         }
+    if whole_upper_body_mode:
+        differential_metrics = _differential_tracking_metrics(target_records, sink.model)
+        if differential_metrics is not None:
+            metrics["differential_tracking"] = differential_metrics
     (output_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     (output_dir / "clock_record.json").write_text(

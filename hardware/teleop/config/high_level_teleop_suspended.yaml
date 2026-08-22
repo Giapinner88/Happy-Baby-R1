@@ -1,0 +1,65 @@
+# Minimal R1-A5 high-level profile for the suspended Quest arms/head pilot.
+#
+# This profile is intentionally separate from the simulation profile. Geometry,
+# joint order, mapping and IK come from the simulation configuration; actuator
+# gains, watchdogs and slew limits are hardware safety settings and must not be
+# inferred from simulation tuning.
+
+network_interface: eth10
+dev_no_keyboard: true
+
+# The high-level process must remain the sole rt/lowcmd publisher. Keep the
+# handover/conflict gate enabled on the robot.
+arm_gate_enabled: true
+arm_require_button: true
+arm_hold_s: 5.0
+arm_silence_ms: 400.0
+arm_require_seen_builtin: true
+arm_min_foreign_seen: 5
+arm_conflict_min: 3
+arm_conflict_window_ms: 150.0
+arm_conflict_release: true
+arm_no_builtin_timeout_s: 15.0
+
+# A verified 83-observation/24-action locomotion model is still loaded by the
+# high-level state machine even though the pilot only runs in ZERO TORQUE.
+flat_policy_contract: legacy_83
+flat_model: policy_11_07.onnx
+
+# Disable unrelated optional subsystems in this minimal pilot package.
+gesture_enabled: false
+battery_monitor_enabled: false
+voice_enabled: false
+getup_motion_file: disabled/getup.npz
+liedown_motion_file: disabled/liedown.npz
+
+# Loopback UTL1 receiver. The Quest trigger remains the motion deadman and the
+# R3 gamepad must remain connected for operator/E-stop authority.
+teleop_enabled: true
+teleop_toggle_hold_s: 3.0
+teleop_udp_port: 5560
+teleop_timeout_ms: 300.0
+teleop_blend_in_s: 0.4
+teleop_retract_s: 0.5
+teleop_smooth_hz: 8.0
+teleop_head_yaw_max: 1.0
+teleop_head_pitch_max: 0.62
+
+# Provisional suspended-pilot actuator settings. These are not simulation
+# parameters and are not approved for on-floor operation.
+teleop_arm_kp: 40.0
+teleop_arm_kd: 2.0
+teleop_max_rate_rad_s: 0.30
+head_yaw_kp: 15.0
+head_yaw_kd: 1.0
+head_pitch_kp: 15.0
+head_pitch_kd: 1.0
+
+# Independent input/state watchdogs retained by the sole owner.
+state_timeout_ms: 1000.0
+remote_timeout_ms: 3000.0
+remote_recover_ms: 200.0
+remote_require_neutral: true
+safe_stop_enabled: true
+safe_stop_debounce_ms: 300.0
+

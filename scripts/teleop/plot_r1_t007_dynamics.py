@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from teleop.r1.kinematics import load_arm_chain
-from teleop.r1.upper_body_kinematics import load_r1_a5_upper_body_model
+from teleop.r1.upper_body_kinematics import body_mode_flags, load_r1_a5_upper_body_model
 
 
 def _summary(values: np.ndarray) -> dict[str, float | int] | None:
@@ -47,15 +47,22 @@ def _endpoint_tracking(run_dir: Path) -> dict[str, dict[str, np.ndarray]]:
     if coupled:
         declared = config["whole_upper_body"]
         urdf_path = ROOT / str(declared["urdf_path"])
-        # Read the deviation from the run's own snapshot: a 14-DoF run records
-        # 14-vector joint targets and the 13-DoF model would reject them.
+        resolved_path = run_dir / "resolved_config.json"
+        resolved = json.loads(resolved_path.read_text()) if resolved_path.is_file() else {}
+        effective_mode = dict(resolved.get("t007_runtime", {})).get(
+            "body_mode", declared.get("body_mode", "waist_yaw")
+        )
+        control_yaw, control_roll = body_mode_flags(str(effective_mode))
         upper_model = load_r1_a5_upper_body_model(
-            urdf_path, control_waist_roll=bool(declared.get("control_waist_roll", False))
+            urdf_path,
+            control_waist_roll=control_roll,
+            control_waist_yaw=control_yaw,
         )
     result: dict[str, dict[str, np.ndarray]] = {}
     for side in ("left", "right"):
         time_s: list[float] = []
         requested: list[list[float]] = []
+        raw_requested: list[list[float]] = []
         ik_target: list[np.ndarray] = []
         commanded: list[np.ndarray] = []
         achieved: list[np.ndarray] = []
@@ -95,6 +102,10 @@ def _endpoint_tracking(run_dir: Path) -> dict[str, dict[str, np.ndarray]]:
 
             time_s.append(float(row["elapsed_s"]))
             requested.append([float(value) for value in target])
+            raw_target = application.get(
+                f"raw_{side}_target_position_pelvis_m", target
+            )
+            raw_requested.append([float(value) for value in raw_target])
             ik_target.append(
                 endpoint(ik_joint_target)
                 if ik_joint_target is not None else np.full(3, np.nan)
@@ -112,7 +123,8 @@ def _endpoint_tracking(run_dir: Path) -> dict[str, dict[str, np.ndarray]]:
             )
             solver_residual.append(float(residual))
             solution_projected.append(
-                application.get("solver_solution_kind") == "best_effort"
+                application.get("solver_solution_kind")
+                in ("best_effort", "projected", "workspace_projected")
                 if coupled
                 else application.get(f"{side}_solution_kind") == "projected"
             )
@@ -120,6 +132,7 @@ def _endpoint_tracking(run_dir: Path) -> dict[str, dict[str, np.ndarray]]:
             result[side] = {
                 "time_s": np.asarray(time_s),
                 "requested_m": np.asarray(requested),
+                "raw_requested_m": np.asarray(raw_requested),
                 "ik_target_m": np.asarray(ik_target),
                 "commanded_m": np.asarray(commanded),
                 "achieved_m": np.asarray(achieved),
@@ -170,7 +183,8 @@ def main() -> int:
             target_to_command = np.linalg.norm(data["requested_m"] - data["commanded_m"], axis=1)
             command_to_observed = np.linalg.norm(data["commanded_m"] - data["achieved_m"], axis=1)
             for axis, label in enumerate(("x", "y", "z")):
-                endpoint_axes[axis, column].plot(data["time_s"], data["requested_m"][:, axis], label="requested", linewidth=1.0)
+                endpoint_axes[axis, column].plot(data["time_s"], data["raw_requested_m"][:, axis], label="raw Quest target", linewidth=0.8, alpha=0.55)
+                endpoint_axes[axis, column].plot(data["time_s"], data["requested_m"][:, axis], label="workspace-projected target", linewidth=1.0)
                 endpoint_axes[axis, column].plot(data["time_s"], data["commanded_m"][:, axis], label="rate-limited command", linewidth=0.9)
                 endpoint_axes[axis, column].plot(data["time_s"], data["achieved_m"][:, axis], label="observed FK", linewidth=1.0)
                 endpoint_axes[axis, column].set_ylabel(f"{label} (m)")
@@ -200,6 +214,66 @@ def main() -> int:
             }
         endpoint_fig.savefig(output / "endpoint_target_vs_achieved.png", dpi=160)
         plt.close(endpoint_fig)
+        velocity_fig, velocity_axes = plt.subplots(3, 2, figsize=(13, 8), sharex="col", layout="constrained")
+        for column, side in enumerate(("left", "right")):
+            data = endpoint[side]
+            target_velocity = np.gradient(data["requested_m"], data["time_s"], axis=0)
+            actual_velocity = np.gradient(data["achieved_m"], data["time_s"], axis=0)
+            for axis, label in enumerate(("x", "y", "z")):
+                velocity_axes[axis, column].plot(data["time_s"], target_velocity[:, axis], label="target", linewidth=0.9)
+                velocity_axes[axis, column].plot(data["time_s"], actual_velocity[:, axis], label="observed FK", linewidth=0.9)
+                velocity_axes[axis, column].set_ylabel(f"v{label} (m/s)")
+            velocity_axes[0, column].set_title(f"{side.capitalize()} wrist velocity")
+            velocity_axes[0, column].legend(fontsize=7)
+            velocity_axes[-1, column].set_xlabel("wall time (s)")
+        velocity_fig.savefig(output / "endpoint_velocity_tracking.png", dpi=160)
+        plt.close(velocity_fig)
+
+    target_rows = json.loads((run_dir / "targets.json").read_text(encoding="utf-8"))
+    differential_rows = [
+        (row, dict(row.get("whole_upper_body", {})))
+        for row in target_rows
+        if dict(row.get("whole_upper_body", {})).get("accepted")
+        and dict(row.get("whole_upper_body", {})).get("controller_type") == "differential_dls"
+    ]
+    if differential_rows:
+        tracking_time = np.asarray([float(row["elapsed_s"]) for row, _ in differential_rows])
+        control_steps = np.asarray([int(row["control_step"]) for row, _ in differential_rows])
+        references = np.asarray([app["joint_position_reference_rad"] for _, app in differential_rows], dtype=float)
+        observed = np.asarray([row["post_physics_whole_upper_body_position_rad"] for row, _ in differential_rows], dtype=float)
+        names = list(differential_rows[0][1]["controlled_joint_names"])
+        joint_fig, joint_axes = plt.subplots(4, 3, figsize=(15, 11), sharex=True, layout="constrained")
+        for index, (name, axis) in enumerate(zip(names, joint_axes.flat)):
+            axis.plot(tracking_time, references[:, index], label="reference", linewidth=0.9)
+            axis.plot(tracking_time, observed[:, index], label="PhysX", linewidth=0.9)
+            axis.set_title(name, fontsize=8)
+            axis.set_ylabel("rad")
+            if index == 0:
+                axis.legend(fontsize=7)
+        for axis in joint_axes[-1]:
+            axis.set_xlabel("wall time (s)")
+        joint_fig.savefig(output / "joint_reference_vs_physx.png", dpi=160)
+        plt.close(joint_fig)
+
+        compute = np.asarray([float(app["controller_compute_ms"]) for _, app in differential_rows])
+        age = 1000.0 * np.asarray([float(row["age_s"]) for row, _ in differential_rows])
+        periods = 1000.0 * np.diff(tracking_time, prepend=np.nan)
+        periods[1:][np.diff(control_steps) != 1] = np.nan
+        resolved_path = run_dir / "resolved_config.json"
+        resolved = json.loads(resolved_path.read_text(encoding="utf-8")) if resolved_path.is_file() else {}
+        control_hz = float(dict(resolved.get("t007_runtime", {})).get("control_hz", 50.0))
+        control_budget_ms = 1000.0 / control_hz
+        timing_fig, timing_axes = plt.subplots(3, 1, figsize=(11, 8), sharex=True, layout="constrained")
+        timing_axes[0].plot(tracking_time, compute, linewidth=0.9)
+        timing_axes[0].axhline(control_budget_ms, color="tab:red", linestyle="--", label=f"{control_hz:g} Hz budget")
+        timing_axes[0].set_ylabel("controller (ms)")
+        timing_axes[0].legend(fontsize=8)
+        timing_axes[1].plot(tracking_time, periods, linewidth=0.9)
+        timing_axes[1].set_ylabel("update period (ms)")
+        timing_axes[2].plot(tracking_time, age, linewidth=0.9)
+        timing_axes[2].set(xlabel="wall time (s)", ylabel="command age (ms)")
+        timing_fig.savefig(output / "controller_and_signal_timing.png", dpi=160)
+        plt.close(timing_fig)
     summary = {"source_run": str(run_dir), "sample_count": int(len(time_s)), "root_max_displacement_m": float(np.max(np.linalg.norm(root - root[0], axis=1))), "root_max_linear_velocity_mps": float(np.max(np.linalg.norm(root_vel, axis=1))), "body_com_definition": "Per-link center of mass in world frame; not a mass-weighted whole-robot COM.", "endpoint_tracking": endpoint_summary, "command": "python3 scripts/teleop/plot_r1_t007_dynamics.py <run-dir>"}
     (output / "dynamics_plot_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(output); return 0

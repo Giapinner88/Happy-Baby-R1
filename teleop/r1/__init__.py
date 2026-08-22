@@ -35,6 +35,11 @@ from .upper_body_ik import (
     UpperBodyIKTarget,
     solve_upper_body_ik,
 )
+from .differential_tracking import (
+    DifferentialTrackingConfig,
+    DifferentialTrackingStep,
+    DifferentialUpperBodyTracker,
+)
 from .upper_body_kinematics import (
     UPPER_BODY_JOINT_NAMES,
     R1A5UpperBodyModel,
@@ -64,6 +69,9 @@ __all__ = [
     "QuestCommandBridge",
     "QuestTransportSample",
     "R1A5UpperBodyModel",
+    "DifferentialTrackingConfig",
+    "DifferentialTrackingStep",
+    "DifferentialUpperBodyTracker",
     "R1A5WholeUpperBodyOwnership",
     "R1JointOwnership",
     "R1TeleopCommand",

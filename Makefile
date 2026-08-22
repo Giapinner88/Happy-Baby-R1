@@ -17,19 +17,21 @@ PYTHON ?= python3
 # --- Teleop pilot -----------------------------------------------------------
 HOST_IP     ?= 192.168.1.106
 DURATION_S  ?= 180
-PHYSICS_HZ  ?= 100
-CONTROL_HZ  ?= 20
+PHYSICS_HZ  ?= 200
+CONTROL_HZ  ?= 30
+VIDEO_FPS   ?= 10
 CERT_FILE   ?= $(HOME)/.config/xr_teleoperate/happybaby_192_168_1_106/cert.pem
 KEY_FILE    ?= $(HOME)/.config/xr_teleoperate/happybaby_192_168_1_106/key.pem
 # arms_head | waist_yaw | full_upper_body. Empty keeps the profile's own value.
 BODY_MODE   ?=
-TELEOP_ARGS ?=
+TELEOP_ARGS ?= --single-view
 
 TELEOP_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
 	--host-ip $(HOST_IP) \
 	--duration-s $(DURATION_S) \
 	--physics-hz $(PHYSICS_HZ) \
 	--control-hz $(CONTROL_HZ) \
+	--video-fps $(VIDEO_FPS) \
 	--cert-file $(CERT_FILE) \
 	--key-file $(KEY_FILE) \
 	$(if $(BODY_MODE),--body-mode $(BODY_MODE)) \
@@ -48,7 +50,7 @@ help:
 	@echo "  make teleop-hardware-prepare  preflight + copy only; never starts or arms robot"
 	@echo "  make teleop-hardware  foreground R1 arms/head; prompts for fixture/E-stop confirmation"
 	@echo ""
-	@echo "Variables: HOST_IP DURATION_S PHYSICS_HZ CONTROL_HZ CERT_FILE KEY_FILE BODY_MODE TELEOP_ARGS"
+	@echo "Variables: HOST_IP DURATION_S PHYSICS_HZ CONTROL_HZ VIDEO_FPS CERT_FILE KEY_FILE BODY_MODE TELEOP_ARGS"
 	@echo "BODY_MODE: arms_head (torso frozen) | waist_yaw (default) | full_upper_body (+waist roll)"
 	@echo "Example:   make teleop HOST_IP=10.42.0.5 BODY_MODE=arms_head"
 
