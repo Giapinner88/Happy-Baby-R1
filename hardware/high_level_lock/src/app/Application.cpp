@@ -244,6 +244,13 @@ bool Application::TickDisarmed(const InputCommand& cmd) {
                   << " | im: " << silence << "ms";
         if (tuning_.arm_no_builtin_timeout_s > 0.0f && foreign_seen < tuning_.arm_min_foreign_seen)
             std::cout << " | bypass sau: " << tuning_.arm_no_builtin_timeout_s - uptime_s << "s";
+        // Nói ra điều kiện nào đang chặn. Ý định người đã chốt mà vẫn đứng yên
+        // thì phần còn thiếu luôn là can_hear, và nếu không in ra thì nó trông
+        // hệt như tay cầm không ăn.
+        if (!ok_intent) std::cout << " | CHAN: chua chot y dinh (giu R1+R2)";
+        else if (!can_hear) std::cout << " | CHAN: chua nghe built-in va khong co bypass";
+        else if (silence < static_cast<int64_t>(tuning_.arm_silence_ms))
+            std::cout << " | CHAN: built-in chua im du " << tuning_.arm_silence_ms << "ms";
         std::cout << "\n";
     }
     (void)cmd;
@@ -593,6 +600,21 @@ int Application::Run() {
         disarmed_start_time_ = std::chrono::steady_clock::now();
         std::cout << "[Application] Cổng an toàn BẬT - chờ bàn giao: L2+R2 (built-in dev mode) "
                      "rồi giữ R1+R2 " << tuning_.arm_hold_s << "s để run_r1 tiếp quản.\n";
+        // Với arm_require_seen_builtin=true mà built-in không phát gói nào,
+        // arm_no_builtin_timeout_s là lối thoát DUY NHẤT. Bằng 0 nghĩa là không
+        // có lối thoát: giữ nút bao lâu cũng không bao giờ arm. Nói thẳng ra
+        // đây, vì một phiên bị kẹt vì con số này thì không có gì trong log chỉ
+        // ra nó cả.
+        if (tuning_.arm_require_seen_builtin) {
+            if (tuning_.arm_no_builtin_timeout_s > 0.0f) {
+                std::cout << "[Application] Không thấy built-in thì tự bypass sau "
+                          << tuning_.arm_no_builtin_timeout_s << "s.\n";
+            } else {
+                std::cout << "[Application] CANH BAO: arm_no_builtin_timeout_s=0 va "
+                             "arm_require_seen_builtin=true -> KHONG BAO GIO arm duoc neu "
+                             "built-in khong phat goi nao. Dat arm_no_builtin_timeout_s > 0.\n";
+            }
+        }
     }
 
     KeyboardX11::SetEmergencyDampFn([this]() {

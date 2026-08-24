@@ -382,5 +382,7 @@ head_yaw_kd: 10.0
 head_pitch_kp: 10.0
 head_pitch_kd: 1.0
 
-# Bản cô lập: khoá cứng khớp ngoài teleop. Include ở CUỐI để ghi đè.
+# Bản cô lập. Thứ tự include quyết định: profile pilot treo đã được review của
+# repo ghi đè cấu hình chung ở trên, rồi khoá khớp ghi đè lên nó.
+include: teleop_suspended.yaml
 include: teleop_lock.yaml

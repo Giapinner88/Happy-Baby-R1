@@ -91,13 +91,43 @@ nên chạy được cạnh `hb_high_level.service` đang active mà không ph�
 Cảnh báo thiếu file dance/getup/liedown khi preflight là bình thường: pilot này
 tắt gesture và không cần motion npz nào.
 
+### Config xếp tầng: profile pilot ở dưới, khoá ở trên
+
+`config/tuning.yaml` include theo thứ tự `teleop_suspended.yaml` rồi
+`teleop_lock.yaml`. Tầng dưới là bản sao profile pilot treo đã được review của
+repo (`hardware/teleop/config/high_level_teleop_suspended.yaml`); tầng trên chỉ
+có bốn khoá của phần khoá khớp.
+
+Lần đầu tôi làm không như vậy — chỉ đặt vài override lên `tuning.yaml` của
+bb70a20 — và **phiên đầu tiên trên robot kẹt ở `kDisarmed`, không bao giờ arm
+được** dù giữ R1+R2 đủ 3 giây (`chốt=1`). Nguyên nhân nằm trong gate bàn giao:
+
+```cpp
+can_hear = no_builtin_bypass || !arm_require_seen_builtin
+        || foreign_seen >= arm_min_foreign_seen;
+```
+
+`tuning.yaml` của bb70a20 đặt `arm_require_seen_builtin: true` và
+`arm_no_builtin_timeout_s: 0`. Built-in không phát gói nào (`foreign_seen = 0`
+suốt 128 giây), mà bypass lại chỉ bật khi timeout `> 0`. Nên `can_hear` không
+bao giờ true và không có cách nào arm. Profile pilot đặt
+`arm_no_builtin_timeout_s: 15.0` đúng cho tình huống này — nó đã lường trước,
+tôi chỉ không dùng tới nó.
+
+Bài học đã ghim vào chính binary: lúc vào `kDisarmed` nó in ra sẽ bypass sau bao
+lâu, hoặc **cảnh báo thẳng** nếu cấu hình khiến không bao giờ arm được; và dòng
+`[kDisarmed]` mỗi giây nay nói rõ điều kiện nào đang chặn. Trước đó một phiên
+kẹt vì con số này trông y hệt như tay cầm không ăn.
+
+Dòng `[kDisarmed]` in mỗi 500 tick ở `kLoopDt = 0.002s`, tức đúng 1 giây một
+dòng — đó là nhịp thiết kế, không phải log bị treo.
+
 ### Một khác biệt so với bản đang chạy
 
 `tuning.yaml` của bb70a20 đặt `flat_model: policy_goc.onnx`, và file đó **không
 có** trong cây nguồn — bản đang chạy trên robot có, repo thì không, nên preflight
-chết ngay bước nạp model. `config/teleop_lock.yaml` vì thế trỏ sang
-`policy_11_07.onnx`, đúng model mà profile pilot treo của repo đã chọn, cùng
-contract `legacy_83`.
+chết ngay bước nạp model. `policy_11_07.onnx` đến từ
+`teleop_suspended.yaml`, cùng contract `legacy_83`.
 
 Model đi bộ được nạp nhưng pilot này không bao giờ dùng: nó chỉ chạy trong ZERO
 TORQUE. Nếu có phiên nào rời khỏi ZERO TORQUE thì đây là điểm khác biệt phải
