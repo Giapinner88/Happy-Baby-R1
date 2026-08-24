@@ -2,7 +2,7 @@
   "schema_version": 1,
   "mode": "simulation_only",
   "source_frame": "quest_headset",
-  "robot_frame": "r1_base",
+  "robot_frame": "neutral_waist_yaw_link",
   "command_timeout_s": 0.5,
   "velocity": {
     "enabled": false,

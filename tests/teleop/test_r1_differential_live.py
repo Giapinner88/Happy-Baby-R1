@@ -139,7 +139,7 @@ class DifferentialLiveSinkTests(unittest.TestCase):
             head_pitch_rad=-0.1,
             base_velocity=BaseVelocity.zero(),
             base_velocity_enabled=False,
-            robot_frame="r1_base",
+            robot_frame="neutral_waist_yaw_link",
         )
 
     def test_far_target_is_projected_and_dispatched_in_one_step(self) -> None:

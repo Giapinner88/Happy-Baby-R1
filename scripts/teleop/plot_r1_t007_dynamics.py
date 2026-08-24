@@ -11,6 +11,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from teleop.r1.kinematics import load_arm_chain
+from teleop.r1.offline_continuation import (
+    arm_straightness_deg,
+    elbow_outward_pole_m,
+    elbow_pole_vector_m,
+)
 from teleop.r1.upper_body_kinematics import body_mode_flags, load_r1_a5_upper_body_model
 
 
@@ -36,16 +41,21 @@ def _endpoint_tracking(run_dir: Path) -> dict[str, dict[str, np.ndarray]]:
     if not config_path.is_file() or not targets_path.is_file():
         return {}
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    if int(config.get("schema_version", 0)) < 2:
+    offline_continuation = bool(
+        config.get("experiment_id") == "t007"
+        and "model" in config
+        and "continuation" in config
+    )
+    if int(config.get("schema_version", 0)) < 2 and not offline_continuation:
         # Schema-1 runs controlled the wrist origin and often did not snapshot
         # their mutable T007 config.  Applying the current tool frame to them
         # would create a quantitatively false tracking plot.
         return {}
     rows = json.loads(targets_path.read_text(encoding="utf-8"))
-    coupled = "whole_upper_body" in config
+    coupled = "whole_upper_body" in config or offline_continuation
     upper_model = None
     if coupled:
-        declared = config["whole_upper_body"]
+        declared = config["model"] if offline_continuation else config["whole_upper_body"]
         urdf_path = ROOT / str(declared["urdf_path"])
         resolved_path = run_dir / "resolved_config.json"
         resolved = json.loads(resolved_path.read_text()) if resolved_path.is_file() else {}
@@ -230,18 +240,23 @@ def main() -> int:
         plt.close(velocity_fig)
 
     target_rows = json.loads((run_dir / "targets.json").read_text(encoding="utf-8"))
-    differential_rows = [
+    controller_rows = [
         (row, dict(row.get("whole_upper_body", {})))
         for row in target_rows
         if dict(row.get("whole_upper_body", {})).get("accepted")
-        and dict(row.get("whole_upper_body", {})).get("controller_type") == "differential_dls"
+        and dict(row.get("whole_upper_body", {})).get("controller_type")
+        in ("differential_dls", "offline_trajectory_continuation")
     ]
-    if differential_rows:
-        tracking_time = np.asarray([float(row["elapsed_s"]) for row, _ in differential_rows])
-        control_steps = np.asarray([int(row["control_step"]) for row, _ in differential_rows])
-        references = np.asarray([app["joint_position_reference_rad"] for _, app in differential_rows], dtype=float)
-        observed = np.asarray([row["post_physics_whole_upper_body_position_rad"] for row, _ in differential_rows], dtype=float)
-        names = list(differential_rows[0][1]["controlled_joint_names"])
+    elbow_summary: dict[str, object] = {"available": False}
+    if controller_rows:
+        tracking_time = np.asarray([float(row["elapsed_s"]) for row, _ in controller_rows])
+        control_steps = np.asarray([int(row["control_step"]) for row, _ in controller_rows])
+        references = np.asarray([
+            app.get("joint_position_reference_rad", app["limited_joint_target_rad"])
+            for _, app in controller_rows
+        ], dtype=float)
+        observed = np.asarray([row["post_physics_whole_upper_body_position_rad"] for row, _ in controller_rows], dtype=float)
+        names = list(controller_rows[0][1]["controlled_joint_names"])
         joint_fig, joint_axes = plt.subplots(4, 3, figsize=(15, 11), sharex=True, layout="constrained")
         for index, (name, axis) in enumerate(zip(names, joint_axes.flat)):
             axis.plot(tracking_time, references[:, index], label="reference", linewidth=0.9)
@@ -255,8 +270,8 @@ def main() -> int:
         joint_fig.savefig(output / "joint_reference_vs_physx.png", dpi=160)
         plt.close(joint_fig)
 
-        compute = np.asarray([float(app["controller_compute_ms"]) for _, app in differential_rows])
-        age = 1000.0 * np.asarray([float(row["age_s"]) for row, _ in differential_rows])
+        compute = np.asarray([float(app["controller_compute_ms"]) for _, app in controller_rows])
+        age = 1000.0 * np.asarray([float(row["age_s"]) for row, _ in controller_rows])
         periods = 1000.0 * np.diff(tracking_time, prepend=np.nan)
         periods[1:][np.diff(control_steps) != 1] = np.nan
         resolved_path = run_dir / "resolved_config.json"
@@ -274,7 +289,139 @@ def main() -> int:
         timing_axes[2].set(xlabel="wall time (s)", ylabel="command age (ms)")
         timing_fig.savefig(output / "controller_and_signal_timing.png", dpi=160)
         plt.close(timing_fig)
-    summary = {"source_run": str(run_dir), "sample_count": int(len(time_s)), "root_max_displacement_m": float(np.max(np.linalg.norm(root - root[0], axis=1))), "root_max_linear_velocity_mps": float(np.max(np.linalg.norm(root_vel, axis=1))), "body_com_definition": "Per-link center of mass in world frame; not a mass-weighted whole-robot COM.", "endpoint_tracking": endpoint_summary, "command": "python3 scripts/teleop/plot_r1_t007_dynamics.py <run-dir>"}
+
+        run_config = json.loads((run_dir / "experiment_config.json").read_text())
+        if "model" in run_config and "continuation" in run_config:
+            declared = run_config["model"]
+            elbow_model = load_r1_a5_upper_body_model(
+                ROOT / str(declared["urdf_path"]), control_waist_yaw=False
+            )
+            if tuple(names) == tuple(elbow_model.joint_names):
+                continuation = dict(run_config["continuation"])
+                minimum_pole = float(
+                    continuation.get("elbow_direction_minimum_pole_m", 0.01)
+                )
+                maximum_straightness = float(
+                    continuation.get(
+                        "elbow_direction_maximum_straightness_deg", 165.0
+                    )
+                )
+                violation_tolerance = float(
+                    continuation.get("elbow_direction_violation_tolerance_m", 0.005)
+                )
+                softening = float(
+                    continuation.get("elbow_direction_straightness_softening_deg", 0.0)
+                )
+                elbow_fig, elbow_axes = plt.subplots(
+                    3, 1, figsize=(11, 9), sharex=True, layout="constrained"
+                )
+                elbow_summary = {
+                    "available": True,
+                    "minimum_pole_norm_m": minimum_pole,
+                    "maximum_straightness_deg": maximum_straightness,
+                    "violation_tolerance_m": violation_tolerance,
+                    "straightness_softening_deg": softening,
+                    "definition": (
+                        "Natural bent-arm sector is backward (-x), side-aware "
+                        "outward y and down (-z) in the waist frame."
+                    ),
+                }
+                for side, color in (("left", "tab:blue"), ("right", "tab:orange")):
+                    chain = getattr(elbow_model, f"{side}_arm")
+                    arm_slice = getattr(elbow_model, f"{side}_arm_slice")
+                    arm_q = observed[:, arm_slice]
+                    straightness = np.asarray(
+                        [arm_straightness_deg(chain, value) for value in arm_q]
+                    )
+                    pole = np.asarray(
+                        [elbow_pole_vector_m(chain, value) for value in arm_q]
+                    )
+                    outward = np.asarray(
+                        [elbow_outward_pole_m(chain, value) for value in arm_q]
+                    )
+                    # Same soft ramp the offline solver uses, so both sides of
+                    # the offline-vs-PhysX comparison share one definition. A
+                    # hard cutoff put a cliff inside the data and made the two
+                    # arms land on opposite sides of it.
+                    defined = (
+                        np.linalg.norm(pole, axis=1) >= minimum_pole
+                    ) & (straightness <= maximum_straightness)
+                    norm_ok = (np.linalg.norm(pole, axis=1) >= minimum_pole).astype(float)
+                    if softening > 0.0:
+                        ramp = (maximum_straightness + softening - straightness) / (
+                            2.0 * softening
+                        )
+                        weight = norm_ok * np.clip(ramp, 0.0, 1.0)
+                    else:
+                        weight = norm_ok * (straightness <= maximum_straightness).astype(float)
+                    weight_total = float(np.sum(weight))
+
+                    def fraction(mask: np.ndarray) -> float:
+                        if weight_total <= 0.0:
+                            return 0.0
+                        return float(np.sum(np.asarray(mask, dtype=bool) * weight) / weight_total)
+
+                    def hard_fraction(mask: np.ndarray) -> float:
+                        return float(np.mean(mask[defined])) if np.any(defined) else 0.0
+
+                    elbow_axes[0].plot(
+                        tracking_time, straightness, color=color, label=side
+                    )
+                    elbow_axes[1].plot(
+                        tracking_time, 1000.0 * outward, color=color, label=side
+                    )
+                    elbow_axes[2].plot(
+                        tracking_time,
+                        1000.0 * pole[:, 0],
+                        color=color,
+                        label=f"{side} forward x",
+                    )
+                    elbow_axes[2].plot(
+                        tracking_time,
+                        1000.0 * pole[:, 2],
+                        color=color,
+                        linestyle="--",
+                        label=f"{side} up z",
+                    )
+                    elbow_summary[side] = {
+                        "direction_weight_sum": weight_total,
+                        "direction_defined_fraction": float(np.mean(defined)),
+                        "inward_fraction_hard_cutoff": hard_fraction(outward < -violation_tolerance),
+                        "forward_fraction_hard_cutoff": hard_fraction(pole[:, 0] > violation_tolerance),
+                        "upward_fraction_hard_cutoff": hard_fraction(pole[:, 2] > violation_tolerance),
+                        "inward_fraction": fraction(
+                            outward < -violation_tolerance
+                        ),
+                        "forward_fraction": fraction(
+                            pole[:, 0] > violation_tolerance
+                        ),
+                        "upward_fraction": fraction(
+                            pole[:, 2] > violation_tolerance
+                        ),
+                        "straightness_deg": _summary(straightness),
+                    }
+                elbow_axes[0].axhline(
+                    maximum_straightness,
+                    color="black",
+                    linestyle=":",
+                    label="direction-defined threshold",
+                )
+                elbow_axes[0].set_ylabel("straightness (deg)")
+                elbow_axes[1].axhline(0.0, color="black", linewidth=0.8)
+                elbow_axes[1].set_ylabel("outward pole (mm)")
+                elbow_axes[2].axhspan(
+                    -1000.0 * violation_tolerance,
+                    1000.0 * violation_tolerance,
+                    color="gray",
+                    alpha=0.15,
+                    label="±tolerance",
+                )
+                elbow_axes[2].set(xlabel="wall time (s)", ylabel="pole x/z (mm)")
+                for axis in elbow_axes:
+                    axis.legend(fontsize=7, ncol=3)
+                elbow_fig.savefig(output / "elbow_posture_from_physx.png", dpi=160)
+                plt.close(elbow_fig)
+    summary = {"source_run": str(run_dir), "sample_count": int(len(time_s)), "root_max_displacement_m": float(np.max(np.linalg.norm(root - root[0], axis=1))), "root_max_linear_velocity_mps": float(np.max(np.linalg.norm(root_vel, axis=1))), "body_com_definition": "Per-link center of mass in world frame; not a mass-weighted whole-robot COM.", "endpoint_tracking": endpoint_summary, "elbow_posture": elbow_summary, "command": "python3 scripts/teleop/plot_r1_t007_dynamics.py <run-dir>"}
     (output / "dynamics_plot_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(output); return 0
 

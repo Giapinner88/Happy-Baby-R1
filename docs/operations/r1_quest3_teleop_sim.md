@@ -169,7 +169,7 @@ video, so an arm occluded in one view stays visible in the other.
 
 Method limitations are recorded in
 `experiments/r1_teleop/quest3_sim_v1/T007/T007.md` and
-`docs/teleop/r1_upper_body_ik.md`. This remains a simulation-only path and does
+`docs/teleop/05_project_solvers_and_evidence.md`. This remains a simulation-only path and does
 not authorize DDS or real-robot output.
 
 ## Plot head and wrist transport kinematics

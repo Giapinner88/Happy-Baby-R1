@@ -7,7 +7,7 @@ clock in seconds. The schema intentionally contains no DDS types.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import sqrt
+from math import isfinite, sqrt
 from typing import Any
 
 
@@ -19,6 +19,10 @@ class Vector3:
     x: float
     y: float
     z: float
+
+    def __post_init__(self) -> None:
+        if not all(isfinite(float(value)) for value in (self.x, self.y, self.z)):
+            raise ValueError("Vector3 values must be finite.")
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Vector3":
@@ -35,13 +39,17 @@ class Quaternion:
     z: float
     w: float
 
+    def __post_init__(self) -> None:
+        if not all(isfinite(float(value)) for value in (self.x, self.y, self.z, self.w)):
+            raise ValueError("Quaternion values must be finite.")
+
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Quaternion":
         return cls(float(value["x"]), float(value["y"]), float(value["z"]), float(value["w"]))
 
     def normalized(self) -> "Quaternion":
         norm = sqrt(self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w)
-        if norm == 0.0:
+        if not isfinite(norm) or norm <= 1e-12:
             raise ValueError("Quaternion norm must be non-zero.")
         return Quaternion(self.x / norm, self.y / norm, self.z / norm, self.w / norm)
 
@@ -53,6 +61,10 @@ class Quaternion:
 class Pose:
     position: Vector3
     orientation: Quaternion
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.position, Vector3) or not isinstance(self.orientation, Quaternion):
+            raise TypeError("Pose requires Vector3 position and Quaternion orientation.")
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Pose":
@@ -67,6 +79,13 @@ class BaseVelocity:
     vx_mps: float
     vy_mps: float
     yaw_rate_radps: float
+
+    def __post_init__(self) -> None:
+        if not all(
+            isfinite(float(value))
+            for value in (self.vx_mps, self.vy_mps, self.yaw_rate_radps)
+        ):
+            raise ValueError("Base velocity values must be finite.")
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "BaseVelocity":
@@ -99,6 +118,16 @@ class R1TeleopCommand:
     schema_version: int = SCHEMA_VERSION
     reset_requested: bool = False
 
+    def __post_init__(self) -> None:
+        if self.schema_version != SCHEMA_VERSION:
+            raise ValueError("Unsupported R1 teleop command schema version.")
+        if self.sequence_id < 0:
+            raise ValueError("sequence_id must be non-negative.")
+        if not isfinite(float(self.timestamp_monotonic_s)) or self.timestamp_monotonic_s < 0.0:
+            raise ValueError("timestamp_monotonic_s must be finite and non-negative.")
+        if not self.source_frame.strip():
+            raise ValueError("source_frame must be non-empty.")
+
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "R1TeleopCommand":
         if int(value.get("schema_version", SCHEMA_VERSION)) != SCHEMA_VERSION:
@@ -114,8 +143,6 @@ class R1TeleopCommand:
             source_frame=str(value.get("source_frame", "quest_headset")),
             reset_requested=bool(value.get("reset_requested", False)),
         )
-        if command.sequence_id < 0 or command.timestamp_monotonic_s < 0:
-            raise ValueError("sequence_id and timestamp_monotonic_s must be non-negative.")
         return command
 
     def as_dict(self) -> dict[str, Any]:

@@ -70,6 +70,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--whole-upper-body-config", type=Path,
         help="Enable coupled T007 R1-A5 waist-yaw + bilateral arms + head simulation.",
     )
+    mode.add_argument(
+        "--offline-joint-trajectory",
+        type=Path,
+        help="Replay a sequence-indexed offline T007 joint trajectory in Isaac Lab.",
+    )
+    mode.add_argument(
+        "--upstream-joint-stream-config",
+        type=Path,
+        help=(
+            "Apply joint targets solved by the vendor xr_teleoperate IK running upstream "
+            "of this process. The command stream must carry upstream_joint_position_rad, "
+            "which run_r1_upstream_ik_stream.py --passthrough adds."
+        ),
+    )
+    parser.add_argument(
+        "--offline-continuation-config",
+        type=Path,
+        help="Configuration that produced --offline-joint-trajectory.",
+    )
     parser.add_argument(
         "--body-mode",
         choices=("arms_head", "waist_yaw", "full_upper_body"),
@@ -188,6 +207,8 @@ def _source_hashes() -> dict[str, str]:
         ROOT / "teleop" / "r1" / "live_arm_head.py",
         ROOT / "teleop" / "r1" / "rate_limit.py",
         ROOT / "teleop" / "r1" / "upper_body_kinematics.py",
+        ROOT / "teleop" / "r1" / "offline_replay.py",
+        ROOT / "teleop" / "r1" / "upstream_joint_stream.py",
         ROOT / "teleop" / "r1" / "upper_body_ik.py",
         ROOT / "teleop" / "r1" / "whole_upper_body.py",
         ROOT / "teleop" / "r1" / "differential_tracking.py",
@@ -300,6 +321,7 @@ def _differential_tracking_metrics(
     lead_clamped = 0
     joint_limit_active = 0
     joint_samples = 0
+    branch_recovery_states: list[np.ndarray] = []
     for record, application in rows:
         actual_q = np.asarray(record["post_physics_whole_upper_body_position_rad"], dtype=float)
         reference_q = np.asarray(application["joint_position_reference_rad"], dtype=float)
@@ -334,7 +356,21 @@ def _differential_tracking_metrics(
             else:
                 joint_limit_active += count
         joint_samples += len(reference_q)
+        branch_recovery_states.append(
+            np.asarray(
+                application.get("branch_recovery_active", [False, False]),
+                dtype=bool,
+            )
+        )
     sample_count = len(rows)
+    branch_recovery = np.asarray(branch_recovery_states, dtype=bool)
+    recovery_activations = (
+        np.count_nonzero(branch_recovery[1:] & ~branch_recovery[:-1], axis=0)
+        if sample_count > 1
+        else np.zeros(2, dtype=int)
+    )
+    if sample_count and branch_recovery[0].any():
+        recovery_activations = recovery_activations + branch_recovery[0].astype(int)
     extension_metrics: dict[str, object] = {}
     for side in ("left", "right"):
         reach = np.asarray(target_reach[side], dtype=float)
@@ -379,6 +415,82 @@ def _differential_tracking_metrics(
             "reference_lead": lead_clamped / joint_samples,
             "joint_limit": joint_limit_active / joint_samples,
         },
+        "branch_recovery": {
+            "left_active_fraction": float(np.mean(branch_recovery[:, 0])),
+            "right_active_fraction": float(np.mean(branch_recovery[:, 1])),
+            "left_activation_count": int(recovery_activations[0]),
+            "right_activation_count": int(recovery_activations[1]),
+            "independent_per_arm": True,
+        },
+    }
+
+
+def _offline_trajectory_tracking_metrics(
+    target_records: list[dict[str, object]], model: object
+) -> dict[str, object] | None:
+    rows = []
+    for record in target_records:
+        application = dict(record.get("whole_upper_body", {}))
+        if (
+            application.get("accepted")
+            and application.get("controller_type") == "offline_trajectory_continuation"
+            and record.get("post_physics_whole_upper_body_position_rad") is not None
+        ):
+            rows.append((record, application))
+    if not rows:
+        return None
+    joint_error: list[float] = []
+    command_to_observed = {"left": [], "right": []}
+    source_to_observed = {"left": [], "right": []}
+    compute_ms: list[float] = []
+    age_ms: list[float] = []
+    times: list[float] = []
+    steps: list[int] = []
+    for record, application in rows:
+        reference = np.asarray(application["limited_joint_target_rad"], dtype=float)
+        observed = np.asarray(
+            record["post_physics_whole_upper_body_position_rad"], dtype=float
+        )
+        joint_error.extend(np.abs(reference - observed).tolist())
+        reference_state = model.forward_kinematics(reference)
+        observed_state = model.forward_kinematics(observed)
+        for side in ("left", "right"):
+            reference_endpoint = getattr(reference_state, f"{side}_end_effector")[:3, 3]
+            observed_endpoint = getattr(observed_state, f"{side}_end_effector")[:3, 3]
+            source_target = np.asarray(
+                application[f"{side}_target_position_pelvis_m"], dtype=float
+            )
+            command_to_observed[side].append(
+                float(np.linalg.norm(reference_endpoint - observed_endpoint))
+            )
+            source_to_observed[side].append(
+                float(np.linalg.norm(source_target - observed_endpoint))
+            )
+        compute_ms.append(float(application["controller_compute_ms"]))
+        age_ms.append(1000.0 * float(record["age_s"]))
+        times.append(float(record["elapsed_s"]))
+        steps.append(int(record["control_step"]))
+    consecutive = np.diff(np.asarray(steps, dtype=int)) == 1
+    periods = np.diff(np.asarray(times, dtype=float))[consecutive]
+    return {
+        "sample_count": len(rows),
+        "joint_reference_to_physx_abs_error_rad": _numeric_summary(joint_error),
+        "wrist_command_fk_to_physx_fk_error_m": {
+            side: _numeric_summary(command_to_observed[side]) for side in ("left", "right")
+        },
+        "source_wrist_target_to_physx_fk_error_m": {
+            side: _numeric_summary(source_to_observed[side]) for side in ("left", "right")
+        },
+        "trajectory_lookup_compute_ms": _numeric_summary(compute_ms),
+        "fresh_or_held_command_age_ms": _numeric_summary(age_ms),
+        "consecutive_update_period_s": _numeric_summary(periods.tolist()),
+        "effective_update_hz_from_median_period": (
+            None if len(periods) == 0 else float(1.0 / np.median(periods))
+        ),
+        "error_separation": (
+            "command_fk_to_physx_fk isolates simulator tracking; source_target_to_physx_fk "
+            "also includes offline retargeting error."
+        ),
     }
 
 
@@ -555,6 +667,14 @@ def main() -> int:
         DifferentialWholeUpperBodyIsaacLabSink,
         DifferentialWholeUpperBodyLiveConfig,
     )
+    from teleop.r1.offline_replay import (  # noqa: E402
+        OfflineTrajectoryIsaacLabSink,
+        OfflineTrajectoryReplayConfig,
+    )
+    from teleop.r1.upstream_joint_stream import (  # noqa: E402
+        UpstreamJointStreamConfig,
+        UpstreamJointStreamSink,
+    )
     from training.isaaclab.robot import UNITREE_R1_CFG  # noqa: E402
 
     calibration_config = config.get("calibration") or {}
@@ -564,7 +684,7 @@ def main() -> int:
             translation_m=Vector3(*(float(value) for value in translation)),
             yaw_rad=float(calibration_config.get("yaw_rad", 0.0)),
             source_frame=str(config.get("source_frame", "quest_headset")),
-            robot_frame=str(config.get("robot_frame", "r1_base")),
+            robot_frame=str(config.get("robot_frame", "neutral_waist_yaw_link")),
         ),
         TeleopLimits(command_timeout_s=float(config.get("command_timeout_s", 0.5)), allow_velocity=False),
     )
@@ -580,7 +700,12 @@ def main() -> int:
     robot_cfg = UNITREE_R1_CFG.replace(prim_path="/World/Robot")
     if args.disable_self_collisions:
         robot_cfg.spawn.articulation_props.enabled_self_collisions = False
-    upper_body_mode = args.arm_head_config is not None or args.whole_upper_body_config is not None
+    upper_body_mode = (
+        args.arm_head_config is not None
+        or args.whole_upper_body_config is not None
+        or args.offline_joint_trajectory is not None
+        or args.upstream_joint_stream_config is not None
+    )
     if upper_body_mode:
         robot_cfg.spawn.articulation_props.fix_root_link = True
     robot = Articulation(robot_cfg)
@@ -618,7 +743,13 @@ def main() -> int:
 
     handle = IsaacLabArticulationHandle(robot)
     legacy_arm_head_mode = args.arm_head_config is not None
-    whole_upper_body_mode = args.whole_upper_body_config is not None
+    offline_trajectory_mode = args.offline_joint_trajectory is not None
+    upstream_stream_mode = args.upstream_joint_stream_config is not None
+    whole_upper_body_mode = (
+        args.whole_upper_body_config is not None
+        or offline_trajectory_mode
+        or upstream_stream_mode
+    )
     arm_head_mode = legacy_arm_head_mode or whole_upper_body_mode
     experiment_config_payload: dict[str, object] | None = None
     arm_config = None
@@ -653,6 +784,83 @@ def main() -> int:
         )
         sink = ArmHeadIsaacLabSink(handle, arm_config)
         ownership = mapper.ownership
+    elif offline_trajectory_mode:
+        if args.offline_continuation_config is None:
+            raise SystemExit(
+                "--offline-continuation-config is required with --offline-joint-trajectory."
+            )
+        try:
+            experiment_config_payload = json.loads(
+                args.offline_continuation_config.expanduser()
+                .resolve()
+                .read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(
+                f"Cannot load offline continuation config {args.offline_continuation_config}: {exc}"
+            ) from exc
+        if (
+            experiment_config_payload.get("experiment_id") != "t007"
+            or experiment_config_payload.get("mode") != "simulation_only"
+        ):
+            raise SystemExit(
+                "--offline-continuation-config must be a T007 simulation-only configuration."
+            )
+        model_declared = dict(experiment_config_payload["model"])
+        if str(model_declared.get("body_mode")) != "arms_head":
+            raise SystemExit("Offline continuation replay currently requires body_mode='arms_head'.")
+        whole_config = OfflineTrajectoryReplayConfig(
+            trajectory_path=args.offline_joint_trajectory.expanduser().resolve(),
+            urdf_path=(ROOT / str(model_declared["urdf_path"])).resolve(),
+            body_mode="arms_head",
+            fixed_waist_yaw_rad=float(model_declared.get("fixed_waist_yaw_rad", 0.0)),
+            hold_uncontrolled_waist_joints=bool(
+                model_declared.get("hold_uncontrolled_waist_joints", False)
+            ),
+            waist_roll_hold_rad=float(model_declared.get("waist_roll_hold_rad", 0.0)),
+            held_joint_stiffness=float(model_declared.get("held_joint_stiffness", 10000.0)),
+            held_joint_damping=float(model_declared.get("held_joint_damping", 200.0)),
+        )
+        sink = OfflineTrajectoryIsaacLabSink(handle, whole_config)
+        ownership = R1A5WholeUpperBodyOwnership(body_mode="arms_head")
+    elif upstream_stream_mode:
+        try:
+            experiment_config_payload = json.loads(
+                args.upstream_joint_stream_config.expanduser()
+                .resolve()
+                .read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(
+                f"Cannot load upstream joint stream config "
+                f"{args.upstream_joint_stream_config}: {exc}"
+            ) from exc
+        if (
+            experiment_config_payload.get("experiment_id") != "t007"
+            or experiment_config_payload.get("mode") != "simulation_only"
+        ):
+            raise SystemExit(
+                "--upstream-joint-stream-config must be a T007 simulation-only configuration."
+            )
+        model_declared = dict(experiment_config_payload["model"])
+        if str(model_declared.get("body_mode")) != "arms_head":
+            raise SystemExit(
+                "The vendor solver locks waist yaw and both head joints, so the upstream "
+                "stream path requires body_mode='arms_head'."
+            )
+        whole_config = UpstreamJointStreamConfig(
+            urdf_path=(ROOT / str(model_declared["urdf_path"])).resolve(),
+            body_mode="arms_head",
+            fixed_waist_yaw_rad=float(model_declared.get("fixed_waist_yaw_rad", 0.0)),
+            hold_uncontrolled_waist_joints=bool(
+                model_declared.get("hold_uncontrolled_waist_joints", True)
+            ),
+            waist_roll_hold_rad=float(model_declared.get("waist_roll_hold_rad", 0.0)),
+            held_joint_stiffness=float(model_declared.get("held_joint_stiffness", 10000.0)),
+            held_joint_damping=float(model_declared.get("held_joint_damping", 200.0)),
+        )
+        sink = UpstreamJointStreamSink(handle, whole_config)
+        ownership = R1A5WholeUpperBodyOwnership(body_mode="arms_head")
     elif whole_upper_body_mode:
         try:
             experiment_config_payload = json.loads(
@@ -702,6 +910,15 @@ def main() -> int:
                     "max_joint_acceleration_rad_s2",
                     "max_reference_lead_rad",
                     "posture_gain_s",
+                    "wide_elbow_pole_gain_s",
+                    "wide_elbow_pole_weight",
+                    "wide_hand_separation_start_m",
+                    "wide_hand_separation_full_m",
+                    "branch_recovery_position_error_m",
+                    "branch_recovery_exit_error_m",
+                    "branch_recovery_limit_margin_rad",
+                    "branch_recovery_gain_s",
+                    "branch_recovery_weight",
                 )
             }
             if args.max_joint_velocity_rad_s is not None:
@@ -761,6 +978,12 @@ def main() -> int:
                     if declared.get("seed_restart_residual_m") is not None
                     else None
                 ),
+                hold_uncontrolled_waist_joints=bool(
+                    declared.get("hold_uncontrolled_waist_joints", False)
+                ),
+                waist_roll_hold_rad=float(declared.get("waist_roll_hold_rad", 0.0)),
+                held_joint_stiffness=float(declared.get("held_joint_stiffness", 10000.0)),
+                held_joint_damping=float(declared.get("held_joint_damping", 200.0)),
                 allow_projected_position_solution=bool(
                     declared.get("allow_projected_position_solution", False)
                 ),
@@ -790,13 +1013,40 @@ def main() -> int:
     elif whole_upper_body_mode:
         assert whole_config is not None
         ids = [robot.data.joint_names.index(name) for name in sink.model.joint_names]
+        startup_nominal = (
+            sink.nominal_joint_position_rad
+            if offline_trajectory_mode or upstream_stream_mode
+            else whole_config.nominal_joint_position_rad
+        )
         startup_joint_pos[:, ids] = torch.tensor(
-            whole_config.nominal_joint_position_rad,
+            startup_nominal,
             device=robot.device,
             dtype=startup_joint_pos.dtype,
         )
     robot.write_joint_state_to_sim(startup_joint_pos, default_joint_vel)
     robot.set_joint_position_target(startup_joint_pos)
+    held_waist_stiffness = None
+    if arm_head_mode and getattr(whole_config, "hold_uncontrolled_waist_joints", False):
+        # Commanding a zero target is not enough: the asset's waist actuator is
+        # 100 N m/rad, and the reaction torque of the swinging arms bends it by
+        # up to 22.4 deg anyway. The startup target is already zero, so writing
+        # zero every step changes nothing measurable. The offline model treats
+        # the waist as rigid, so the simulation has to be stiff enough to match
+        # the model it is compared against.
+        held_ids = [robot.data.joint_names.index(name) for name in sink.held_joint_names]
+        if held_ids:
+            held_waist_stiffness = float(whole_config.held_joint_stiffness)
+            robot.write_joint_stiffness_to_sim(
+                held_waist_stiffness, joint_ids=held_ids
+            )
+            robot.write_joint_damping_to_sim(
+                float(whole_config.held_joint_damping), joint_ids=held_ids
+            )
+            print(
+                f"[hold] waist joints {sink.held_joint_names} held at "
+                f"stiffness={held_waist_stiffness} damping={whole_config.held_joint_damping}",
+                flush=True,
+            )
     if arm_head_mode:
         # Keep the sink's continuous seeds and rate limiters consistent with
         # the state written above.  Starting from Isaac's curled default pose
@@ -884,7 +1134,8 @@ def main() -> int:
                     break
                 raw_lines.append(line)
                 try:
-                    candidate = R1TeleopCommand.from_dict(json.loads(line))
+                    payload = json.loads(line)
+                    candidate = R1TeleopCommand.from_dict(payload)
                 except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
                     invalid_lines.append({"line_number": len(raw_lines), "error": str(exc)})
                     continue
@@ -894,6 +1145,25 @@ def main() -> int:
                     )
                     continue
                 previous_sequence = candidate.sequence_id
+                if upstream_stream_mode:
+                    # Every line is handed to the sink, not only the one this
+                    # cycle applies: the stream runs at headset rate and the
+                    # loop at control rate, so the sample eventually applied may
+                    # have arrived in an earlier batch.
+                    solved = payload.get("upstream_joint_position_rad")
+                    names = payload.get("upstream_joint_names")
+                    if solved is None or names is None:
+                        invalid_lines.append(
+                            {
+                                "line_number": len(raw_lines),
+                                "error": (
+                                    "upstream stream mode requires upstream_joint_position_rad "
+                                    "and upstream_joint_names on every line"
+                                ),
+                            }
+                        )
+                    else:
+                        sink.ingest(candidate.sequence_id, names, solved)
                 if arm_head_mode and candidate.reset_requested:
                     sink.reset_session()
                     # A reset is a session boundary. Do not let the previously
@@ -1062,14 +1332,43 @@ def main() -> int:
         "driven_joints": (list(sink.acknowledgements[-1]["accepted_joints"]) if arm_head_mode and sink.acknowledgements else ["head_yaw_joint", "head_pitch_joint"]),
         "withheld_joints_reason": None if arm_head_mode else "arm_wrist_ik_method_gate",
         "arm_head_config": str(args.arm_head_config) if legacy_arm_head_mode else None,
-        "whole_upper_body_config": str(args.whole_upper_body_config) if whole_upper_body_mode else None,
+        "whole_upper_body_config": (
+            str(args.whole_upper_body_config)
+            if args.whole_upper_body_config is not None
+            else None
+        ),
+        "offline_joint_trajectory": (
+            str(args.offline_joint_trajectory) if offline_trajectory_mode else None
+        ),
+        "offline_joint_trajectory_sha256": (
+            _sha256(args.offline_joint_trajectory.expanduser().resolve())
+            if offline_trajectory_mode
+            else None
+        ),
+        "offline_continuation_config": (
+            str(args.offline_continuation_config) if offline_trajectory_mode else None
+        ),
+        "upstream_joint_stream_config": (
+            str(args.upstream_joint_stream_config) if upstream_stream_mode else None
+        ),
+        "upstream_solver": (
+            "third_party/xr_teleoperate_v1_6 R1_A5_ArmIK, unmodified, solved in a "
+            "separate process before this one"
+            if upstream_stream_mode
+            else None
+        ),
         # The effective mode after any --body-mode override, plus the joints it
         # actually drove, so a run is readable without re-deriving them.
         "body_mode": whole_config.body_mode if whole_upper_body_mode else None,
+        "held_waist_stiffness": held_waist_stiffness,
         "body_mode_cli_override": args.body_mode if whole_upper_body_mode else None,
         "controlled_joint_names": list(sink.model.joint_names) if whole_upper_body_mode else None,
         "controller_type": (
-            str(dict(experiment_config_payload["whole_upper_body"]).get("controller", {}).get("type", "iterative_pose_ik"))
+            "offline_trajectory_continuation"
+            if offline_trajectory_mode
+            else "upstream_xr_teleoperate_R1_A5_ArmIK"
+            if upstream_stream_mode
+            else str(dict(experiment_config_payload["whole_upper_body"]).get("controller", {}).get("type", "iterative_pose_ik"))
             if whole_upper_body_mode
             else None
         ),
@@ -1128,7 +1427,11 @@ def main() -> int:
     if arm_head_mode:
         assert experiment_config_payload is not None
         resolved[
-            "t007_whole_upper_body_profile" if whole_upper_body_mode else "t007_arm_head_profile"
+            "t007_offline_continuation_profile"
+            if offline_trajectory_mode
+            else "t007_whole_upper_body_profile"
+            if whole_upper_body_mode
+            else "t007_arm_head_profile"
         ] = experiment_config_payload
     write_resolved_config(output_dir, resolved)
     # A T007 run consumes two editable configs.  The shared bridge config is
@@ -1208,6 +1511,14 @@ def main() -> int:
         differential_metrics = _differential_tracking_metrics(target_records, sink.model)
         if differential_metrics is not None:
             metrics["differential_tracking"] = differential_metrics
+        offline_metrics = _offline_trajectory_tracking_metrics(target_records, sink.model)
+        if offline_metrics is not None:
+            metrics["offline_trajectory_tracking"] = offline_metrics
+    if upstream_stream_mode:
+        # The sink applies vectors it did not solve, so its own accounting --
+        # what it clamped, what it never received, how fast it drove the joints
+        # with no limiter in the path -- is the only record of that half.
+        metrics["upstream_joint_stream"] = sink.summary()
     (output_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     (output_dir / "clock_record.json").write_text(
@@ -1258,8 +1569,36 @@ def main() -> int:
                 "bridge_config_sha256": _sha256(args.config.expanduser().resolve()) if arm_head_mode else None,
                 "arm_head_config_path": str(args.arm_head_config) if legacy_arm_head_mode else None,
                 "arm_head_config_sha256": _sha256(args.arm_head_config.expanduser().resolve()) if legacy_arm_head_mode else None,
-                "whole_upper_body_config_path": str(args.whole_upper_body_config) if whole_upper_body_mode else None,
-                "whole_upper_body_config_sha256": _sha256(args.whole_upper_body_config.expanduser().resolve()) if whole_upper_body_mode else None,
+                "whole_upper_body_config_path": (
+                    str(args.whole_upper_body_config)
+                    if args.whole_upper_body_config is not None
+                    else None
+                ),
+                "whole_upper_body_config_sha256": (
+                    _sha256(args.whole_upper_body_config.expanduser().resolve())
+                    if args.whole_upper_body_config is not None
+                    else None
+                ),
+                "offline_continuation_config_path": (
+                    str(args.offline_continuation_config)
+                    if offline_trajectory_mode
+                    else None
+                ),
+                "offline_continuation_config_sha256": (
+                    _sha256(args.offline_continuation_config.expanduser().resolve())
+                    if offline_trajectory_mode
+                    else None
+                ),
+                "offline_joint_trajectory_path": (
+                    str(args.offline_joint_trajectory)
+                    if offline_trajectory_mode
+                    else None
+                ),
+                "offline_joint_trajectory_sha256": (
+                    _sha256(args.offline_joint_trajectory.expanduser().resolve())
+                    if offline_trajectory_mode
+                    else None
+                ),
             },
             "assets": {
                 "r1_usd": {
@@ -1286,7 +1625,8 @@ def main() -> int:
             "arm_wrist_targets_applied": arm_head_mode,
             "arm_wrist_reason": None if arm_head_mode else "Withheld pending the arm/wrist IK method gate; T001 drives head joints only.",
             "arm_head_config_snapshot": legacy_arm_head_mode,
-            "whole_upper_body_config_snapshot": whole_upper_body_mode,
+            "whole_upper_body_config_snapshot": args.whole_upper_body_config is not None,
+            "offline_continuation_config_snapshot": offline_trajectory_mode,
             "bridge_config_snapshot": arm_head_mode,
         },
     )

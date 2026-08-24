@@ -28,7 +28,8 @@ from teleop.r1.launcher import PilotLaunchSpec, run_pilot  # noqa: E402
 EXPERIMENT_ROOT = ROOT / "experiments" / "r1_teleop" / "quest3_sim_v1" / "T007"
 RUN_ROOT = EXPERIMENT_ROOT / "runs"
 PROTOCOL = "t007_whole_upper_body"
-DEFAULT_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_differential_live.json"
+DEFAULT_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_whole_upper_body_live.json"
+UPSTREAM_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_upstream_stream_live.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -96,6 +97,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="Stop after this many seconds with no command; 0 keeps a recoverable WebXR gap alive.",
     )
+    parser.add_argument(
+        "--upstream-solver",
+        action="store_true",
+        help=(
+            "Solve with the unmodified xr_teleoperate R1_A5_ArmIK instead of any solver in "
+            "this repository. The solver runs between the bridge and the simulator, in the "
+            "bridge environment, because CasADi and the Pinocchio 3 CasADi bindings exist "
+            "there and not in the simulator's. The simulator then only applies joints. "
+            "Implies body_mode='arms_head': the vendor model locks waist yaw and both head "
+            "joints, so no other mode is representable."
+        ),
+    )
     parser.add_argument("--stop-file-dir", type=Path, default=Path("/tmp"), help="Where the stop file is created.")
     parser.add_argument("--dry-run", action="store_true", help="Print the allocated paths and commands, run nothing.")
     return parser
@@ -103,20 +116,34 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    profile = args.whole_upper_body_config.expanduser()
-    if not profile.is_file():
-        raise SystemExit(f"Whole-upper-body profile does not exist: {profile}")
-
-    extra = [
-        "--whole-upper-body-config",
-        str(profile),
-        "--video-fps",
-        str(args.video_fps),
-    ]
+    solver_args = None
+    if args.upstream_solver:
+        if args.body_mode not in (None, "arms_head"):
+            raise SystemExit(
+                "--upstream-solver locks waist yaw and both head joints in the vendor model, "
+                f"so --body-mode {args.body_mode} cannot be represented."
+            )
+        # The profile default belongs to this repository's coupled solver. Only
+        # override it when the caller left it alone, so an explicitly chosen
+        # upstream profile is still honoured.
+        profile = (
+            UPSTREAM_PROFILE
+            if args.whole_upper_body_config == DEFAULT_PROFILE
+            else args.whole_upper_body_config.expanduser()
+        )
+        if not profile.is_file():
+            raise SystemExit(f"Upstream stream profile does not exist: {profile}")
+        extra = ["--upstream-joint-stream-config", str(profile), "--video-fps", str(args.video_fps)]
+        solver_args = ["scripts/teleop/run_r1_upstream_ik_stream.py", "--passthrough"]
+    else:
+        profile = args.whole_upper_body_config.expanduser()
+        if not profile.is_file():
+            raise SystemExit(f"Whole-upper-body profile does not exist: {profile}")
+        extra = ["--whole-upper-body-config", str(profile), "--video-fps", str(args.video_fps)]
+        if args.body_mode:
+            extra += ["--body-mode", args.body_mode]
     if not args.single_view:
         extra.append("--dual-view")
-    if args.body_mode:
-        extra += ["--body-mode", args.body_mode]
 
     return run_pilot(
         PilotLaunchSpec(
@@ -134,6 +161,7 @@ def main() -> int:
             disable_self_collisions=not args.self_collisions,
             extra_sim_args=extra,
             idle_stop_s=args.idle_stop_s,
+            solver_args=solver_args,
         ),
         dry_run=args.dry_run,
     )

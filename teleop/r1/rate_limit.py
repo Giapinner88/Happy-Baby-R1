@@ -30,7 +30,8 @@ class OnlineJointLimiter:
     upper_limits: np.ndarray | None = None
 
     def __post_init__(self) -> None:
-        if min(self.max_velocity_rad_s, self.max_acceleration_rad_s2, self.dt_s) <= 0.0:
+        scalars = (self.max_velocity_rad_s, self.max_acceleration_rad_s2, self.dt_s)
+        if not all(np.isfinite(value) for value in scalars) or min(scalars) <= 0.0:
             raise ValueError("Joint limiter velocity, acceleration and timestep must be positive.")
         if (self.lower_limits is None) != (self.upper_limits is None):
             raise ValueError("Joint limiter position limits must be supplied as a pair.")
@@ -39,6 +40,8 @@ class OnlineJointLimiter:
             self.upper_limits = np.asarray(self.upper_limits, dtype=float)
             if self.lower_limits.shape != self.upper_limits.shape:
                 raise ValueError("Joint limiter position limits must have the same shape.")
+            if not np.all(np.isfinite(self.lower_limits)) or not np.all(np.isfinite(self.upper_limits)):
+                raise ValueError("Joint limiter position limits must be finite.")
             if np.any(self.lower_limits > self.upper_limits):
                 raise ValueError("A joint limiter lower limit exceeds its upper limit.")
 

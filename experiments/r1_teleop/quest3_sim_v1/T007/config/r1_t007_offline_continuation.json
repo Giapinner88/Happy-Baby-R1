@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "experiment_id": "t007",
+  "title": "Offline posture continuation — khong rang buoc khu vuc khuyu",
+  "mode": "simulation_only",
+  "method_record": "docs/teleop/10_experimental_differential_tracking.md",
+  "source_run": "experiments/r1_teleop/quest3_sim_v1/T007/runs/t007_whole_upper_body_20260823T072635Z",
+  "source_selection": {
+    "deadman_segment": "longest_contiguous_enabled_segment",
+    "history_policy": "Reset branch history at the start of the initial -> overhead -> lateral -> relaxed sequence. Earlier gestures in the same enabled recording are not valid q_last history for this test.",
+    "solver_stride": 4,
+    "solver_stride_note": "Solve posture-continuation nodes at approximately 7.5 Hz while retaining the widest anchor and both endpoints; interpolate joints back onto every original approximately 30 Hz sequence before rate limiting and validation.",
+    "deadman_segment_index": 1,
+    "segment_note": "Doan 1 (t 37.5-77.6s) = vong 5 tu the. Doan 2 (81.6-122.5s) = dong tac phuc tap bat doi xung 64%. Doan 0 khoi dong, khong dung."
+  },
+  "model": {
+    "urdf_path": "assets/R1.urdf",
+    "body_mode": "arms_head",
+    "fixed_waist_yaw_rad": 0.0,
+    "right_arm_canonical_mirror": true,
+    "nominal_joint_position_rad": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "hold_uncontrolled_waist_joints": true,
+    "waist_roll_hold_rad": 0.0,
+    "hold_uncontrolled_waist_joints_note": "arms_head khong so huu waist_yaw/waist_roll. Khong bat co nay thi PhysX de chung vong tu do duoi phan luc tay: run v21 do duoc 22.4 do yaw va 16.7 do roll, trong khi solver offline gia dinh waist = fixed_waist_yaw_rad. Lech do dich ban tay toi 153 mm (p95 24 mm) va lam offline khong so sanh duoc voi PhysX. Bat co nay chi GIU khop trong mo phong; tap khop do IK dieu khien khong doi.",
+    "held_joint_stiffness": 10000.0,
+    "held_joint_damping": 200.0
+  },
+  "calibration": {
+    "mapping_mode": "absolute_vendor_pose_projected",
+    "position_scale": 1.0,
+    "workspace_projection_margin_m": 0.01,
+    "orientation_mode": "absolute_vendor_unitree_wrist_convention",
+    "head_mode": "relative_yaw_pitch_from_first_sample"
+  },
+  "continuation": {
+    "anchor_policy": "maximum_bilateral_lateral_hand_separation",
+    "position_weight": 20.0,
+    "orientation_weight": 0.0,
+    "velocity_weight": 0.03,
+    "acceleration_weight": 0.0005,
+    "posture_weight": 0.1414213562,
+    "elbow_outward_weight": 0.0,
+    "elbow_forward_up_weight": 0.0,
+    "elbow_direction_minimum_pole_m": 0.01,
+    "elbow_direction_maximum_straightness_deg": 165.0,
+    "elbow_direction_violation_tolerance_m": 0.005,
+    "extended_arm_straightness_weight": 2.0,
+    "extended_arm_reach_start_m": 0.45,
+    "extended_arm_reach_full_m": 0.55,
+    "bilateral_symmetry_weight": 0.0,
+    "bilateral_target_mirror_tolerance_m": 0.12,
+    "maximum_candidate_forward_or_up_fraction": 0.15,
+    "initial_posture_score_weight": 0.2,
+    "straightness_score_weight": 0.1,
+    "branch_jump_score_weight": 0.2,
+    "anchor_straightness_weights": [
+      0.0,
+      2.0,
+      5.0,
+      10.0
+    ],
+    "anchor_position_candidate_window_m": 0.03,
+    "minimum_anchor_straightness_deg": 150.0,
+    "maximum_step_rad": 0.35,
+    "anchor_multistart_count": 48,
+    "retained_anchor_candidates": 4,
+    "continuation_max_nfev": 25,
+    "refinement_sweeps": 1,
+    "manifold_reprojection_sweeps": 1,
+    "manifold_reprojection_continuity_weight": 1.0,
+    "random_seed": 7,
+    "elbow_direction_straightness_softening_deg": 10.0,
+    "elbow_direction_straightness_softening_note": "Thay nguong cung 165 do bang doc tuyen tinh +-10 do. Ly do: median straightness trai 166.31 do va phai 164.58 do nam hai ben nguong 165.0, nen mot dich chuyen 0.52 do cua physics lat ~20% mau tay phai qua nguong va tao ra bat doi xung trai/phai khong co that (sai so bam khop doi xung: p95 5.61 do trai, 6.40 do phai). Dat 0.0 se tai lap dung nguong cung cu.",
+    "elbow_direction_margin_m": 0.0,
+    "elbow_direction_margin_note": "Bien an toan 10 mm cho rang buoc khu vuc khuyu. Do tu v23b/v25: nghiem khong bien don 279 mau trai va 360 mau phai dung tai pole_x = 0, va sai so bam khop elbow 2 do day ca khoi sang +7.5 mm trong PhysX, vuot nguong phan loai 5 mm. Bien 10 mm lon hon dich chuyen do nen phan loai khong con lat. Dat 0.0 se tai lap hanh vi bam bien cu.",
+    "elbow_constraint_note": "Rang buoc khu vuc khuyu da BO khoi ham muc tieu va khoi acceptance. Bang chung: t007_seg1_no_elbow_20260823_b giai chinh vong 5 tu the cua nguoi van hanh voi trong so 0 va do duoc 59-66% forward, 80% up, 88-100% inward. Khu vuc khai bao truoc day (lui/ra ngoai/xuong) vi the mau thuan voi phan lon chuyen dong that, chu khong mo ta no. Gia dinh cu rut ra tu trace 20260822T112246Z von gan doi xung 96% va khong co tu the nao co y dua khuyu ra truoc."
+  },
+  "trajectory_limits": {
+    "max_joint_velocity_rad_s": 9.0,
+    "max_joint_acceleration_rad_s2": 133.0,
+    "rate_limit_mode": "component_wise",
+    "limit_source_note": "Quet tren SEG2 cua t007_whole_upper_body_20260823T072635Z. Gia tri cu 4.48/45 lay tu tinh chinh replay tren mot trace khac. Gia toc moi la rang buoc troi, khong phai van toc: nang v len 9.0 ma giu a=45 lam p95 xau di 247->322 mm va them mot check fail; nang a len 133 moi ha p95 xuong 103 mm, tuc gan bang muc cua nghiem IK chua qua limiter (101.1 mm). 9.0 va 133 la phan vi p99 cua nhu cau IK tho tren doan nay. URDF cho van toc 18.8-33.4 rad/s nhung KHONG khai bao gia toc, nen 133 chua co co so phan cung. Day van la tinh chinh mo phong, khong phai gioi han an toan phan cung."
+  },
+  "acceptance_criteria": {
+    "wrist_position_p95_m_max": 0.15,
+    "wrist_position_max_m_max": 0.25,
+    "widest_frame_straightness_deg_min": 150.0,
+    "wide_hand_separation_m_min": 1.0,
+    "wide_phase_straightness_p05_deg_min": 150.0,
+    "maximum_joint_step_rad_max": 0.15,
+    "maximum_joint_velocity_rad_s_max": 4.5,
+    "maximum_joint_acceleration_rad_s2_max": 45.0,
+    "elbow_note": "Cac nguong khuyu da bo. Phan so va phan bo van duoc ghi trong metrics de theo doi, nhung khong con la tieu chi dat/khong dat."
+  },
+  "validity": {
+    "hardware_claim": "none",
+    "notes": [
+      "The full recording is available, but only the operator-declared final gesture segment is solved; earlier motion is deliberately excluded from q_last history.",
+      "Wrist poses are the absolute neutral_waist_yaw_link poses already produced by the audited xr_teleoperate TeleVuer wrapper. They are not anchored to q=0 a second time.",
+      "Each absolute wrist position is projected onto the URDF-derived reach sphere before IK, with a 0.01 m margin. Raw and projected waist-frame targets are both preserved in the trajectory artifact.",
+      "Multi-start is used only at the declared anchor. Every retained candidate is continued backward and forward before whole-path scoring.",
+      "The accepted offline solve is position-manifold continuation: wrist orientation has zero solve weight, while temporal continuity and posture select a branch. The full-pose upstream-prior v15 run is retained as failed evidence because orientation selected a visually straight but spatially wrong branch.",
+      "Position is a soft similarity term, not an equality constraint. A branch may accept bounded wrist error when it produces a more human-like, continuous shoulder-elbow posture.",
+      "The upstream reference cost is 50 translation, 0.5 rotation, 0.02 q regularization and 0.1 q-last smoothness. This position-manifold ablation deliberately increases translation to 400 and sets rotation to zero after the upstream-weight v15 baseline produced 0.38 m p95 error; q regularization and temporal continuation remain branch selectors.",
+      "xr_teleoperate has no explicit elbow-sector or bilateral-symmetry constraint. The side-aware elbow sector and trajectory continuation are project augmentations and are evaluated separately from upstream parity.",
+      "Bilateral symmetry is disabled for the reference-prior baseline. It may be enabled only as a controlled ablation if independent neutral-plus-continuity selection still chooses inconsistent mirrored branches.",
+      "Left and right arms are solved independently from their own targets. The elbow prior only defines the anatomical outward sign per side; it never copies or couples the opposite arm trajectory.",
+      "The right-only target is reflected into a left-canonical numerical problem and mapped back with URDF-verified joint signs [1,-1,-1,1,-1]. This guarantees mirror-equivariant solver conventions without using any left-arm target, joint path or history."
+    ]
+  },
+  "causality": {
+    "class": "NON-CAUSAL — can tren ly thuyet, KHONG du bao duoc online",
+    "why": "Bo giai nay nhin toan bo trace: chon anchor bang cach quet moi mau roi lan ra hai phia, quet nguoc trong refinement (range(count-2, 0, -1)), reproject manifold tren ca duong, va noi suy giua cac node cach nhau solver_stride=4. Khong co co che nao trong so do ton tai online, noi ma mau Quest ke tiep la thong tin moi duy nhat va lenh truoc do da gui di roi.",
+    "speed": "Do duoc 356 ms moi mau song phuong (realtime factor 0.187), tuc cham hon 11 lan so voi 33.3 ms ma online 30 Hz doi hoi.",
+    "how_to_read": "Ket qua tu duong nay la gioi han tren khi biet truoc moi thu. No dung de biet phuong phap co the dat toi dau, KHONG dung de suy ra nang luc cua he thong truc tuyen.",
+    "causal_counterpart": "scripts/teleop/solve_r1_t007_causal_tracking.py chay mot luot nghiem ngat theo thoi gian tren cung du lieu va cung phep do. Khoang cach giua hai duong la cai gia cua tinh nhan qua. Do tren t007_whole_upper_body_20260823T072635Z: SEG1 gan nhu khong mat gi (p95 +11.3/-0.1 mm), SEG2 xau di o p95 (+25.2/+88.4 mm) nhung TOT HON nhieu o peak (-382.7/-474.5 mm) nho bo loc FIR cua upstream."
+  }
+}

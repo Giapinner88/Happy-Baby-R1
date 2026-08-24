@@ -75,7 +75,7 @@ def _mapper_from_config(config: dict[str, object], policy_manifest: Path | None)
             translation_m=Vector3(*(float(value) for value in translation)),
             yaw_rad=float(calibration.get("yaw_rad", 0.0)),
             source_frame=str(config.get("source_frame", "quest_headset")),
-            robot_frame=str(config.get("robot_frame", "r1_base")),
+            robot_frame=str(config.get("robot_frame", "neutral_waist_yaw_link")),
         ),
         TeleopLimits(
             command_timeout_s=float(config.get("command_timeout_s", 0.0)),

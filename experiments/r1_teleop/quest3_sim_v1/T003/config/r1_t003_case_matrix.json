@@ -3,7 +3,7 @@
   "experiment_family": "t003",
   "title": "R1 arm/wrist trajectory: atomic nominal and safety cases",
   "mode": "simulation_only",
-  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "method_record": "docs/teleop/03_r1_a5_ik.md",
   "source_workspace_evidence": "experiments/r1_teleop/quest3_sim_v1/T002/runs/t002_nocollide_20260802T120645Z/targets.json",
   "frames": {
     "target_frame": "waist_yaw_link",

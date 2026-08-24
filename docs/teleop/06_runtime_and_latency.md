@@ -2,7 +2,7 @@
 
 ## 1. Reviewed metadata
 
-`quest_vuer_connection.md` reviewed:
+Metadata kết nối T007 được review:
 
 ```text
 Reviewed 2026-08-18 against `t007_whole_upper_body_20260818T114338Z`.

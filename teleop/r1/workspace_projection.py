@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .kinematics import ArmChain
 from .upper_body_ik import UpperBodyIKTarget
 from .upper_body_kinematics import R1A5UpperBodyModel
 
@@ -38,6 +39,33 @@ def _project_to_reach_sphere(
         return np.asarray(shoulder, dtype=float).copy(), False, 0.0
     projected = shoulder + delta * (radius / distance)
     return projected, True, distance - radius
+
+
+def project_arm_position_to_reach_sphere(
+    chain: ArmChain,
+    position_m: np.ndarray,
+    margin_m: float,
+) -> tuple[np.ndarray, bool, float, float]:
+    """Project one waist-frame arm target onto its URDF reach outer bound.
+
+    TeleVuer's processed wrist poses and :class:`ArmChain` use the same
+    ``waist_yaw_link`` root.  Keeping this one-arm form public lets offline
+    continuation apply exactly the same pre-solve reach rule as the live
+    upper-body controller without inventing a pelvis-frame transform.
+
+    Returns ``(projected_position, was_projected, projection_distance,
+    reach_limit)``.
+    """
+
+    if not np.isfinite(margin_m) or not 0.0 <= margin_m < chain.max_reach_from_shoulder_m:
+        raise ValueError("margin_m must leave a positive finite arm reach.")
+    radius = float(chain.max_reach_from_shoulder_m - margin_m)
+    projected, changed, distance = _project_to_reach_sphere(
+        np.asarray(position_m, dtype=float),
+        chain.shoulder_origin(),
+        radius,
+    )
+    return projected, changed, distance, radius
 
 
 def project_upper_body_target(
@@ -91,4 +119,8 @@ def project_upper_body_target(
     )
 
 
-__all__ = ["WorkspaceProjection", "project_upper_body_target"]
+__all__ = [
+    "WorkspaceProjection",
+    "project_arm_position_to_reach_sphere",
+    "project_upper_body_target",
+]

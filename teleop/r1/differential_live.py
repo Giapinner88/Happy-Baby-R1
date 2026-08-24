@@ -275,6 +275,9 @@ class DifferentialWholeUpperBodyIsaacLabSink:
             raise ValueError(
                 f"Differential sink received incomplete ownership: {sorted(missing)}"
             )
+        if targets.robot_frame != self.config.source_target_frame:
+            self.hold("target_frame_mismatch")
+            return
         if targets.left_wrist_target is None or targets.right_wrist_target is None:
             self.hold("missing_wrist_target")
             return
@@ -321,6 +324,12 @@ class DifferentialWholeUpperBodyIsaacLabSink:
             "task_error": step.task_error.tolist(),
             "desired_task_velocity": task_velocity.tolist(),
             "minimum_weighted_jacobian_singular_value": step.minimum_singular_value,
+            "wide_elbow_pole_activation": step.wide_elbow_pole_activation,
+            "wide_elbow_pole_error_m": step.wide_elbow_pole_error_m.tolist(),
+            "branch_recovery_active": step.branch_recovery_active.tolist(),
+            "branch_recovery_velocity_rad_s": (
+                step.branch_recovery_velocity_rad_s.tolist()
+            ),
             "velocity_saturated": step.velocity_saturated.tolist(),
             "acceleration_saturated": step.acceleration_saturated.tolist(),
             "reference_lead_clamped": step.reference_lead_clamped.tolist(),

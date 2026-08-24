@@ -38,6 +38,15 @@ class DifferentialTrackingConfig:
     max_reference_lead_rad: float
     posture_gain_s: float = 0.0
     task_priority: str = "weighted"
+    wide_elbow_pole_gain_s: float = 0.0
+    wide_elbow_pole_weight: float = 0.0
+    wide_hand_separation_start_m: float = 0.75
+    wide_hand_separation_full_m: float = 1.0
+    branch_recovery_position_error_m: float = 0.0
+    branch_recovery_exit_error_m: float = 0.0
+    branch_recovery_limit_margin_rad: float = 0.05
+    branch_recovery_gain_s: float = 0.0
+    branch_recovery_weight: float = 0.0
 
     def validate(self) -> None:
         positive = (
@@ -60,6 +69,39 @@ class DifferentialTrackingConfig:
                 raise ValueError(f"{name} must be finite and positive.")
         if not np.isfinite(self.posture_gain_s) or self.posture_gain_s < 0.0:
             raise ValueError("posture_gain_s must be finite and non-negative.")
+        for name in ("wide_elbow_pole_gain_s", "wide_elbow_pole_weight"):
+            value = float(getattr(self, name))
+            if not np.isfinite(value) or value < 0.0:
+                raise ValueError(f"{name} must be finite and non-negative.")
+        if not (
+            np.isfinite(self.wide_hand_separation_start_m)
+            and np.isfinite(self.wide_hand_separation_full_m)
+            and 0.0 <= self.wide_hand_separation_start_m
+            < self.wide_hand_separation_full_m
+        ):
+            raise ValueError(
+                "wide hand-separation thresholds must be finite with "
+                "0 <= start < full."
+            )
+        recovery = (
+            self.branch_recovery_position_error_m,
+            self.branch_recovery_exit_error_m,
+            self.branch_recovery_limit_margin_rad,
+            self.branch_recovery_gain_s,
+            self.branch_recovery_weight,
+        )
+        if not all(np.isfinite(value) and value >= 0.0 for value in recovery):
+            raise ValueError("branch-recovery parameters must be finite and non-negative.")
+        if self.branch_recovery_weight > 0.0 and not (
+            self.branch_recovery_position_error_m
+            > self.branch_recovery_exit_error_m
+            and self.branch_recovery_limit_margin_rad > 0.0
+            and self.branch_recovery_gain_s > 0.0
+        ):
+            raise ValueError(
+                "enabled branch recovery requires activation > exit error, "
+                "a positive limit margin, and a positive gain."
+            )
         if self.task_priority not in ("weighted", "position_then_orientation"):
             raise ValueError(
                 "task_priority must be weighted or position_then_orientation."
@@ -77,6 +119,10 @@ class DifferentialTrackingStep:
     acceleration_saturated: np.ndarray
     reference_lead_clamped: np.ndarray
     joint_limit_active: np.ndarray
+    wide_elbow_pole_activation: float
+    wide_elbow_pole_error_m: np.ndarray
+    branch_recovery_active: np.ndarray
+    branch_recovery_velocity_rad_s: np.ndarray
 
 
 class DifferentialUpperBodyTracker:
@@ -95,23 +141,73 @@ class DifferentialUpperBodyTracker:
         self.nominal_q = self._vector(nominal_q, "nominal_q")
         self.q_reference = model.clamp(self._vector(initial_q, "initial_q"))
         self.dq_reference = np.zeros(model.dof, dtype=float)
+        self._branch_recovery_active = np.zeros(2, dtype=bool)
 
     def reset(self, measured_q: np.ndarray) -> None:
         """Reset the online reference to a measured/session-boundary state."""
 
         self.q_reference = self.model.clamp(self._vector(measured_q, "measured_q"))
         self.dq_reference.fill(0.0)
+        self._branch_recovery_active.fill(False)
 
     def hold(self) -> None:
         """Stop stored reference velocity without moving the held reference."""
 
         self.dq_reference.fill(0.0)
+        self._branch_recovery_active.fill(False)
 
     def _vector(self, value: np.ndarray, name: str) -> np.ndarray:
         array = np.asarray(value, dtype=float)
         if array.shape != (self.model.dof,) or not np.all(np.isfinite(array)):
             raise ValueError(f"{name} must be a finite ({self.model.dof},)-vector.")
         return array.copy()
+
+    def _wide_elbow_pole_error(
+        self, q: np.ndarray, target: UpperBodyIKTarget
+    ) -> np.ndarray:
+        """Elbow displacement toward a straight shoulder-to-wrist ray."""
+
+        waist = self.model.waist_transform_from_q(q)
+        errors: list[np.ndarray] = []
+        for side, wrist_target in (
+            ("left", target.left_position_m),
+            ("right", target.right_position_m),
+        ):
+            chain = getattr(self.model, f"{side}_arm")
+            arm_slice = getattr(self.model, f"{side}_arm_slice")
+            shoulder = (waist @ np.append(chain.shoulder_origin(), 1.0))[:3]
+            elbow = (waist @ chain.link_transforms(q[arm_slice])[3])[:3, 3]
+            upper_arm_length = float(np.linalg.norm(elbow - shoulder))
+            ray = np.asarray(wrist_target, dtype=float) - shoulder
+            ray_norm = float(np.linalg.norm(ray))
+            if ray_norm <= 1.0e-9:
+                desired_elbow = elbow
+            else:
+                desired_elbow = shoulder + upper_arm_length * ray / ray_norm
+            errors.append(desired_elbow - elbow)
+        return np.concatenate(errors)
+
+    def _wide_elbow_pole_jacobian(
+        self, q: np.ndarray, target: UpperBodyIKTarget
+    ) -> np.ndarray:
+        """Numerical geometric Jacobian for the morphology-aware elbow task."""
+
+        jacobian = np.zeros((6, self.model.dof), dtype=float)
+        delta = self.config.finite_difference_rad
+        for index in range(self.model.dof):
+            plus = q.copy()
+            minus = q.copy()
+            plus[index] = min(self.model.upper_limits[index], plus[index] + delta)
+            minus[index] = max(self.model.lower_limits[index], minus[index] - delta)
+            span = plus[index] - minus[index]
+            if span <= 0.0:
+                continue
+            derivative = (
+                self._wide_elbow_pole_error(plus, target)
+                - self._wide_elbow_pole_error(minus, target)
+            ) / span
+            jacobian[:, index] = -derivative
+        return jacobian
 
     @staticmethod
     def _bounded_quadratic_solve(
@@ -197,7 +293,6 @@ class DifferentialUpperBodyTracker:
             pseudo = np.linalg.solve(hessian, weighted_jacobian.T)
             null_projector = identity - pseudo @ weighted_jacobian
             bounded_hessian = hessian
-            bounded_rhs = rhs
         else:
             # The R1 arm has only five DoF.  Solve wrist position (and the
             # independent head task) first, then spend the remaining arm
@@ -246,15 +341,125 @@ class DifferentialUpperBodyTracker:
             # preference.  This prevents the old solve-then-clip path from
             # changing the direction of the commanded endpoint velocity.
             bounded_hessian = primary_hessian
-            bounded_rhs = (
-                primary_jacobian.T @ primary_command
-                + (self.config.damping**2) * dq_unbounded
-            )
 
         if self.config.posture_gain_s > 0.0:
             dq_unbounded += self.config.posture_gain_s * (
                 null_projector @ (self.nominal_q - q)
             )
+
+        # The posture term must be part of the box-QP objective.  Previously it
+        # was added only to the coordinate-descent initial guess; convergence
+        # then erased it, so ``posture_gain_s`` had effectively no influence on
+        # the commanded elbow branch.  Preserve the unconstrained preference
+        # exactly for the weighted solve.  In strict-priority mode, keep wrist
+        # position/head as the primary objective and apply orientation plus
+        # posture through the same damped velocity preference.
+        if self.config.task_priority == "weighted":
+            bounded_rhs = bounded_hessian @ dq_unbounded
+        else:
+            bounded_rhs = (
+                primary_jacobian.T @ primary_command
+                + (self.config.damping**2) * dq_unbounded
+            )
+
+        # Quest controller poses contain no elbow measurement. During a
+        # clearly wide bilateral gesture, add an explicit robot-morphology
+        # elbow pole objective. It is deliberately soft: exact wrist XYZ
+        # and a visually straight robot elbow are not simultaneously feasible
+        # for every human target because the link proportions differ.
+        lateral_separation = abs(
+            float(target.left_position_m[1] - target.right_position_m[1])
+        )
+        pole_activation = float(
+            np.clip(
+                (
+                    lateral_separation
+                    - self.config.wide_hand_separation_start_m
+                )
+                / (
+                    self.config.wide_hand_separation_full_m
+                    - self.config.wide_hand_separation_start_m
+                ),
+                0.0,
+                1.0,
+            )
+        )
+        pole_error = self._wide_elbow_pole_error(q, target)
+        pole_weight = self.config.wide_elbow_pole_weight * pole_activation
+        if pole_weight > 0.0:
+            pole_jacobian = self._wide_elbow_pole_jacobian(q, target)
+            pole_command = self.config.wide_elbow_pole_gain_s * pole_error
+            weighted_pole_jacobian = pole_weight * pole_jacobian
+            weighted_pole_command = pole_weight * pole_command
+            bounded_hessian = (
+                bounded_hessian
+                + weighted_pole_jacobian.T @ weighted_pole_jacobian
+            )
+            bounded_rhs = (
+                bounded_rhs
+                + weighted_pole_jacobian.T @ weighted_pole_command
+            )
+            dq_unbounded = np.linalg.solve(bounded_hessian, bounded_rhs)
+
+        # A local differential branch can become trapped at several joint
+        # limits after the wrist returns to a reachable region. Activate an
+        # explicit, hysteretic transition only when a large per-arm position
+        # residual and a near-limit arm occur together. The opposite arm is
+        # never included in the recovery objective.
+        recovery_velocity = np.zeros(self.model.dof, dtype=float)
+        recovery_enabled = self.config.branch_recovery_weight > 0.0
+        position_error_norms = np.asarray(
+            [np.linalg.norm(error[0:3]), np.linalg.norm(error[3:6])]
+        )
+        for side_index, arm_slice in enumerate(
+            (self.model.left_arm_slice, self.model.right_arm_slice)
+        ):
+            arm_q = q[arm_slice]
+            near_limit = bool(
+                np.any(
+                    arm_q - self.model.lower_limits[arm_slice]
+                    <= self.config.branch_recovery_limit_margin_rad
+                )
+                or np.any(
+                    self.model.upper_limits[arm_slice] - arm_q
+                    <= self.config.branch_recovery_limit_margin_rad
+                )
+            )
+            if self._branch_recovery_active[side_index]:
+                if (
+                    position_error_norms[side_index]
+                    <= self.config.branch_recovery_exit_error_m
+                ):
+                    self._branch_recovery_active[side_index] = False
+            elif (
+                recovery_enabled
+                and near_limit
+                and position_error_norms[side_index]
+                >= self.config.branch_recovery_position_error_m
+            ):
+                self._branch_recovery_active[side_index] = True
+            if self._branch_recovery_active[side_index]:
+                recovery_velocity[arm_slice] = self.config.branch_recovery_gain_s * (
+                    self.nominal_q[arm_slice] - q[arm_slice]
+                )
+
+        if np.any(self._branch_recovery_active):
+            recovery_velocity = np.clip(
+                recovery_velocity,
+                -self.config.max_joint_velocity_rad_s,
+                self.config.max_joint_velocity_rad_s,
+            )
+            recovery_mask = np.zeros(self.model.dof, dtype=float)
+            if self._branch_recovery_active[0]:
+                recovery_mask[self.model.left_arm_slice] = 1.0
+            if self._branch_recovery_active[1]:
+                recovery_mask[self.model.right_arm_slice] = 1.0
+            recovery_diagonal = (
+                self.config.branch_recovery_weight * recovery_mask
+            ) ** 2
+            bounded_hessian = bounded_hessian + np.diag(recovery_diagonal)
+            bounded_rhs = bounded_rhs + recovery_diagonal * recovery_velocity
+            dq_unbounded = np.linalg.solve(bounded_hessian, bounded_rhs)
 
         max_v = self.config.max_joint_velocity_rad_s
         max_delta_v = self.config.max_joint_acceleration_rad_s2 * self.config.dt_s
@@ -336,6 +541,10 @@ class DifferentialUpperBodyTracker:
             acceleration_saturated=acceleration_saturated,
             reference_lead_clamped=reference_lead_clamped,
             joint_limit_active=joint_limit_active,
+            wide_elbow_pole_activation=pole_activation,
+            wide_elbow_pole_error_m=pole_error.copy(),
+            branch_recovery_active=self._branch_recovery_active.copy(),
+            branch_recovery_velocity_rad_s=recovery_velocity.copy(),
         )
 
 

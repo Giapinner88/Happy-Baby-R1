@@ -16,6 +16,7 @@ from teleop.r1.upper_body_ik import (
     quaternion_xyzw_to_matrix,
     so3_log,
     solve_upper_body_ik,
+    upper_body_analytic_jacobian,
     upper_body_task_jacobian,
 )
 from teleop.r1.upper_body_kinematics import (
@@ -175,6 +176,84 @@ class UpperBodyJacobianTests(unittest.TestCase):
         self.assertGreater(float(np.linalg.norm(jacobian[12:15, 0])), 1e-3)
 
 
+class AnalyticJacobianTests(unittest.TestCase):
+    """The closed-form Jacobian must equal the finite-difference one.
+
+    It replaced central differences to make the live loop affordable (11.4x
+    faster), so any drift between them silently changes every solve.
+    """
+
+    def test_matches_central_differences_in_every_body_mode(self) -> None:
+        rng = np.random.default_rng(7)
+        modes = (
+            ("arms_head", {"control_waist_yaw": False}),
+            ("waist_yaw", {}),
+            ("full_upper_body", {"control_waist_roll": True}),
+        )
+        for name, kwargs in modes:
+            model = load_r1_a5_upper_body_model(SIM_URDF, **kwargs)
+            for _ in range(4):
+                q = rng.uniform(model.lower_limits, model.upper_limits) * 0.6
+                state = model.forward_kinematics(q)
+                target = UpperBodyIKTarget(
+                    state.left_end_effector[:3, 3] + 0.02,
+                    state.left_end_effector[:3, :3],
+                    state.right_end_effector[:3, 3] - 0.02,
+                    state.right_end_effector[:3, :3],
+                    state.head[:3, :3],
+                )
+                np.testing.assert_allclose(
+                    upper_body_analytic_jacobian(model, q),
+                    upper_body_task_jacobian(model, q, target, 1e-6),
+                    atol=1e-7,
+                    err_msg=name,
+                )
+
+    def test_matches_on_the_vendor_asset(self) -> None:
+        """The torso column builds its frame explicitly; the sim asset's
+        waist-roll origin is the identity, so only a second asset can show a
+        shortcut there would have been wrong."""
+
+        model = load_r1_a5_upper_body_model(VENDOR_A5_URDF)
+        rng = np.random.default_rng(11)
+        q = rng.uniform(model.lower_limits, model.upper_limits) * 0.5
+        state = model.forward_kinematics(q)
+        target = UpperBodyIKTarget(
+            state.left_end_effector[:3, 3] + 0.01, state.left_end_effector[:3, :3],
+            state.right_end_effector[:3, 3] - 0.01, state.right_end_effector[:3, :3],
+            state.head[:3, :3],
+        )
+        np.testing.assert_allclose(
+            upper_body_analytic_jacobian(model, q),
+            upper_body_task_jacobian(model, q, target, 1e-6),
+            atol=1e-7,
+        )
+
+    def test_both_jacobians_reach_the_same_solution(self) -> None:
+        model = load_r1_a5_upper_body_model(SIM_URDF)
+        desired = np.array([0.2, 0.1, 0.3, -0.2, 0.7, 0.1, 0.1, -0.3, 0.2, 0.7, -0.1, 0.0, 0.15])
+        target = target_from_q(model, desired)
+        analytic = solve_upper_body_ik(
+            model, target, np.zeros(13), np.zeros(13), config(analytic_jacobian=True)
+        )
+        difference = solve_upper_body_ik(
+            model, target, np.zeros(13), np.zeros(13), config(analytic_jacobian=False)
+        )
+        # The orientation rows of the analytic form use the small-angle identity,
+        # so the two take slightly different paths and land on different points
+        # of the same redundant solution manifold. What must match is the task
+        # accuracy, not the joint vector: 1.1e-3 rad of joint difference is 0.06
+        # degrees and carries no physical meaning here.
+        self.assertTrue(analytic.converged)
+        self.assertTrue(difference.converged)
+        for result in (analytic, difference):
+            self.assertLess(result.left_position_residual_m, 2e-3)
+            self.assertLess(result.right_position_residual_m, 2e-3)
+        np.testing.assert_allclose(
+            analytic.joint_positions, difference.joint_positions, atol=5e-3
+        )
+
+
 class UpperBodySolverTests(unittest.TestCase):
     def test_known_fk_target_round_trips_on_both_assets(self) -> None:
         desired = np.array(
@@ -320,7 +399,7 @@ class WholeUpperBodySinkTests(unittest.TestCase):
             head_pitch_rad=head_pitch,
             base_velocity=BaseVelocity.zero(),
             base_velocity_enabled=False,
-            robot_frame="r1_base",
+            robot_frame="neutral_waist_yaw_link",
         )
 
     def test_coupled_target_dispatches_waist_both_arms_and_head_atomically(self) -> None:
@@ -421,7 +500,7 @@ class WholeUpperBodySinkTests(unittest.TestCase):
             head_pitch_rad=0.0,
             base_velocity=BaseVelocity.zero(),
             base_velocity_enabled=False,
-            robot_frame="r1_base",
+            robot_frame="neutral_waist_yaw_link",
         )
 
     def test_far_target_holds_instead_of_dispatching_partial_solution(self) -> None:
@@ -515,7 +594,7 @@ class RateLimiterJointLimitTests(unittest.TestCase):
                     head_pitch_rad=0.0,
                     base_velocity=BaseVelocity.zero(),
                     base_velocity_enabled=False,
-                    robot_frame="r1_base",
+                    robot_frame="neutral_waist_yaw_link",
                 ),
                 R1A5WholeUpperBodyOwnership().upper_body,
             )
@@ -626,7 +705,7 @@ class WaistRollDeviationTests(unittest.TestCase):
             head_pitch_rad=head_pitch,
             base_velocity=BaseVelocity.zero(),
             base_velocity_enabled=False,
-            robot_frame="r1_base",
+            robot_frame="neutral_waist_yaw_link",
         )
         sink.apply_upper_body(targets, R1A5WholeUpperBodyOwnership(body_mode="full_upper_body").upper_body)
         self.assertEqual(handle.writes[-1][0], UPPER_BODY_JOINT_NAMES_WITH_WAIST_ROLL)
@@ -743,7 +822,7 @@ class SeedRestartTests(unittest.TestCase):
                     head_pitch_rad=0.0,
                     base_velocity=BaseVelocity.zero(),
                     base_velocity_enabled=False,
-                    robot_frame="r1_base",
+                    robot_frame="neutral_waist_yaw_link",
                 ),
                 ARMS_HEAD_JOINT_NAMES,
             )
@@ -770,7 +849,7 @@ class SeedRestartTests(unittest.TestCase):
                 head_pitch_rad=0.0,
                 base_velocity=BaseVelocity.zero(),
                 base_velocity_enabled=False,
-                robot_frame="r1_base",
+                robot_frame="neutral_waist_yaw_link",
             ),
             ARMS_HEAD_JOINT_NAMES,
         )
@@ -844,7 +923,7 @@ class ArmsHeadBodyModeTests(unittest.TestCase):
                 head_pitch_rad=0.0,
                 base_velocity=BaseVelocity.zero(),
                 base_velocity_enabled=False,
-                robot_frame="r1_base",
+                robot_frame="neutral_waist_yaw_link",
             ),
             R1A5WholeUpperBodyOwnership(body_mode="arms_head").upper_body,
         )

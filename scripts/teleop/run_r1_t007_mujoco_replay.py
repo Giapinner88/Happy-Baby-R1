@@ -106,7 +106,7 @@ def patch_actuators(model,cfg):
 def run_case(model,p,truth,cfg,case,upper,actids):
  import mujoco
  sim,tc,cc=cfg['simulation'],cfg['transport'],cfg['controller'];rate=float(sim['control_hz']);steps=round(float(sim['physics_hz'])/rate)
- accepted={f.name for f in fields(DifferentialTrackingConfig)}-{'dt_s'};dc={k:float(v) for k,v in cc.items() if k in accepted};tracker=DifferentialUpperBodyTracker(upper,np.zeros(upper.dof),np.zeros(upper.dof),DifferentialTrackingConfig(dt_s=1/rate,**dc));data=mujoco.MjData(model);mujoco.mj_forward(model,data)
+ accepted={f.name for f in fields(DifferentialTrackingConfig)}-{'dt_s'};dc={k:float(v) for k,v in cc.items() if k in accepted};dc.update({k:float(v) for k,v in dict(case.get('controller_overrides') or {}).items() if k in accepted});tracker=DifferentialUpperBodyTracker(upper,np.zeros(upper.dof),np.zeros(upper.dof),DifferentialTrackingConfig(dt_s=1/rate,**dc));data=mujoco.MjData(model);mujoco.mj_forward(model,data)
  names=list(upper.joint_names);jids=[mujoco.mj_name2id(model,mujoco.mjtObj.mjOBJ_JOINT,n) for n in names];qa=np.array([model.jnt_qposadr[i] for i in jids]);va=np.array([model.jnt_dofadr[i] for i in jids]);aids=np.array([actids[n] for n in names]);ls=mujoco.mj_name2id(model,mujoco.mjtObj.mjOBJ_SITE,'teleop_left_ee');rs=mujoco.mj_name2id(model,mujoco.mjtObj.mjOBJ_SITE,'teleop_right_ee');pel=mujoco.mj_name2id(model,mujoco.mjtObj.mjOBJ_BODY,'pelvis');delivery=p.t+float(tc['replay_latency_s'])
  keys=['ref','al','ar','ha','qref','q','dqref','dq','cms','pms','age','sigma','vs','as','lead','limit','force'];a={k:[] for k in keys}
  for now in truth['t']:

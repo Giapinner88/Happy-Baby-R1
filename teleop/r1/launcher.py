@@ -1,9 +1,16 @@
-"""Shared two-process Quest pilot launcher.
+"""Shared multi-process Quest pilot launcher.
 
 The Quest vendor wrapper and IsaacLab live in different Conda environments, so
 every live pilot is a bridge process piped into a simulator process. Both sides
 must agree on one run id, one stop file and one evidence directory, which is why
 allocation happens here and not in either child.
+
+A pilot may insert one more process between the two: a solver that reads the
+command stream and writes it back out with joint targets attached. The vendor
+`xr_teleoperate` IK needs this, because it runs in the bridge environment and
+not the simulator's. The stage is optional and the pipeline is otherwise
+identical, so a pilot that does its own solving inside the simulator is
+unaffected.
 
 This module owns only the launch mechanics. Which protocol is being run, which
 experiment directory it writes to and which simulator flags it needs are
@@ -44,6 +51,13 @@ class PilotLaunchSpec:
     disable_self_collisions: bool
     extra_sim_args: list[str] = field(default_factory=list)
     idle_stop_s: float | None = None
+    solver_args: list[str] | None = None
+    """Arguments to a solver stage placed between the bridge and the simulator.
+
+    `None` keeps the original two-process pipeline. When set, these are appended
+    to a `conda run -n <bridge env> python` invocation, because a solver that
+    needs the bridge environment is the only reason this stage exists.
+    """
 
 
 def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, connection_log: Path):
@@ -72,7 +86,13 @@ def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, con
     if spec.idle_stop_s is not None:
         sim_command += ["--idle-stop-s", str(spec.idle_stop_s)]
     sim_command += spec.extra_sim_args
-    return bridge_command, sim_command
+    solver_command = None
+    if spec.solver_args is not None:
+        solver_command = [
+            "conda", "run", "--no-capture-output", "-n", BRIDGE_ENV, "python",
+            *spec.solver_args,
+        ]
+    return bridge_command, solver_command, sim_command
 
 
 def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
@@ -100,7 +120,9 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     if stop_file.exists():
         raise SystemExit(f"Refusing to start: stop file already exists: {stop_file}")
 
-    bridge_command, sim_command = build_commands(spec, output_dir, stop_file, connection_log)
+    bridge_command, solver_command, sim_command = build_commands(
+        spec, output_dir, stop_file, connection_log
+    )
 
     print(f"Protocol:       {spec.protocol}", file=sys.stderr, flush=True)
     print(f"Run id:         {run_id}", file=sys.stderr, flush=True)
@@ -110,6 +132,8 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     print("", file=sys.stderr, flush=True)
     if dry_run:
         print("bridge: " + " ".join(bridge_command), file=sys.stderr)
+        if solver_command is not None:
+            print("solver: " + " ".join(solver_command), file=sys.stderr)
         print("sim:    " + " ".join(sim_command), file=sys.stderr)
         return 0
 
@@ -125,17 +149,34 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     # die first and orphan a running Isaac Sim.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     bridge = subprocess.Popen(bridge_command, cwd=spec.repo_root, stdout=subprocess.PIPE)
+    solver = None
     try:
-        simulator = subprocess.Popen(sim_command, cwd=spec.repo_root, stdin=bridge.stdout)
+        if solver_command is not None:
+            solver = subprocess.Popen(
+                solver_command,
+                cwd=spec.repo_root,
+                stdin=bridge.stdout,
+                stdout=subprocess.PIPE,
+            )
+            # Each stage keeps only the ends it uses, so a closed pipe still
+            # propagates back up the chain when a later stage exits first.
+            assert bridge.stdout is not None
+            bridge.stdout.close()
+            simulator = subprocess.Popen(sim_command, cwd=spec.repo_root, stdin=solver.stdout)
+            assert solver.stdout is not None
+            solver.stdout.close()
+        else:
+            simulator = subprocess.Popen(sim_command, cwd=spec.repo_root, stdin=bridge.stdout)
+            assert bridge.stdout is not None
+            bridge.stdout.close()
     except OSError:
+        if solver is not None:
+            solver.terminate()
         bridge.terminate()
         raise
-    # Only the simulator holds the read end now; otherwise the bridge never sees
-    # a closed pipe if the simulator exits first.
-    assert bridge.stdout is not None
-    bridge.stdout.close()
 
     simulator_status = simulator.wait()
+    solver_status = solver.wait() if solver is not None else 0
     bridge_status = bridge.wait()
     if connection_log.is_file() and output_dir.is_dir():
         if final_connection_log.exists():
@@ -150,7 +191,12 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
             )
 
     print("", file=sys.stderr, flush=True)
-    print(f"bridge exit={bridge_status}  simulator exit={simulator_status}", file=sys.stderr, flush=True)
+    solver_note = f"  solver exit={solver_status}" if solver is not None else ""
+    print(
+        f"bridge exit={bridge_status}{solver_note}  simulator exit={simulator_status}",
+        file=sys.stderr,
+        flush=True,
+    )
     if final_connection_log.is_file():
         print(f"Connection log saved: {final_connection_log}", file=sys.stderr, flush=True)
     print(
@@ -158,7 +204,7 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
         file=sys.stderr,
         flush=True,
     )
-    return simulator_status or bridge_status
+    return simulator_status or solver_status or bridge_status
 
 
 __all__ = ["BRIDGE_ENV", "SIM_ENV", "PilotLaunchSpec", "build_commands", "run_pilot"]

@@ -38,7 +38,6 @@
 ├── docs/                   # SOP, safety, kiến trúc, hướng dẫn và báo cáo
 ├── hardware/               # Tài sản/cấu hình dành riêng cho robot thật (không chứa secret)
 ├── media/                  # Ảnh và video minh họa
-├── Operation_Khanh/        # Gói high/low-level triển khai và vận hành trên máy tính nhúng
 ├── policies/               # Vùng tương thích artefact cũ; dùng data/policies cho run mới
 ├── reports/                # Báo cáo train/eval/bridge theo mốc, không phải source code
 ├── scripts/                # Entry points theo training, simulation, bridge và asset sync

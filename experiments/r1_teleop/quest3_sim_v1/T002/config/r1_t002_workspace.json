@@ -3,7 +3,7 @@
   "experiment_id": "t002",
   "title": "R1 arm/wrist reachable workspace and self-collision behaviour",
   "mode": "simulation_only",
-  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "method_record": "docs/teleop/03_r1_a5_ik.md",
 
   "frames": {
     "target_frame": "waist_yaw_link",

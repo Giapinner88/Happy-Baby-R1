@@ -44,9 +44,10 @@ class T003CaseMatrixTests(unittest.TestCase):
 
 
 class EvidenceCatalogTests(unittest.TestCase):
-    def test_catalog_references_retained_runs_and_records_exclusions(self) -> None:
+    def test_catalog_retains_selected_runs_and_records_exclusions(self) -> None:
         selected = False
         excluded = False
+        omitted_excluded = False
         for catalog in CATALOGS:
             payload = json.loads(catalog.read_text(encoding="utf-8"))
             self.assertEqual(payload["record_type"], "editable_protocol_case_catalog")
@@ -57,9 +58,14 @@ class EvidenceCatalogTests(unittest.TestCase):
                     excluded |= not bool(case["selected_for_follow_up"])
                     self.assertIn("selection_reason", case)
                     for source in case["source_runs"]:
-                        self.assertTrue((owner_root / "runs" / source["run_id"]).is_dir(), source)
+                        run_exists = (owner_root / "runs" / source["run_id"]).is_dir()
+                        if case["selected_for_follow_up"]:
+                            self.assertTrue(run_exists, source)
+                        else:
+                            omitted_excluded |= not run_exists
         self.assertTrue(selected)
         self.assertTrue(excluded)
+        self.assertTrue(omitted_excluded)
 
     def test_t001_b_bridge_logs_belong_to_their_own_runs(self) -> None:
         payload = json.loads((T001_ROOT / "metadata" / "evidence_catalog.json").read_text(encoding="utf-8"))
@@ -67,9 +73,14 @@ class EvidenceCatalogTests(unittest.TestCase):
         self.assertEqual(list(run_root.glob("*.bridge.jsonl")), [])
         relocations = payload["artifact_relocations"]
         self.assertEqual(len(relocations), 1)
+        retained = 0
         for artifact in relocations[0]["files"]:
             self.assertTrue(artifact["from"].startswith("legacy central runs/"))
-            self.assertTrue((EXPERIMENT_ROOT / artifact["to"]).is_file())
+            destination = EXPERIMENT_ROOT / artifact["to"]
+            if destination.is_file():
+                retained += 1
+                self.assertEqual(destination.name, "bridge_connection.jsonl")
+        self.assertGreater(retained, 0)
 
     def test_registry_attributes_new_t003_prefixes_to_the_split_protocols(self) -> None:
         experiment = find_experiment(load_registry(ROOT), "r1_teleop")

@@ -165,6 +165,108 @@ class DifferentialTrackingTests(unittest.TestCase):
         self.assertLess(np.linalg.norm(after[6:9]), np.linalg.norm(before[6:9]))
         self.assertLess(np.linalg.norm(after[:6]), 1e-4)
 
+    def test_strict_priority_box_qp_preserves_posture_preference(self) -> None:
+        posture = self.nominal.copy()
+        posture[3] = 1.5
+        posture[8] = 1.5
+        controller = DifferentialUpperBodyTracker(
+            self.model,
+            posture,
+            self.nominal,
+            tracker_config(
+                task_priority="position_then_orientation",
+                posture_gain_s=2.0,
+                max_joint_acceleration_rad_s2=1000.0,
+            ),
+        )
+        target = self.target_from_q(self.nominal)
+        step = controller.step(
+            self.nominal, target, np.zeros(15), velocity_feedforward=False
+        )
+        self.assertGreater(
+            np.linalg.norm(step.joint_velocity_reference_rad_s[:10]), 1e-3
+        )
+        after = upper_body_task_error(
+            self.model, step.joint_position_reference_rad, target
+        )
+        self.assertLess(np.linalg.norm(after[:6]), 1e-3)
+
+    def test_wide_gesture_activates_soft_elbow_pole_objective(self) -> None:
+        state = self.model.forward_kinematics(self.nominal)
+        left_position = state.left_end_effector[:3, 3].copy()
+        right_position = state.right_end_effector[:3, 3].copy()
+        left_position[1] = 0.55
+        right_position[1] = -0.55
+        target = UpperBodyIKTarget(
+            left_position,
+            state.left_end_effector[:3, :3],
+            right_position,
+            state.right_end_effector[:3, :3],
+            state.head[:3, :3],
+        )
+        baseline = DifferentialUpperBodyTracker(
+            self.model,
+            self.nominal,
+            self.nominal,
+            tracker_config(
+                task_priority="position_then_orientation",
+                max_joint_acceleration_rad_s2=1000.0,
+            ),
+        ).step(self.nominal, target, np.zeros(15), velocity_feedforward=False)
+        extension = DifferentialUpperBodyTracker(
+            self.model,
+            self.nominal,
+            self.nominal,
+            tracker_config(
+                task_priority="position_then_orientation",
+                max_joint_acceleration_rad_s2=1000.0,
+                wide_elbow_pole_gain_s=6.0,
+                wide_elbow_pole_weight=2.0,
+                wide_hand_separation_start_m=0.75,
+                wide_hand_separation_full_m=1.0,
+            ),
+        ).step(self.nominal, target, np.zeros(15), velocity_feedforward=False)
+        self.assertEqual(extension.wide_elbow_pole_activation, 1.0)
+        self.assertGreater(np.linalg.norm(extension.wide_elbow_pole_error_m), 0.0)
+        self.assertGreater(
+            np.linalg.norm(
+                extension.joint_velocity_reference_rad_s
+                - baseline.joint_velocity_reference_rad_s
+            ),
+            1e-3,
+        )
+
+    def test_limit_trap_activates_hysteretic_single_arm_branch_recovery(self) -> None:
+        trapped = self.nominal.copy()
+        right = self.model.right_arm_slice
+        trapped[right.start + 0] = self.model.lower_limits[right.start + 0]
+        trapped[right.start + 1] = self.model.lower_limits[right.start + 1]
+        trapped[right.start + 3] = self.model.upper_limits[right.start + 3]
+        controller = DifferentialUpperBodyTracker(
+            self.model,
+            self.nominal,
+            trapped,
+            tracker_config(
+                task_priority="position_then_orientation",
+                max_joint_acceleration_rad_s2=1000.0,
+                branch_recovery_position_error_m=0.15,
+                branch_recovery_exit_error_m=0.05,
+                branch_recovery_limit_margin_rad=0.03,
+                branch_recovery_gain_s=3.0,
+                branch_recovery_weight=5.0,
+            ),
+        )
+        step = controller.step(
+            trapped,
+            self.target_from_q(self.nominal),
+            np.zeros(15),
+            velocity_feedforward=False,
+        )
+        np.testing.assert_array_equal(step.branch_recovery_active, [False, True])
+        self.assertGreater(step.branch_recovery_velocity_rad_s[right.start + 0], 0.0)
+        self.assertGreater(step.branch_recovery_velocity_rad_s[right.start + 1], 0.0)
+        self.assertLess(step.branch_recovery_velocity_rad_s[right.start + 3], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

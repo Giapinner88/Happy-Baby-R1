@@ -50,6 +50,46 @@ class R1TeleopMappingTests(unittest.TestCase):
         self.assertAlmostEqual(target.left_wrist_target.position.y, 3.0)
         self.assertEqual(target.base_velocity, BaseVelocity(0.5, -0.25, 1.0))
 
+    def test_head_angles_invert_the_asset_head_chain(self) -> None:
+        """Mapped head angles must aim the head down the headset forward axis.
+
+        R1 applies `head_pitch` before `head_yaw`, so the mapper's inverse has
+        to match that order. A textbook ZYX reading agrees on a pure yaw and a
+        pure pitch and drifts off-axis on every mixture of the two, which shows
+        up in a run as a head that never quite points where the operator looks.
+        """
+
+        from teleop.r1.upper_body_kinematics import load_r1_a5_upper_body_model
+
+        model = load_r1_a5_upper_body_model(control_waist_yaw=False)
+        mapper = R1TeleopMapper(TeleopCalibration(), TeleopLimits(0.5))
+        for pitch_deg, yaw_deg in ((20.0, 30.0), (-15.0, -45.0), (25.0, -60.0)):
+            with self.subTest(pitch=pitch_deg, yaw=yaw_deg):
+                pitch_rad, yaw_rad = math.radians(pitch_deg), math.radians(yaw_deg)
+                rotation = model.head_rotation(pitch_rad, yaw_rad)
+                w = math.sqrt(max(0.0, 1.0 + rotation[0][0] + rotation[1][1] + rotation[2][2])) / 2.0
+                orientation = Quaternion(
+                    float((rotation[2][1] - rotation[1][2]) / (4.0 * w)),
+                    float((rotation[0][2] - rotation[2][0]) / (4.0 * w)),
+                    float((rotation[1][0] - rotation[0][1]) / (4.0 * w)),
+                    float(w),
+                )
+                head_pose = Pose(Vector3(0.0, 0.0, 1.4), orientation)
+                target = mapper.map(
+                    R1TeleopCommand(
+                        sequence_id=1,
+                        timestamp_monotonic_s=1.0,
+                        deadman_enabled=True,
+                        head_pose=head_pose,
+                        left_wrist_pose=head_pose,
+                        right_wrist_pose=head_pose,
+                        base_velocity=BaseVelocity.zero(),
+                    ),
+                    1.0,
+                )
+                self.assertAlmostEqual(target.head_pitch_rad, pitch_rad, places=9)
+                self.assertAlmostEqual(target.head_yaw_rad, yaw_rad, places=9)
+
     def test_deadman_and_timeout_fail_closed(self) -> None:
         mapper = R1TeleopMapper(TeleopCalibration(), TeleopLimits(0.5, allow_velocity=True, max_vx_mps=1.0, max_vy_mps=1.0, max_yaw_rate_radps=1.0))
         released = mapper.map(command(deadman=False), 1.1)
@@ -86,6 +126,18 @@ class R1TeleopMappingTests(unittest.TestCase):
         payload["head_pose"]["orientation"] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0}
         with self.assertRaises(ValueError):
             R1TeleopCommand.from_dict(payload)
+
+    def test_schema_rejects_non_finite_values(self) -> None:
+        payload = command().as_dict()
+        payload["left_wrist_pose"]["position"]["x"] = float("nan")
+        with self.assertRaises(ValueError):
+            R1TeleopCommand.from_dict(payload)
+
+    def test_future_command_timestamp_fails_closed(self) -> None:
+        mapper = R1TeleopMapper(TeleopCalibration(), TeleopLimits(0.5))
+        target = mapper.map(command(timestamp=2.0), 1.0)
+        self.assertFalse(target.enabled)
+        self.assertEqual(target.reason, "command_timestamp_in_future")
 
     def test_velocity_policy_gate_requires_matching_evaluation(self) -> None:
         asset = Path(__file__).resolve().parents[2] / "assets" / "R1" / "R1.usd"

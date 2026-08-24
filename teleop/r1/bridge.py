@@ -6,8 +6,12 @@ it can be unit tested in any environment. The vendor-specific process feeds it
 plain sample values and receives normalized `R1TeleopCommand` objects.
 
 Conventions follow `schema.py`: metres, radians, and a monotonic clock in
-seconds. Pose matrices are 4x4 row-major sequences in the vendor wrapper's
-already-converted robot basis; this module changes no basis of its own.
+seconds. Pose matrices are 4x4 row-major sequences from the audited vendor
+wrapper. The head is in robot-basis XR world; wrists are already aligned to the
+Unitree URDF convention and expressed in the head-yaw-relative waist workspace.
+This module changes no basis of its own. ``source_frame`` remains the legacy
+stream identifier for schema-1 compatibility, not a claim that all three poses
+share one coordinate frame.
 """
 
 from __future__ import annotations
@@ -173,6 +177,10 @@ class BridgeConfig:
     max_rotation_determinant_error: float = 1e-3
     base_velocity_source: str = "constant_zero"
     max_pose_stale_s: float = 0.5
+    arm_reference_mode: str = "head_yaw"
+    head_pose_frame: str = "robot_world"
+    wrist_pose_frame: str = "neutral_waist_yaw_link"
+    wrist_initial_convention: str = "unitree_arm_urdf"
 
 
 class QuestCommandBridge:
@@ -191,12 +199,25 @@ class QuestCommandBridge:
 
     def __init__(self, config: BridgeConfig | None = None) -> None:
         self.config = config or BridgeConfig()
-        if self.config.max_orthonormality_defect <= 0.0 or self.config.max_rotation_determinant_error <= 0.0:
+        if (
+            not isfinite(self.config.max_orthonormality_defect)
+            or not isfinite(self.config.max_rotation_determinant_error)
+            or self.config.max_orthonormality_defect <= 0.0
+            or self.config.max_rotation_determinant_error <= 0.0
+        ):
             raise ValueError("Rotation validation tolerances must be positive.")
         if self.config.base_velocity_source != "constant_zero":
             raise ValueError("R1 teleop v1 only permits a constant-zero base velocity source.")
-        if self.config.max_pose_stale_s <= 0.0:
+        if not isfinite(self.config.max_pose_stale_s) or self.config.max_pose_stale_s <= 0.0:
             raise ValueError("max_pose_stale_s must be positive.")
+        expected_frames = (
+            self.config.arm_reference_mode == "head_yaw"
+            and self.config.head_pose_frame == "robot_world"
+            and self.config.wrist_pose_frame == "neutral_waist_yaw_link"
+            and self.config.wrist_initial_convention == "unitree_arm_urdf"
+        )
+        if not expected_frames:
+            raise ValueError("BridgeConfig does not match the audited TeleVuer frame contract.")
         self.state = BridgeConnectionState()
         self._next_sequence_id = 0
         self._last_pose_key: tuple[float, ...] | None = None

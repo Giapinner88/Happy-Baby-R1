@@ -44,6 +44,12 @@ Không dùng learning trong control loop.
 8. [`08_development_baseline.md`](08_development_baseline.md)  
    Baseline phát triển tiếp và thứ tự benchmark.
 
+9. [`09_r1_hardware_source_build.md`](09_r1_hardware_source_build.md)
+   Build/audit Unitree SDK source và diagnostic ladder trước hardware integration.
+
+10. [`10_experimental_differential_tracking.md`](10_experimental_differential_tracking.md)
+    Controller vi phân opt-in và lý do không dùng làm baseline mặc định.
+
 ## Nguồn chính
 
 - Unitree upstream `xr_teleoperate`

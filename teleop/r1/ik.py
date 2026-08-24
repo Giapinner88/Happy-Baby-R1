@@ -1,4 +1,4 @@
-"""Damped-least-squares IK for the R1 arm, per `docs/teleop/r1_arm_wrist_ik.md`.
+"""Damped-least-squares IK for project solver B; see `docs/teleop/05_project_solvers_and_evidence.md`.
 
 The task is four scalars — a 3-D endpoint position and the wrist-roll angle — on
 a five-joint chain, so one degree of freedom is redundant and is resolved by a
@@ -55,6 +55,16 @@ class ArmIKConfig:
     """
 
     def validate(self) -> None:
+        numeric = (
+            self.position_tolerance_m,
+            self.roll_tolerance_rad,
+            self.damping,
+            self.posture_weight,
+            self.max_joint_step_rad,
+            self.posture_tolerance_rad,
+        )
+        if not all(np.isfinite(value) for value in numeric):
+            raise IKConfigError("IK configuration values must be finite.")
         if self.position_tolerance_m <= 0.0:
             raise IKConfigError("position_tolerance_m must be positive.")
         if self.roll_tolerance_rad <= 0.0:
@@ -110,12 +120,21 @@ def solve_arm_ik(
 
     config.validate()
     target_position = np.asarray(target_position_m, dtype=float)
-    if target_position.shape != (3,):
-        raise IKConfigError(f"target_position_m must have shape (3,), got {target_position.shape}")
+    if target_position.shape != (3,) or not np.all(np.isfinite(target_position)):
+        raise IKConfigError("target_position_m must be a finite 3-vector.")
+    if not np.isfinite(target_roll_rad):
+        raise IKConfigError("target_roll_rad must be finite.")
+
+    seed = np.asarray(seed_q, dtype=float)
+    nominal_values = np.asarray(nominal_q, dtype=float)
+    if seed.shape != (chain.dof,) or not np.all(np.isfinite(seed)):
+        raise IKConfigError(f"seed_q must be a finite ({chain.dof},)-vector.")
+    if nominal_values.shape != (chain.dof,) or not np.all(np.isfinite(nominal_values)):
+        raise IKConfigError(f"nominal_q must be a finite ({chain.dof},)-vector.")
 
     lower, upper = chain.lower_limits, chain.upper_limits
-    q = chain.clamp(np.asarray(seed_q, dtype=float).copy())
-    nominal = chain.clamp(np.asarray(nominal_q, dtype=float))
+    q = chain.clamp(seed.copy())
+    nominal = chain.clamp(nominal_values)
 
     # Roll is the last joint's coordinate, so it is imposed, not solved for.
     roll_clamped = float(np.clip(target_roll_rad, lower[-1], upper[-1]))

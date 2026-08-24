@@ -3,7 +3,7 @@
   "experiment_id": "t006",
   "title": "Bilateral arm/wrist kinematic and ownership screening",
   "mode": "simulation_only",
-  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "method_record": "docs/teleop/03_r1_a5_ik.md",
   "scope": "Deterministic bilateral mapper-input reconstruction plus project IK and ownership audit. No Isaac dynamics, collision/contact simulation, transport, rendering, DDS, or hardware channel is opened.",
   "sources": {
     "t003_waypoints": "experiments/r1_teleop/quest3_sim_v1/T003/runs/t003_a_nominal_20260811T034825Z/waypoints.json",

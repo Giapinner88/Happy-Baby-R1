@@ -350,7 +350,7 @@ class HeadOnlySinkTests(unittest.TestCase):
             head_pitch_rad=pitch,
             base_velocity=BaseVelocity.zero(),
             base_velocity_enabled=False,
-            robot_frame="r1_base",
+            robot_frame="neutral_waist_yaw_link",
         )
 
     def test_enabled_command_writes_only_head_joints(self) -> None:

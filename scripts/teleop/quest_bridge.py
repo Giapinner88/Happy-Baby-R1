@@ -30,6 +30,7 @@ TELEVUER_SOURCE = ROOT / "third_party" / "xr_teleoperate" / "teleop" / "televuer
 sys.path.insert(0, str(ROOT))
 
 from teleop.r1 import BridgeConfig, QuestCommandBridge, QuestTransportSample  # noqa: E402
+from teleop.r1.frame_contract import validate_vendor_frame_contract  # noqa: E402
 
 
 DEADMAN_SOURCES = ("right_trigger", "left_trigger", "either_trigger")
@@ -199,9 +200,17 @@ def main() -> int:
     sys.path.insert(0, str(TELEVUER_SOURCE))
     try:
         from televuer import TeleVuerWrapper
+        from televuer import tv_wrapper as vendor_frame_module
     except ImportError as exc:
         _log(sys.stderr, connection_log, {"event": "bridge_failed", "reason": f"Cannot import TeleVuer: {exc}"})
         raise SystemExit(f"Cannot import TeleVuer in this environment: {exc}") from exc
+
+    frame_contract = validate_vendor_frame_contract(vendor_frame_module)
+    _log(
+        sys.stderr,
+        connection_log,
+        {"event": "vendor_frame_contract_verified", **frame_contract},
+    )
 
     wrapper = TeleVuerWrapper(
         use_hand_tracking=False,
@@ -213,6 +222,7 @@ def main() -> int:
         webrtc=False,
         cert_file=str(args.cert_file.resolve()) if args.cert_file else None,
         key_file=str(args.key_file.resolve()) if args.key_file else None,
+        arm_reference_mode=bridge_config.arm_reference_mode,
     )
     print(
         f"Open {vuer_url} in Quest Browser, accept the certificate, then ENTER VR before moving.",

@@ -3,7 +3,7 @@
   "experiment_id": "t007",
   "title": "Quest live bilateral arm/head simulation pilot",
   "mode": "simulation_only",
-  "method_record": "docs/teleop/r1_arm_wrist_ik.md",
+  "method_record": "docs/teleop/03_r1_a5_ik.md",
   "fixed_base": true,
   "arm_head": {
     "neutral_instruction": "Press and release the left trigger to return the simulated arms/head to joint zero. Hold the right trigger to apply the vendor's absolute waist-frame wrist poses; the first sample starts the session but does not redefine arm neutral.",

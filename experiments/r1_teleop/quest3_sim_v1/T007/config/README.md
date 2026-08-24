@@ -16,15 +16,16 @@ identical-protocol replicates.
 It is not directly comparable with schema-2 independent-arm runs and is not a
 hardware configuration.
 
-`r1_t007_differential_live.json` is the active schema-4 live profile used by
-`make teleop` and `make teleop-arms`. It replaces the per-command iterative
+`r1_t007_differential_live.json` is an opt-in schema-4 live profile; default
+`make teleop` remains the schema-3 pose-sequence baseline. It replaces the per-command iterative
 pose solve with one differential DLS step, uses strict wrist-position before
 wrist-orientation priority, and projects wrists outside the URDF-derived
 conservative reach sphere before the Jacobian is evaluated. Its current scale
 0.75, 3 rad/s and 30 rad/s² bounds, wrist-position/head feedforward, and
 box-constrained DLS were selected by exact-timing Isaac replay of the
 2026-08-20 Quest trace. The replay passed the simulation gate, but a new live
-Quest run is still required before any hardware-facing claim.
+Quest run is still required before any hardware-facing claim. Select it with
+`--whole-upper-body-config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_differential_live.json`.
 The current Isaac Sim 5.1 environment has no JAX installation, so the effective
 backend is the validated NumPy central-difference implementation and that fact
 is preserved in every run snapshot.

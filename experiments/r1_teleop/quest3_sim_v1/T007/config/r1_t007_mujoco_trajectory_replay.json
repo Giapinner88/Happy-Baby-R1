@@ -3,7 +3,7 @@
   "experiment_id": "t007",
   "title": "Recorded Quest trajectory replay with differential Cartesian tracking in MuJoCo",
   "mode": "simulation_only",
-  "method_record": "docs/teleop/Cơ sở lý thuyết và thuật toán Teleoperation từ Meta Quest 3 sang cánh tay Unitree R1.md",
+  "method_record": "docs/teleop/10_experimental_differential_tracking.md",
   "source_run": "experiments/r1_teleop/quest3_sim_v1/T007/runs/t007_whole_upper_body_20260819T030356Z",
   "source_selection": {
     "deadman_segment": "longest_contiguous_enabled_segment",

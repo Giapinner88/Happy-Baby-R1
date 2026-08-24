@@ -35,9 +35,9 @@ threshold khi chưa có audit limit và baseline.
 
 ## Method gate trước khi chạy IK
 
-Tạo method record `docs/teleop/r1_arm_wrist_ik.md` trước T002, với các mục sau:
+Dùng method record `docs/teleop/03_r1_a5_ik.md` trước T002, với các mục sau:
 
-- frame `quest_headset`, calibrated `r1_base`, torso và wrist endpoint;
+- stream `quest_headset`, target frame `neutral_waist_yaw_link`, torso và wrist endpoint;
 - vị trí target 3D, wrist-roll scalar; quaternion đầy đủ trong schema không được
   hiểu là target orientation 6D vì arm hiện chỉ có 5 DOF;
 - mapping Quest pose → calibrated target, scale (nếu được thêm), offset neutral,

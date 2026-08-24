@@ -1,4 +1,4 @@
-"""Gate M audit for `docs/teleop/r1_arm_wrist_ik.md`.
+"""Gate M audit for the consolidated R1-A5 IK documentation.
 
 Gate M is the method gate that must pass before any T002 IK run. It checks four
 things: the unit/frame conventions the mapper actually uses, the zero/identity
@@ -14,6 +14,7 @@ Quest, no Isaac Sim and no GPU.
 from __future__ import annotations
 
 import math
+import json
 import re
 import unittest
 from pathlib import Path
@@ -35,7 +36,7 @@ from teleop.r1.kinematics import R1_A5_END_EFFECTOR_OFFSET_M, load_arm_chain
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 URDF_PATH = REPO_ROOT / "assets" / "R1.urdf"
-METHOD_PATH = REPO_ROOT / "docs" / "teleop" / "r1_arm_wrist_ik.md"
+METHOD_PATH = REPO_ROOT / "docs" / "teleop" / "03_r1_a5_ik.md"
 VENDOR_R1_A5_URDF_PATH = REPO_ROOT / "third_party" / "xr_teleoperate_v1_6" / "assets" / "r1" / "r1_a5.urdf"
 
 ARM_JOINTS = tuple(
@@ -71,7 +72,15 @@ class MethodRecordTests(unittest.TestCase):
 
     def test_method_record_refuses_a_six_dof_orientation_target(self) -> None:
         text = METHOD_PATH.read_text(encoding="utf-8")
-        self.assertIn("must not be read as a 6-DOF orientation target", text)
+        self.assertIn("arbitrary 6-DoF pose", text)
+
+    def test_every_teleop_config_method_record_exists(self) -> None:
+        config_root = REPO_ROOT / "experiments" / "r1_teleop" / "quest3_sim_v1"
+        for path in config_root.glob("T*/config/**/*.json"):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            method = payload.get("method_record")
+            if method is not None:
+                self.assertTrue((REPO_ROOT / method).is_file(), f"{path}: {method}")
 
 
 class UnitAndFrameAuditTests(unittest.TestCase):
@@ -119,7 +128,7 @@ class UnitAndFrameAuditTests(unittest.TestCase):
     def test_mapper_uses_the_declared_frames(self) -> None:
         mapper = R1TeleopMapper(TeleopCalibration(), TeleopLimits(command_timeout_s=0.5))
         self.assertEqual(mapper.calibration.source_frame, "quest_headset")
-        self.assertEqual(mapper.calibration.robot_frame, "r1_base")
+        self.assertEqual(mapper.calibration.robot_frame, "neutral_waist_yaw_link")
 
     def test_foreign_source_frame_fails_closed_before_ik(self) -> None:
         mapper = R1TeleopMapper(TeleopCalibration(), TeleopLimits(command_timeout_s=0.5))

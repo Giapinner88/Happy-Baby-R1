@@ -61,7 +61,13 @@ class ArmHeadLiveConfig:
                 raise ValueError("Arm-head positions and workspace bounds must be finite 3-vectors.")
         if np.any(self.left_lower_m > self.left_upper_m) or np.any(self.right_lower_m > self.right_upper_m):
             raise ValueError("An arm workspace lower bound exceeds its upper bound.")
-        if min(self.position_scale, self.max_joint_velocity_rad_s, self.max_joint_acceleration_rad_s2, self.control_dt_s) <= 0.0:
+        scalars = (
+            self.position_scale,
+            self.max_joint_velocity_rad_s,
+            self.max_joint_acceleration_rad_s2,
+            self.control_dt_s,
+        )
+        if not all(np.isfinite(value) for value in scalars) or min(scalars) <= 0.0:
             raise ValueError("Arm-head scale, rate limits and timestep must be positive.")
         if self.mapping_mode not in {"relative_session", "absolute_vendor_pose"}:
             raise ValueError("mapping_mode must be relative_session or absolute_vendor_pose.")
@@ -160,6 +166,8 @@ class ArmHeadIsaacLabSink:
     def apply_upper_body(self, targets: R1TeleopTargets, joints: Sequence[str]) -> None:
         if set(ARM_HEAD_JOINT_NAMES) - set(joints):
             raise ValueError("Arm/head sink was given incomplete upper-body ownership.")
+        if targets.robot_frame != "neutral_waist_yaw_link":
+            self._hold("target_frame_mismatch"); return
         if targets.left_wrist_target is None or targets.right_wrist_target is None:
             self._hold("missing_wrist_target"); return
         left_pose, right_pose = targets.left_wrist_target, targets.right_wrist_target

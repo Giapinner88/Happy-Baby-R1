@@ -9,6 +9,7 @@ teleop/r1/upper_body_ik.py
 ```
 
 Đặc điểm:
+
 - variables: 12 / 13 / 14 theo `body_mode`;
 - task dimension: 15;
 - Jacobian: central finite difference;
@@ -38,13 +39,14 @@ simulation pilot method, not accepted for robot actuation
 
 ## 2. Solver B — independent 5-DoF arm
 
-File:
+File:đề trọng tâm không phải “Quest có velocity hay khôn
 
 ```text
 teleop/r1/ik.py
 ```
 
 Đặc điểm:
+
 - variables: 5;
 - task: endpoint position 3D + imposed wrist roll;
 - Jacobian: analytic geometric Jacobian.
@@ -56,6 +58,7 @@ Dùng cho schema-2 legacy evidence.
 Hai solver không được coi là equivalent.
 
 Schema-2 và schema-3 evidence không được trộn vì:
+
 - variable set khác;
 - waist/head ownership khác;
 - task formulation khác;
@@ -67,11 +70,13 @@ Không được silently reinterpret evidence từ solver/method này bằng sol
 
 ## 4. Method records
 
-`r1_arm_wrist_ik.md`
-- authoritative cho schema-2 / T002-style independent-arm runs;
+`03_r1_a5_ik.md`
+
+- kinematic/method reference cho schema-2 / T002-style independent-arm runs;
 - các statement `audited` là đã đọc từ asset/repo và test;
 - các statement `assumed` phải verify trước khi dùng làm evidence.
 
-`r1_upper_body_ik.md`
-- định nghĩa schema-3 coupled waist/arms/head pilot;
+File này cùng `03_r1_a5_ik.md`
+
+- định nghĩa boundary schema-3 coupled waist/arms/head pilot;
 - không tương thích với schema-2 evidence.

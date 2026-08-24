@@ -17,7 +17,7 @@ drives both arms plus the head only, which is what stops the waist being
 recruited to chase a hand target the arms alone cannot reach.
 ``full_upper_body`` adds ``waist_roll_joint`` as a controlled joint instead of
 fixing it: a deliberate deviation from the real R1-A5 motor interface, not a
-hardware-comparable mode (see `docs/teleop/r1_upper_body_ik.md`), and it
+hardware-comparable mode (see `docs/teleop/05_project_solvers_and_evidence.md`), and it
 requires a URDF that actually has that joint — the vendor R1-A5 reference asset
 does not.
 """
@@ -339,7 +339,7 @@ def load_r1_a5_upper_body_model(
 ) -> R1A5UpperBodyModel:
     """Load the upper-body subset from a full-simulation or vendor R1-A5 URDF.
 
-    ``control_waist_yaw=False`` gives the 11-DoF arms-and-head set, holding the
+    ``control_waist_yaw=False`` gives the 12-DoF arms-and-head set, holding the
     torso at ``fixed_waist_yaw_rad``. ``control_waist_roll=True`` loads the
     declared 14-DoF simulation-only variant (see the module docstring) and
     requires an asset that has ``waist_roll_joint``; the vendor R1-A5 reference

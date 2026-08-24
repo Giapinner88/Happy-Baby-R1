@@ -50,7 +50,7 @@ def config() -> ArmHeadLiveConfig:
 
 def targets(left: tuple[float, float, float], right: tuple[float, float, float], *, seq: int = 1) -> R1TeleopTargets:
     pose_l = Pose(Vector3(*left), Quaternion(0.0, 0.0, 0.0, 1.0)); pose_r = Pose(Vector3(*right), Quaternion(0.0, 0.0, 0.0, 1.0))
-    return R1TeleopTargets(seq, True, None, pose_l, pose_r, 0.0, 0.0, BaseVelocity.zero(), False, "r1_base")
+    return R1TeleopTargets(seq, True, None, pose_l, pose_r, 0.0, 0.0, BaseVelocity.zero(), False, "neutral_waist_yaw_link")
 
 
 class ArmHeadSinkTests(unittest.TestCase):

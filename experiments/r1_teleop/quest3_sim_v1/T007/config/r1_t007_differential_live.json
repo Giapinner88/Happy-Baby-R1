@@ -3,7 +3,7 @@
   "experiment_id": "t007",
   "title": "Quest live differential Cartesian tracking with pre-solve workspace projection",
   "mode": "simulation_only",
-  "method_record": "docs/teleop/Cơ sở lý thuyết và thuật toán Teleoperation từ Meta Quest 3 sang cánh tay Unitree R1.md",
+  "method_record": "docs/teleop/10_experimental_differential_tracking.md",
   "fixed_base": true,
   "comparability": "Not directly comparable with schema-3 iterative pose-IK runs: this profile uses one differential DLS step per command and projects definitely unreachable wrist positions before computing the Jacobian.",
   "whole_upper_body": {
@@ -24,10 +24,20 @@
       "max_joint_velocity_rad_s": 3.0,
       "max_joint_acceleration_rad_s2": 30.0,
       "max_reference_lead_rad": 0.25,
-      "posture_gain_s": 1.0,
+      "posture_gain_s": 8.0,
+      "branch_recovery_position_error_m": 0.15,
+      "branch_recovery_exit_error_m": 0.05,
+      "branch_recovery_limit_margin_rad": 0.03,
+      "branch_recovery_gain_s": 3.0,
+      "branch_recovery_weight": 5.0,
+      "wide_elbow_pole_gain_s": 6.0,
+      "wide_elbow_pole_weight": 0.0,
+      "wide_hand_separation_start_m": 0.75,
+      "wide_hand_separation_full_m": 1.0,
       "velocity_feedforward_task": "wrist_position_head",
       "source_rate_hz": 30.0,
-      "velocity_filter_alpha": 0.35
+      "velocity_filter_alpha": 0.35,
+      "posture_gain_basis": "Matched full-trace replay of t007_whole_upper_body_20260822T112246Z. Gains 1, 2, and 4 all trapped the returning right arm at shoulder/elbow limits with about 0.33 m error; gain 8 completed the same branch transition with 14.8/19.2 mm bilateral wrist RMSE and 7.3 ms controller-compute p95."
     },
     "workspace_projection": {
       "method": "urdf_derived_conservative_shoulder_reach_sphere",
@@ -38,7 +48,7 @@
       "mapping_mode": "relative_session",
       "position_scale": 0.75,
       "position_policy": "The first enabled Quest sample is latched to the measured robot pose; subsequent wrist displacement is scaled by 0.75. Exact-timing Isaac replay selected this over 0.65, 0.80, and 0.85: 0.80/0.85 entered a left-arm joint-limited branch while 0.65 retained excessive elbow flexion.",
-      "validation_status": "Passed exact recorded-data Isaac replay on 2026-08-21 for simulation evidence; requires the operator's planned new live Quest run before any hardware claim.",
+      "validation_status": "Rejected after 2026-08-22 elbow-shape review. Wrist-only input does not identify the human elbow branch; the experimental geometric pole ablations also failed the combined wrist-error and wide-elbow gate, so their weight remains disabled.",
       "orientation_policy": "Wrist and head rotations are applied relative to the first enabled sample, avoiding an absolute orientation jump when the deadman is pressed."
     },
     "controlled_joint_order": [

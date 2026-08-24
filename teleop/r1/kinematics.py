@@ -5,7 +5,7 @@ code, so an asset change cannot silently invalidate a workspace measured against
 it. Two of the five joint origins carry a non-zero `rpy` (±0.26187 rad at the
 shoulder), which a hand-copied translation-only chain would drop.
 
-Conventions follow `docs/teleop/r1_arm_wrist_ik.md`: metres, radians, and the
+Conventions follow `docs/teleop/03_r1_a5_ik.md`: metres, radians, and the
 URDF joint axes. The endpoint is `*_wrist_roll_link` and the chain root is
 `waist_yaw_link`, so every pose here is expressed in the waist frame.  For the
 R1-A5, the controlled end-effector is the vendor-declared virtual frame 0.20 m
