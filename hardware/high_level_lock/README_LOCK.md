@@ -107,19 +107,23 @@ tính tới — mà pilot này thì không được phép rời.
 
 ```bash
 # robot
-sudo systemctl stop hb_high_level          # nhường quyền rt/lowcmd
-cd ~/HB/high_level_lock && ./build/run_r1  # foreground, đọc config/tuning.yaml
+cd ~/HB/high_level_lock && ./scripts/run_lock_foreground.sh
 ```
+
+Script dừng `hb_high_level`, chạy bản cô lập foreground, và **bật lại service
+khi thoát** — kể cả thoát vì Ctrl+C hay vì crash. Robot không được để lâu ở
+trạng thái không ai làm chủ `rt/lowcmd`. Nó cũng từ chối khởi động nếu
+`high_level_2` còn sống, để không bao giờ có hai publisher.
+
+Cần `sudo` (mật khẩu robot) cho hai lệnh systemctl, nên bước này phải do người ở
+cạnh giá chạy — cũng là người cầm R3 và người giữ E-stop.
 
 Vào Dev Mode và ZERO TORQUE như thường lệ: `L2+R2`, giữ `R1+R2` 3 giây,
 `L2+Y`. Rồi chạy teleop từ workstation như trong
 [r1_quest3_teleop_hardware.md](../../docs/operations/r1_quest3_teleop_hardware.md).
 
-Xong:
-
-```bash
-sudo systemctl start hb_high_level
-```
+Xong: Ctrl+C. Script tự bật lại `hb_high_level`; nếu nó báo bật lại thất bại thì
+chạy tay `sudo systemctl start hb_high_level` rồi kiểm `systemctl is-active`.
 
 ## Chân và eo không phải đối tượng đo
 
