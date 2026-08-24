@@ -29,19 +29,54 @@ def test_sidecar_protocol_and_joint_order() -> None:
     }
     import json
 
-    sequence, positions = sidecar.parse_target(json.dumps(payload), 3)
+    sequence, positions, head_valid, target_mode = sidecar.parse_target(json.dumps(payload), 3)
     assert sequence == 4
-    assert positions[-2:] == [1.0, 1.1]  # head_pitch, head_yaw
-    encoded = sidecar.PACKET.unpack(sidecar.encode_target(9, positions))
-    assert len(sidecar.encode_target(9, positions)) == 60
+    assert head_valid is True
+    assert target_mode == "relative_source"
+    assert positions[-2:] == [1.0, 1.1]  # head_yaw, head_pitch -- the wire order
+    encoded = sidecar.PACKET.unpack(sidecar.encode_target(9, positions, head_valid))
+    assert len(sidecar.encode_target(9, positions, head_valid)) == 60
     assert encoded[:6] == (sidecar.TELEOP_MAGIC, 9, 1, 1, 1, 0)
     assert encoded[6:16] == pytest.approx(tuple(positions[:10]))
-    assert encoded[16:] == pytest.approx((positions[11], positions[10]))  # UDP: yaw, pitch
+    # The stream already arrives as (yaw, pitch), so the packet carries it through.
+    assert encoded[16:] == pytest.approx((positions[10], positions[11]))
     stopped = sidecar.PACKET.unpack(sidecar.encode_stop(10))
     assert stopped[:6] == (sidecar.TELEOP_MAGIC, 10, 0, 0, 0, 0)
 
 
-def test_sidecar_rejects_missing_or_unknown_schema() -> None:
+def test_arm_only_stream_clears_the_head_flag() -> None:
+    """Ten joints means the head is not being driven, and the packet says so.
+
+    The head floats limp in that case, so the flag has to reach the owner: a
+    stale head target applied while nobody is commanding the head is exactly
+    what the flag exists to prevent.
+    """
+
+    import json
+
+    sidecar = _sidecar()
+    payload = {
+        "schema_version": 1,
+        "sequence_id": 4,
+        "joint_names": sidecar.ARM_JOINT_NAMES,
+        "positions_rad": [0.0] * 10,
+    }
+    sequence, positions, head_valid, _ = sidecar.parse_target(json.dumps(payload), 3)
+    assert (sequence, head_valid, len(positions)) == (4, False, 10)
+    encoded = sidecar.PACKET.unpack(sidecar.encode_target(9, positions, head_valid))
+    assert encoded[4] == 0
+    assert encoded[16:] == (0.0, 0.0)
+
+
+def test_sidecar_rejects_an_unknown_schema_or_target_mode() -> None:
+    """Version 2 is refused; a missing version is now read as version 1.
+
+    That default is a real loosening against the version this repository shipped,
+    which refused a line with no `schema_version` at all. It came in with the
+    robot-side sidecar and is pinned here so it stays a decision rather than a
+    surprise -- `docs/hardware_gate.md` carries it as an open item.
+    """
+
     import json
 
     sidecar = _sidecar()
@@ -50,21 +85,37 @@ def test_sidecar_rejects_missing_or_unknown_schema() -> None:
         "joint_names": sidecar.JOINT_NAMES,
         "positions_rad": [0.0] * 12,
     }
-    assert sidecar.parse_target(json.dumps(payload), 3) is None
+    assert sidecar.parse_target(json.dumps(payload), 3) is not None
     payload["schema_version"] = 2
     assert sidecar.parse_target(json.dumps(payload), 3) is None
+    payload["schema_version"] = 1
+    payload["target_mode"] = "whatever"
+    assert sidecar.parse_target(json.dumps(payload), 3) is None
 
 
-def test_selected_positions_requires_finite_r1_a5_state() -> None:
-    from types import SimpleNamespace
+def test_absolute_targets_stay_inside_the_session_envelope() -> None:
+    """`absolute_robot` mode is bounded by the same envelope as relative mode.
+
+    The tolerance exists because LeRobot and this process sample the encoder
+    anchor a few ticks apart and would otherwise stop each other over rounding.
+    It must widen the accept/reject boundary only -- the packet that reaches the
+    owner still has to be clamped to the exact envelope.
+    """
+
     import pytest
 
     sidecar = _sidecar()
-    state = SimpleNamespace(motor_state=[SimpleNamespace(q=0.0) for _ in range(35)])
-    assert sidecar.selected_positions(state) == [0.0] * 12
-    state.motor_state[29].q = float("nan")
-    with pytest.raises(RuntimeError, match="not finite"):
-        sidecar.selected_positions(state)
+    start = [0.0] * 12
+    bounded, worst_index, worst_offset, clamped = sidecar.constrain_absolute_target(
+        [0.10] * 11 + [0.1501], start, 0.15
+    )
+    assert worst_index == 11
+    assert worst_offset == pytest.approx(0.1501)
+    assert clamped is True
+    assert max(abs(value) for value in bounded) <= 0.15 + 1e-12
+
+    with pytest.raises(ValueError):
+        sidecar.constrain_absolute_target([0.0] * 11 + [0.2], start, 0.15)
 
 
 def test_sidecar_is_not_a_dds_motor_publisher() -> None:

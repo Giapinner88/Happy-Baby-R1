@@ -122,19 +122,27 @@ def test_workspace_sync_preserves_hardware_adapter() -> None:
 
 
 def test_hardware_runtime_scope_is_r1_a5_arms_head_only() -> None:
-    source = (TELEOP_DIR / "src/teleop/hardware/high_level_sidecar.py").read_text(
-        encoding="utf-8"
-    )
-    tree = ast.parse(source)
-    assignments = {
-        node.targets[0].id: ast.literal_eval(node.value)
-        for node in tree.body
-        if isinstance(node, ast.Assign)
-        and len(node.targets) == 1
-        and isinstance(node.targets[0], ast.Name)
-        and node.targets[0].id in {"MOTOR_INDICES"}
-    }
-    assert assignments["MOTOR_INDICES"] == (15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 29, 30)
+    """The runtime may address the arms and the head, and nothing else.
+
+    Read the resolved value rather than the literal: the indices are now built
+    from named head constants, and a scope check that only understands literals
+    would fail on a rename while still missing a real widening of the set.
+    """
+
+    import importlib.util
+
+    path = TELEOP_DIR / "src/teleop/hardware/high_level_sidecar.py"
+    spec = importlib.util.spec_from_file_location("high_level_sidecar_scope", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert set(module.MOTOR_INDICES) == {15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 29, 30}
+    assert tuple(module.ARM_MOTOR_INDICES) == (15, 16, 17, 18, 19, 22, 23, 24, 25, 26)
+    # UTL1 carries the head semantically as (yaw, pitch); the R1-A5 IDL puts
+    # pitch at 29 and yaw at 30. Pinned because getting it backwards drives the
+    # wrong head joint with a plausible-looking number.
+    assert module.MOTOR_INDICES[-2:] == (30, 29)
+    assert (module.HEAD_YAW_IDL, module.HEAD_PITCH_IDL) == (30, 29)
 
 
 @pytest.mark.skipif(not (TELEOP_DIR / "src" / "teleop").is_dir(), reason="chưa sync src/teleop")

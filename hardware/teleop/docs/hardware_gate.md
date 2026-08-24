@@ -107,6 +107,30 @@ Hiện trạng: run mới nhất `t007_whole_upper_body_20260818T114338Z` vẫn 
 - [ ] `--disable-self-collisions` là workaround của simulator; phải xác định
       hành vi tương ứng trên phần cứng.
 
+## 3b. Khác biệt mang về từ sidecar của robot — CHƯA DUYỆT
+
+Bản `high_level_sidecar.py` kéo từ robot về ngày 2026-08-24 mang ba thay đổi
+hành vi mà cổng này chưa xét:
+
+- [ ] **`schema_version` trở thành tuỳ chọn.** Bản cũ từ chối line không có
+      `schema_version`; bản này đọc mặc định là 1. Một producer sai phiên bản
+      giờ được nhận thay vì bị loại.
+- [ ] **Chấp nhận stream chỉ 10 khớp tay.** Khi đó `head_valid=0` và đầu thả
+      limp. Phải xác định đây là hành vi mong muốn trên phần cứng.
+- [ ] **`target_mode: absolute_robot`** cùng tolerance 0.002 rad khi so với
+      envelope. Dùng chung envelope với LeRobot; chưa đo trên đường Quest.
+
+Cả ba đã được ghim bằng test trong `tests/test_high_level_sidecar.py` để chúng
+là quyết định chứ không phải bất ngờ.
+
+## 3c. Khoá cứng khớp ngoài teleop — CHƯA DUYỆT, CHƯA CHẠY
+
+- [ ] `hardware/high_level_lock/` giữ chân (IDL 0-11) và eo (12-13) tại encoder
+      chốt lúc teleop active, thay vì để limp như bản đang chạy. Chưa build,
+      chưa link, chưa chạy trên robot; `teleop_lock_kp/kd = 20/3` là số khởi
+      điểm chưa đo. Chỉ có nghĩa khi robot treo trên giá — khoá giữ tư thế, nó
+      không đỡ trọng lượng.
+
 ## 4. Quyền ghi khớp
 
 - [ ] Chứng minh `hb_high_level` là DDS motor writer duy nhất; `run_teleop.py`
