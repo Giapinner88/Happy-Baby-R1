@@ -50,6 +50,13 @@ Không dùng learning trong control loop.
 10. [`10_experimental_differential_tracking.md`](10_experimental_differential_tracking.md)
     Controller vi phân opt-in và lý do không dùng làm baseline mặc định.
 
+## Chạy trên phần cứng
+
+Trình tự vận hành nằm ở
+[`docs/operations/r1_quest3_teleop_hardware.md`](../operations/r1_quest3_teleop_hardware.md).
+Các mục chưa đóng của hardware gate ở
+[`hardware/teleop/docs/hardware_gate.md`](../../hardware/teleop/docs/hardware_gate.md).
+
 ## Nguồn chính
 
 - Unitree upstream `xr_teleoperate`

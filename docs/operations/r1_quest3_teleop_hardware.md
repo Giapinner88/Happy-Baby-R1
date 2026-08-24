@@ -1,77 +1,127 @@
-# R1 Quest 3 teleop trên robot thật — Dev Mode arms/head
+# R1 Quest 3 teleop trên robot thật — Dev Mode tay/đầu
 
-Quy trình này chạy Quest teleop cho R1-A5 trong phạm vi **10 khớp tay + 2
-khớp đầu**. `hb_high_level` vẫn là publisher `rt/lowcmd` duy nhất; sidecar
-teleop chỉ gửi target qua UDP loopback và không target eo hoặc chân.
-Trạng thái hiện tại chỉ được xác nhận khi robot treo/cố định trên giá, không
-phải bằng chứng an toàn để chạy trên sàn.
+Quy trình chạy Quest teleop cho R1-A5 trong phạm vi **10 khớp tay + 2 khớp đầu**.
+`hb_high_level` là publisher `rt/lowcmd` duy nhất; sidecar teleop chỉ gửi target
+qua UDP loopback và không target eo hoặc chân.
 
-## 1. Topology đã kiểm tra
+> **Chưa qua hardware gate.** Trạng thái hiện tại chỉ được xác nhận khi robot
+> treo/cố định trên giá. Không có gì trong tài liệu này cho phép chạy trên sàn.
+> Các mục chưa đóng: [`hardware/teleop/docs/hardware_gate.md`](../../hardware/teleop/docs/hardware_gate.md).
+
+Cập nhật 2026-08-24: bộ giải trên đường phần cứng đã đổi sang bộ giải vendor
+`xr_teleoperate` chạy nguyên xi. Đường cũ vẫn gọi được bằng `HB_TELEOP_SOLVER=coupled`.
+
+---
+
+## 1. Điều kiện bắt buộc
+
+Không đủ một trong các điều dưới đây thì không chạy.
+
+- Robot **treo và cố định trên giá**.
+- **Hai người**: một giữ E-stop, một vận hành Quest/R3. Không chạy một mình.
+- Robot đã vào Dev Mode và high-level đã tiếp quản (mục 4).
+- `hb_teleop.service` **inactive**.
+- Đã đọc [`docs/safety/safety_rules.md`](../safety/safety_rules.md).
+
+## 2. Topology
 
 | Thành phần | Địa chỉ / interface |
 | --- | --- |
-| Workstation chạy Quest + IK | `192.168.1.106`, `wlp77s0` |
+| Workstation (Quest + IK) | `192.168.1.106`, `wlp77s0` |
 | Robot SSH | `unitree@192.168.1.104` |
-| DDS nội bộ robot | `eth10`, `rt/lowstate`, `rt/lowcmd` |
-| Quest | cùng Wi-Fi `HappyBaby`; phiên đã thấy từ `192.168.1.108` |
+| DDS trên robot | `eth10` — `rt/lowstate`, `rt/lowcmd` |
+| UTL1 loopback | `127.0.0.1:5560` (chỉ loopback) |
+| Quest | cùng Wi-Fi `HappyBaby` |
+| Cert | `~/.config/xr_teleoperate/happybaby_192_168_1_106/` |
 
-Luồng dữ liệu:
+## 3. Đường ống
+
+Bốn tiến trình trên workstation, một trên robot:
 
 ```text
-Quest Browser/Vuer -> quest_bridge.py -> arms_head IK (workstation)
-                   -> JSONL qua SSH -> sidecar UDP 127.0.0.1:5560 (robot)
-                   -> hb_high_level ZERO TORQUE arbitration -> rt/lowcmd
+quest_bridge.py                     (env tv)              đọc headset, phát R1TeleopCommand 30 Hz
+  → run_r1_upstream_ik_stream.py --passthrough   (env tv) giải bằng R1_A5_ArmIK nguyên xi
+  → run_r1_quest3_hardware_targets.py            (unitree_sim_env) áp envelope, phát 12 góc khớp 10 Hz
+  → ssh → teleop.hardware.high_level_sidecar     (robot) chốt phiên tương đối, gửi UTL1 loopback
+  → hb_high_level                                (robot) chủ rt/lowcmd duy nhất
 ```
 
-## 2. Điều kiện bắt buộc
+Không tiến trình nào ngoài `hb_high_level` được ghi `rt/lowcmd`
+([D003](../../decisions/r1_teleop/D003_single_lowcmd_owner.md)).
 
-- Robot treo và cố định trên giá.
-- Có một người giữ E-stop và một người vận hành Quest/R3.
-- Robot đã vào **Dev Mode** và high-level đã tiếp quản: `L2+R2` vào
-  Dev Mode, giữ `R1+R2` 3 giây để arm high-level, sau đó bấm `L2+Y`
-  một lần để vào `ZERO TORQUE`.
-- `hb_high_level.service` phải `active`, ở `ZERO TORQUE`, và chỉ lắng nghe
-  `127.0.0.1:5560`; đây là publisher motor duy nhất.
-- `hb_teleop.service` phải `inactive` và không được có direct-lowcmd receiver.
+## 4. Chọn bản chạy phía robot
 
-## 3. Deploy và kiểm tra kết nối
+Hai lựa chọn, **không bao giờ chạy cùng lúc**.
 
-Từ root repo trên workstation:
+### 4a. Bản service thường — chân và eo thả limp
 
 ```bash
+ssh unitree@192.168.1.104 'systemctl is-active hb_high_level'   # phải: active
+```
+
+### 4b. Bản cô lập khoá khớp — chân và eo giữ cứng tại tư thế lúc bóp cò
+
+Dùng khi muốn thân dưới đứng yên để không lẫn vào phép đo tay/đầu.
+**Chỉ đúng khi robot đang treo** — khoá giữ tư thế, nó không đỡ trọng lượng.
+
+```bash
+# trên robot, terminal riêng, giữ nguyên suốt phiên
+cd ~/HB/high_level_lock && ./scripts/run_lock_foreground.sh
+```
+
+Script dừng `hb_high_level`, chạy bản cô lập foreground, và **bật lại service khi
+thoát** — kể cả Ctrl+C hay crash. Nó từ chối khởi động nếu `high_level_2` còn
+sống. Cần mật khẩu sudo của robot, nên phải do người ở cạnh giá chạy.
+
+Chi tiết: [`hardware/high_level_lock/README_LOCK.md`](../../hardware/high_level_lock/README_LOCK.md).
+
+## 5. Chuẩn bị (làm một lần mỗi khi đổi code)
+
+```bash
+# workstation, từ root repo
 make teleop-hardware-prepare ROBOT=unitree@192.168.1.104
 ```
 
-Đăng nhập robot khi cần kiểm tra thủ công; chọn `foxy (1)` ở menu đăng nhập:
+Lệnh này sync source, kiểm đường Quest và copy package. Nó **không** install,
+start, enable service, không arm motor, không tạo publisher.
+
+Xem trước rồi mới đẩy:
 
 ```bash
-ssh unitree@192.168.1.104
-# ros:foxy(1) noetic(2) ?  -> nhập 1
-cd ~/HB/teleop
-./scripts/preflight.sh
+ROBOT=unitree@192.168.1.104 ./hardware/teleop/scripts/deploy_teleop.sh diff   # dry-run
 ```
 
-Kiểm tra read-only, không tạo publisher:
+Kiểm read-only trên robot, không tạo publisher:
 
 ```bash
-cd /tmp
-PYTHONPATH=/home/unitree/HB/teleop/src \
-python3 -m teleop.hardware.run_teleop --interface eth10
+ssh unitree@192.168.1.104   # menu đăng nhập: chọn foxy (1)
+cd /tmp && PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.run_teleop --interface eth10
 ```
 
-Kết quả mong đợi có `rt/lowstate`, `mode_machine=1`, `motors=35` và dòng
-`no publisher was created`.
+Mong đợi: `rt/lowstate`, `mode_machine=1`, `motors=35`, và `no publisher was created`.
 
-Xác minh sole-owner IPC sau khi deploy high-level:
+## 6. Trình tự chạy
 
-```bash
-ssh unitree@192.168.1.104 \
-  'systemctl is-active hb_high_level.service; ss -H -lun "sport = :5560"'
+**Bước 1 — khởi động chủ `rt/lowcmd`.** Chọn 4a hoặc 4b.
+
+**Bước 2 — tay cầm R3.**
+
+```
+L2+R2            → Dev Mode (built-in)
+giữ R1+R2 3 giây → high-level tiếp quản
+L2+Y             → ZERO TORQUE
 ```
 
-## 4. Chạy teleop foreground
+Với bản cô lập, sau banner phải thấy:
 
-Trên workstation, từ root repo:
+```
+[Application] Không thấy built-in thì tự bypass sau 15s.
+[Application] ARM — bypass Dev Mode (không thấy built-in sau 15s), ý định người OK.
+```
+
+Nếu đứng mãi ở `[kDisarmed]` thì đọc mục 9.
+
+**Bước 3 — workstation.**
 
 ```bash
 make teleop-hardware \
@@ -79,91 +129,126 @@ make teleop-hardware \
   HOST_IP=192.168.1.106 \
   DURATION_S=180 \
   CERT_FILE=$HOME/.config/xr_teleoperate/happybaby_192_168_1_106/cert.pem \
-  KEY_FILE=$HOME/.config/xr_teleoperate/happybaby_192_168_1_106/key.pem \
-  CONFIRM_SUSPENDED_WITH_ESTOP=1
+  KEY_FILE=$HOME/.config/xr_teleoperate/happybaby_192_168_1_106/key.pem
 ```
 
-Trên Quest:
+Mặc định là bộ giải vendor, tay + đầu. Đường cũ: thêm `HB_TELEOP_SOLVER=coupled`.
 
-1. Kết nối Wi-Fi `HappyBaby`.
-2. Mở `https://192.168.1.106:8012/?ws=wss://192.168.1.106:8012`.
-3. Chấp nhận chứng chỉ cục bộ nếu trình duyệt hỏi.
-4. Chọn **Enter VR**; chỉ mở trang chưa tạo dữ liệu pose.
-5. **Chưa bóp cò phải.** Đưa robot arms/head về trạng thái ban đầu và đưa
-   người vận hành Quest về đúng tư thế neutral đã dùng trong sim.
-6. Kiểm tra lần cuối: đầu nhìn thẳng và hai tay đang ở vị trí bắt đầu mong
-   muốn; không còn chuyển động chuyển tiếp trên robot.
-7. Giữ **cò index bên phải**. Frame hợp lệ đầu tiên tại thời điểm này được
-   high-level chốt làm `source_zero`; encoder arms/head hiện tại của robot được
-   chốt làm `start_q`. Toàn bộ target sau đó là độ lệch tương đối giữa hai mốc.
-8. Di chuyển chậm. High-level giới hạn mỗi khớp trong ±0.15 rad so với neutral
-   robot và giới hạn tốc độ 0.30 rad/s.
+**Bước 4 — Quest.**
 
-Cò trái không dùng để điều khiển. Nếu bấm cò trái trong phiên đang chạy,
-pipeline dừng và phải khởi động lại để lập neutral mới.
+1. Wi-Fi `HappyBaby`, mở `https://192.168.1.106:8012/?ws=wss://192.168.1.106:8012`.
+2. Chấp nhận cert nếu hỏi. Chọn **Enter VR**.
+3. **Chưa bóp cò phải.** Đưa tay/đầu robot và tư thế người vận hành về neutral.
+4. Đầu robot phải gần thẳng: sidecar từ chối khởi động nếu `|yaw| > 0.60` hoặc
+   `|pitch| > 0.35` rad. Đầu đang limp thì nắn tay cho thẳng trước.
+5. Kiểm lần cuối: robot không còn chuyển động chuyển tiếp nào.
+6. **Giữ cò index bên phải.** Frame hợp lệ đầu tiên được chốt làm `source_zero`,
+   encoder tay/đầu hiện tại làm `start_q`. Mọi target sau đó là độ lệch giữa hai
+   mốc. Với bản cô lập, chân và eo cũng bị chốt và khoá tại đúng thời điểm này.
+7. Di chuyển **chậm**.
 
-Nếu bóp cò phải khi người vận hành hoặc robot chưa ở neutral, nhả cò ngay,
-chờ pipeline release và chạy lại từ đầu. Không cố sửa offset bằng cách vặn tay
-hoặc đầu sang tư thế bù trong khi controller còn active.
+Cò trái **không** dùng để điều khiển. Bấm cò trái giữa phiên thì pipeline dừng và
+phải chạy lại từ đầu để lập neutral mới.
 
-## 5. Dừng và E-stop
+Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, chạy lại từ
+đầu. Không vặn tay/đầu sang tư thế bù trong khi controller còn active.
 
-Dừng bình thường:
+## 7. Giới hạn đang áp
+
+| Chặn ở đâu | Giá trị |
+| --- | --- |
+| Producer — vận tốc / gia tốc khớp | 0.5 rad/s, 1.0 rad/s² |
+| Producer — giới hạn khớp | theo asset `R1.urdf` |
+| Producer — nhịp phát | 10 Hz |
+| Sidecar — envelope mỗi khớp so với `source_zero` | ±0.15 rad |
+| Sidecar — watchdog lệnh vào / `rt/lowstate` | 0.75 s / 0.20 s |
+| Sidecar — nhịp gửi UTL1 | 100 Hz |
+| Owner — slew | 0.30 rad/s |
+| Owner — PD tay | kp 40, kd 2 |
+| Owner — giới hạn đầu | yaw 1.0 rad, pitch 0.62 rad |
+| Owner — timeout UTL1 | 300 ms |
+| Bản cô lập — khoá chân/eo | kp 20, kd 3, slew 0.20 rad/s |
+
+Không nới bất kỳ giá trị nào trong bảng này mà chưa qua hardware gate.
+
+## 8. Dừng
+
+**Bình thường**
 
 1. Giữ nguyên tư thế.
-2. Nhả cò phải. Target stream gửi STOP; head nhả ngay, tay giảm quyền
-   trong 0.5 giây rồi trở về `ZERO TORQUE`, service vẫn active.
-3. Nếu terminal chưa thoát, nhấn `Ctrl+C` một lần.
+2. Nhả cò phải. Stream gửi STOP; đầu nhả ngay, tay giảm quyền trong 0.5 giây rồi
+   về `ZERO TORQUE`.
+3. Terminal chưa thoát thì `Ctrl+C` một lần.
+4. Bản cô lập: `Ctrl+C` ở terminal robot; script tự bật lại `hb_high_level`.
 
-Dừng bất thường: dùng E-stop ngay nếu có rung, sai chiều, va chạm, tiếng lạ,
-mất mạng hoặc target không tương ứng chuyển động người vận hành. Không chờ
-watchdog trong tình huống cơ khí bất thường.
+**Bất thường — dùng E-stop ngay**, không chờ watchdog, khi có: rung, sai chiều,
+va chạm, tiếng lạ, mất mạng, hoặc target không tương ứng chuyển động người
+vận hành.
 
-Xác minh đã dừng:
+**Xác minh đã dừng**
 
 ```bash
 ssh unitree@192.168.1.104 \
-  'ps -eo pid,args | grep -E "teleop.hardware.high_level_sidecar|hb_teleop" | grep -v grep || true; systemctl is-active hb_high_level.service hb_teleop.service || true'
+  'ps -eo pid,args | grep -E "high_level_sidecar|run_r1" | grep -v grep; systemctl is-active hb_high_level hb_teleop'
 ```
 
-Không được còn tiến trình `teleop.hardware.high_level_sidecar`.
-`hb_high_level.service` phải còn active và chân/eo phải tiếp tục `ZERO TORQUE`.
+Không được còn `high_level_sidecar`. `hb_high_level` phải active. Chân/eo về
+`ZERO TORQUE`.
 
-## 6. Chuyển Dev Mode / Regular mode
+## 9. Sự cố thường gặp
 
-- Chỉ chuyển mode sau khi sidecar đã thoát và tay/đầu đã nhả về
-  `ZERO TORQUE`.
+**Kẹt ở `[kDisarmed]`, giữ R1+R2 mãi không arm.** Đọc phần cuối dòng log:
+
+- `CHAN: chua chot y dinh` → nút chưa được giữ đủ `arm_hold_s`.
+- `CHAN: chua nghe built-in va khong co bypass` → built-in không phát gói nào
+  (`gói built-in đã thấy: 0`) mà `arm_no_builtin_timeout_s = 0`, nên **không có
+  đường nào arm được**; giữ nút lâu hơn vô ích. Profile phải đặt
+  `arm_no_builtin_timeout_s: 15.0`. Đây là lỗi đã gặp thật ngày 2026-08-24.
+- `CHAN: built-in chua im du ...ms` → built-in còn đang phát; nhả rồi thử lại.
+
+Dòng `[kDisarmed]` in đúng 1 giây một lần — đó là nhịp thiết kế, không phải treo.
+
+**`[SAFE] no valid target`** — sidecar không nhận được line hợp lệ nào. Hầu như
+luôn là sai thứ tự tên khớp hoặc sai định dạng; kiểm producer có phát
+`joint_names` kết thúc bằng `head_yaw_joint, head_pitch_joint` không.
+
+**`[SAFE] head not neutral`** — đầu lệch quá gate lúc chốt phiên. Nắn đầu về
+thẳng rồi chạy lại.
+
+**`connect_count=0`** — Quest chưa cùng mạng, chưa chấp nhận cert, hoặc chưa Enter VR.
+
+**`deadman_enabled=false`** — đang nhả cò, hoặc bấm nhầm cò trái.
+
+**`input_watchdog`** — producer không đưa target mới trong 0.75 s; owner đã release.
+
+**Thiếu listener `127.0.0.1:5560`** — high-level chưa chạy hoặc sai config. Không
+chạy direct-lowcmd để lách kiểm tra này; đường đó đã bị loại.
+
+## 10. Evidence
+
+```text
+workstation : results/smoke/<UTC>_r1_quest3_hardware/
+robot       : /home/unitree/HB/teleop/logs/<UTC>_r1_high_level_teleop/
+bản cô lập  : ~/HB/high_level_lock/logs/<UTC>_run_lock.log
+```
+
+Trên robot, `metadata.json` ghi `joint_names`, `motor_indices`, `target_mode`,
+`head_valid` và envelope của phiên; `samples.jsonl` ghi `target_q` và `observed_q`
+ở 10 Hz. Đây là hai file để đối chiếu tay/đầu có bám không.
+
+## 11. Chuyển Dev Mode / Regular mode
+
+- Chỉ chuyển sau khi sidecar đã thoát và tay/đầu đã về `ZERO TORQUE`.
 - Workflow yêu cầu Dev Mode; chỉ high-level được dùng `rt/lowcmd`.
-- Theo vendor `xr_teleoperate_v1_6`, `R1 + X` chuyển sang **Regular mode**.
-  Lần kiểm tra `rt/arm_sdk` trong Dev Mode đã chạy hết command nhưng encoder
-  gần như không đổi, nên không dùng transport đó trong workflow này.
-- Sau restart: `L2+R2` -> Dev Mode, giữ `R1+R2` 3 giây -> high-level
-  armed, `L2+Y` -> `ZERO TORQUE`.
-- Không đổi Dev/Regular mode khi lệnh foreground còn chạy.
+- Theo vendor `xr_teleoperate_v1_6`, `R1 + X` chuyển sang Regular mode. Lần kiểm
+  `rt/arm_sdk` trong Dev Mode đã chạy hết command nhưng encoder gần như không
+  đổi, nên không dùng transport đó trong workflow này.
+- Không đổi mode khi lệnh foreground còn chạy.
 
-## 7. Evidence và xử lý lỗi
-
-Log workstation nằm tại:
-
-```text
-results/smoke/<UTC>_r1_quest3_hardware/
-```
-
-Log encoder/receiver trên robot:
-
-```text
-/home/unitree/HB/teleop/logs/<UTC>_r1_high_level_teleop/
-```
-
-Các dấu hiệu thường gặp:
-
-- `connect_count=0`: Quest chưa cùng mạng, chưa chấp nhận cert hoặc chưa Enter VR.
-- `deadman_enabled=false`: đang nhả cò hoặc bấm nhầm cò trái.
-- `input_watchdog`: IK không đưa target mới trong timeout; high-level đã release.
-- Thiếu listener `127.0.0.1:5560`: high-level binary/config chưa được deploy
-  hoặc service chưa active; không chạy direct-lowcmd để lách kiểm tra này.
+## 12. Ghi chú lịch sử
 
 Phiên direct-lowcmd đầu tiên ngày 2026-08-18 đã kết nối Quest, nhận tới sequence
-351 và làm đủ 12 encoder chuyển động. Đây là bằng chứng plumbing lịch sử;
-kiến trúc sole-owner D003 phải tạo một bounded run mới trước khi tuyên bố đã
-được xác nhận trên hardware. Không kết quả nào cho phép chạy trên sàn.
+351 và làm đủ 12 encoder chuyển động. Đó là bằng chứng plumbing lịch sử; kiến
+trúc sole-owner D003 phải tạo một bounded run mới trước khi tuyên bố đã được xác
+nhận trên phần cứng. Đường direct-lowcmd đã bị loại; `teleop.hardware.run_teleop`
+nay chỉ đọc `rt/lowstate`.
