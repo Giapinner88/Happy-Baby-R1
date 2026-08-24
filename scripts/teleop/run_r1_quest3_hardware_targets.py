@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
 """Map Quest JSONL to relative-session R1-A5 arms/head joint targets.
 
-This workstation process performs no DDS writes.  It reuses the coupled IK
-from the simulation pilot in ``arms_head`` mode and emits a 12-joint JSONL
-stream for the fail-closed robot receiver.
+This workstation process performs no DDS writes. It emits a 12-joint JSONL
+stream for the fail-closed robot receiver, in one of two solver modes.
+
+``--upstream-joint-stream`` is the default hardware path. The joints are solved
+further upstream by the unmodified vendor `xr_teleoperate` R1_A5_ArmIK, in the
+`tv` environment where CasADi lives, and arrive here already solved; this
+process then only enforces the hardware envelope. Nothing here solves.
+
+Without that flag the coupled in-repo IK runs in this process, as it did before
+the vendor solver became the baseline. Kept so the two can be compared on one
+trace, not because the hardware path needs it.
+
+The envelope this process enforces on the vendor path is not optional. Upstream
+constrains against its own `r1_a5.urdf` and ships no rate limiter -- in
+simulation that is exactly the point, and joint velocity is merely recorded,
+but a robot needs the limit applied rather than measured. Both modes therefore
+leave here through the same velocity/acceleration limiter and the same asset
+joint limits.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import queue
 import sys
 import threading
@@ -29,7 +45,11 @@ from teleop.r1 import (  # noqa: E402
     UpperBodyIKConfig,
     Vector3,
 )
-from teleop.r1.upper_body_kinematics import retarget_nominal  # noqa: E402
+from teleop.r1.rate_limit import OnlineJointLimiter  # noqa: E402
+from teleop.r1.upper_body_kinematics import (  # noqa: E402
+    load_r1_a5_upper_body_model,
+    retarget_nominal,
+)
 from teleop.r1.whole_upper_body import (  # noqa: E402
     WholeUpperBodyIsaacLabSink,
     WholeUpperBodyLiveConfig,
@@ -54,6 +74,27 @@ class TargetHandle:
         self.positions = np.asarray(positions_rad, dtype=float)
 
 
+def upstream_solution(payload: dict) -> np.ndarray | None:
+    """The vendor-solved joint vector carried by a passthrough command line.
+
+    Returns ``None`` when the line carries no solved vector at all. A vector
+    under the wrong joint names is refused outright rather than reordered:
+    applying correct numbers to the wrong joints is the one failure this path
+    must never be able to produce, and on hardware it is not recoverable.
+    """
+
+    positions = payload.get("upstream_joint_position_rad")
+    if positions is None:
+        return None
+    names = tuple(str(value) for value in payload.get("upstream_joint_names", ()))
+    if names != JOINT_NAMES:
+        raise SystemExit(f"upstream joint names do not match the R1-A5 arms/head order: {names}")
+    values = np.asarray(positions, dtype=float)
+    if values.shape != (len(JOINT_NAMES),) or not np.all(np.isfinite(values)):
+        raise SystemExit("upstream joint vector must hold 12 finite values")
+    return values
+
+
 def _reader(lines: "queue.Queue[str | None]") -> None:
     for line in sys.stdin:
         if line.strip():
@@ -75,12 +116,63 @@ def main() -> int:
         type=Path,
         default=ROOT / "experiments/r1_teleop/quest3_sim_v1/T001/config/r1_quest3_sim_v1.json",
     )
+    parser.add_argument(
+        "--upstream-joint-stream",
+        dest="upstream_joint_stream",
+        action="store_true",
+        default=True,
+        help="Take joints already solved by the vendor xr_teleoperate IK (default).",
+    )
+    parser.add_argument(
+        "--coupled-ik",
+        dest="upstream_joint_stream",
+        action="store_false",
+        help="Solve here with this repository's coupled IK instead of the vendor solver.",
+    )
+    parser.add_argument(
+        "--max-joint-velocity-rad-s",
+        type=float,
+        default=0.5,
+        help="Hardware joint speed ceiling; applies in both solver modes.",
+    )
+    parser.add_argument(
+        "--max-joint-acceleration-rad-s2",
+        type=float,
+        default=1.0,
+        help="Hardware joint acceleration ceiling; applies in both solver modes.",
+    )
     args = parser.parse_args()
-    if args.control_hz <= 0.0 or args.duration_s <= 0.0:
-        raise SystemExit("control rate and duration must be positive")
+    if (
+        not math.isfinite(args.max_joint_velocity_rad_s)
+        or not math.isfinite(args.max_joint_acceleration_rad_s2)
+        or args.max_joint_velocity_rad_s <= 0.0
+        or args.max_joint_acceleration_rad_s2 <= 0.0
+    ):
+        raise SystemExit("joint velocity and acceleration ceilings must be finite and positive")
+    if (
+        not math.isfinite(args.control_hz)
+        or not math.isfinite(args.duration_s)
+        or args.control_hz <= 0.0
+        or args.duration_s <= 0.0
+    ):
+        raise SystemExit("control rate and duration must be finite and positive")
 
     profile = json.loads(args.profile.read_text(encoding="utf-8"))
     declared = dict(profile["whole_upper_body"])
+    model = load_r1_a5_upper_body_model(
+        (ROOT / str(declared["urdf_path"])).resolve(), control_waist_yaw=False
+    )
+    if tuple(model.joint_names) != JOINT_NAMES:
+        raise SystemExit(f"unexpected arms_head joint order: {model.joint_names}")
+    limiter = OnlineJointLimiter(
+        max_velocity_rad_s=min(args.max_joint_velocity_rad_s, float(declared["max_joint_velocity_rad_s"])),
+        max_acceleration_rad_s2=min(
+            args.max_joint_acceleration_rad_s2, float(declared["max_joint_acceleration_rad_s2"])
+        ),
+        dt_s=1.0 / args.control_hz,
+        lower_limits=model.lower_limits,
+        upper_limits=model.upper_limits,
+    )
     nominal, fixed_waist_yaw = retarget_nominal(
         tuple(float(value) for value in declared["nominal_joint_position_rad"]),
         str(declared.get("body_mode", "waist_yaw")),
@@ -101,12 +193,15 @@ def main() -> int:
             float(declared["seed_restart_residual_m"])
             if declared.get("seed_restart_residual_m") is not None else None
         ),
-        allow_projected_position_solution=bool(declared.get("allow_projected_position_solution", False)),
+        # T007 may dispatch projected targets in simulation. The hardware gate
+        # has not accepted that behavior, so the robot path always refuses it.
+        allow_projected_position_solution=False,
     )
     handle = TargetHandle(nominal)
-    sink = WholeUpperBodyIsaacLabSink(handle, config)
-    if tuple(sink.model.joint_names) != JOINT_NAMES:
-        raise SystemExit(f"unexpected arms_head joint order: {sink.model.joint_names}")
+    # The coupled solver is loaded only when it is the one being used: on the
+    # vendor path it would otherwise sit in the process holding an IK model that
+    # nothing consults, which is exactly the confusion this mode exists to end.
+    sink = None if args.upstream_joint_stream else WholeUpperBodyIsaacLabSink(handle, config)
 
     mapping = json.loads(args.mapping_config.read_text(encoding="utf-8"))
     translation = mapping.get("calibration", {}).get("translation_m", [0.0, 0.0, 0.0])
@@ -115,7 +210,7 @@ def main() -> int:
             translation_m=Vector3(*(float(value) for value in translation)),
             yaw_rad=float(mapping.get("calibration", {}).get("yaw_rad", 0.0)),
             source_frame=str(mapping.get("source_frame", "quest_headset")),
-            robot_frame=str(mapping.get("robot_frame", "r1_base")),
+            robot_frame=str(mapping.get("robot_frame", "neutral_waist_yaw_link")),
         ),
         TeleopLimits(command_timeout_s=float(mapping.get("command_timeout_s", 0.5)), allow_velocity=False),
     )
@@ -129,6 +224,7 @@ def main() -> int:
     while time.monotonic() < deadline:
         loop_start = time.monotonic()
         newest: R1TeleopCommand | None = None
+        newest_payload: dict | None = None
         closed = False
         while True:
             try:
@@ -139,7 +235,8 @@ def main() -> int:
                 closed = True
                 break
             try:
-                candidate = R1TeleopCommand.from_dict(json.loads(line))
+                document = json.loads(line)
+                candidate = R1TeleopCommand.from_dict(document)
             except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
                 print(f"[WARN] invalid Quest command: {exc}", file=sys.stderr, flush=True)
                 continue
@@ -147,19 +244,50 @@ def main() -> int:
                 continue
             previous_sequence = candidate.sequence_id
             newest = candidate
+            newest_payload = document
         if newest is not None:
             if newest.reset_requested:
                 if stream_started:
                     print("[STOP] left-trigger reset requested; restart to establish a new neutral", file=sys.stderr)
                     return 0
-                sink.reset_session()
+                if sink is not None:
+                    sink.reset_session()
+                limiter.hold()
                 stream_started = False
             target = mapper.map(newest, time.monotonic())
             if not target.enabled:
                 if stream_started:
                     print("[STOP] deadman released or command disabled", file=sys.stderr, flush=True)
                     return 0
+            elif args.upstream_joint_stream:
+                assert newest_payload is not None
+                solved = upstream_solution(newest_payload)
+                if solved is None:
+                    # Solved vectors ride on every line once the vendor solver
+                    # has produced one, so a line without one means the stream
+                    # is not what this mode requires -- not a dropped sample.
+                    raise SystemExit(
+                        "--upstream-joint-stream expects lines carrying upstream_joint_position_rad; "
+                        "pipe the Quest bridge through "
+                        "`run_r1_upstream_ik_stream.py --passthrough` first"
+                    )
+                limited = limiter.step(model.clamp(solved))
+                payload = {
+                    "schema_version": 1,
+                    "sequence_id": newest.sequence_id,
+                    "sent_monotonic_s": time.monotonic(),
+                    "joint_names": JOINT_NAMES,
+                    "positions_rad": [float(value) for value in limited],
+                    "solution_kind": "upstream_xr_teleoperate_R1_A5_ArmIK",
+                }
+                try:
+                    print(json.dumps(payload, separators=(",", ":")), flush=True)
+                except BrokenPipeError:
+                    sys.stdout = open("/dev/null", "w", encoding="utf-8")
+                    return 0
+                stream_started = True
             else:
+                assert sink is not None
                 sink.apply_upper_body(target, ownership.upper_body)
                 application = sink.last_application or {}
                 if application.get("accepted"):
@@ -168,6 +296,10 @@ def main() -> int:
                         "sequence_id": newest.sequence_id,
                         "sent_monotonic_s": time.monotonic(),
                         "joint_names": JOINT_NAMES,
+                        # No limiter call here: the coupled sink already limits
+                        # with these same ceilings, and a second one in series
+                        # would only add lag to a path this change is not meant
+                        # to alter.
                         "positions_rad": [float(value) for value in handle.positions],
                         "solution_kind": application.get("solver_solution_kind"),
                     }

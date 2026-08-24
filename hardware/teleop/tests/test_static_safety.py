@@ -27,9 +27,9 @@ def test_service_does_not_autostart_at_boot() -> None:
     assert not _unit()["Install"].get("wantedby")
 
 
-def test_service_conflicts_with_high_level() -> None:
-    """Hai bên cùng ghi một nhóm khớp thì không được chạy song song."""
-    assert "hb_high_level.service" in _unit()["Unit"].get("conflicts", "")
+def test_read_only_service_does_not_conflict_with_high_level_owner() -> None:
+    """Read-only preflight must not stop the sole command owner."""
+    assert "hb_high_level.service" not in _unit()["Unit"].get("conflicts", "")
 
 
 def test_service_does_not_restart_on_failure() -> None:
@@ -46,9 +46,10 @@ def test_install_script_never_enables_the_service() -> None:
     assert "systemctl enable" not in script
 
 
-def test_motor_write_defaults_to_closed() -> None:
+def test_high_level_sidecar_defaults_to_closed() -> None:
     example = (TELEOP_DIR / "config" / "teleop.env.example").read_text(encoding="utf-8")
-    assert "HB_TELEOP_ALLOW_MOTOR_WRITE=0" in example
+    assert "HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=0" in example
+    assert "HB_TELEOP_ALLOW_MOTOR_WRITE" not in example
 
 
 def test_no_real_secret_is_committed() -> None:
@@ -81,7 +82,8 @@ def test_preflight_requires_the_service_hardware_entrypoint() -> None:
     """Preflight must not call a simulation-only source sync deploy-ready."""
     script = (TELEOP_DIR / "scripts" / "preflight.sh").read_text(encoding="utf-8")
     assert "src/teleop/hardware/run_teleop.py" in script
-    assert "teleop.hardware.run_teleop" in script
+    assert "src/teleop/hardware/high_level_sidecar.py" in script
+    assert "ChannelPublisher" in script  # static rejection check
 
 
 def _hardware_runtime_source() -> str:
@@ -90,29 +92,28 @@ def _hardware_runtime_source() -> str:
     )
 
 
-def test_hardware_runtime_defaults_to_arm_sdk_and_guards_lowcmd() -> None:
+def test_hardware_preflight_is_read_only() -> None:
     source = _hardware_runtime_source()
-    assert 'COMMAND_TOPICS = {"arm_sdk": "rt/arm_sdk", "lowcmd": "rt/lowcmd"}' in source
-    assert 'default="arm_sdk"' in source
-    assert "--confirm-dev-mode" in source
-    assert 'args.transport == "lowcmd" and not args.confirm_dev_mode' in source
+    assert "ChannelSubscriber" in source
+    assert "ChannelPublisher" not in source
+    assert "COMMAND_TOPICS" not in source
+    for forbidden in ("--execute-pilot", "--stream-stdin", "HB_TELEOP_ALLOW_MOTOR_WRITE"):
+        assert forbidden not in source
 
 
-def test_hardware_runtime_requires_motor_write_interlocks() -> None:
-    source = _hardware_runtime_source()
-    assert "--execute-pilot" in source
-    assert "--stream-stdin" in source
-    assert "--confirm-suspended-with-estop" in source
-    assert 'HB_TELEOP_ALLOW_MOTOR_WRITE", "0"' in source
-
-
-def test_stream_receiver_has_relative_envelope_and_watchdogs() -> None:
-    source = _hardware_runtime_source()
-    assert "--stream-max-offset-rad" in source
-    assert "--stream-max-rate-rad-s" in source
-    assert "--stream-input-timeout-s" in source
+def test_sidecar_has_relative_envelope_and_watchdogs() -> None:
+    source = (TELEOP_DIR / "src/teleop/hardware/high_level_sidecar.py").read_text(
+        encoding="utf-8"
+    )
+    assert "--max-offset-rad" in source
+    assert "--input-timeout-s" in source
+    assert "--state-timeout-s" in source
     assert 'stop_reason = "input_watchdog"' in source
-    assert "relative = latest_source[offset] - source_zero[offset]" in source
+    assert "source - zero" in source
+    assert "HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP" in source
+    assert "--confirm-suspended-with-estop" in source
+    assert "--confirm-dev-mode" in source
+    assert "ChannelPublisher" not in source
 
 
 def test_workspace_sync_preserves_hardware_adapter() -> None:
@@ -121,7 +122,9 @@ def test_workspace_sync_preserves_hardware_adapter() -> None:
 
 
 def test_hardware_runtime_scope_is_r1_a5_arms_head_only() -> None:
-    source = _hardware_runtime_source()
+    source = (TELEOP_DIR / "src/teleop/hardware/high_level_sidecar.py").read_text(
+        encoding="utf-8"
+    )
     tree = ast.parse(source)
     assignments = {
         node.targets[0].id: ast.literal_eval(node.value)
@@ -129,11 +132,9 @@ def test_hardware_runtime_scope_is_r1_a5_arms_head_only() -> None:
         if isinstance(node, ast.Assign)
         and len(node.targets) == 1
         and isinstance(node.targets[0], ast.Name)
-        and node.targets[0].id in {"ARM_INDICES", "HEAD_INDICES", "WAIST_HOLD_INDICES"}
+        and node.targets[0].id in {"MOTOR_INDICES"}
     }
-    assert assignments["ARM_INDICES"] == (15, 16, 17, 18, 19, 22, 23, 24, 25, 26)
-    assert assignments["HEAD_INDICES"] == (29, 30)
-    assert assignments["WAIST_HOLD_INDICES"] == (12, 13)
+    assert assignments["MOTOR_INDICES"] == (15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 29, 30)
 
 
 @pytest.mark.skipif(not (TELEOP_DIR / "src" / "teleop").is_dir(), reason="chưa sync src/teleop")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import asin, atan2, cos, sin
+from math import asin, atan2, cos, isfinite, sin
 
 from .schema import BaseVelocity, Pose, Quaternion, R1TeleopCommand, Vector3
 
@@ -13,7 +13,13 @@ class TeleopCalibration:
     translation_m: Vector3 = Vector3(0.0, 0.0, 0.0)
     yaw_rad: float = 0.0
     source_frame: str = "quest_headset"
-    robot_frame: str = "r1_base"
+    robot_frame: str = "neutral_waist_yaw_link"
+
+    def __post_init__(self) -> None:
+        if not isfinite(float(self.yaw_rad)):
+            raise ValueError("calibration yaw_rad must be finite.")
+        if not self.source_frame.strip() or not self.robot_frame.strip():
+            raise ValueError("calibration frame names must be non-empty.")
 
 
 @dataclass(frozen=True)
@@ -25,6 +31,26 @@ class TeleopLimits:
     max_yaw_rate_radps: float = 0.0
     head_yaw_range_rad: tuple[float, float] = (-3.141592653589793, 3.141592653589793)
     head_pitch_range_rad: tuple[float, float] = (-1.5707963267948966, 1.5707963267948966)
+
+    def __post_init__(self) -> None:
+        scalars = (
+            self.command_timeout_s,
+            self.max_vx_mps,
+            self.max_vy_mps,
+            self.max_yaw_rate_radps,
+            *self.head_yaw_range_rad,
+            *self.head_pitch_range_rad,
+        )
+        if not all(isfinite(float(value)) for value in scalars):
+            raise ValueError("teleop limits must be finite.")
+        if self.command_timeout_s <= 0.0:
+            raise ValueError("command_timeout_s must be positive.")
+        if min(self.max_vx_mps, self.max_vy_mps, self.max_yaw_rate_radps) < 0.0:
+            raise ValueError("velocity limits must be non-negative.")
+        if self.head_yaw_range_rad[0] > self.head_yaw_range_rad[1]:
+            raise ValueError("head yaw range is reversed.")
+        if self.head_pitch_range_rad[0] > self.head_pitch_range_rad[1]:
+            raise ValueError("head pitch range is reversed.")
 
 
 @dataclass(frozen=True)
@@ -146,26 +172,43 @@ def _transform_pose(pose: Pose, calibration: TeleopCalibration) -> Pose:
 
 
 def _yaw_pitch(pose: Pose) -> tuple[float, float]:
+    """Head yaw and pitch that aim the R1 head down the pose's forward axis.
+
+    R1 mounts pitch outside yaw (`head_pitch_joint` on `waist_yaw_link`,
+    `head_yaw_joint` on `head_pitch_link`), so the head rotation is
+    Ry(pitch) @ Rz(yaw), not the Rz(yaw) @ Ry(pitch) a textbook ZYX extraction
+    assumes. The two agree on a pure yaw and on a pure pitch and disagree only
+    where they combine, so the old reading showed up as a head pointing off the
+    diagonal rather than as an obviously wrong angle.
+    """
+
     q = pose.orientation.normalized()
-    yaw = atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
-    sin_pitch = 2.0 * (q.w * q.y - q.z * q.x)
-    pitch = asin(_clamp(sin_pitch, -1.0, 1.0))
+    forward = (
+        1.0 - 2.0 * (q.y * q.y + q.z * q.z),
+        2.0 * (q.x * q.y + q.z * q.w),
+        2.0 * (q.x * q.z - q.y * q.w),
+    )
+    yaw = asin(_clamp(forward[1], -1.0, 1.0))
+    pitch = atan2(-forward[2], forward[0])
     return yaw, pitch
 
 
 class R1TeleopMapper:
     def __init__(self, calibration: TeleopCalibration, limits: TeleopLimits, ownership: R1JointOwnership | None = None):
-        if limits.command_timeout_s <= 0.0:
-            raise ValueError("command_timeout_s must be positive.")
         self.calibration = calibration
         self.limits = limits
         self.ownership = ownership or R1JointOwnership()
         self.ownership.validate()
 
     def map(self, command: R1TeleopCommand, received_monotonic_s: float) -> R1TeleopTargets:
+        if not isfinite(float(received_monotonic_s)) or received_monotonic_s < 0.0:
+            return self._disabled(command.sequence_id, "invalid_receive_timestamp")
         if command.source_frame != self.calibration.source_frame:
             return self._disabled(command.sequence_id, "source_frame_mismatch")
-        if received_monotonic_s - command.timestamp_monotonic_s > self.limits.command_timeout_s:
+        command_age_s = received_monotonic_s - command.timestamp_monotonic_s
+        if command_age_s < 0.0:
+            return self._disabled(command.sequence_id, "command_timestamp_in_future")
+        if command_age_s > self.limits.command_timeout_s:
             return self._disabled(command.sequence_id, "command_timeout")
         if not command.deadman_enabled:
             return self._disabled(command.sequence_id, "deadman_released")
@@ -204,4 +247,3 @@ class R1TeleopMapper:
             base_velocity_enabled=False,
             robot_frame=self.calibration.robot_frame,
         )
-yaw = atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))

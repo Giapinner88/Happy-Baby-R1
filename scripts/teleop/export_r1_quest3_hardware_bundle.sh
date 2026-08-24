@@ -27,11 +27,13 @@ rsync -aR --exclude '__pycache__/' --exclude '*.pyc' \
     README.md \
     Makefile \
     assets/R1.urdf \
+    assets/R1/R1.usd \
     config/README.md \
     config/cyclonedds_config.xml \
     config/netplan_static_ethernet.yaml \
     evidence/ \
     teleop/ \
+    tests/__init__.py \
     tests/teleop/ \
     scripts/teleop/ \
     hardware/teleop/ \
@@ -42,12 +44,32 @@ rsync -aR --exclude '__pycache__/' --exclude '*.pyc' \
     docs/teleop/ \
     docs/safety/ \
     docs/templates/test_log_template.md \
+    decisions/r1_teleop/ \
     "$BUNDLE_DIR/"
 
-# Preserve the experimental definitions and metadata without copying the
-# 307 MB generated runs/figures. Those artifacts remain in the full workspace.
+# Preserve every experimental definition and the compact T001--T006 evidence
+# required by the regression suite. The 281 MB T007 bulk outputs remain in the
+# full workspace; one small contract-complete T007 run keeps registry discovery
+# verifiable on the receiving laptop.
 rsync -aR --exclude 'runs/' --exclude 'figures/' \
     experiments/r1_teleop/quest3_sim_v1/ "$BUNDLE_DIR/"
+rsync -aR \
+    experiments/registry.json \
+    experiments/r1_teleop/quest3_sim_v1/T001/runs/ \
+    experiments/r1_teleop/quest3_sim_v1/T001/figures/ \
+    experiments/r1_teleop/quest3_sim_v1/T002/runs/ \
+    experiments/r1_teleop/quest3_sim_v1/T002/figures/ \
+    experiments/r1_teleop/quest3_sim_v1/T003/runs/ \
+    experiments/r1_teleop/quest3_sim_v1/T003/figures/ \
+    experiments/r1_teleop/quest3_sim_v1/T004/runs/ \
+    experiments/r1_teleop/quest3_sim_v1/T004/figures/ \
+    experiments/r1_teleop/quest3_sim_v1/T005/runs/ \
+    experiments/r1_teleop/quest3_sim_v1/T005/figures/ \
+    experiments/r1_teleop/quest3_sim_v1/T006/runs/ \
+    experiments/r1_teleop/quest3_sim_v1/T006/figures/ \
+    experiments/r1_teleop/quest3_sim_v1/T007/runs/t007_whole_upper_body_20260820T130250Z/ \
+    experiments/r1_teleop/quest3_sim_v1/T008/runs/ \
+    "$BUNDLE_DIR/"
 
 # Vendor transport source is copied read-only into the handoff; it is never
 # changed in the workspace.
@@ -68,6 +90,7 @@ rsync -aR \
 git archive --format=tar "$HIGH_LEVEL_REV" \
     hardware/high_level/CMakeLists.txt \
     hardware/high_level/README.md \
+    hardware/high_level/policies/flat/policy_11_07.onnx \
     hardware/high_level/src \
     hardware/high_level/scripts \
     hardware/high_level/thirdparty/cnpy \
@@ -75,12 +98,9 @@ git archive --format=tar "$HIGH_LEVEL_REV" \
     hardware/high_level/thirdparty/onnxruntime_aarch64 \
     | tar -xf - -C "$BUNDLE_DIR"
 
-mkdir -p "$BUNDLE_DIR/hardware/high_level/config" \
-         "$BUNDLE_DIR/hardware/high_level/policies/flat"
+mkdir -p "$BUNDLE_DIR/hardware/high_level/config"
 cp hardware/teleop/config/high_level_teleop_suspended.yaml \
    "$BUNDLE_DIR/hardware/high_level/config/tuning.yaml"
-cp Operation_Khanh/high_level/policies/flat/policy_11_07.onnx \
-   "$BUNDLE_DIR/hardware/high_level/policies/flat/policy_11_07.onnx"
 
 # Ensure the deploy copy of teleop/r1 is synchronized to the current workspace
 # without changing hardware-only modules inside the bundle.

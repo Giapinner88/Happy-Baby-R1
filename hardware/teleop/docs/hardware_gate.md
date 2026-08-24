@@ -1,10 +1,67 @@
 # Cổng phần cứng cho teleop R1
 
 Tài liệu này liệt kê những việc **phải hoàn thành** trước khi teleop được phép
-ghi lệnh xuống motor thật. Chưa đóng đủ thì `HB_TELEOP_ALLOW_MOTOR_WRITE` phải
-giữ nguyên `0`.
+gửi target tới sole-owner thật. Chưa đóng đủ thì
+`HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP` phải giữ nguyên `0`.
 
 Không mục nào dưới đây được đánh dấu hoàn thành ở thời điểm tạo package này.
+
+## 0. Cổng tốc độ vòng điều khiển — CHƯA ĐÓNG
+
+- [ ] Bộ giải trên đường phần cứng chạy được ở nhịp điều khiển đã khai báo.
+
+Đo ngày 2026-08-23 (`t007_simonline_seg2_20260823`): `WholeUpperBodyIsaacLabSink`
+— đúng bộ giải mà `run_r1_quest3_hardware_targets.py` dùng — đạt **3.46 Hz so
+với 30 Hz yêu cầu**, mỗi bước có IK tốn **291 ms so với ngân sách 33 ms**. Chỉ
+3.9% lệnh nhận được dispatch.
+
+Sau khi thay Jacobian sai phân bằng giải tích (`t007_simonline_analytic_seg2_20260823`):
+**19.99 Hz, 50.1 ms mỗi bước, dispatch 818/3666**.
+
+**Cập nhật cuối ngày — cổng này đo sai đối tượng.** Tách chi phí cho thấy trong
+37.1 ms mỗi bước, **chỉ 6.3 ms là bộ giải**; 30.8 ms còn lại là PhysX + render,
+**không tồn tại trên phần cứng**. Trần nhịp do bộ giải là **159 Hz** ở 20 vòng
+lặp và **37 Hz** ở 100 vòng — cả hai đều trên 30 Hz.
+
+Cổng tốc độ vì thế **coi như đạt về mặt tính toán** (26.8 ms so với ngân sách
+33.3 ms ở cấu hình chất lượng cao nhất), nhưng **chưa được xác nhận trên phần
+cứng thật**, nơi có thêm chi phí DDS, mạng và bộ điều khiển motor mà mô phỏng
+không có.
+
+Cổng chặn còn lại là **chất lượng bám**, không phải tốc độ: p95 trái 143.9 mm
+đạt ngưỡng 150 mm nhưng phải 165.3 mm chưa; max trái 204.0 mm đạt ngưỡng 250 mm
+nhưng phải 418.4 mm chưa.
+
+Đây là cổng chặn: teleop ở 3.5 Hz nghĩa là tay robot cập nhật chưa tới 4 lần mỗi
+giây trong khi người vận hành cử động liên tục. Không được đưa xuống phần cứng
+cho tới khi đóng.
+
+### Cập nhật 2026-08-24 — đường phần cứng đã đổi bộ giải
+
+`run_r1_quest3_hardware_targets.py` mặc định **không còn tự giải**. Joint tới nó
+đã được `xr_teleoperate` R1_A5_ArmIK giải sẵn ở tiến trình phía trên, và nó chỉ
+áp giới hạn khớp theo asset cùng trần vận tốc/gia tốc.
+
+Đo lại trên cùng một đoạn 10 s của `t007_whole_upper_body_20260824T071530Z`,
+chạy đúng đường ống phần cứng (`replay → vendor IK → producer`), ở 10 Hz:
+
+| | coupled (cũ) | **upstream (mới)** |
+|---|---|---|
+| target phát ra / mẫu | 19 / 100 | **90 / 90** |
+| chi phí giải | 49.3 ms/bước | **~1.2 ms/bước** |
+| `solver_solution_kind` | 81 mẫu không có nghiệm nào được chấp nhận | không áp dụng — vendor luôn trả nghiệm |
+
+Đường cũ **từ chối 81% mẫu**: đường phần cứng đặt
+`allow_nonconverged_solution=False` và `allow_projected_position_solution=False`,
+nên mọi mẫu không hội tụ chính xác đều không phát ra target. Đây mới là lý do
+thật khiến đường cũ không dùng được, chứ không chỉ là chậm.
+
+Cổng này vẫn **CHƯA ĐÓNG**: số trên đo trên workstation với trace đã ghi, chưa
+đo trên robot có DDS, mạng và bộ điều khiển motor thật.
+
+Lưu ý: bộ giải nhân quả `solve_r1_t007_causal_tracking.py` đạt 18–22 Hz nhưng
+**không nằm trên đường phần cứng**. Ba bộ giải đang song song; chỉ một được
+validate.
 
 ## 1. Bằng chứng mô phỏng
 
@@ -29,6 +86,21 @@ Hiện trạng: run mới nhất `t007_whole_upper_body_20260818T114338Z` vẫn 
 
 - [ ] Thay `max_joint_velocity_rad_s` / `max_joint_acceleration_rad_s2` bằng
       giới hạn phần cứng đã được duyệt, không dùng số tuning của mô phỏng.
+
+      Hiện đang dùng 0.5 rad/s và 1.0 rad/s², áp trong
+      `run_r1_quest3_hardware_targets.py` cho cả hai chế độ giải. **Đây vẫn là
+      số chưa được duyệt.** Hai điều đã đo, cần biết trước khi duyệt:
+
+      1. **0.5 rad/s là chặn thật, không phải chặn dự phòng.** Trên đoạn thử,
+         limiter bão hoà ở đúng 0.5 rad/s gần như mọi bước, trong khi bản mô
+         phỏng của cùng đường này chạy tới p95 2.33 và max 5.94 rad/s. Nghĩa là
+         trên phần cứng tay sẽ **bám trễ rõ rệt** so với người vận hành. Nâng
+         trần là quyết định của cổng này, không phải của người vận hành lúc chạy.
+      2. **Trần gia tốc không được đảm bảo khi dừng.** `OnlineJointLimiter` cố ý
+         zero vận tốc khi tới đích hoặc khi chạm giới hạn khớp, nên gia tốc đo
+         được đạt **5.6 rad/s² so với trần 1.0**. Đều là giảm tốc, và hành vi này
+         có sẵn từ trước chứ không do đổi bộ giải, nhưng phải được duyệt như một
+         đặc tính chứ không được coi là đã bị chặn.
 - [ ] Thêm guard va chạm và moment xoắn.
 - [ ] Xác định hành vi khi mất kết nối Quest: phải giữ nguyên vị trí, không rơi
       tay.
@@ -37,9 +109,10 @@ Hiện trạng: run mới nhất `t007_whole_upper_body_20260818T114338Z` vẫn 
 
 ## 4. Quyền ghi khớp
 
-- [ ] Chứng minh teleop và high-level không bao giờ cùng ghi một khớp.
-      `hb_teleop.service` khai báo `Conflicts=hb_high_level.service`; cần kiểm
-      tra thực tế chứ không chỉ dựa vào unit file.
+- [ ] Chứng minh `hb_high_level` là DDS motor writer duy nhất; `run_teleop.py`
+      và `high_level_sidecar.py` không được chứa/tạo `ChannelPublisher`.
+- [ ] Chứng minh UTL1 chỉ bind loopback `127.0.0.1:5560` và stale target làm
+      high-level release về ZERO TORQUE.
 - [ ] Xác định trạng thái robot khi chuyển qua lại giữa hai chế độ.
 
 ## 5. Quy trình vận hành

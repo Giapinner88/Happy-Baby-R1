@@ -68,6 +68,19 @@ class WholeUpperBodyLiveConfig:
     from the nominal pose recovers it, and the reach check keeps that cost off
     targets that are simply beyond the arm, where a large residual is honest
     rather than a solver failure. ``None`` disables the restart."""
+    hold_uncontrolled_waist_joints: bool = False
+    """Command the waist joints the solver does not own to their fixed values.
+
+    `arms_head` leaves waist yaw and roll out of the controlled set, so nothing
+    writes them and PhysX lets them deflect under the arms' reaction torque.
+    Measured on the live path: 15.96 deg of yaw and 16.18 deg of roll, while the
+    solver assumed the waist stayed put. The offline replay sink has carried this
+    flag since 2026-08-23; the live sink did not, which is why a live run with
+    the flag set in its profile still showed a bending waist.
+    """
+    waist_roll_hold_rad: float = 0.0
+    held_joint_stiffness: float = 10000.0
+    held_joint_damping: float = 200.0
     allow_projected_position_solution: bool = False
     """Dispatch the closest reachable iterate for a target the solver could
     not fully converge on (`projected_to_reachable_boundary` /
@@ -91,11 +104,15 @@ class WholeUpperBodyLiveConfig:
             np.isfinite(self.seed_restart_residual_m) and self.seed_restart_residual_m > 0.0
         ):
             raise ValueError("seed_restart_residual_m must be finite and positive when set.")
-        if min(
+        rate_values = (
             self.max_joint_velocity_rad_s,
             self.max_joint_acceleration_rad_s2,
             self.control_dt_s,
-        ) <= 0.0:
+            self.fixed_waist_yaw_rad,
+        )
+        if not all(np.isfinite(value) for value in rate_values):
+            raise ValueError("Upper-body rate limits, timestep and fixed waist yaw must be finite.")
+        if min(rate_values[:3]) <= 0.0:
             raise ValueError("Upper-body rate limits and timestep must be positive.")
         self.ik.validate()
 
@@ -132,6 +149,17 @@ class WholeUpperBodyIsaacLabSink:
         nominal = np.asarray(self.config.nominal_joint_position_rad, dtype=float)
         if np.any(nominal < self.model.lower_limits) or np.any(nominal > self.model.upper_limits):
             raise ValueError("Declared upper-body nominal pose exceeds the selected URDF limits.")
+        self._held_joint_names: tuple[str, ...] = ()
+        self._held_joint_values: tuple[float, ...] = ()
+        if self.config.hold_uncontrolled_waist_joints:
+            owned = set(self.model.joint_names)
+            held = [n for n in ("waist_yaw_joint", "waist_roll_joint") if n not in owned]
+            values = {
+                "waist_yaw_joint": float(self.model.fixed_waist_yaw_rad),
+                "waist_roll_joint": float(self.config.waist_roll_hold_rad),
+            }
+            self._held_joint_names = tuple(held)
+            self._held_joint_values = tuple(values[n] for n in held)
         measured = np.asarray(self.handle.joint_positions(self.model.joint_names), dtype=float)
         if measured.shape != (self.model.dof,) or not np.all(np.isfinite(measured)):
             raise ValueError("Simulator returned a malformed upper-body state.")
@@ -146,12 +174,21 @@ class WholeUpperBodyIsaacLabSink:
         )
         self.limiter.reset(self.seed)
 
+    @property
+    def held_joint_names(self) -> tuple[str, ...]:
+        return self._held_joint_names
+
+    def _write(self, positions_rad: object) -> None:
+        names = tuple(self.model.joint_names) + self._held_joint_names
+        values = tuple(float(v) for v in positions_rad) + self._held_joint_values
+        self.handle.write_joint_targets(names, values)
+
     def reset_session(self) -> None:
         nominal = np.asarray(self.config.nominal_joint_position_rad, dtype=float)
         self.seed = nominal.copy()
         self.last_target = nominal.copy()
         self.limiter.reset(nominal)
-        self.handle.write_joint_targets(self.model.joint_names, nominal)
+        self._write(nominal)
         self.session_started = False
         self.last_application = {
             "accepted": False,
@@ -163,7 +200,7 @@ class WholeUpperBodyIsaacLabSink:
     def _hold(self, reason: str) -> None:
         self.limiter.hold()
         if self.last_target is not None:
-            self.handle.write_joint_targets(self.model.joint_names, self.last_target)
+            self._write(self.last_target)
         self.last_application = {
             "accepted": False,
             "reason": reason,
@@ -178,6 +215,9 @@ class WholeUpperBodyIsaacLabSink:
         missing = set(self.model.joint_names) - set(joints)
         if missing:
             raise ValueError(f"Coupled upper-body sink was given incomplete ownership: {sorted(missing)}")
+        if targets.robot_frame != self.config.source_target_frame:
+            self._hold("target_frame_mismatch")
+            return
         if targets.left_wrist_target is None or targets.right_wrist_target is None:
             self._hold("missing_wrist_target")
             return
@@ -222,7 +262,7 @@ class WholeUpperBodyIsaacLabSink:
         head_pitch_index, head_yaw_index = head.start, head.start + 1
         self.seed = result.joint_positions.copy()
         self.last_target = self.limiter.step(result.joint_positions)
-        self.handle.write_joint_targets(self.model.joint_names, self.last_target)
+        self._write(self.last_target)
         self.session_started = True
         self.last_application = {
             "accepted": True,

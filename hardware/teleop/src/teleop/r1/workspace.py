@@ -8,7 +8,7 @@ A raster order would jump the full width of the grid on every row change and
 invite branch switches that have nothing to do with reachability.
 
 Grid bounds are experiment parameters, not method constants, so nothing here has
-a default extent. `docs/teleop/r1_arm_wrist_ik.md` fixes the frame: targets are
+a default extent. `docs/teleop/03_r1_a5_ik.md` fixes the frame: targets are
 endpoint positions in the waist frame, in metres.
 """
 
@@ -37,10 +37,17 @@ class GridSpec:
         for name, bounds in (("x", self.x_range_m), ("y", self.y_range_m), ("z", self.z_range_m)):
             if len(bounds) != 2:
                 raise WorkspaceError(f"{name}_range_m must hold exactly two values.")
+            if not all(np.isfinite(value) for value in bounds):
+                raise WorkspaceError(f"{name}_range_m must be finite.")
             if bounds[1] < bounds[0]:
                 raise WorkspaceError(f"{name}_range_m is inverted: {bounds}")
-        if len(self.counts) != 3 or any(count < 1 for count in self.counts):
+        if len(self.counts) != 3 or any(
+            isinstance(count, bool) or not isinstance(count, int) or count < 1
+            for count in self.counts
+        ):
             raise WorkspaceError(f"counts must be three positive integers, got {self.counts}")
+        if not np.isfinite(self.wrist_roll_rad):
+            raise WorkspaceError("wrist_roll_rad must be finite.")
 
     @property
     def target_count(self) -> int:

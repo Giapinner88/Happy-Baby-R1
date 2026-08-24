@@ -30,8 +30,9 @@ robot R1-A5.
 3. `README.md` — hai tầng Ubuntu 22.04 workstation / Ubuntu 20.04 robot.
 4. `hardware/teleop/BUNDLE_MANIFEST.md` — file nào là authoritative và thông
    số runtime hiện tại.
-5. `docs/teleop/r1_teleop_pipeline.md` và
-   `docs/teleop/r1_upper_body_ik.md` — schema, frame, mapping và IK.
+5. `docs/teleop/01_system_architecture.md`,
+   `docs/teleop/02_quest_to_robot_frames.md` và
+   `docs/teleop/05_project_solvers_and_evidence.md` — pipeline, frame và IK.
 6. `docs/operations/r1_quest3_teleop_sim.md` — cách dựng baseline mô phỏng.
 7. `docs/operations/r1_quest3_teleop_hardware.md` và
    `hardware/teleop/docs/hardware_gate.md` — SOP và các gate chưa đóng.

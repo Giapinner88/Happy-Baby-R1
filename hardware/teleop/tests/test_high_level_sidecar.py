@@ -22,6 +22,7 @@ def test_sidecar_protocol_and_joint_order() -> None:
 
     sidecar = _sidecar()
     payload = {
+        "schema_version": 1,
         "sequence_id": 4,
         "joint_names": sidecar.JOINT_NAMES,
         "positions_rad": [index / 10 for index in range(12)],
@@ -38,6 +39,32 @@ def test_sidecar_protocol_and_joint_order() -> None:
     assert encoded[16:] == pytest.approx((positions[11], positions[10]))  # UDP: yaw, pitch
     stopped = sidecar.PACKET.unpack(sidecar.encode_stop(10))
     assert stopped[:6] == (sidecar.TELEOP_MAGIC, 10, 0, 0, 0, 0)
+
+
+def test_sidecar_rejects_missing_or_unknown_schema() -> None:
+    import json
+
+    sidecar = _sidecar()
+    payload = {
+        "sequence_id": 4,
+        "joint_names": sidecar.JOINT_NAMES,
+        "positions_rad": [0.0] * 12,
+    }
+    assert sidecar.parse_target(json.dumps(payload), 3) is None
+    payload["schema_version"] = 2
+    assert sidecar.parse_target(json.dumps(payload), 3) is None
+
+
+def test_selected_positions_requires_finite_r1_a5_state() -> None:
+    from types import SimpleNamespace
+    import pytest
+
+    sidecar = _sidecar()
+    state = SimpleNamespace(motor_state=[SimpleNamespace(q=0.0) for _ in range(35)])
+    assert sidecar.selected_positions(state) == [0.0] * 12
+    state.motor_state[29].q = float("nan")
+    with pytest.raises(RuntimeError, match="not finite"):
+        sidecar.selected_positions(state)
 
 
 def test_sidecar_is_not_a_dds_motor_publisher() -> None:
@@ -61,6 +88,15 @@ def test_hardware_launcher_requires_active_high_level_owner() -> None:
     assert "teleop.hardware.high_level_sidecar" in source
     assert "HB_TELEOP_ALLOW_MOTOR_WRITE" not in source
     assert "teleop.hardware.run_teleop" not in source
+
+
+def test_hardware_target_adapter_refuses_projected_ik() -> None:
+    adapter = ROOT / "scripts/teleop/run_r1_quest3_hardware_targets.py"
+    if not adapter.is_file():
+        import pytest
+        pytest.skip("workstation target adapter is not in the robot-only package")
+    source = adapter.read_text(encoding="utf-8")
+    assert "allow_projected_position_solution=False" in source
 
 
 def test_high_level_is_the_only_lowcmd_owner_and_head_mapping_matches_vendor() -> None:

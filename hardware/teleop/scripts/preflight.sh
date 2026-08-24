@@ -20,8 +20,9 @@ ok "src/teleop có mặt ($(grep '^commit:' "$TELEOP_DIR/src/SOURCE.txt" | awk '
 # simulation-owned IK package has been synced and the hardware adapter is still
 # absent.
 HARDWARE_ENTRY="$TELEOP_DIR/src/teleop/hardware/run_teleop.py"
-[[ -f "$HARDWARE_ENTRY" ]] || fail \
-    "Thiếu runtime hardware teleop.hardware.run_teleop; package hiện chỉ có logic mô phỏng và chưa thể chạy service trên robot."
+SIDECAR_ENTRY="$TELEOP_DIR/src/teleop/hardware/high_level_sidecar.py"
+[[ -f "$HARDWARE_ENTRY" ]] || fail "Thiếu read-only lowstate preflight."
+[[ -f "$SIDECAR_ENTRY" ]] || fail "Thiếu UTL1 high-level sidecar."
 
 PYTHON="${PYTHON:-python3}"
 "$PYTHON" - "$TELEOP_DIR" <<'PY' || exit 1
@@ -39,13 +40,15 @@ if bad:
 print(f"[OK] {len(list(root.rglob('*.py')))} file Python parse được")
 PY
 
-# Cổng an toàn: mặc định fail-closed.
-ALLOW="${HB_TELEOP_ALLOW_MOTOR_WRITE:-0}"
+# Cổng sidecar phải mặc định fail-closed. Không tồn tại cổng direct-lowcmd.
+grep -q 'ChannelPublisher' "$HARDWARE_ENTRY" && fail "run_teleop chứa DDS publisher"
+grep -q 'ChannelPublisher' "$SIDECAR_ENTRY" && fail "high_level_sidecar chứa DDS publisher"
+ALLOW="${HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP:-0}"
 if [[ "$ALLOW" == "1" ]]; then
-    echo "[WARN] HB_TELEOP_ALLOW_MOTOR_WRITE=1 -> teleop ĐƯỢC PHÉP ghi xuống motor." >&2
-    echo "[WARN] Chỉ chạy khi có người giữ E-stop và đã đóng docs/hardware_gate.md." >&2
+    echo "[WARN] HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 -> sidecar UTL1 được phép chạy." >&2
+    echo "[WARN] Chỉ chạy cùng sole-owner hb_high_level khi robot treo và có E-stop." >&2
 else
-    ok "Cổng motor đang đóng (HB_TELEOP_ALLOW_MOTOR_WRITE=0)"
+    ok "Cổng sidecar đang đóng (HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=0)"
 fi
 
 "$PYTHON" -m pytest "$TELEOP_DIR/tests" -q 2>/dev/null || fail "tests/ không đạt"

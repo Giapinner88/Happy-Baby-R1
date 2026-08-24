@@ -10,6 +10,11 @@ from .bridge import (
     rotation_matrix_to_quaternion,
 )
 from .ik import ArmIKConfig, IKConfigError, IKResult, solve_arm_ik
+from .frame_contract import (
+    FrameContractError,
+    validate_vendor_frame_contract,
+    validate_vendor_r1_a5_ik_contract,
+)
 from .isaaclab_sink import (
     HEAD_JOINT_NAMES,
     HeadOnlyIsaacLabSink,
@@ -35,6 +40,11 @@ from .upper_body_ik import (
     UpperBodyIKTarget,
     solve_upper_body_ik,
 )
+from .differential_tracking import (
+    DifferentialTrackingConfig,
+    DifferentialTrackingStep,
+    DifferentialUpperBodyTracker,
+)
 from .upper_body_kinematics import (
     UPPER_BODY_JOINT_NAMES,
     R1A5UpperBodyModel,
@@ -50,6 +60,7 @@ __all__ = [
     "BridgeConnectionState",
     "BridgeError",
     "FakeIsaacLabSink",
+    "FrameContractError",
     "HeadOnlyIsaacLabSink",
     "IKConfigError",
     "IKResult",
@@ -64,6 +75,9 @@ __all__ = [
     "QuestCommandBridge",
     "QuestTransportSample",
     "R1A5UpperBodyModel",
+    "DifferentialTrackingConfig",
+    "DifferentialTrackingStep",
+    "DifferentialUpperBodyTracker",
     "R1A5WholeUpperBodyOwnership",
     "R1JointOwnership",
     "R1TeleopCommand",
@@ -86,4 +100,6 @@ __all__ = [
     "solve_upper_body_ik",
     "load_r1_a5_upper_body_model",
     "validate_isaaclab_velocity_policy",
+    "validate_vendor_frame_contract",
+    "validate_vendor_r1_a5_ik_contract",
 ]

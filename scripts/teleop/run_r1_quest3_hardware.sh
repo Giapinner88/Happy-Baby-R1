@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Foreground Quest -> arms/head IK -> SSH sidecar -> sole high-level lowcmd owner.
+#
+# HB_TELEOP_SOLVER=upstream (default) solves with the unmodified vendor
+# xr_teleoperate R1_A5_ArmIK in the `tv` environment, the same solver and the
+# same process layout the simulation baseline runs. HB_TELEOP_SOLVER=coupled
+# selects this repository's coupled IK instead, for comparison on one trace.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -17,6 +22,11 @@ if [[ "${CONFIRM_SUSPENDED_WITH_ESTOP:-0}" != "1" ]]; then
     fi
 fi
 
+HB_TELEOP_SOLVER="${HB_TELEOP_SOLVER:-upstream}"
+case "$HB_TELEOP_SOLVER" in
+    upstream|coupled) ;;
+    *) echo "[FAIL] HB_TELEOP_SOLVER phải là 'upstream' hoặc 'coupled'." >&2; exit 2 ;;
+esac
 ROBOT="${ROBOT:-unitree@192.168.1.104}"
 DURATION_S="${DURATION_S:-120}"
 HOST_IP="${HOST_IP:-10.42.0.1}"
@@ -47,6 +57,7 @@ echo "[READY] TRƯỚC CÒ PHẢI: đưa robot arms/head và người vận hàn
 echo "[READY] Frame đầu tiên khi bóp cò phải được chốt làm source_zero của cả phiên."
 echo "[READY] Giữ cò phải để điều khiển; nhả cò để receiver watchdog release và dừng."
 echo "[READY] Evidence local: $RUN_DIR"
+echo "[READY] Solver: $HB_TELEOP_SOLVER"
 
 conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --host-ip "$HOST_IP" \
@@ -57,9 +68,18 @@ conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --key-file "$KEY_FILE" \
     --stop-file "$STOP_FILE" \
     --connection-log "$RUN_DIR/bridge_connection.jsonl" \
+| if [[ "$HB_TELEOP_SOLVER" == "upstream" ]]; then
+    # The vendor solver needs CasADi and the Pinocchio 3 bindings, which exist
+    # in `tv` and nowhere else here, so it stays a process of its own exactly as
+    # it does in simulation. The robot side still receives joint angles only.
+    conda run --no-capture-output -n tv python scripts/teleop/run_r1_upstream_ik_stream.py --passthrough
+  else
+    cat
+  fi \
 | conda run --no-capture-output -n unitree_sim_env python scripts/teleop/run_r1_quest3_hardware_targets.py \
     --duration-s "$DURATION_S" \
     --control-hz 10 \
+    $([[ "$HB_TELEOP_SOLVER" == "upstream" ]] && echo --upstream-joint-stream || echo --coupled-ik) \
 | ssh -o BatchMode=yes "$ROBOT" \
     "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad 0.15 --log-dir /home/unitree/HB/teleop/logs" \
 | tee "$RUN_DIR/robot_receiver.log"

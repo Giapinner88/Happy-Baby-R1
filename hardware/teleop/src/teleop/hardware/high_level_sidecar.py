@@ -29,6 +29,7 @@ JOINT_NAMES = (
     "right_wrist_roll_joint", "head_pitch_joint", "head_yaw_joint",
 )
 MOTOR_INDICES = (15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 29, 30)
+R1_A5_MOTOR_COUNT = 35
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,6 +57,16 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("high-level teleop denied: --confirm-suspended-with-estop is required")
     if not args.confirm_dev_mode:
         raise SystemExit("high-level teleop denied: --confirm-dev-mode is required")
+    numeric = (
+        args.duration_s,
+        args.first_input_timeout_s,
+        args.input_timeout_s,
+        args.state_timeout_s,
+        args.send_hz,
+        args.max_offset_rad,
+    )
+    if not all(math.isfinite(value) for value in numeric):
+        raise SystemExit("teleop timing and envelope values must be finite")
     if args.duration_s <= 0 or not 5 <= args.first_input_timeout_s <= 300:
         raise SystemExit("invalid duration or first-input timeout")
     if not 0.1 <= args.input_timeout_s <= 1.0:
@@ -69,12 +80,13 @@ def validate_args(args: argparse.Namespace) -> None:
 def parse_target(line: str, previous_sequence: int) -> tuple[int, list[float]] | None:
     try:
         payload = json.loads(line)
+        schema_version = int(payload["schema_version"])
         names = tuple(str(value) for value in payload["joint_names"])
         positions = [float(value) for value in payload["positions_rad"]]
         sequence = int(payload["sequence_id"])
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
-    if names != JOINT_NAMES or len(positions) != len(MOTOR_INDICES):
+    if schema_version != 1 or names != JOINT_NAMES or len(positions) != len(MOTOR_INDICES):
         return None
     if sequence <= previous_sequence or not all(math.isfinite(value) for value in positions):
         return None
@@ -111,6 +123,20 @@ def wait_for_state(subscriber: Any, timeout_s: float = 5.0) -> Any:
             return state
         time.sleep(0.01)
     raise TimeoutError(f"no {STATE_TOPIC} sample within {timeout_s:.1f}s")
+
+
+def selected_positions(state: Any) -> list[float]:
+    """Return a validated R1-A5 arms/head encoder snapshot."""
+
+    motor_state = tuple(state.motor_state)
+    if len(motor_state) != R1_A5_MOTOR_COUNT:
+        raise RuntimeError(
+            f"expected {R1_A5_MOTOR_COUNT} R1-A5 motor states, got {len(motor_state)}"
+        )
+    positions = [float(motor_state[index].q) for index in MOTOR_INDICES]
+    if not all(math.isfinite(value) for value in positions):
+        raise RuntimeError("selected R1-A5 encoder positions are not finite")
+    return positions
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -185,7 +211,16 @@ def main(argv: list[str] | None = None) -> int:
         print("[SAFE] no valid target; high-level stayed in Damping")
         return 2
 
-    start_q = [float(state.motor_state[index].q) for index in MOTOR_INDICES]
+    # The first input may take up to two minutes. Never anchor the relative
+    # session to the state sample read before that wait: obtain a fresh bounded
+    # sample immediately before source_zero/start_q are paired.
+    state = wait_for_state(subscriber, timeout_s=args.state_timeout_s)
+    if int(state.mode_machine) != args.expected_mode_machine:
+        metadata.update(status="refused", stop_reason="mode_machine_changed_before_anchor")
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        print("[SAFE] mode changed before session anchor; no UTL1 target sent")
+        return 2
+    start_q = selected_positions(state)
     latest_state = state
     last_state_at = time.monotonic()
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -243,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
                     "upstream_sequence_id": upstream_sequence,
                     "ipc_sequence_id": local_sequence,
                     "target_q": desired,
-                    "observed_q": [float(latest_state.motor_state[index].q) for index in MOTOR_INDICES],
+                    "observed_q": selected_positions(latest_state),
                 }
                 with samples_path.open("a", encoding="utf-8") as stream:
                     stream.write(json.dumps(record, separators=(",", ":")) + "\n")

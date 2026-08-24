@@ -23,10 +23,18 @@ Workstation path:
 
 - `scripts/teleop/quest_bridge.py`: Quest/Vuer telemetry to
   `R1TeleopCommand` JSONL at 30 Hz.
-- `scripts/teleop/run_r1_quest3_hardware_targets.py`: mapping plus the same
-  URDF-based coupled IK used by the simulation pilot; emits 12 joint targets.
-- `scripts/teleop/run_r1_quest3_hardware.sh`: foreground three-process launch,
-  checks and evidence directory.
+- `scripts/teleop/run_r1_quest3_hardware_targets.py`: emits the 12 joint
+  targets the robot receiver consumes. By default it solves nothing: joints
+  arrive already solved by the vendor `xr_teleoperate` IK and this process only
+  enforces the hardware envelope (asset joint limits, velocity/acceleration
+  ceilings). `--coupled-ik` selects the previous in-repo solver instead.
+- `scripts/teleop/run_r1_upstream_ik_stream.py`: the vendor solver stage, run
+  unmodified in the `tv` environment. Present on the hardware path for the same
+  reason as in simulation -- CasADi and the Pinocchio 3 bindings live only
+  there, and the robot side needs no kinematic model at all.
+- `scripts/teleop/run_r1_quest3_hardware.sh`: foreground launch, checks and
+  evidence directory. `HB_TELEOP_SOLVER=upstream` (default) inserts the vendor
+  solver between bridge and targets; `coupled` reproduces the older pipeline.
 - `teleop/r1/`: authoritative schema, mapping, kinematics, IK, rate limiting and
   watchdog logic.
 - `assets/R1.urdf`: geometry, joint axes, limits and signs used by the IK.
@@ -36,9 +44,10 @@ Workstation path:
   simulation IK method and numerical parameters.
 - `third_party/xr_teleoperate/teleop/televuer/src/`: pinned Vuer transport
   wrapper; it remains vendor code and must not be edited.
-- `AGENTS.md`, root `README.md`, `docs/`, `evidence/` and experiment definitions
-  T001–T007: context and traceability for a new machine; generated `runs/` and
-  large figures are deliberately excluded.
+- `AGENTS.md`, root `README.md`, `docs/`, `evidence/`, the experiment registry,
+  definitions T001–T008 and compact T001–T006 evidence: context and traceability
+  for a new machine. Bulk T007 outputs are deliberately excluded; one small
+  contract-complete T007 run is retained so registry checks remain executable.
 - `third_party/xr_teleoperate_v1_6/`: only the small README/changelog, R1-A5
   URDF and upstream arm-control reference used to audit conventions.
 
@@ -57,9 +66,9 @@ Robot path:
   head pitch is 29 and head yaw is 30.
 - `hardware/teleop/config/high_level_teleop_suspended.yaml`: minimal runtime
   profile copied to `hardware/high_level/config/tuning.yaml` by the exporter.
-- `Operation_Khanh/high_level/policies/flat/policy_11_07.onnx`: verified locally
-  as input `obs[1,83]`, output `actions[1,24]`; included because high-level loads
-  a locomotion controller before entering ZERO TORQUE.
+- `hardware/high_level/policies/flat/policy_11_07.onnx` from the pinned
+  high-level revision: verified as input `obs[1,83]`, output `actions[1,24]`;
+  included because high-level loads a locomotion controller before ZERO TORQUE.
 
 ## Shared simulation definitions versus hardware safeguards
 
