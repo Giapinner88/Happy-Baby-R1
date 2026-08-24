@@ -78,9 +78,30 @@ service lại. Không cài service cho cây này.
 ./scripts/build.sh          # cmake + make, ra build/run_r1
 ```
 
-Cần Unitree SDK2 tại `/opt/unitree_robotics` — có trên robot, không có trên
-workstation này. Đã kiểm được ở workstation: cả ba file C++ đã sửa
-`-fsyntax-only` sạch với header SDK thật. Link và chạy thì chưa.
+Build **trên robot**; workstation không có SDK. Trên robot SDK nằm ở
+`/usr/local/lib/cmake/unitree_sdk2`, tức đường tìm mặc định của CMake, nên
+`CMAKE_PREFIX_PATH` trong CMakeLists trỏ `/opt/unitree_robotics` không dùng tới
+mà vẫn `find_package` được.
+
+Đã build và link thành công trên robot ngày 2026-08-24 tại
+`~/HB/high_level_lock`, và `./build/run_r1 --preflight` cho `high_level_lock: OK`.
+Preflight chỉ nạp model, **không tạo DDS publisher** (kiểm trong `InitControllers`),
+nên chạy được cạnh `hb_high_level.service` đang active mà không phạm D003.
+
+Cảnh báo thiếu file dance/getup/liedown khi preflight là bình thường: pilot này
+tắt gesture và không cần motion npz nào.
+
+### Một khác biệt so với bản đang chạy
+
+`tuning.yaml` của bb70a20 đặt `flat_model: policy_goc.onnx`, và file đó **không
+có** trong cây nguồn — bản đang chạy trên robot có, repo thì không, nên preflight
+chết ngay bước nạp model. `config/teleop_lock.yaml` vì thế trỏ sang
+`policy_11_07.onnx`, đúng model mà profile pilot treo của repo đã chọn, cùng
+contract `legacy_83`.
+
+Model đi bộ được nạp nhưng pilot này không bao giờ dùng: nó chỉ chạy trong ZERO
+TORQUE. Nếu có phiên nào rời khỏi ZERO TORQUE thì đây là điểm khác biệt phải
+tính tới — mà pilot này thì không được phép rời.
 
 ## Chạy thử (robot treo, có người giữ E-stop)
 
@@ -102,7 +123,8 @@ sudo systemctl start hb_high_level
 
 ## Chưa làm
 
-- Chưa build, chưa link, chưa chạy trên robot.
+- Đã build và preflight trên robot; **chưa chạy `Run()`**, tức chưa lần nào
+  publish `rt/lowcmd`, và chưa lần nào khoá thật một khớp.
 - `teleop_lock_kp/kd = 20/3` **chưa đo trên robot thật**. Chỉnh được bằng yaml
   nên đây là việc quan sát lúc chạy, không phải việc sửa code.
 - Hợp nhất ngược về `hardware/high_level/` chưa làm, và cố ý chưa làm.

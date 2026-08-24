@@ -364,7 +364,7 @@ void Application::InitControllers() {
 int Application::Preflight() {
     std::cout << "[Preflight] Loading models and assets without DDS/motor output...\n";
     InitControllers();
-    std::cout << "[Preflight] high_level_2: OK\n";
+    std::cout << "[Preflight] high_level_lock: OK\n";
     return 0;
 }
 
@@ -483,6 +483,16 @@ void Application::InitTeleop() {
     teleop_runtime_on_ = true;  // arm-head profile mặc định bật; packet.enable là deadman.
     std::cout << "[Teleop] Lang nghe loopback UDP cong " << tuning_.teleop_udp_port
               << " (tay+dau). Arm-head san sang; co phai la deadman.\n";
+    // Bản cô lập khác bản đang chạy đúng ở chỗ này, nên nó phải nhìn thấy được
+    // từ terminal chứ không phải suy ra từ tên thư mục.
+    if (tuning_.teleop_lock_others_enabled) {
+        std::cout << "[Teleop] KHOA CUNG chan+eo (IDL 0-13) tai tu the chot luc bop co"
+                  << " -- kp=" << tuning_.teleop_lock_kp
+                  << " kd=" << tuning_.teleop_lock_kd
+                  << ". CHI dung khi robot dang treo tren gia.\n";
+    } else {
+        std::cout << "[Teleop] Chan+eo THA LIMP (hanh vi goc).\n";
+    }
 }
 
 // Double-click nút R3 -> chơi/thu gesture ở slot tương ứng (chỉ gọi khi đang Locomotion).

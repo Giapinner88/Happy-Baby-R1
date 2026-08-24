@@ -23,6 +23,19 @@ teleop_lock_kp: 20.0
 teleop_lock_kd: 3.0
 teleop_lock_max_rate_rad_s: 0.20
 
+# --- Model locomotion ------------------------------------------------------
+# Máy trạng thái high-level vẫn nạp một model đi bộ dù pilot này chỉ chạy trong
+# ZERO TORQUE và không bao giờ dùng tới nó. `tuning.yaml` của bb70a20 trỏ tới
+# `policy_goc.onnx`, file không có trong cây đó — bản đang chạy trên robot có
+# file này, cây nguồn thì không, nên preflight chết ngay ở bước nạp model.
+#
+# Lấy đúng model mà profile pilot treo của repo đã chọn. Cùng contract
+# legacy_83, và có sẵn trong policies/flat/. KHÁC với bản đang chạy: nếu phiên
+# nào rời khỏi ZERO TORQUE thì đây là điểm khác biệt phải tính tới — mà pilot
+# này thì không được phép rời.
+flat_policy_contract: legacy_83
+flat_model: policy_11_07.onnx
+
 # --- Thu hẹp về đúng phạm vi thí nghiệm ------------------------------------
 # Pilot này chỉ đo teleop tay/đầu. Mọi thứ khác tắt để không có gì khác chạm
 # vào rt/lowcmd trong lúc đo.
