@@ -121,10 +121,25 @@ Xong:
 sudo systemctl start hb_high_level
 ```
 
+## Chân và eo không phải đối tượng đo
+
+Pilot này đo tay và đầu. Chân với eo chỉ cần đứng yên để chúng không lẫn vào
+phép đo, và bản này không kiểm tra, không đánh giá, không báo cáo gì về chúng.
+Toàn bộ những gì nó chạm tới ở 14 khớp đó là: đọc encoder đúng một lần lúc chốt,
+rồi ghi lại chính con số ấy.
+
+Hệ quả có chủ ý: khớp ngoài teleop **không bao giờ được phép dừng một phiên**.
+Encoder nào đọc ra số không hợp lệ thì riêng khớp đó không khoá và thả limp như
+bản gốc — phiên vẫn chạy tiếp. Đó không phải health check; nó chỉ chặn một số vô
+nghĩa biến thành lệnh vị trí gửi xuống motor.
+
+Watchdog `rt/lowstate`, gate `mode_machine` và quyền E-stop của R3 không đổi:
+chúng thuộc về sole owner và không liên quan tới chuyện khoá khớp.
+
 ## Chưa làm
 
 - Đã build và preflight trên robot; **chưa chạy `Run()`**, tức chưa lần nào
   publish `rt/lowcmd`, và chưa lần nào khoá thật một khớp.
-- `teleop_lock_kp/kd = 20/3` **chưa đo trên robot thật**. Chỉnh được bằng yaml
-  nên đây là việc quan sát lúc chạy, không phải việc sửa code.
+- `teleop_lock_kp/kd = 20/3` chưa đo trên robot thật. Chỉnh bằng yaml khi nào
+  thấy cần, **không phải điều kiện để chạy**: chân và eo là đặt-rồi-quên.
 - Hợp nhất ngược về `hardware/high_level/` chưa làm, và cố ý chưa làm.

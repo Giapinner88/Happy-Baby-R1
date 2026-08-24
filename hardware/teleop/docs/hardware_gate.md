@@ -127,9 +127,11 @@ là quyết định chứ không phải bất ngờ.
 
 - [ ] `hardware/high_level_lock/` giữ chân (IDL 0-11) và eo (12-13) tại encoder
       chốt lúc teleop active, thay vì để limp như bản đang chạy. Chưa build,
-      chưa link, chưa chạy trên robot; `teleop_lock_kp/kd = 20/3` là số khởi
-      điểm chưa đo. Chỉ có nghĩa khi robot treo trên giá — khoá giữ tư thế, nó
-      không đỡ trọng lượng.
+      đã build và preflight trên robot, **chưa chạy `Run()`**. Chỉ có nghĩa khi
+      robot treo trên giá — khoá giữ tư thế, nó không đỡ trọng lượng.
+      `teleop_lock_kp/kd = 20/3` chưa đo, và **không phải điều kiện chặn**: chân
+      và eo không phải đối tượng đo của pilot này, chỉ cần đứng yên. Encoder
+      ngoài teleop đọc lỗi thì riêng khớp đó thả limp, phiên vẫn chạy.
 - [ ] **Eo bị khoá (chốt 2026-08-24).** Teleop chỉ lái tay và đầu, nên eo tự do
       là nhiễu lẫn vào chính phép đo đang cần làm. Điều kiện kèm theo: tay và
       đầu phải chứng minh được trước; muốn cho teleop lái `waist_yaw` thì phải

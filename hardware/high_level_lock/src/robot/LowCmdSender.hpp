@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <atomic>
 #include <cstdint>
 
@@ -159,8 +160,18 @@ public:
     // Chốt tư thế để khoá các khớp ngoài teleop. Phải gọi ngay trước khi
     // teleop chuyển sang active: chốt sớm hơn thì robot có thể đã bị xê dịch
     // trong lúc chờ, và khoá về một tư thế cũ là một cú giật chứ không phải giữ.
+    // Chốt tư thế cho các khớp ngoài teleop. Một encoder đọc ra số không hợp lệ
+    // thì khớp đó KHÔNG được khoá — nó rơi về đúng hành vi gốc là thả limp.
+    // Đây không phải kiểm tra sức khoẻ động cơ và cũng không dừng phiên: chân
+    // hỏng không được phép làm hỏng một phiên đo tay/đầu, mà cũng không được
+    // phép biến thành một lệnh vị trí vô nghĩa gửi xuống motor.
     void LatchNonTeleopHold(const unitree_hg::msg::dds_::LowState_& low) {
-        for (int idl : lockset::kNonTeleopIdl) hold_q_[static_cast<size_t>(idl)] = low.motor_state()[idl].q();
+        for (int idl : lockset::kNonTeleopIdl) {
+            const size_t slot = static_cast<size_t>(idl);
+            const float q = low.motor_state()[idl].q();
+            hold_ok_[slot] = std::isfinite(q);
+            hold_q_[slot] = hold_ok_[slot] ? q : 0.0f;
+        }
         hold_latched_ = true;
     }
 
@@ -195,6 +206,7 @@ public:
             const float lock_step = (lock_max_rate > 0.0f ? lock_max_rate : max_rate) * spec::kLoopDt;
             for (int idl : lockset::kNonTeleopIdl) {
                 const size_t slot = static_cast<size_t>(idl);
+                if (!hold_ok_[slot]) continue;   // để limp, đúng như bản gốc
                 const float q = Slew(last_cmd_q_[slot], hold_q_[slot], lock_step);
                 last_cmd_q_[slot] = q;
                 cmd.motor_cmd()[idl].q() = q;
@@ -241,6 +253,7 @@ public:
 
 private:
     std::array<float, spec::kNumMotorsIdl> hold_q_{};
+    std::array<bool, spec::kNumMotorsIdl> hold_ok_{};
     bool hold_latched_ = false;
 
     void RecordCrc(uint32_t crc) {
