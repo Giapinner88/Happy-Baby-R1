@@ -30,8 +30,22 @@ Tư thế khoá được chốt **cùng thời điểm** sidecar chốt `source_
 và được nhả ngay khi teleop hết active — giữ chân bị khoá sau khi nhả cò nghĩa
 là robot còn được cấp dòng trong lúc không ai điều khiển.
 
-Khoá **giữ tư thế, không đỡ trọng lượng**. `teleop_lock_kp` bị chặn trên ở 60
-(kKpTrain của chân là 100) vì một số cao hơn ở đây gần như chắc chắn là gõ nhầm.
+Khoá **giữ đúng tư thế robot đang treo sẵn**, chốt tại encoder ở frame bóp cò.
+Nó không kéo khớp tới tư thế khác, nên PD chỉ phải dập dao động quanh một điểm
+robot vốn đã đứng yên ở đó — không phải nâng chân lên. Vì thế `teleop_lock_kp`
+khởi điểm 20 là hợp lý, và nếu trên giá chân vẫn đung đưa thì **chỉnh trong
+`config/teleop_lock.yaml`, không cần build lại**; trần là 100, bằng `kKpTrain`
+của hông/eo, tức bằng độ cứng policy đi bộ giữ chân. Rung hoặc kêu thì tăng
+`teleop_lock_kd` trước khi hạ kp.
+
+Không có cú giật lúc vào: khi teleop chưa active, `SyncToState` đã đồng bộ
+`last_cmd_q_` theo encoder mỗi vòng, nên tại frame chốt thì gốc slew và tư thế
+khoá trùng nhau.
+
+Nếu dây treo giữ robot ở một tư thế **không** cân bằng trọng lực (ví dụ chân bị
+đai kéo cong), khoá phải sinh mô-men chống lại trọng lượng thật chứ không chỉ
+dập dao động, và 20 nhiều khả năng không đủ. Nhìn chân có sụt xuống sau khi bóp
+cò không là biết ngay.
 
 ## Eo bị khoá — chốt ngày 2026-08-24
 
@@ -89,6 +103,6 @@ sudo systemctl start hb_high_level
 ## Chưa làm
 
 - Chưa build, chưa link, chưa chạy trên robot.
-- `teleop_lock_kp/kd = 20/3` là số chọn theo `kKdTrain` của hông/eo, **chưa đo
-  và chưa được duyệt**. Phải xem chân có rung ở giá trị này không trước khi tin.
+- `teleop_lock_kp/kd = 20/3` **chưa đo trên robot thật**. Chỉnh được bằng yaml
+  nên đây là việc quan sát lúc chạy, không phải việc sửa code.
 - Hợp nhất ngược về `hardware/high_level/` chưa làm, và cố ý chưa làm.

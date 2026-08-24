@@ -301,13 +301,15 @@ bool Tuning::Validate() const {
             "teleop_arm_kd must be finite and in [0.1, 5.0]");
     require(finite_in(teleop_max_rate_rad_s, 0.05f, 0.50f),
             "teleop_max_rate_rad_s must be finite and in [0.05, 0.50]");
-    // Trần trên cố tình thấp hơn kKpTrain của chân (100). Khoá giữ tư thế trên
-    // giá treo, không phải đỡ trọng lượng, nên một giá trị cao ở đây gần như
-    // chắc chắn là gõ nhầm chứ không phải chủ ý.
-    require(finite_in(teleop_lock_kp, 1.0f, 60.0f),
-            "teleop_lock_kp must be finite and in [1.0, 60.0]");
-    require(finite_in(teleop_lock_kd, 0.1f, 5.0f),
-            "teleop_lock_kd must be finite and in [0.1, 5.0]");
+    // Trần bằng kKpTrain của hông/eo (100): khoá là giữ đúng tư thế robot đang
+    // treo sẵn, nên nó chỉ phải dập dao động chứ không phải nâng chân lên. 20 là
+    // điểm bắt đầu; nếu trên giá chân vẫn đung đưa thì chỉnh trong yaml, không
+    // phải build lại. Trên 100 thì cứng hơn cả lúc policy đi bộ giữ chân — quá
+    // mức đó gần như chắc chắn là gõ nhầm.
+    require(finite_in(teleop_lock_kp, 1.0f, 100.0f),
+            "teleop_lock_kp must be finite and in [1.0, 100.0]");
+    require(finite_in(teleop_lock_kd, 0.1f, 10.0f),
+            "teleop_lock_kd must be finite and in [0.1, 10.0]");
     require(finite_in(teleop_lock_max_rate_rad_s, 0.02f, 0.50f),
             "teleop_lock_max_rate_rad_s must be finite and in [0.02, 0.50]");
     require(finite_in(unified_stationary_cmd_threshold, 0.0f, 0.5f),

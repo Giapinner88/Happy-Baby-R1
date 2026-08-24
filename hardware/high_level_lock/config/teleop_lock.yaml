@@ -14,6 +14,10 @@
 #
 # Bật khoá là bắt đầu cấp dòng cho chân. Không bật khi robot đứng trên sàn:
 # khoá giữ tư thế, nó KHÔNG đỡ trọng lượng.
+# Khoá giữ ĐÚNG tư thế robot đang treo sẵn, chốt tại encoder ở frame bóp cò.
+# Nó không phải nâng chân lên tư thế khác, nên chỉ cần đủ để dập dao động.
+# Chân còn đung đưa thì tăng kp ở đây (trần 100 = kKpTrain của hông/eo), không
+# cần build lại. Rung hoặc kêu thì tăng kd trước khi giảm kp.
 teleop_lock_others_enabled: true
 teleop_lock_kp: 20.0
 teleop_lock_kd: 3.0
