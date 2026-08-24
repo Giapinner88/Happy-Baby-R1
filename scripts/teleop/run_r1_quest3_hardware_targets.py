@@ -55,12 +55,27 @@ from teleop.r1.whole_upper_body import (  # noqa: E402
     WholeUpperBodyLiveConfig,
 )
 
+# Model order: what the URDF, the solvers and the limiter all use.
 JOINT_NAMES = (
     "left_shoulder_pitch_joint", "left_shoulder_roll_joint", "left_shoulder_yaw_joint",
     "left_elbow_joint", "left_wrist_roll_joint", "right_shoulder_pitch_joint",
     "right_shoulder_roll_joint", "right_shoulder_yaw_joint", "right_elbow_joint",
     "right_wrist_roll_joint", "head_pitch_joint", "head_yaw_joint",
 )
+# Wire order: what the robot receiver accepts. The R1-A5 IDL puts head pitch at
+# 29 and yaw at 30, but the UTL1 packet carries them semantically as (yaw,
+# pitch), and the receiver names its vector to match the packet it builds. The
+# swap therefore happens once, here at the boundary, and never inside a solver.
+# The names travel with the values, so the receiver rejects a stream that
+# forgets it rather than silently driving the wrong head joint.
+RECEIVER_JOINT_NAMES = JOINT_NAMES[:10] + ("head_yaw_joint", "head_pitch_joint")
+
+
+def to_receiver_order(positions_rad) -> list[float]:
+    values = [float(value) for value in positions_rad]
+    if len(values) != len(JOINT_NAMES):
+        raise SystemExit(f"expected {len(JOINT_NAMES)} joint values, got {len(values)}")
+    return values[:10] + [values[11], values[10]]
 
 
 class TargetHandle:
@@ -276,8 +291,8 @@ def main() -> int:
                     "schema_version": 1,
                     "sequence_id": newest.sequence_id,
                     "sent_monotonic_s": time.monotonic(),
-                    "joint_names": JOINT_NAMES,
-                    "positions_rad": [float(value) for value in limited],
+                    "joint_names": RECEIVER_JOINT_NAMES,
+                    "positions_rad": to_receiver_order(limited),
                     "solution_kind": "upstream_xr_teleoperate_R1_A5_ArmIK",
                 }
                 try:
@@ -295,12 +310,12 @@ def main() -> int:
                         "schema_version": 1,
                         "sequence_id": newest.sequence_id,
                         "sent_monotonic_s": time.monotonic(),
-                        "joint_names": JOINT_NAMES,
+                        "joint_names": RECEIVER_JOINT_NAMES,
                         # No limiter call here: the coupled sink already limits
                         # with these same ceilings, and a second one in series
                         # would only add lag to a path this change is not meant
                         # to alter.
-                        "positions_rad": [float(value) for value in handle.positions],
+                        "positions_rad": to_receiver_order(handle.positions),
                         "solution_kind": application.get("solver_solution_kind"),
                     }
                     try:

@@ -22,14 +22,24 @@ from typing import Any
 STATE_TOPIC = "rt/lowstate"
 TELEOP_MAGIC = 0x314C5455
 PACKET = struct.Struct("<IIBBBB12f")
+ABSOLUTE_ENVELOPE_TOLERANCE_RAD = 0.002
+# Unitree R1 SDK: idl 29 = head_pitch, 30 = head_yaw. UTL1 mang thu tu ngu
+# nghia (yaw, pitch), vi vay hai index cuoi phai doc theo thu tu (30, 29).
+# ``teleop/r1`` giu quy uoc noi bo
+# cua workspace nguon (co cho dung [pitch, yaw]) va bi sync_from_workspace.sh ghi
+# de, nen moi quy doi sang chuan high_level_2 nam trong ``hardware/`` — dung cho
+# bien gioi, vi day cung la noi dong goi UTL1.
 JOINT_NAMES = (
     "left_shoulder_pitch_joint", "left_shoulder_roll_joint", "left_shoulder_yaw_joint",
     "left_elbow_joint", "left_wrist_roll_joint", "right_shoulder_pitch_joint",
     "right_shoulder_roll_joint", "right_shoulder_yaw_joint", "right_elbow_joint",
-    "right_wrist_roll_joint", "head_pitch_joint", "head_yaw_joint",
+    "right_wrist_roll_joint", "head_yaw_joint", "head_pitch_joint",
 )
-MOTOR_INDICES = (15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 29, 30)
-R1_A5_MOTOR_COUNT = 35
+ARM_JOINT_NAMES = JOINT_NAMES[:10]
+ARM_MOTOR_INDICES = (15, 16, 17, 18, 19, 22, 23, 24, 25, 26)
+HEAD_YAW_IDL = 30
+HEAD_PITCH_IDL = 29
+MOTOR_INDICES = ARM_MOTOR_INDICES + (HEAD_YAW_IDL, HEAD_PITCH_IDL)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,6 +53,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-timeout-s", type=float, default=0.20)
     parser.add_argument("--send-hz", type=float, default=100.0)
     parser.add_argument("--max-offset-rad", type=float, default=0.15)
+    parser.add_argument("--head-yaw-max-rad", type=float, default=0.60)
+    parser.add_argument("--head-pitch-max-rad", type=float, default=0.35)
     parser.add_argument("--expected-mode-machine", type=int, default=1)
     parser.add_argument("--confirm-suspended-with-estop", action="store_true")
     parser.add_argument("--confirm-dev-mode", action="store_true")
@@ -57,16 +69,6 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("high-level teleop denied: --confirm-suspended-with-estop is required")
     if not args.confirm_dev_mode:
         raise SystemExit("high-level teleop denied: --confirm-dev-mode is required")
-    numeric = (
-        args.duration_s,
-        args.first_input_timeout_s,
-        args.input_timeout_s,
-        args.state_timeout_s,
-        args.send_hz,
-        args.max_offset_rad,
-    )
-    if not all(math.isfinite(value) for value in numeric):
-        raise SystemExit("teleop timing and envelope values must be finite")
     if args.duration_s <= 0 or not 5 <= args.first_input_timeout_s <= 300:
         raise SystemExit("invalid duration or first-input timeout")
     if not 0.1 <= args.input_timeout_s <= 1.0:
@@ -75,37 +77,91 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--state-timeout-s must be in [0.05, 1.0]")
     if not 10 <= args.send_hz <= 250 or not 0.02 <= args.max_offset_rad <= 0.30:
         raise SystemExit("invalid send rate or session envelope")
+    if not 0.05 <= args.head_yaw_max_rad <= 1.0:
+        raise SystemExit("--head-yaw-max-rad must be in [0.05, 1.0]")
+    if not 0.05 <= args.head_pitch_max_rad <= 0.6:
+        raise SystemExit("--head-pitch-max-rad must be in [0.05, 0.6]")
 
 
-def parse_target(line: str, previous_sequence: int) -> tuple[int, list[float]] | None:
+def parse_target(
+    line: str, previous_sequence: int
+) -> tuple[int, list[float], bool, str] | None:
     try:
         payload = json.loads(line)
-        schema_version = int(payload["schema_version"])
         names = tuple(str(value) for value in payload["joint_names"])
         positions = [float(value) for value in payload["positions_rad"]]
         sequence = int(payload["sequence_id"])
+        schema_version = int(payload.get("schema_version", 1))
+        target_mode = str(payload.get("target_mode", "relative_source"))
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
-    if schema_version != 1 or names != JOINT_NAMES or len(positions) != len(MOTOR_INDICES):
+    if schema_version != 1 or target_mode not in {"relative_source", "absolute_robot"}:
+        return None
+    if names == ARM_JOINT_NAMES and len(positions) == len(ARM_MOTOR_INDICES):
+        head_valid = False
+    elif names == JOINT_NAMES and len(positions) == len(MOTOR_INDICES):
+        head_valid = True
+    else:
         return None
     if sequence <= previous_sequence or not all(math.isfinite(value) for value in positions):
         return None
-    return sequence, positions
+    return sequence, positions, head_valid, target_mode
 
 
-def encode_target(sequence: int, positions: list[float]) -> bytes:
-    """Encode arms[10], head pitch/yaw stream as UTL1 arms, yaw, pitch."""
-    if len(positions) != 12:
-        raise ValueError("expected 12 arms/head positions")
+def encode_target(sequence: int, positions: list[float], head_valid: bool = True) -> bytes:
+    """Encode arm-only or arms+head target in the fixed UTL1 packet ABI."""
+    expected = 12 if head_valid else 10
+    if len(positions) != expected:
+        raise ValueError(f"expected {expected} positions for head_valid={head_valid}")
     arms = positions[:10]
-    head_pitch, head_yaw = positions[10:]
+    head_yaw, head_pitch = positions[10:] if head_valid else (0.0, 0.0)
     return PACKET.pack(
-        TELEOP_MAGIC, sequence, 1, 1, 1, 0, *arms, head_yaw, head_pitch
+        TELEOP_MAGIC, sequence, 1, 1, int(head_valid), 0, *arms, head_yaw, head_pitch
     )
 
 
 def encode_stop(sequence: int) -> bytes:
     return PACKET.pack(TELEOP_MAGIC, sequence, 0, 0, 0, 0, *([0.0] * 12))
+
+
+def sequence_seed(send_hz: float, monotonic_s: float | None = None) -> int:
+    """Create a UTL1 sequence that remains newer across sidecar restarts."""
+    now_s = time.monotonic() if monotonic_s is None else monotonic_s
+    return int(now_s * send_hz) & 0xFFFFFFFF
+
+
+def next_sequence(sequence: int) -> int:
+    return (sequence + 1) & 0xFFFFFFFF
+
+
+def constrain_absolute_target(
+    target: list[float],
+    start: list[float],
+    max_offset_rad: float,
+    tolerance_rad: float = ABSOLUTE_ENVELOPE_TOLERANCE_RAD,
+) -> tuple[list[float], int, float, bool]:
+    """Validate an absolute target and clamp only numerical boundary drift.
+
+    LeRobot and this robot-side process intentionally enforce the same session
+    envelope. They sample the encoder anchor at slightly different times, so a
+    target already clamped to exactly ``max_offset_rad`` by LeRobot can exceed
+    the robot-side comparison by a few encoder ticks. A small fixed tolerance
+    prevents that false stop; the packet sent to the high-level owner remains
+    clamped to the exact robot-side envelope.
+    """
+    if len(target) != len(start) or not target:
+        raise ValueError("absolute target/start shape mismatch")
+    offsets = [value - anchor for value, anchor in zip(target, start)]
+    worst_index = max(range(len(offsets)), key=lambda index: abs(offsets[index]))
+    worst_offset = abs(offsets[worst_index])
+    if worst_offset > max_offset_rad + tolerance_rad:
+        raise ValueError("absolute target outside session envelope")
+    bounded = [
+        anchor + min(max_offset_rad, max(-max_offset_rad, offset))
+        for anchor, offset in zip(start, offsets)
+    ]
+    was_clamped = any(abs(raw - safe) > 1e-12 for raw, safe in zip(target, bounded))
+    return bounded, worst_index, worst_offset, was_clamped
 
 
 def stdin_reader(lines: "queue.Queue[str | None]") -> None:
@@ -123,20 +179,6 @@ def wait_for_state(subscriber: Any, timeout_s: float = 5.0) -> Any:
             return state
         time.sleep(0.01)
     raise TimeoutError(f"no {STATE_TOPIC} sample within {timeout_s:.1f}s")
-
-
-def selected_positions(state: Any) -> list[float]:
-    """Return a validated R1-A5 arms/head encoder snapshot."""
-
-    motor_state = tuple(state.motor_state)
-    if len(motor_state) != R1_A5_MOTOR_COUNT:
-        raise RuntimeError(
-            f"expected {R1_A5_MOTOR_COUNT} R1-A5 motor states, got {len(motor_state)}"
-        )
-    positions = [float(motor_state[index].q) for index in MOTOR_INDICES]
-    if not all(math.isfinite(value) for value in positions):
-        raise RuntimeError("selected R1-A5 encoder positions are not finite")
-    return positions
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -174,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
         "joint_names": JOINT_NAMES,
         "motor_indices": MOTOR_INDICES,
         "max_offset_from_start_rad": args.max_offset_rad,
+        "absolute_envelope_tolerance_rad": ABSOLUTE_ENVELOPE_TOLERANCE_RAD,
         "send_hz": args.send_hz,
         "input_timeout_s": args.input_timeout_s,
         "state_timeout_s": args.state_timeout_s,
@@ -185,8 +228,12 @@ def main(argv: list[str] | None = None) -> int:
     threading.Thread(target=stdin_reader, args=(lines,), daemon=True).start()
     source_zero: list[float] | None = None
     latest_source: list[float] | None = None
+    head_valid = False
+    target_mode = "relative_source"
     upstream_sequence = -1
-    local_sequence = 0
+    local_sequence = sequence_seed(args.send_hz)
+    metadata["initial_ipc_sequence_id"] = local_sequence
+    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     last_input_at = 0.0
     input_closed = False
     first_deadline = time.monotonic() + args.first_input_timeout_s
@@ -201,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
         parsed = parse_target(line, upstream_sequence)
         if parsed is None:
             continue
-        upstream_sequence, latest_source = parsed
+        upstream_sequence, latest_source, head_valid, target_mode = parsed
         source_zero = latest_source.copy()
         last_input_at = time.monotonic()
 
@@ -211,16 +258,67 @@ def main(argv: list[str] | None = None) -> int:
         print("[SAFE] no valid target; high-level stayed in Damping")
         return 2
 
-    # The first input may take up to two minutes. Never anchor the relative
-    # session to the state sample read before that wait: obtain a fresh bounded
-    # sample immediately before source_zero/start_q are paired.
-    state = wait_for_state(subscriber, timeout_s=args.state_timeout_s)
+    # Mau state doc luc khoi dong co the da cu trong khi cho Quest toi 120 s.
+    # Chot neutral tu mot mau moi ngay sau target dau tien.
+    state = wait_for_state(subscriber)
     if int(state.mode_machine) != args.expected_mode_machine:
-        metadata.update(status="refused", stop_reason="mode_machine_changed_before_anchor")
+        metadata.update(status="unsafe_start", stop_reason="mode_machine_changed_before_start")
         metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-        print("[SAFE] mode changed before session anchor; no UTL1 target sent")
-        return 2
-    start_q = selected_positions(state)
+        print(f"[SAFE] mode_machine={state.mode_machine} before first command; refusing teleop")
+        return 3
+    selected_names = JOINT_NAMES if head_valid else ARM_JOINT_NAMES
+    selected_motor_indices = MOTOR_INDICES if head_valid else ARM_MOTOR_INDICES
+    start_q = [float(state.motor_state[index].q) for index in selected_motor_indices]
+    if head_valid:
+        start_head_yaw, start_head_pitch = start_q[-2:]
+    else:
+        start_head_yaw, start_head_pitch = 0.0, 0.0
+    if head_valid and (abs(start_head_yaw) > args.head_yaw_max_rad or
+                       abs(start_head_pitch) > args.head_pitch_max_rad):
+        metadata.update(
+            status="unsafe_start",
+            stop_reason="head_not_neutral",
+            start_head_yaw_rad=start_head_yaw,
+            start_head_pitch_rad=start_head_pitch,
+            head_yaw_max_rad=args.head_yaw_max_rad,
+            head_pitch_max_rad=args.head_pitch_max_rad,
+        )
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        print(
+            "[SAFE] head not neutral: "
+            f"yaw(IDL30)={start_head_yaw:.3f}, pitch(IDL29)={start_head_pitch:.3f}; "
+            "manually center the limp head before squeezing the trigger"
+        )
+        return 3
+    if target_mode == "absolute_robot":
+        try:
+            _, worst_index, worst_initial_error, _ = constrain_absolute_target(
+                source_zero, start_q, args.max_offset_rad
+            )
+        except ValueError:
+            offsets = [abs(target - state_q) for target, state_q in zip(source_zero, start_q)]
+            worst_index = max(range(len(offsets)), key=offsets.__getitem__)
+            worst_initial_error = offsets[worst_index]
+            metadata.update(
+                status="unsafe_start",
+                stop_reason="absolute_target_outside_session_envelope",
+                worst_initial_error_rad=worst_initial_error,
+                violating_joint=selected_names[worst_index],
+                envelope_limit_rad=args.max_offset_rad,
+            )
+            metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+            print(
+                f"[SAFE] absolute target starts {worst_initial_error:.3f} rad from encoders; "
+                f"limit is {args.max_offset_rad:.3f} rad"
+            )
+            return 3
+    metadata.update(
+        joint_names=selected_names,
+        motor_indices=selected_motor_indices,
+        head_valid=head_valid,
+        target_mode=target_mode,
+    )
+    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     latest_state = state
     last_state_at = time.monotonic()
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -245,10 +343,17 @@ def main(argv: list[str] | None = None) -> int:
                     break
                 parsed = parse_target(line, upstream_sequence)
                 if parsed is not None:
-                    upstream_sequence, latest_source = parsed
+                    parsed_sequence, parsed_source, parsed_head_valid, parsed_target_mode = parsed
+                    if parsed_head_valid != head_valid or parsed_target_mode != target_mode:
+                        status = "failed"
+                        stop_reason = "stream_contract_changed"
+                        input_closed = True
+                        break
+                    upstream_sequence, latest_source = parsed_sequence, parsed_source
                     last_input_at = time.monotonic()
             if input_closed:
-                stop_reason = "stream_closed"
+                if stop_reason != "stream_contract_changed":
+                    stop_reason = "stream_closed"
                 break
             if time.monotonic() - last_input_at > args.input_timeout_s:
                 stop_reason = "input_watchdog"
@@ -266,19 +371,53 @@ def main(argv: list[str] | None = None) -> int:
                 status = "failed"
                 break
             assert latest_source is not None
-            local_sequence += 1
-            desired = [
-                start + min(args.max_offset_rad, max(-args.max_offset_rad, source - zero))
-                for start, source, zero in zip(start_q, latest_source, source_zero)
-            ]
-            client.send(encode_target(local_sequence, desired))
+            local_sequence = next_sequence(local_sequence)
+            if target_mode == "relative_source":
+                desired = [
+                    start + min(args.max_offset_rad, max(-args.max_offset_rad, source - zero))
+                    for start, source, zero in zip(start_q, latest_source, source_zero)
+                ]
+            else:
+                try:
+                    desired, worst_index, worst_offset, boundary_clamped = constrain_absolute_target(
+                        latest_source, start_q, args.max_offset_rad
+                    )
+                except ValueError:
+                    offsets = [
+                        abs(target - start)
+                        for target, start in zip(latest_source, start_q)
+                    ]
+                    worst_index = max(range(len(offsets)), key=offsets.__getitem__)
+                    status = "failed"
+                    stop_reason = "absolute_target_outside_session_envelope"
+                    metadata["envelope_violation"] = {
+                        "joint": selected_names[worst_index],
+                        "offset_rad": offsets[worst_index],
+                        "limit_rad": args.max_offset_rad,
+                        "tolerance_rad": ABSOLUTE_ENVELOPE_TOLERANCE_RAD,
+                    }
+                    break
+                if boundary_clamped:
+                    metadata["numerical_boundary_clamp_seen"] = True
+                    metadata["maximum_preclamp_offset_rad"] = max(
+                        float(metadata.get("maximum_preclamp_offset_rad", 0.0)),
+                        worst_offset,
+                    )
+            if head_valid:
+                desired[-2] = min(args.head_yaw_max_rad, max(-args.head_yaw_max_rad, desired[-2]))
+                desired[-1] = min(args.head_pitch_max_rad, max(-args.head_pitch_max_rad, desired[-1]))
+            client.send(encode_target(local_sequence, desired, head_valid=head_valid))
             if sample_index % max(1, round(args.send_hz / 10.0)) == 0:
                 record = {
                     "monotonic_s": time.monotonic(),
                     "upstream_sequence_id": upstream_sequence,
                     "ipc_sequence_id": local_sequence,
+                    "joint_names": selected_names,
                     "target_q": desired,
-                    "observed_q": selected_positions(latest_state),
+                    "observed_q": [
+                        float(latest_state.motor_state[index].q)
+                        for index in selected_motor_indices
+                    ],
                 }
                 with samples_path.open("a", encoding="utf-8") as stream:
                     stream.write(json.dumps(record, separators=(",", ":")) + "\n")
@@ -291,7 +430,7 @@ def main(argv: list[str] | None = None) -> int:
         stop_reason = "exception"
         raise
     finally:
-        local_sequence += 1
+        local_sequence = next_sequence(local_sequence)
         try:
             client.send(encode_stop(local_sequence))
         except OSError:

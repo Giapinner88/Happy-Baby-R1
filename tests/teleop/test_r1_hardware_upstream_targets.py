@@ -51,9 +51,25 @@ class HardwareTargetProducerTests(unittest.TestCase):
         )
 
     def test_joint_order_matches_the_robot_receiver(self):
+        """The wire order is the receiver's, and the swap is only at the wire.
+
+        Model order keeps head pitch before yaw because that is the URDF chain.
+        The UTL1 packet carries them as (yaw, pitch) and the receiver names its
+        vector to match. Both orders are therefore correct in their own place,
+        and the only thing that must never drift is which one is on the wire.
+        """
+
         self.assertEqual(self.producer.JOINT_NAMES, JOINT_NAMES)
-        self.assertEqual(self.sidecar.JOINT_NAMES, JOINT_NAMES)
+        self.assertEqual(self.producer.RECEIVER_JOINT_NAMES, self.sidecar.JOINT_NAMES)
         self.assertEqual(len(self.sidecar.MOTOR_INDICES), len(JOINT_NAMES))
+        # The receiver maps its two head names onto IDL 30 then 29.
+        self.assertEqual(self.sidecar.MOTOR_INDICES[-2:], (30, 29))
+
+    def test_the_head_swap_moves_the_two_head_values_and_nothing_else(self):
+        model_order = [float(index) for index in range(12)]
+        wire = self.producer.to_receiver_order(model_order)
+        self.assertEqual(wire[:10], model_order[:10])
+        self.assertEqual((wire[10], wire[11]), (model_order[11], model_order[10]))
 
     def test_a_solved_vector_is_read_back_unchanged(self):
         values = [0.1 * index for index in range(12)]
@@ -86,16 +102,20 @@ class HardwareTargetProducerTests(unittest.TestCase):
             "schema_version": 1,
             "sequence_id": 7,
             "sent_monotonic_s": 1.0,
-            "joint_names": JOINT_NAMES,
+            "joint_names": self.producer.RECEIVER_JOINT_NAMES,
             "positions_rad": [0.01 * index for index in range(12)],
             "solution_kind": "upstream_xr_teleoperate_R1_A5_ArmIK",
         }
         parsed = self.sidecar.parse_target(json.dumps(payload), previous_sequence=6)
         self.assertIsNotNone(parsed)
-        sequence, positions = parsed
+        sequence, positions, head_valid, target_mode = parsed
         self.assertEqual(sequence, 7)
         self.assertEqual(len(positions), 12)
-        self.sidecar.encode_target(sequence, positions)
+        # A 12-joint stream is what tells the receiver the head is being driven;
+        # the arm-only form it also accepts would silently leave the head out.
+        self.assertTrue(head_valid)
+        self.assertEqual(target_mode, "relative_source")
+        self.sidecar.encode_target(sequence, positions, head_valid)
 
     def test_the_hardware_ceilings_bound_a_vendor_sized_step(self):
         """A step the vendor path really produces must leave here bounded.
