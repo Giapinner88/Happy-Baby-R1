@@ -21,6 +21,37 @@
 #include "../config/RobotSpec.hpp"
 #include "../config/Tuning.hpp"
 
+// Khớp bị khoá cứng trong ZERO TORQUE teleop của bản cô lập này: chân trái
+// 0-5, chân phải 6-11, eo roll/yaw 12-13. Đây là toàn bộ khớp policy KHÔNG
+// thuộc teleop; tay là 15-19/22-26 và đầu là 29/30. Các slot IDL còn lại không
+// nằm trong kSdkToIdl nên bản này không đụng tới: khoá một motor không biết là
+// gì thì tệ hơn để nó thụ động.
+//
+// Eo nằm trong danh sách là chủ ý. Teleop hiện chỉ lái tay và đầu, nên eo tự do
+// chỉ là một thân trên đung đưa lẫn vào đúng phép đo đang cần làm. Ngày nào
+// teleop lái tới waist_yaw thì phải bỏ 13 ra khỏi đây TRƯỚC: hai bên cùng ghi
+// một khớp là khoá đánh nhau với target.
+namespace lockset {
+
+inline constexpr std::array<int, 14> kNonTeleopIdl = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+};
+
+// Không khớp nào vừa bị khoá vừa được teleop lái. Kiểm lúc biên dịch vì cái sai
+// này không gây lỗi ở đâu cả: nó chỉ hiện ra thành một khớp cứng đờ hoặc rung
+// trên robot thật, và lúc đó thì đã muộn.
+constexpr bool DisjointFromTeleop() {
+    for (int idl : lockset::kNonTeleopIdl) {
+        if (idl == spec::kHeadYawIdl || idl == spec::kHeadPitchIdl) return false;
+        for (int j = 0; j < spec::kNumArmJoints; ++j)
+            if (idl == spec::MotorIdl(spec::kArmBeginPolicyIdx + j)) return false;
+    }
+    return true;
+}
+static_assert(DisjointFromTeleop(), "a locked joint is also driven by teleop");
+
+}  // namespace lockset
+
 // Mục tiêu điều khiển đầu (teleop hoặc gesture). valid=false -> giữ đầu ở 0.
 // max_rate_rad_s<=0 kế thừa rate-limit của policy; gesture dùng trần riêng thấp hơn.
 struct HeadTarget {
@@ -129,7 +160,7 @@ public:
     // teleop chuyển sang active: chốt sớm hơn thì robot có thể đã bị xê dịch
     // trong lúc chờ, và khoá về một tư thế cũ là một cú giật chứ không phải giữ.
     void LatchNonTeleopHold(const unitree_hg::msg::dds_::LowState_& low) {
-        for (int idl : kNonTeleopIdl) hold_q_[static_cast<size_t>(idl)] = low.motor_state()[idl].q();
+        for (int idl : lockset::kNonTeleopIdl) hold_q_[static_cast<size_t>(idl)] = low.motor_state()[idl].q();
         hold_latched_ = true;
     }
 
@@ -162,7 +193,7 @@ public:
         }
         if (lock_kp > 0.0f && hold_latched_) {
             const float lock_step = (lock_max_rate > 0.0f ? lock_max_rate : max_rate) * spec::kLoopDt;
-            for (int idl : kNonTeleopIdl) {
+            for (int idl : lockset::kNonTeleopIdl) {
                 const size_t slot = static_cast<size_t>(idl);
                 const float q = Slew(last_cmd_q_[slot], hold_q_[slot], lock_step);
                 last_cmd_q_[slot] = q;
@@ -209,13 +240,6 @@ public:
     uint64_t SentCount() const { return sent_count_.load(std::memory_order_relaxed); }
 
 private:
-    // Chân trái 0-5, chân phải 6-11, eo roll/yaw 12-13. Đây là toàn bộ khớp
-    // policy KHÔNG thuộc teleop; tay là 15-19/22-26 và đầu là 29/30. Các slot
-    // IDL còn lại không nằm trong kSdkToIdl nên bản này không đụng tới: khoá
-    // một motor không biết là gì thì tệ hơn để nó thụ động.
-    static constexpr std::array<int, 14> kNonTeleopIdl = {
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
-    };
     std::array<float, spec::kNumMotorsIdl> hold_q_{};
     bool hold_latched_ = false;
 

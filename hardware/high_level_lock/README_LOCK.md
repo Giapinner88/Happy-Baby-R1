@@ -17,7 +17,7 @@ Bản này giữ chúng tại chính encoder được chốt ở frame teleop ch
 
 | | bb70a20 | bản này |
 |---|---|---|
-| chân IDL 0-11, eo IDL 12-13 | `kp=kd=0`, limp | `q` = tư thế chốt, `kp/kd` = `teleop_lock_*` |
+| chân IDL 0-11, **eo IDL 12-13** | `kp=kd=0`, limp | `q` = tư thế chốt, `kp/kd` = `teleop_lock_*` |
 | tay IDL 15-19 / 22-26 | teleop PD | không đổi |
 | đầu IDL 29 (pitch) / 30 (yaw) | teleop PD khi `head_valid` | không đổi |
 | slot IDL còn lại | thụ động | thụ động — không nằm trong `kSdkToIdl`, khoá một motor không biết là gì thì tệ hơn |
@@ -32,6 +32,24 @@ là robot còn được cấp dòng trong lúc không ai điều khiển.
 
 Khoá **giữ tư thế, không đỡ trọng lượng**. `teleop_lock_kp` bị chặn trên ở 60
 (kKpTrain của chân là 100) vì một số cao hơn ở đây gần như chắc chắn là gõ nhầm.
+
+## Eo bị khoá — chốt ngày 2026-08-24
+
+Eo (roll IDL 12, yaw IDL 13) nằm trong danh sách khoá. Teleop hiện chỉ lái tay
+và đầu, nên eo tự do chỉ là một thân trên đung đưa lẫn thẳng vào phép đo đang
+cần làm; khoá nó lại làm phép đo tay/đầu sạch hơn chứ không phải khắt khe hơn.
+
+Đây là điều kiện của thứ tự làm việc: **tay và đầu phải chứng minh được trước**,
+rồi mới tính tới chuyện cho teleop lái eo. Ngày nào tới bước đó, phải bỏ IDL 13
+khỏi `lockset::kNonTeleopIdl` **trước** — khoá và target cùng ghi một khớp là
+hai bên đánh nhau.
+
+Ràng buộc đó không để lại cho comment giữ. `lockset::DisjointFromTeleop()` duyệt
+danh sách khoá đối chiếu với đầu (29/30) và mười khớp tay lấy qua
+`spec::MotorIdl`, và `static_assert` chặn ngay lúc biên dịch. Đã thử ngược: nhét
+IDL 30 vào danh sách thì build hỏng với đúng thông điệp đó. Cái sai kiểu này
+không ném exception ở đâu cả — nó chỉ hiện ra thành một khớp cứng đờ hoặc rung
+trên robot thật, và lúc đó thì đã muộn.
 
 ## Vì sao phải cô lập
 
@@ -73,5 +91,4 @@ sudo systemctl start hb_high_level
 - Chưa build, chưa link, chưa chạy trên robot.
 - `teleop_lock_kp/kd = 20/3` là số chọn theo `kKdTrain` của hông/eo, **chưa đo
   và chưa được duyệt**. Phải xem chân có rung ở giá trị này không trước khi tin.
-- Chưa quyết khoá eo hay để eo tự do khi sau này teleop dùng tới `waist_yaw`.
 - Hợp nhất ngược về `hardware/high_level/` chưa làm, và cố ý chưa làm.

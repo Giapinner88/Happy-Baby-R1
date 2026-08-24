@@ -130,6 +130,11 @@ là quyết định chứ không phải bất ngờ.
       chưa link, chưa chạy trên robot; `teleop_lock_kp/kd = 20/3` là số khởi
       điểm chưa đo. Chỉ có nghĩa khi robot treo trên giá — khoá giữ tư thế, nó
       không đỡ trọng lượng.
+- [ ] **Eo bị khoá (chốt 2026-08-24).** Teleop chỉ lái tay và đầu, nên eo tự do
+      là nhiễu lẫn vào chính phép đo đang cần làm. Điều kiện kèm theo: tay và
+      đầu phải chứng minh được trước; muốn cho teleop lái `waist_yaw` thì phải
+      bỏ IDL 13 khỏi danh sách khoá TRƯỚC. Ràng buộc này được `static_assert`
+      chặn lúc biên dịch chứ không dựa vào comment.
 
 ## 4. Quyền ghi khớp
 
