@@ -1,0 +1,405 @@
+#include "Tuning.hpp"
+
+#include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <filesystem>
+
+namespace {
+
+std::string Trim(const std::string& s) {
+    size_t a = s.find_first_not_of(" \t\r\n");
+    if (a == std::string::npos) return "";
+    size_t b = s.find_last_not_of(" \t\r\n");
+    return s.substr(a, b - a + 1);
+}
+
+bool ToBool(const std::string& v) {
+    std::string s = v;
+    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+    return (s == "true" || s == "1" || s == "yes" || s == "on");
+}
+
+} // namespace
+
+void Tuning::Apply(const std::string& key, const std::string& value, bool& known) {
+    known = true;
+    auto f = [&]() { return std::stof(value); };
+    auto i = [&]() { return std::stoi(value); };
+
+    if      (key == "network_interface")  network_interface = value;
+    else if (key == "dev_no_keyboard")    dev_no_keyboard = ToBool(value);
+    else if (key == "imu_gyro_lpf_hz")    imu_gyro_lpf_hz = f();
+    else if (key == "joint_vel_lpf_hz")   joint_vel_lpf_hz = f();
+    else if (key == "imu_pitch_trim_deg") imu_pitch_trim_deg = f();
+    else if (key == "imu_pitch_trim_affects_locomotion") imu_pitch_trim_affects_locomotion = ToBool(value);
+    else if (key == "imu_pitch_trim_affects_dance") imu_pitch_trim_affects_dance = ToBool(value);
+    else if (key == "stand_kp_leg")       stand_kp_leg = f();
+    else if (key == "stand_kp_waist")     stand_kp_waist = f();
+    else if (key == "stand_kp_arm")       stand_kp_arm = f();
+    else if (key == "stand_kd")           stand_kd = f();
+    else if (key == "policy_kp_scale")    policy_kp_scale = f();
+    else if (key == "policy_kd_scale")    policy_kd_scale = f();
+    else if (key == "slow_vx")            slow_vx = f();
+    else if (key == "slow_vy")            slow_vy = f();
+    else if (key == "slow_yaw")           slow_yaw = f();
+    else if (key == "slow_vx_back")       slow_vx_back = f();
+    else if (key == "fast_vx")            fast_vx = f();
+    else if (key == "fast_vy")            fast_vy = f();
+    else if (key == "fast_yaw")           fast_yaw = f();
+    else if (key == "fast_vx_back")       fast_vx_back = f();
+    else if (key == "cmd_accel_vx")       cmd_accel_vx = f();
+    else if (key == "cmd_accel_vy")       cmd_accel_vy = f();
+    else if (key == "cmd_accel_yaw")      cmd_accel_yaw = f();
+    else if (key == "cmd_decel_vx")       cmd_decel_vx = f();
+    else if (key == "cmd_decel_vy")       cmd_decel_vy = f();
+    else if (key == "cmd_decel_yaw")      cmd_decel_yaw = f();
+    else if (key == "heading_hold_enabled")      heading_hold_enabled = ToBool(value);
+    else if (key == "heading_hold_kp")           heading_hold_kp = f();
+    else if (key == "heading_hold_max_yaw")      heading_hold_max_yaw = f();
+    else if (key == "heading_hold_move_min")     heading_hold_move_min = f();
+    else if (key == "heading_hold_relatch_gyro") heading_hold_relatch_gyro = f();
+    else if (key == "stand_up_time_s")    stand_up_time_s = f();
+    else if (key == "blend_time_s")       blend_time_s = f();
+    else if (key == "stand_rate_limit")   stand_rate_limit = f();
+    else if (key == "lock_rate_limit")    lock_rate_limit = f();
+    else if (key == "return_rate_limit")  return_rate_limit = f();
+    else if (key == "stand_lock_spread")  stand_lock_spread = f();
+    else if (key == "return_pos_tol")     return_pos_tol = f();
+    else if (key == "settle_time_s")      settle_time_s = f();
+    else if (key == "settle_gyro_max")    settle_gyro_max = f();
+    else if (key == "policy_rate_limit")  policy_rate_limit = f();
+    else if (key == "fall_enabled")       fall_enabled = ToBool(value);
+    else if (key == "fall_tilt_deg")      fall_tilt_deg = f();
+    else if (key == "fall_flip_tilt_deg") fall_flip_tilt_deg = f();
+    else if (key == "fall_flip_gyro")     fall_flip_gyro = f();
+    else if (key == "fall_debounce_ms")   fall_debounce_ms = f();
+    else if (key == "joint_speed_guard_enabled") joint_speed_guard_enabled = ToBool(value);
+    else if (key == "joint_speed_limit")         joint_speed_limit = f();
+    else if (key == "joint_speed_debounce_ms")   joint_speed_debounce_ms = f();
+    else if (key == "sit_knee_deg")        sit_knee_deg = f();
+    else if (key == "sit_descent_time_s")  sit_descent_time_s = f();
+    else if (key == "sit_hold_s")          sit_hold_s = f();
+    else if (key == "sit_release_after")   sit_release_after = ToBool(value);
+    else if (key == "sit_kp_leg")          sit_kp_leg = f();
+    else if (key == "sit_kd")              sit_kd = f();
+    else if (key == "sit_rate_limit")      sit_rate_limit = f();
+    else if (key == "stand_lock_warn_s")   stand_lock_warn_s = f();
+    else if (key == "dance_abort_lock_block_s") dance_abort_lock_block_s = f();
+    else if (key == "stand_lock_sit_block_s")   stand_lock_sit_block_s = f();
+    else if (key == "sit_gather_time_s")   sit_gather_time_s = f();
+    else if (key == "getup_motion_file")     getup_motion_file = value;
+    else if (key == "liedown_motion_file")   liedown_motion_file = value;
+    else if (key == "getup_kp_leg")          getup_kp_leg = f();
+    else if (key == "getup_kp_waist")        getup_kp_waist = f();
+    else if (key == "getup_kp_arm")          getup_kp_arm = f();
+    else if (key == "getup_kd")              getup_kd = f();
+    else if (key == "getup_rate_limit")      getup_rate_limit = f();
+    else if (key == "liedown_rate_limit")    liedown_rate_limit = f();
+    else if (key == "getup_blend_time_s")    getup_blend_time_s = f();
+    else if (key == "liedown_blend_time_s")  liedown_blend_time_s = f();
+    else if (key == "getup_speed")           getup_speed = f();
+    else if (key == "liedown_speed")         liedown_speed = f();
+    else if (key == "getup_liedown_block_s") getup_liedown_block_s = f();
+    else if (key == "getup_ankle_gravity_gain") getup_ankle_gravity_gain = f();
+    else if (key == "lying_tilt_deg")        lying_tilt_deg = f();
+    else if (key == "voice_get_up")          voice_get_up = value;
+    else if (key == "voice_lie_down")        voice_lie_down = value;
+    else if (key == "sit_hip_deg")         sit_hip_deg = f();
+    else if (key == "sit_lean_deg")        sit_lean_deg = f();
+    else if (key == "sit_seated_lean_deg") sit_seated_lean_deg = f();
+    else if (key == "sit_arm_forward")     sit_arm_forward = f();
+    else if (key == "sit_arm_elbow")       sit_arm_elbow = f();
+    else if (key == "sit_seated_arm_pitch") sit_seated_arm_pitch = f();
+    else if (key == "sit_seated_arm_elbow") sit_seated_arm_elbow = f();
+    else if (key == "sit_spread")          sit_spread = f();
+    else if (key == "sit_rest_hip_deg")    sit_rest_hip_deg = f();
+    else if (key == "sit_rest_knee_deg")   sit_rest_knee_deg = f();
+    else if (key == "sit_rest_spread")     sit_rest_spread = f();
+    else if (key == "sit_rest_hip_yaw")    sit_rest_hip_yaw = f();
+    else if (key == "sit_ankle_gravity_gain") sit_ankle_gravity_gain = f();
+    else if (key == "sit_settle_time_s")   sit_settle_time_s = f();
+    else if (key == "safe_stop_enabled")   safe_stop_enabled = ToBool(value);
+    else if (key == "safe_stop_debounce_ms") safe_stop_debounce_ms = f();
+    else if (key == "arm_gate_enabled")        arm_gate_enabled = ToBool(value);
+    else if (key == "arm_require_button")      arm_require_button = ToBool(value);
+    else if (key == "arm_hold_s")              arm_hold_s = f();
+    else if (key == "arm_silence_ms")          arm_silence_ms = f();
+    else if (key == "arm_require_seen_builtin") arm_require_seen_builtin = ToBool(value);
+    else if (key == "arm_min_foreign_seen")    arm_min_foreign_seen = i();
+    else if (key == "arm_conflict_min")        arm_conflict_min = i();
+    else if (key == "arm_conflict_window_ms")  arm_conflict_window_ms = f();
+    else if (key == "arm_conflict_release")    arm_conflict_release = ToBool(value);
+    else if (key == "arm_no_builtin_timeout_s") arm_no_builtin_timeout_s = f();
+    else if (key == "battery_monitor_enabled") battery_monitor_enabled = ToBool(value);
+    else if (key == "battery_topic")           battery_topic = value;
+    else if (key == "battery_warn_pct")        battery_warn_pct = i();
+    else if (key == "battery_critical_pct")    battery_critical_pct = i();
+    else if (key == "battery_critical_action") battery_critical_action = value;
+    else if (key == "battery_announce_period_s") battery_announce_period_s = f();
+    else if (key == "battery_stale_s")         battery_stale_s = f();
+    else if (key == "voice_enabled")       voice_enabled = ToBool(value);
+    else if (key == "voice_volume")        voice_volume = f();
+    else if (key == "voice_speaker_id")    voice_speaker_id = i();
+    else if (key == "voice_startup")       voice_startup = value;
+    else if (key == "startup_voice_delay_s") startup_voice_delay_s = f();
+    else if (key == "voice_stand_lock")    voice_stand_lock = value;
+    else if (key == "voice_locomotion")    voice_locomotion = value;
+    else if (key == "voice_sit_down")      voice_sit_down = value;
+    else if (key == "voice_safe_stop")     voice_safe_stop = value;
+    else if (key == "voice_fast_speed")    voice_fast_speed = value;
+    else if (key == "voice_slow_speed")    voice_slow_speed = value;
+    else if (key == "voice_conflict")      voice_conflict = value;
+    else if (key == "voice_battery_low")      voice_battery_low = value;
+    else if (key == "voice_battery_critical") voice_battery_critical = value;
+    else if (key == "voice_zero_torque")      voice_zero_torque = value;
+    else if (key == "voice_teleop_on")        voice_teleop_on = value;
+    else if (key == "voice_teleop_off")       voice_teleop_off = value;
+    else if (key.size() > 12 && key.substr(0, 12) == "voice_mimic_") {
+        int idx = std::stoi(key.substr(12)) - 2; // voice_mimic_2 -> idx 0
+        if (idx >= 0 && idx < kMaxDances) voice_mimic[idx] = value;
+    }
+    else if (key == "hold_to_trigger_s")  hold_to_trigger_s = f();
+    else if (key == "gesture_enabled")        gesture_enabled = ToBool(value);
+    else if (key == "gesture_folder")         gesture_folder = value;
+    else if (key == "gesture_double_click_s") gesture_double_click_s = f();
+    else if (key == "gesture_blend_in_s")     gesture_blend_in_s = f();
+    else if (key == "gesture_retract_s")      gesture_retract_s = f();
+    else if (key == "gesture_safety_retract_s") gesture_safety_retract_s = f();
+    else if (key == "gesture_balance_kg")     gesture_balance_kg = f();
+    else if (key == "gesture_balance_kv")     gesture_balance_kv = f();
+    else if (key == "gesture_guard_tilt")     gesture_guard_tilt = f();
+    else if (key == "gesture_guard_gyro")     gesture_guard_gyro = f();
+    else if (key == "gesture_demo_wave")      gesture_demo_wave = ToBool(value);
+    else if (key == "gesture_head_yaw_max") gesture_head_yaw_max = f();
+    else if (key == "gesture_head_pitch_max") gesture_head_pitch_max = f();
+    else if (key == "gesture_head_rate_limit_rad_s") gesture_head_rate_limit_rad_s = f();
+    else if (key == "gesture_voice_name")     gesture_voice_name = value;
+    else if (key == "gesture_voice_marker")   gesture_voice_marker = value;
+    else if (key == "gesture_voice_stale_s")  gesture_voice_stale_s = f();
+    else if (key == "gesture_voice_auto_start") gesture_voice_auto_start = ToBool(value);
+    else if (key == "gesture_voice_speed") gesture_voice_speed = f();
+    else if (key == "gesture_voice_move_threshold") gesture_voice_move_threshold = f();
+    else if (key == "gesture_voice_resume_threshold") gesture_voice_resume_threshold = f();
+    else if (key == "gesture_voice_resume_delay_s") gesture_voice_resume_delay_s = f();
+    else if (key.size() == 20 && key.substr(0, 19) == "gesture_slot_speed_") {
+        int idx = key[19] - '1'; // gesture_slot_speed_1 -> 0
+        if (idx >= 0 && idx < 8) gesture_slot_speed[idx] = f();
+        else known = false;
+    }
+    else if (key.size() == 20 && key.substr(0, 19) == "gesture_slot_blend_") {
+        int idx = key[19] - '1'; // gesture_slot_blend_1 -> 0
+        if (idx >= 0 && idx < 8) gesture_slot_blend[idx] = f();
+        else known = false;
+    }
+    else if (key.size() == 22 && key.substr(0, 21) == "gesture_slot_retract_") {
+        int idx = key[21] - '1'; // gesture_slot_retract_1 -> 0
+        if (idx >= 0 && idx < 8) gesture_slot_retract[idx] = f();
+        else known = false;
+    }
+    else if (key.size() == 14 && key.substr(0, 13) == "gesture_slot_") {
+        int idx = key[13] - '1'; // gesture_slot_1 -> 0
+        if (idx >= 0 && idx < 8) gesture_slot[idx] = value;
+    }
+    else if (key == "teleop_enabled")         teleop_enabled = ToBool(value);
+    else if (key == "teleop_udp_port")        teleop_udp_port = i();
+    else if (key == "teleop_timeout_ms")      teleop_timeout_ms = f();
+    else if (key == "teleop_blend_in_s")      teleop_blend_in_s = f();
+    else if (key == "teleop_retract_s")       teleop_retract_s = f();
+    else if (key == "teleop_smooth_hz")       teleop_smooth_hz = f();
+    else if (key == "teleop_head_yaw_max")    teleop_head_yaw_max = f();
+    else if (key == "teleop_head_pitch_max")  teleop_head_pitch_max = f();
+    else if (key == "teleop_arm_kp")           teleop_arm_kp = f();
+    else if (key == "teleop_arm_kd")           teleop_arm_kd = f();
+    else if (key == "teleop_max_rate_rad_s")   teleop_max_rate_rad_s = f();
+    else if (key == "teleop_lock_others_enabled") teleop_lock_others_enabled = ToBool(value);
+    else if (key == "teleop_lock_kp")          teleop_lock_kp = f();
+    else if (key == "teleop_lock_kd")          teleop_lock_kd = f();
+    else if (key == "teleop_lock_max_rate_rad_s") teleop_lock_max_rate_rad_s = f();
+    else if (key == "teleop_toggle_hold_s")   teleop_toggle_hold_s = f();
+    else if (key == "state_timeout_ms")   state_timeout_ms = f();
+    else if (key == "remote_timeout_ms")  remote_timeout_ms = f();
+    else if (key == "remote_recover_ms")  remote_recover_ms = f();
+    else if (key == "remote_require_neutral") remote_require_neutral = ToBool(value);
+    else if (key == "x11_release_ms")     x11_release_ms = f();
+    else if (key == "dance_start_frame")  dance_start_frame = i();
+    else if (key == "dance_start_search_frames") dance_start_search_frames = i();
+    else if (key == "mimic_announce_delay_s") mimic_announce_delay_s = f();
+    else if (key == "mimic_announce_min_s")   mimic_announce_min_s = f();
+    else if (key == "mimic_announce_timeout_s") mimic_announce_timeout_s = f();
+    else if (key == "mimic_warmup_s")     mimic_warmup_s = f();
+    else if (key == "mimic_cooldown_s")   mimic_cooldown_s = f();
+    else if (key == "mimic_handover_tilt")  mimic_handover_tilt = f();
+    else if (key == "mimic_handover_gyro")  mimic_handover_gyro = f();
+    else if (key == "mimic_handover_min_s") mimic_handover_min_s = f();
+    else if (key == "mimic_handover_max_s") mimic_handover_max_s = f();
+    else if (key == "mimic_telemetry_enabled") mimic_telemetry_enabled = ToBool(value);
+    else if (key == "mimic_telemetry_hz")      mimic_telemetry_hz = i();
+    else if (key == "mimic_telemetry_post_s")  mimic_telemetry_post_s = f();
+    else if (key == "mimic_telemetry_dir")     mimic_telemetry_dir = value;
+    else if (key == "flat_policy_contract") flat_policy_contract = value;
+    else if (key == "flat_model")         flat_model = value;
+    else if (key == "unified_stationary_cmd_threshold") unified_stationary_cmd_threshold = f();
+    else if (key == "unified_stationary_hold_s") unified_stationary_hold_s = f();
+    else if (key == "unified_arm_ref_max_vel_rad_s") unified_arm_ref_max_vel_rad_s = f();
+    else if (key == "unified_arm_ref_max_acc_rad_s2") unified_arm_ref_max_acc_rad_s2 = f();
+    else if (key.size() > 12 && key.substr(0, 12) == "dance_speed_") {
+        int idx = std::stoi(key.substr(12)) - 2;
+        if (idx >= 0 && idx < kMaxDances) dance_speed[idx] = f();
+    }
+    else if (key.size() > 13 && key.substr(0, 13) == "dance_volume_") {
+        int idx = std::stoi(key.substr(13)) - 2;
+        if (idx >= 0 && idx < kMaxDances) dance_volume[idx] = f();
+    }
+    else if (key.size() > 15 && key.substr(0, 15) == "dance_trim_deg_") {
+        int idx = std::stoi(key.substr(15)) - 2;
+        if (idx >= 0 && idx < kMaxDances) {
+            dance_trim_deg[idx] = f();
+            dance_trim_configured[idx] = true;
+        }
+    }
+    // Parse dance_N folder name
+    else if (key.size() > 6 && key.substr(0, 6) == "dance_" &&
+             key.find_first_not_of("0123456789", 6) == std::string::npos) {
+        int idx = std::stoi(key.substr(6)) - 2;
+        if (idx >= 0 && idx < kMaxDances) dance_folder[idx] = value;
+    }
+    else if (key == "head_yaw_kp")        head_yaw_kp = f();
+    else if (key == "head_yaw_kd")        head_yaw_kd = f();
+    else if (key == "head_pitch_kp")      head_pitch_kp = f();
+    else if (key == "head_pitch_kd")      head_pitch_kd = f();
+    else known = false;
+}
+
+bool Tuning::LoadFromFile(const std::string& path) {
+    std::set<std::string> loading;
+    return LoadFromFileImpl(path, loading) && Validate();
+}
+
+bool Tuning::Validate() const {
+    auto finite_in = [](float value, float lo, float hi) {
+        return std::isfinite(value) && value >= lo && value <= hi;
+    };
+    bool ok = true;
+    auto require = [&](bool condition, const char* message) {
+        if (!condition) {
+            std::cerr << "[Tuning] Invalid configuration: " << message << "\n";
+            ok = false;
+        }
+    };
+
+    require(!flat_model.empty(), "flat_model must not be empty");
+    require(flat_policy_contract == "legacy_83" ||
+                flat_policy_contract == "r1_unified_v10" ||
+                flat_policy_contract == "r1_unified_v11_teleop",
+            "flat_policy_contract must be legacy_83, r1_unified_v10, or r1_unified_v11_teleop");
+    require(finite_in(teleop_toggle_hold_s, 0.5f, 10.0f),
+            "teleop_toggle_hold_s must be finite and in [0.5, 10.0]");
+    require(finite_in(teleop_arm_kp, 1.0f, 60.0f),
+            "teleop_arm_kp must be finite and in [1.0, 60.0]");
+    require(finite_in(teleop_arm_kd, 0.1f, 5.0f),
+            "teleop_arm_kd must be finite and in [0.1, 5.0]");
+    require(finite_in(teleop_max_rate_rad_s, 0.05f, 0.50f),
+            "teleop_max_rate_rad_s must be finite and in [0.05, 0.50]");
+    // Trần trên cố tình thấp hơn kKpTrain của chân (100). Khoá giữ tư thế trên
+    // giá treo, không phải đỡ trọng lượng, nên một giá trị cao ở đây gần như
+    // chắc chắn là gõ nhầm chứ không phải chủ ý.
+    require(finite_in(teleop_lock_kp, 1.0f, 60.0f),
+            "teleop_lock_kp must be finite and in [1.0, 60.0]");
+    require(finite_in(teleop_lock_kd, 0.1f, 5.0f),
+            "teleop_lock_kd must be finite and in [0.1, 5.0]");
+    require(finite_in(teleop_lock_max_rate_rad_s, 0.02f, 0.50f),
+            "teleop_lock_max_rate_rad_s must be finite and in [0.02, 0.50]");
+    require(finite_in(unified_stationary_cmd_threshold, 0.0f, 0.5f),
+            "unified_stationary_cmd_threshold must be finite and in [0.0, 0.5]");
+    require(finite_in(unified_stationary_hold_s, 0.0f, 5.0f),
+            "unified_stationary_hold_s must be finite and in [0.0, 5.0]");
+    require(finite_in(unified_arm_ref_max_vel_rad_s, 0.05f, 4.0f),
+            "unified_arm_ref_max_vel_rad_s must be finite and in [0.05, 4.0]");
+    require(finite_in(unified_arm_ref_max_acc_rad_s2, 0.05f, 14.0f),
+            "unified_arm_ref_max_acc_rad_s2 must be finite and in [0.05, 14.0]");
+    require(finite_in(gesture_head_yaw_max, 0.05f, 1.5f),
+            "gesture_head_yaw_max must be finite and in [0.05, 1.5]");
+    require(finite_in(gesture_head_pitch_max, 0.05f, 1.0f),
+            "gesture_head_pitch_max must be finite and in [0.05, 1.0]");
+    require(finite_in(gesture_head_rate_limit_rad_s, 0.05f, 4.0f),
+            "gesture_head_rate_limit_rad_s must be finite and in [0.05, 4.0]");
+    return ok;
+}
+
+bool Tuning::LoadFromFileImpl(const std::string& path, std::set<std::string>& loading) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    fs::path resolved = fs::absolute(fs::path(path), ec).lexically_normal();
+    const std::string resolved_text = resolved.string();
+    if (!loading.insert(resolved_text).second) {
+        std::cerr << "[Tuning] Include cycle detected at " << resolved_text << "\n";
+        return false;
+    }
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cout << "[Tuning] Config file not found: " << path << " -> using defaults.\n";
+        loading.erase(resolved_text);
+        return false;
+    }
+
+    std::string line;
+    int line_no = 0, loaded = 0;
+    bool success = true;
+    while (std::getline(file, line)) {
+        ++line_no;
+        // Bỏ comment
+        size_t hash = line.find('#');
+        if (hash != std::string::npos) line = line.substr(0, hash);
+        line = Trim(line);
+        if (line.empty()) continue;
+
+        size_t colon = line.find(':');
+        if (colon == std::string::npos) {
+            std::cerr << "[Tuning] Line " << line_no << " missing ':' -> skip: " << line << "\n";
+            continue;
+        }
+        std::string key = Trim(line.substr(0, colon));
+        std::string value = Trim(line.substr(colon + 1));
+        // Bỏ ngoặc kép
+        if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
+            value = value.substr(1, value.size() - 2);
+
+        // Entry-point config có thể tách thành nhiều file phẳng theo nhóm:
+        //   include: locomotion.yaml
+        // Đường dẫn tương đối với file đang đọc; thứ tự include quyết định override.
+        if (key == "include") {
+            if (value.empty()) {
+                std::cerr << "[Tuning] Empty include on line " << line_no << " in " << path << "\n";
+                success = false;
+                continue;
+            }
+            fs::path include_path(value);
+            if (include_path.is_relative()) include_path = fs::path(path).parent_path() / include_path;
+            std::cout << "[Tuning] Include " << include_path.string() << "\n";
+            if (!LoadFromFileImpl(include_path.lexically_normal().string(), loading)) success = false;
+            continue;
+        }
+
+        bool known = false;
+        try {
+            Apply(key, value, known);
+        } catch (const std::exception& e) {
+            std::cerr << "[Tuning] Parse error on line " << line_no << " ('" << key
+                      << ": " << value << "'): " << e.what() << "\n";
+            continue;
+        }
+        if (!known) {
+            std::cerr << "[Tuning] Unknown key: '" << key << "'\n";
+        } else {
+            ++loaded;
+        }
+    }
+    std::cout << "[Tuning] Loaded " << loaded << " parameters from " << path << "\n";
+    if (policy_kp_scale != 1.0f || policy_kd_scale != 1.0f) {
+        std::cout << "[Tuning] Warning: policy gains scaled (KP=" << policy_kp_scale << ", KD=" << policy_kd_scale << ")\n";
+    }
+    loading.erase(resolved_text);
+    return success;
+}

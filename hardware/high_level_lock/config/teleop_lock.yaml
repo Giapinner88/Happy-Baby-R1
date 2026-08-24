@@ -1,0 +1,37 @@
+# Profile cô lập: teleop tay/đầu với MỌI khớp khác bị khoá cứng.
+#
+# Được `tuning.yaml` include ở cuối, nên các khoá dưới đây ghi đè giá trị phía
+# trên. Chỉ đặt những gì khác với bản gốc; phần còn lại giữ nguyên để bản cô
+# lập không âm thầm lệch khỏi cấu hình đang chạy thật.
+#
+# CHƯA ĐƯỢC HARDWARE GATE DUYỆT. Chỉ dùng khi robot treo/cố định trên giá và có
+# người giữ E-stop.
+
+# --- Khoá cứng khớp ngoài teleop -------------------------------------------
+# Bản gốc để chân (IDL 0-11) và eo (12-13) hoàn toàn limp trong ZERO TORQUE
+# teleop. Trên giá treo, chân đung đưa là nhiễu cơ khí lẫn thẳng vào phép đo
+# đang cần làm, nên ở đây chúng được giữ tại encoder chốt lúc bóp cò.
+#
+# Bật khoá là bắt đầu cấp dòng cho chân. Không bật khi robot đứng trên sàn:
+# khoá giữ tư thế, nó KHÔNG đỡ trọng lượng.
+teleop_lock_others_enabled: true
+teleop_lock_kp: 20.0
+teleop_lock_kd: 3.0
+teleop_lock_max_rate_rad_s: 0.20
+
+# --- Thu hẹp về đúng phạm vi thí nghiệm ------------------------------------
+# Pilot này chỉ đo teleop tay/đầu. Mọi thứ khác tắt để không có gì khác chạm
+# vào rt/lowcmd trong lúc đo.
+gesture_enabled: false
+voice_enabled: false
+battery_monitor_enabled: false
+
+# --- Giới hạn đầu theo asset ------------------------------------------------
+# head_pitch_joint của R1.urdf chỉ tới +-0.62832 rad; 0.9 ở tuning gốc vượt
+# giới hạn cơ khí.
+teleop_head_pitch_max: 0.62
+teleop_head_yaw_max: 1.0
+
+# Trần slew của sole owner. Giữ bằng bản gốc để phần khác biệt duy nhất giữa
+# hai bản là chuyện khoá khớp.
+teleop_max_rate_rad_s: 0.30

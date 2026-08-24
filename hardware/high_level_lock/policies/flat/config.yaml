@@ -1,0 +1,6 @@
+name: "Flat"
+type: "flat"
+model: "policy_r1_flat_2.onnx"
+key: 1
+input_size: 83
+notes: "Flat walking policy. W/S/A/D/Q/E to control."
