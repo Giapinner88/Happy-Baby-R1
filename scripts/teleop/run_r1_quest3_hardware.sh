@@ -22,6 +22,11 @@ if [[ "${CONFIRM_SUSPENDED_WITH_ESTOP:-0}" != "1" ]]; then
     fi
 fi
 
+# Chuẩn hoá dáng robot về nominal của sim ngay sau khi bóp cò, trước khi teleop
+# bám tay. Mặc định BẬT: đường phần cứng là phiên tương đối nên không có bước
+# này thì robot giữ nguyên tư thế tay đang buông và không bao giờ tương ứng với
+# sim. HB_TELEOP_HOME=0 để bỏ qua.
+HB_TELEOP_HOME="${HB_TELEOP_HOME:-1}"
 HB_TELEOP_SOLVER="${HB_TELEOP_SOLVER:-upstream}"
 case "$HB_TELEOP_SOLVER" in
     upstream|coupled) ;;
@@ -91,6 +96,13 @@ echo "[READY] Frame đầu tiên khi bóp cò phải được chốt làm source
 echo "[READY] Giữ cò phải để điều khiển; nhả cò để receiver watchdog release và dừng."
 echo "[READY] Evidence local: $RUN_DIR"
 echo "[READY] Solver: $HB_TELEOP_SOLVER"
+if [[ "$HB_TELEOP_HOME" == "1" ]]; then
+    echo "[READY] Homing BẬT: sau khi bóp cò, robot TỰ gập khuỷu về nominal rồi mới bám tay bạn."
+    echo "[READY] Chỉ CẲNG TAY đi: từ buông thõng lên ngang, hướng ra trước, quét quanh khuỷu ~0.16m."
+    echo "[READY] Cánh tay trên và vai gần như không đổi. Kiểm chỗ trống trước hai cẳng tay."
+else
+    echo "[READY] Homing TẮT: robot giữ nguyên tư thế hiện tại làm mốc."
+fi
 
 conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --host-ip "$HOST_IP" \
@@ -114,5 +126,5 @@ conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --control-hz 10 \
     $([[ "$HB_TELEOP_SOLVER" == "upstream" ]] && echo --upstream-joint-stream || echo --coupled-ik) \
 | ssh -o BatchMode=yes "$ROBOT" \
-    "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad 0.15 --log-dir /home/unitree/HB/teleop/logs" \
+    "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad 0.15 $([[ "$HB_TELEOP_HOME" == "1" ]] && echo --home-to-nominal) --log-dir /home/unitree/HB/teleop/logs" \
 | tee "$RUN_DIR/robot_receiver.log"

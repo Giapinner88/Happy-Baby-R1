@@ -53,6 +53,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-timeout-s", type=float, default=0.20)
     parser.add_argument("--send-hz", type=float, default=100.0)
     parser.add_argument("--max-offset-rad", type=float, default=0.15)
+    parser.add_argument(
+        "--home-to-nominal", action="store_true",
+        help="Ramp arms/head to the nominal pose before teleop, then anchor there.",
+    )
+    parser.add_argument(
+        "--home-pose-rad", type=float, nargs=12, default=None,
+        help="Home pose in wire order; default is the arms_head sim nominal (all zeros).",
+    )
+    parser.add_argument("--home-rate-rad-s", type=float, default=0.15)
+    parser.add_argument("--home-timeout-s", type=float, default=45.0)
+    parser.add_argument("--home-tolerance-rad", type=float, default=0.02)
     parser.add_argument("--head-yaw-max-rad", type=float, default=0.60)
     parser.add_argument("--head-pitch-max-rad", type=float, default=0.35)
     parser.add_argument("--expected-mode-machine", type=int, default=1)
@@ -81,6 +92,23 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--head-yaw-max-rad must be in [0.05, 1.0]")
     if not 0.05 <= args.head_pitch_max_rad <= 0.6:
         raise SystemExit("--head-pitch-max-rad must be in [0.05, 0.6]")
+    if args.home_to_nominal:
+        # Chậm hơn hẳn trần teleop: robot đang tự đi chứ không bám theo người,
+        # nên tốc độ phải là tốc độ nhìn thấy kịp và nhả cò kịp.
+        if not 0.02 <= args.home_rate_rad_s <= 0.30:
+            raise SystemExit("--home-rate-rad-s must be in [0.02, 0.30]")
+        if not 5.0 <= args.home_timeout_s <= 120.0:
+            raise SystemExit("--home-timeout-s must be in [5.0, 120.0]")
+        if not 0.005 <= args.home_tolerance_rad <= 0.10:
+            raise SystemExit("--home-tolerance-rad must be in [0.005, 0.10]")
+        pose = args.home_pose_rad if args.home_pose_rad is not None else [0.0] * len(JOINT_NAMES)
+        if len(pose) != len(JOINT_NAMES) or not all(math.isfinite(v) for v in pose):
+            raise SystemExit("--home-pose-rad must be 12 finite values")
+        # Không có URDF ở phía robot, nên chặn bằng một biên thô: tư thế home là
+        # một hằng số đã biết, không phải luồng, nên cái này chỉ để bắt lỗi gõ.
+        if max(abs(v) for v in pose) > 1.6:
+            raise SystemExit("--home-pose-rad outside +-1.6 rad; refusing")
+        args.home_pose_rad = list(pose)
 
 
 def parse_target(
@@ -162,6 +190,26 @@ def constrain_absolute_target(
     ]
     was_clamped = any(abs(raw - safe) > 1e-12 for raw, safe in zip(target, bounded))
     return bounded, worst_index, worst_offset, was_clamped
+
+
+def ramp_toward(current: list[float], goal: list[float], max_step: float) -> list[float]:
+    """One rate-limited step from `current` toward `goal`.
+
+    The homing move is generated here rather than streamed in, which is what
+    keeps the teleop envelope out of it: the target is one named pose and the
+    only freedom is how fast it is approached. Nothing a producer sends can
+    widen it.
+    """
+
+    stepped = []
+    for now, want in zip(current, goal):
+        delta = want - now
+        if delta > max_step:
+            delta = max_step
+        elif delta < -max_step:
+            delta = -max_step
+        stepped.append(now + delta)
+    return stepped
 
 
 def stdin_reader(lines: "queue.Queue[str | None]") -> None:
@@ -312,19 +360,134 @@ def main(argv: list[str] | None = None) -> int:
                 f"limit is {args.max_offset_rad:.3f} rad"
             )
             return 3
-    metadata.update(
-        joint_names=selected_names,
-        motor_indices=selected_motor_indices,
-        head_valid=head_valid,
-        target_mode=target_mode,
-    )
-    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    # Mở transport và các mốc watchdog TRƯỚC pha homing: homing cũng gửi gói và
+    # cũng phải chịu đúng những watchdog đó, không phải một đường vòng.
     latest_state = state
     last_state_at = time.monotonic()
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client.connect((args.udp_host, args.udp_port))
     status = "completed"
     stop_reason = "duration_elapsed"
+
+    # --- Pha homing ---------------------------------------------------------
+    # Đường phần cứng là phiên tương đối: target = start_q + lệch, chặn ở
+    # +-max_offset_rad. Robot vì thế giữ nguyên chỗ tay đang buông và không bao
+    # giờ tự về được tư thế nominal của sim -- khuỷu treo tự do lệch tới 78 độ,
+    # gấp chín lần envelope. Không chuẩn hoá thì dáng robot và dáng người vận
+    # hành không tương ứng, và evidence phần cứng không so được với sim.
+    #
+    # Chuyển động thực tế là GẬP KHUỶU: khuỷu và cánh tay trên gần như đứng yên,
+    # chỉ cẳng tay đi từ buông thõng lên ngang hướng ra trước. Giá trị khớp elbow
+    # giảm (1.36 -> 0) nên đọc số dễ tưởng là duỗi, nhưng zero của khớp chính là
+    # vị trí cẳng tay ngang, còn góc dương là cẳng tay buông xuống. Gọi sai tên
+    # thì người vận hành dọn nhầm chỗ trống -- cho cả cánh tay quét từ vai thay
+    # vì cẳng tay quét quanh khuỷu.
+    #
+    # Homing phải nằm TRONG phiên này chứ không thể là một tool riêng chạy trước:
+    # owner nhả về ZERO TORQUE sau teleop_timeout_ms khi ngừng nhận gói, nên tay
+    # vừa gập xong sẽ limp và rơi lại trước khi teleop kịp tiếp quản.
+    home_report: dict[str, object] | None = None
+    if args.home_to_nominal:
+        goal = list(args.home_pose_rad)
+        if not head_valid:
+            goal = goal[: len(ARM_MOTOR_INDICES)]
+        commanded = list(start_q)
+        step = args.home_rate_rad_s / args.send_hz
+        period = 1.0 / args.send_hz
+        started = time.monotonic()
+        worst = max(abs(g - s) for g, s in zip(goal, start_q))
+        print(
+            f"[HOME] đưa {len(goal)} khớp về tư thế nominal, lệch lớn nhất {worst:.3f} rad, "
+            f"{args.home_rate_rad_s:.2f} rad/s -> khoảng {worst / args.home_rate_rad_s:.1f}s. "
+            "GIỮ NGUYÊN cò; robot đang tự đi, chưa bám theo tay."
+        )
+        while True:
+            loop_start = time.monotonic()
+            # Vẫn phải rút stdin: producer bơm đều, không đọc thì đầy pipe và nó
+            # chặn. Giữ mẫu mới nhất để chốt lại source_zero khi homing xong.
+            while True:
+                try:
+                    line = lines.get_nowait()
+                except queue.Empty:
+                    break
+                if line is None:
+                    input_closed = True
+                    break
+                parsed = parse_target(line, upstream_sequence)
+                if parsed is not None:
+                    upstream_sequence, latest_source, head_valid, target_mode = parsed
+                    last_input_at = time.monotonic()
+            if input_closed or time.monotonic() - last_input_at > args.input_timeout_s:
+                # Nhả cò giữa chừng homing là hủy: không giữ tay ở lưng chừng.
+                stop_reason = "home_aborted_input"
+                status = "aborted"
+                break
+            observed = subscriber.Read()
+            if observed is not None:
+                latest_state = observed
+                last_state_at = time.monotonic()
+            if time.monotonic() - last_state_at > args.state_timeout_s:
+                stop_reason = "home_aborted_lowstate"
+                status = "failed"
+                break
+            if int(latest_state.mode_machine) != args.expected_mode_machine:
+                stop_reason = "home_aborted_mode_machine"
+                status = "failed"
+                break
+            commanded = ramp_toward(commanded, goal, step)
+            local_sequence = next_sequence(local_sequence)
+            client.send(encode_target(local_sequence, commanded, head_valid))
+            error = max(abs(g - c) for g, c in zip(goal, commanded))
+            if error <= args.home_tolerance_rad:
+                home_report = {
+                    "reached": True,
+                    "elapsed_s": time.monotonic() - started,
+                    "initial_worst_error_rad": worst,
+                    "final_worst_error_rad": error,
+                }
+                print(f"[HOME] tới nơi sau {home_report['elapsed_s']:.1f}s; chốt lại mốc phiên tại đây.")
+                break
+            if time.monotonic() - started > args.home_timeout_s:
+                home_report = {
+                    "reached": False,
+                    "elapsed_s": time.monotonic() - started,
+                    "initial_worst_error_rad": worst,
+                    "final_worst_error_rad": error,
+                }
+                stop_reason = "home_timeout"
+                status = "failed"
+                print(f"[SAFE] homing quá {args.home_timeout_s:.0f}s, còn lệch {error:.3f} rad; dừng.")
+                break
+            remaining = period - (time.monotonic() - loop_start)
+            if remaining > 0:
+                time.sleep(remaining)
+
+        if home_report is None or not home_report.get("reached"):
+            metadata.update(status=status, stop_reason=stop_reason, home=home_report)
+            metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+            try:
+                client.send(encode_stop(next_sequence(local_sequence)))
+            except OSError:
+                pass
+            client.close()
+            print("[SAFE] homing không hoàn tất; không vào teleop.")
+            return 3
+
+        # Chốt lại CẢ HAI mốc. start_q là tư thế vừa tới; source_zero là mẫu Quest
+        # mới nhất, nếu không thì mọi chuyển động tay trong lúc homing sẽ bị tính
+        # thành lệch và robot giật ngay khi teleop bắt đầu.
+        start_q = list(commanded)
+        assert latest_source is not None
+        source_zero = latest_source.copy()
+
+    metadata.update(
+        joint_names=selected_names,
+        motor_indices=selected_motor_indices,
+        head_valid=head_valid,
+        target_mode=target_mode,
+        home=home_report,
+    )
+    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     started_at = time.monotonic()
     period = 1.0 / args.send_hz
     sample_index = 0

@@ -142,10 +142,22 @@ Mặc định là bộ giải vendor, tay + đầu. Đường cũ: thêm `HB_TEL
 4. Đầu robot phải gần thẳng: sidecar từ chối khởi động nếu `|yaw| > 0.60` hoặc
    `|pitch| > 0.35` rad. Đầu đang limp thì nắn tay cho thẳng trước.
 5. Kiểm lần cuối: robot không còn chuyển động chuyển tiếp nào.
-6. **Giữ cò index bên phải.** Frame hợp lệ đầu tiên được chốt làm `source_zero`,
+6. **Giữ cò index bên phải.** Nếu homing đang bật (mặc định), robot **tự gập
+   khuỷu** đưa cẳng tay từ buông thõng lên ngang hướng ra trước, khoảng 9 giây
+   ở 0.15 rad/s, rồi mới bám theo tay bạn. **Giữ nguyên cò suốt lúc đó** — nhả
+   giữa chừng là hủy phiên, không để tay ở lưng chừng. Chỉ cẳng tay quét, quanh
+   khuỷu bán kính ~0.16 m; vai và cánh tay trên gần như đứng yên.
+   Frame hợp lệ đầu tiên được chốt làm `source_zero`,
    encoder tay/đầu hiện tại làm `start_q`. Mọi target sau đó là độ lệch giữa hai
    mốc. Với bản cô lập, chân và eo cũng bị chốt và khoá tại đúng thời điểm này.
-7. Di chuyển **chậm**.
+7. Homing xong, sidecar **chốt lại cả hai mốc**: `start_q` là tư thế vừa tới,
+   `source_zero` là mẫu Quest mới nhất. Nên tay bạn cử động trong lúc homing
+   không bị tính thành lệch.
+8. Di chuyển **chậm**.
+
+Tắt homing: `HB_TELEOP_HOME=0`. Khi tắt, robot giữ nguyên tư thế tay đang buông
+làm mốc và **sẽ không bao giờ giống dáng sim** — envelope ±0.15 rad chỉ cho
+dịch 8.6°/khớp, trong khi khuỷu treo tự do lệch tới 78°.
 
 Cò trái **không** dùng để điều khiển. Bấm cò trái giữa phiên thì pipeline dừng và
 phải chạy lại từ đầu để lập neutral mới.

@@ -132,8 +132,14 @@ def test_hardware_launcher_requires_active_high_level_owner() -> None:
         import pytest
         pytest.skip("workspace launcher is not part of the deployed robot package")
     source = launcher.read_text(encoding="utf-8")
-    assert 'systemctl is-active hb_high_level.service' in source
-    assert '= active' in source
+    # Điều kiện là ĐÚNG MỘT chủ rt/lowcmd đang giữ 5560, không phải "service
+    # active": bản cô lập high_level_lock chạy foreground và cố ý dừng service.
+    # Kiểm theo service sẽ chặn đúng một cấu hình hợp lệ, và bỏ lọt hai chủ cùng
+    # chạy -- đúng thứ D003 cấm.
+    assert "pgrep -x run_r1" in source
+    assert "/proc/$p/exe" in source
+    assert '"$n" -gt 1' in source
+    assert 'hb_teleop.service' in source
     assert 'ss -H -lun "sport = :5560"' in source
     assert "127.0.0.1:5560" in source
     assert "teleop.hardware.high_level_sidecar" in source
@@ -170,3 +176,68 @@ def test_high_level_is_the_only_lowcmd_owner_and_head_mapping_matches_vendor() -
     spec = (high_level / "config/RobotSpec.hpp").read_text(encoding="utf-8")
     assert "kHeadPitchIdl = 29" in spec
     assert "kHeadYawIdl   = 30" in spec
+
+
+def test_homing_ramp_is_rate_limited_and_converges() -> None:
+    """Bước homing bị chặn tốc độ và tới đúng tư thế đã nêu tên.
+
+    Chuyển động lớn nhất trên robot thật là khớp elbow, 1.36 rad. Ở đây kiểm
+    đúng khoảng đó: từng bước không được vượt trần, và chuỗi bước phải hội tụ
+    chứ không dao động quanh đích.
+    """
+
+    sidecar = _sidecar()
+    goal = [0.0] * 12
+    current = [0.0] * 3 + [1.36] + [0.0] * 8
+    step = 0.15 / 100.0            # home_rate_rad_s / send_hz
+    previous = list(current)
+    for _ in range(2000):
+        current = sidecar.ramp_toward(current, goal, step)
+        assert max(abs(a - b) for a, b in zip(current, previous)) <= step + 1e-12
+        previous = list(current)
+        if max(abs(g - c) for g, c in zip(goal, current)) <= 0.02:
+            break
+    else:
+        raise AssertionError("homing ramp did not converge")
+    # 1.36 rad ở 0.15 rad/s là khoảng 9 giây; số bước phải nằm quanh đó.
+    assert max(abs(g - c) for g, c in zip(goal, current)) <= 0.02
+
+
+def test_homing_ramp_never_overshoots_the_named_pose() -> None:
+    sidecar = _sidecar()
+    goal = [0.5] * 12
+    current = [0.0] * 12
+    for _ in range(1000):
+        current = sidecar.ramp_toward(current, goal, 0.1)
+        assert all(c <= g + 1e-12 for c, g in zip(current, goal))
+    assert all(abs(c - g) < 1e-9 for c, g in zip(current, goal))
+
+
+def test_homing_arguments_are_bounded() -> None:
+    """Tốc độ homing phải chậm hơn teleop và tư thế home không nhận số lạ."""
+
+    import pytest
+
+    sidecar = _sidecar()
+    base = [
+        "--confirm-suspended-with-estop", "--confirm-dev-mode",
+        "--home-to-nominal",
+    ]
+    import os
+
+    os.environ["HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP"] = "1"
+    parser = sidecar.build_parser()
+
+    ok = parser.parse_args(base)
+    sidecar.validate_args(ok)
+    assert ok.home_pose_rad == [0.0] * 12          # nominal arms_head của sim
+    assert ok.home_rate_rad_s <= 0.30              # không nhanh hơn trần teleop
+
+    for extra in (
+        ["--home-rate-rad-s", "0.9"],
+        ["--home-pose-rad", *(["0.0"] * 11), "2.0"],
+        ["--home-timeout-s", "1"],
+    ):
+        with pytest.raises(SystemExit):
+            sidecar.validate_args(parser.parse_args(base + extra))
+
