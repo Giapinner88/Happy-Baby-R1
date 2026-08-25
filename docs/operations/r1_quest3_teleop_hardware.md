@@ -25,14 +25,14 @@ Không đủ một trong các điều dưới đây thì không chạy.
 
 ## 2. Topology
 
-| Thành phần | Địa chỉ / interface |
-| --- | --- |
-| Workstation (Quest + IK) | `192.168.1.106`, `wlp77s0` |
-| Robot SSH | `unitree@192.168.1.104` |
-| DDS trên robot | `eth10` — `rt/lowstate`, `rt/lowcmd` |
-| UTL1 loopback | `127.0.0.1:5560` (chỉ loopback) |
-| Quest | cùng Wi-Fi `HappyBaby` |
-| Cert | `~/.config/xr_teleoperate/happybaby_192_168_1_106/` |
+| Thành phần             | Địa chỉ / interface                                |
+| ------------------------ | ----------------------------------------------------- |
+| Workstation (Quest + IK) | `192.168.1.106`, `wlp77s0`                        |
+| Robot SSH                | `unitree@192.168.1.104`                             |
+| DDS trên robot          | `eth10` — `rt/lowstate`, `rt/lowcmd`           |
+| UTL1 loopback            | `127.0.0.1:5560` (chỉ loopback)                    |
+| Quest                    | cùng Wi-Fi`HappyBaby`                              |
+| Cert                     | `~/.config/xr_teleoperate/happybaby_192_168_1_106/` |
 
 ## 3. Đường ống
 
@@ -155,19 +155,19 @@ Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, c
 
 ## 7. Giới hạn đang áp
 
-| Chặn ở đâu | Giá trị |
-| --- | --- |
-| Producer — vận tốc / gia tốc khớp | 0.5 rad/s, 1.0 rad/s² |
-| Producer — giới hạn khớp | theo asset `R1.urdf` |
-| Producer — nhịp phát | 10 Hz |
-| Sidecar — envelope mỗi khớp so với `source_zero` | ±0.15 rad |
-| Sidecar — watchdog lệnh vào / `rt/lowstate` | 0.75 s / 0.20 s |
-| Sidecar — nhịp gửi UTL1 | 100 Hz |
-| Owner — slew | 0.30 rad/s |
-| Owner — PD tay | kp 40, kd 2 |
-| Owner — giới hạn đầu | yaw 1.0 rad, pitch 0.62 rad |
-| Owner — timeout UTL1 | 300 ms |
-| Bản cô lập — khoá chân/eo | kp 20, kd 3, slew 0.20 rad/s |
+| Chặn ở đâu                                        | Giá trị                    |
+| ----------------------------------------------------- | ---------------------------- |
+| Producer — vận tốc / gia tốc khớp                | 0.5 rad/s, 1.0 rad/s²       |
+| Producer — giới hạn khớp                          | theo asset`R1.urdf`        |
+| Producer — nhịp phát                               | 10 Hz                        |
+| Sidecar — envelope mỗi khớp so với`source_zero` | ±0.15 rad                   |
+| Sidecar — watchdog lệnh vào /`rt/lowstate`       | 0.75 s / 0.20 s              |
+| Sidecar — nhịp gửi UTL1                            | 100 Hz                       |
+| Owner — slew                                         | 0.30 rad/s                   |
+| Owner — PD tay                                       | kp 40, kd 2                  |
+| Owner — giới hạn đầu                             | yaw 1.0 rad, pitch 0.62 rad  |
+| Owner — timeout UTL1                                 | 300 ms                       |
+| Bản cô lập — khoá chân/eo                       | kp 20, kd 3, slew 0.20 rad/s |
 
 Không nới bất kỳ giá trị nào trong bảng này mà chưa qua hardware gate.
 
@@ -207,6 +207,11 @@ Không được còn `high_level_sidecar`. `hb_high_level` phải active. Chân/
 - `CHAN: built-in chua im du ...ms` → built-in còn đang phát; nhả rồi thử lại.
 
 Dòng `[kDisarmed]` in đúng 1 giây một lần — đó là nhịp thiết kế, không phải treo.
+
+**`make teleop-hardware` thoát ngay với `Error 1` sau khi check_vuer xanh.** Đọc
+dòng `[FAIL]` ngay trên nó. Bước kiểm điều kiện đòi **đúng một** chủ `rt/lowcmd`
+đang chạy và giữ 5560 — không quan tâm đó là service hay bản cô lập foreground.
+Hai tiến trình `run_r1` cùng chạy cũng bị chặn ở đây (vi phạm D003).
 
 **`[SAFE] no valid target`** — sidecar không nhận được line hợp lệ nào. Hầu như
 luôn là sai thứ tự tên khớp hoặc sai định dạng; kiểm producer có phát

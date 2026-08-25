@@ -46,8 +46,41 @@ HB_TELEOP_HOST_IP="$HOST_IP" \
 HB_TELEOP_CERT_FILE="$CERT_FILE" \
 HB_TELEOP_KEY_FILE="$KEY_FILE" \
     ./hardware/teleop/scripts/check_vuer.sh
-ssh -o BatchMode=yes "$ROBOT" \
-    'test "$(systemctl is-active hb_high_level.service 2>/dev/null || true)" = active && test "$(systemctl is-active hb_teleop.service 2>/dev/null || true)" != active && ss -H -lun "sport = :5560" | grep -q "127.0.0.1:5560"'
+# Điều kiện thật là "có ĐÚNG MỘT chủ rt/lowcmd và nó đang giữ 5560", chứ không
+# phải "service đang active". Bản cô lập high_level_lock chạy foreground và cố ý
+# dừng service, nên kiểm theo service sẽ chặn đúng cấu hình hợp lệ. Đọc
+# /proc/PID/exe vì bản foreground được gọi bằng đường dẫn tương đối và không
+# match được theo command line.
+ssh -o BatchMode=yes "$ROBOT" '
+    set -e
+    owners=""
+    for p in $(pgrep -x run_r1 2>/dev/null || true); do
+        exe=$(readlink -f /proc/$p/exe 2>/dev/null || true)
+        [ -n "$exe" ] && owners="$owners$exe\n"
+    done
+    n=$(printf "%b" "$owners" | grep -c . || true)
+    if [ "$n" -eq 0 ]; then
+        echo "[FAIL] Khong co chu rt/lowcmd nao dang chay." >&2
+        echo "       Bat service:  sudo systemctl start hb_high_level" >&2
+        echo "       Hoac ban co lap:  cd ~/HB/high_level_lock && ./scripts/run_lock_foreground.sh" >&2
+        exit 1
+    fi
+    if [ "$n" -gt 1 ]; then
+        echo "[FAIL] Co $n tien trinh run_r1 cung chay -- vi pham D003:" >&2
+        printf "%b" "$owners" >&2
+        exit 1
+    fi
+    echo "[OK] Chu rt/lowcmd: $(printf "%b" "$owners" | tr -d "\n")"
+    if [ "$(systemctl is-active hb_teleop.service 2>/dev/null || true)" = active ]; then
+        echo "[FAIL] hb_teleop.service dang active; phai inactive." >&2
+        exit 1
+    fi
+    if ! ss -H -lun "sport = :5560" | grep -q "127.0.0.1:5560"; then
+        echo "[FAIL] Khong co listener UTL1 tren 127.0.0.1:5560." >&2
+        exit 1
+    fi
+    echo "[OK] UTL1 loopback 5560 dang lang nghe"
+'
 
 printf '%q ' "$0" "$@" >"$RUN_DIR/command.txt"
 printf '\n' >>"$RUN_DIR/command.txt"
