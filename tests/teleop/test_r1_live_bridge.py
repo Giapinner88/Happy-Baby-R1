@@ -38,6 +38,7 @@ from teleop.r1.mapping import R1TeleopTargets
 from teleop.r1.schema import BaseVelocity
 from scripts.teleop.quest_bridge import _deadman_pressed, _trigger_state
 from scripts.teleop.run_r1_quest3_live import (
+    _close_simulation_app_and_exit,
     _head_tracking_error,
     _load_replay_payloads,
     build_parser,
@@ -441,6 +442,20 @@ class EndToEndFailClosedTests(unittest.TestCase):
 
 
 class RunnerEvidenceTests(unittest.TestCase):
+    def test_runner_forces_process_exit_even_when_simulation_close_returns(self) -> None:
+        closed: list[bool] = []
+        exit_codes: list[int] = []
+        simulation_app = SimpleNamespace(close=lambda: closed.append(True))
+
+        _close_simulation_app_and_exit(
+            simulation_app,
+            timeout_s=0.1,
+            exit_fn=exit_codes.append,
+        )
+
+        self.assertEqual(closed, [True])
+        self.assertEqual(exit_codes, [0])
+
     def test_replay_loader_requires_strict_source_timing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "raw_commands.jsonl"

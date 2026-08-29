@@ -1,30 +1,35 @@
 # Happy Baby R1 — operator entry points.
 #
-# This file is a thin dispatcher: every target shells out to a script that is
-# already the documented entry point. It adds no logic of its own, so a target
-# and its underlying command can never disagree about what a run does.
+# This file is a thin dispatcher: every target shells out to a documented
+# entry point. It only validates required operator input and assembles the
+# corresponding command-line arguments.
 #
 #   make help              list every target
-#   make teleop            run the T007 coupled whole-upper-body Quest pilot
+#   make teleop HOST_IP=192.168.1.106
+#                          run the T007 coupled whole-upper-body Quest pilot
 #   make teleop-dry-run    show the allocated paths and commands, run nothing
 #
 # Override any variable on the command line, e.g.
-#   make teleop HOST_IP=10.42.0.5 DURATION_S=300
+#   make teleop HOST_IP=192.168.1.106 DURATION_S=300
 
 SHELL := /bin/bash
 PYTHON ?= python3
 
 # --- Teleop pilot -----------------------------------------------------------
-HOST_IP     ?= 192.168.1.106
+HOST_IP     ?=
+HOST_IP_TAG  = $(subst .,_,$(strip $(HOST_IP)))
 DURATION_S  ?= 180
 PHYSICS_HZ  ?= 200
 CONTROL_HZ  ?= 30
 VIDEO_FPS   ?= 10
-CERT_FILE   ?= $(HOME)/.config/xr_teleoperate/happybaby_192_168_1_106/cert.pem
-KEY_FILE    ?= $(HOME)/.config/xr_teleoperate/happybaby_192_168_1_106/key.pem
+DEVICE      ?= cuda:1
+CERT_FILE   ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/cert.pem
+KEY_FILE    ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/key.pem
 # arms_head | waist_yaw | full_upper_body. Empty keeps the profile's own value.
 BODY_MODE   ?=
-TELEOP_ARGS ?= --single-view
+# Temporary connectivity baseline for the current Wi-Fi. Override with
+# `TELEOP_ARGS=--single-view` after the live bridge has been verified.
+TELEOP_ARGS ?= --headless --no-video
 WHOLE_UPPER_BODY_CONFIG ?= experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json
 
 TELEOP_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
@@ -33,6 +38,7 @@ TELEOP_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
 	--physics-hz $(PHYSICS_HZ) \
 	--control-hz $(CONTROL_HZ) \
 	--video-fps $(VIDEO_FPS) \
+	--device $(DEVICE) \
 	--cert-file $(CERT_FILE) \
 	--key-file $(KEY_FILE) \
 	--whole-upper-body-config $(WHOLE_UPPER_BODY_CONFIG) \
@@ -45,13 +51,14 @@ TELEOP_UPSTREAM_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
 	--physics-hz $(PHYSICS_HZ) \
 	--control-hz $(CONTROL_HZ) \
 	--video-fps $(VIDEO_FPS) \
+	--device $(DEVICE) \
 	--cert-file $(CERT_FILE) \
 	--key-file $(KEY_FILE) \
 	--upstream-solver \
 	$(TELEOP_ARGS)
 
 .DEFAULT_GOAL := help
-.PHONY: help teleop teleop-arms teleop-dry-run teleop-head-only test-teleop \
+.PHONY: help check-teleop-network teleop teleop-arms teleop-dry-run teleop-head-only test-teleop \
 	teleop-hardware-prepare teleop-hardware teleop-upstream-solve teleop-upstream-stream \
 	teleop-arms-differential teleop-arms-dry-run
 
@@ -69,21 +76,27 @@ help:
 	@echo "  make teleop-hardware-prepare  preflight + copy only; never starts or arms robot"
 	@echo "  make teleop-hardware  foreground R1 arms/head; prompts for fixture/E-stop confirmation"
 	@echo ""
-	@echo "Variables: SOURCE_RUN UPSTREAM_PYTHON HOST_IP DURATION_S PHYSICS_HZ CONTROL_HZ VIDEO_FPS CERT_FILE KEY_FILE BODY_MODE TELEOP_ARGS WHOLE_UPPER_BODY_CONFIG"
+	@echo "Variables: SOURCE_RUN UPSTREAM_PYTHON HOST_IP DURATION_S PHYSICS_HZ CONTROL_HZ VIDEO_FPS DEVICE CERT_FILE KEY_FILE BODY_MODE TELEOP_ARGS WHOLE_UPPER_BODY_CONFIG"
 	@echo "BODY_MODE: arms_head (torso frozen) | waist_yaw (default) | full_upper_body (+waist roll)"
-	@echo "Example:   make teleop HOST_IP=10.42.0.5 BODY_MODE=arms_head"
+	@echo "Example:   make teleop HOST_IP=192.168.1.106 BODY_MODE=arms_head"
+
+check-teleop-network:
+	@test -n "$(strip $(HOST_IP))" || { \
+		echo "[FAIL] HOST_IP is required. Example: make teleop HOST_IP=192.168.1.106"; \
+		exit 2; \
+	}
 
 ## Run the coupled whole-upper-body teleop pilot end to end.
 ## Allocates the run id, starts the Quest bridge piped into Isaac Sim, and
 ## writes evidence under experiments/r1_teleop/quest3_sim_v1/T007/runs/.
-teleop:
+teleop: check-teleop-network
 	$(TELEOP_CMD)
 
 ## Arms + head, solved by the unmodified vendor xr_teleoperate IK.
 ## Nothing in this repository solves on this path: the bridge feeds the vendor
 ## solver, and the simulator only applies the joints it returns. The torso is
 ## frozen because the vendor model locks waist yaw and both head joints.
-teleop-arms:
+teleop-arms: check-teleop-network
 	$(TELEOP_UPSTREAM_CMD)
 
 ## The previous arms+head path, solved by this repository's differential
@@ -92,13 +105,13 @@ teleop-arms-differential:
 	$(MAKE) teleop BODY_MODE=arms_head \
 		WHOLE_UPPER_BODY_CONFIG=experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_differential_live.json
 
-teleop-dry-run:
+teleop-dry-run: check-teleop-network
 	$(TELEOP_CMD) --dry-run
 
-teleop-arms-dry-run:
+teleop-arms-dry-run: check-teleop-network
 	$(TELEOP_UPSTREAM_CMD) --dry-run
 
-teleop-head-only:
+teleop-head-only: check-teleop-network
 	$(PYTHON) scripts/teleop/run_t001_b_pilot.py \
 		--host-ip $(HOST_IP) \
 		--cert-file $(CERT_FILE) \
@@ -115,7 +128,7 @@ teleop-hardware-prepare:
 	./hardware/teleop/scripts/check_vuer.sh
 	ROBOT="$(ROBOT)" ./hardware/teleop/scripts/deploy_teleop.sh deploy
 
-teleop-hardware:
+teleop-hardware: check-teleop-network
 	ROBOT="$(ROBOT)" HOST_IP="$(HOST_IP)" DURATION_S="$(DURATION_S)" \
 		CERT_FILE="$(CERT_FILE)" KEY_FILE="$(KEY_FILE)" \
 		CONFIRM_SUSPENDED_WITH_ESTOP="$(CONFIRM_SUSPENDED_WITH_ESTOP)" \

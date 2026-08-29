@@ -8,13 +8,21 @@ assert the wiring rather than trusting it.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
-from teleop.r1.launcher import BRIDGE_ENV, SIM_ENV, PilotLaunchSpec, build_commands
+from teleop.r1.launcher import (
+    BRIDGE_ENV,
+    SIM_ENV,
+    PilotLaunchSpec,
+    _wait_for_quest_ready,
+    build_commands,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -39,6 +47,23 @@ def make_spec(**overrides) -> PilotLaunchSpec:
 
 
 class LauncherSolverStageTest(unittest.TestCase):
+    def test_bridge_lifetime_includes_quest_readiness_window(self):
+        bridge, _solver, sim = build_commands(
+            make_spec(duration_s=10.0, quest_ready_timeout_s=12.0),
+            Path("/tmp/out"),
+            Path("/tmp/stop"),
+            Path("/tmp/log"),
+        )
+        self.assertEqual(bridge[bridge.index("--duration-s") + 1], "22.0")
+        self.assertEqual(sim[sim.index("--duration-s") + 1], "10.0")
+
+    def test_ready_wait_accepts_connected_event(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "connection.jsonl"
+            path.write_text(json.dumps({"event": "connected"}) + "\n", encoding="utf-8")
+            process = type("Process", (), {"poll": lambda self: None})()
+            self.assertTrue(_wait_for_quest_ready(path, process, 0.1))
+
     def test_no_solver_stage_by_default(self):
         _bridge, solver, _sim = build_commands(
             make_spec(), Path("/tmp/out"), Path("/tmp/stop"), Path("/tmp/log")
@@ -64,15 +89,21 @@ class TeleopArmsWiringTest(unittest.TestCase):
     """The dry run is the contract: it prints exactly what would be executed."""
 
     def setUp(self):
+        # Tự tạo cert giả thay vì bỏ qua test khi không thấy file trong /tmp.
+        # Trước đây ba test này im lặng skip mỗi khi /tmp bị dọn, tức là lớp
+        # kiểm tra đường khởi chạy biến mất đúng lúc không ai để ý.
+        self._tmp = tempfile.TemporaryDirectory()
+        directory = Path(self._tmp.name)
+        cert, key = directory / "cert.pem", directory / "key.pem"
+        cert.write_text("placeholder", encoding="utf-8")
+        key.write_text("placeholder", encoding="utf-8")
+        self.addCleanup(self._tmp.cleanup)
         result = subprocess.run(
             [sys.executable, "scripts/teleop/run_t007_upper_body_pilot.py",
              "--host-ip", "192.168.1.106", "--upstream-solver", "--dry-run",
-             "--cert-file", "/tmp/hb_test_cert.pem", "--key-file", "/tmp/hb_test_key.pem"],
+             "--cert-file", str(cert), "--key-file", str(key)],
             cwd=ROOT, capture_output=True, text=True,
         )
-        for path in (Path("/tmp/hb_test_cert.pem"), Path("/tmp/hb_test_key.pem")):
-            if not path.exists():
-                self.skipTest("dry run needs placeholder certificate files")
         self.output = result.stdout + result.stderr
 
     def test_three_stages_are_launched(self):
@@ -102,7 +133,11 @@ class MakefileTest(unittest.TestCase):
         self.makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 
     def test_teleop_arms_uses_the_upstream_command(self):
-        block = re.search(r"^teleop-arms:\n(.*?)(?=\n\S)", self.makefile, re.MULTILINE | re.DOTALL)
+        block = re.search(
+            r"^teleop-arms(?:\s*:[^\n]*)?\n(.*?)(?=\n\S)",
+            self.makefile,
+            re.MULTILINE | re.DOTALL,
+        )
         self.assertIsNotNone(block, "teleop-arms target not found")
         self.assertIn("TELEOP_UPSTREAM_CMD", block.group(1))
 
@@ -112,6 +147,15 @@ class MakefileTest(unittest.TestCase):
     def test_the_differential_path_is_still_reachable(self):
         # Kept so the two solvers can still be compared on one trace.
         self.assertIn("teleop-arms-differential:", self.makefile)
+
+    def test_host_ip_is_required_at_invocation_not_hardcoded(self):
+        self.assertRegex(self.makefile, r"(?m)^HOST_IP\s+\?=\s*$")
+        self.assertIn("HOST_IP=192.168.1.106", self.makefile)
+
+    def test_certificate_directory_is_derived_from_host_ip(self):
+        self.assertIn("HOST_IP_TAG  = $(subst .,_,$(strip $(HOST_IP)))", self.makefile)
+        self.assertIn("happybaby_$(HOST_IP_TAG)/cert.pem", self.makefile)
+        self.assertIn("happybaby_$(HOST_IP_TAG)/key.pem", self.makefile)
 
 
 if __name__ == "__main__":

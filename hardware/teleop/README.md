@@ -68,7 +68,7 @@ không tự arm. Bật service là thao tác thủ công, sau khi đã đọc
 Từ root workspace có một lệnh gộp để sync nguồn, kiểm tra đường Quest và copy:
 
 ```bash
-make teleop-hardware-prepare ROBOT=unitree@192.168.1.104
+make teleop-hardware-prepare
 ```
 
 Lệnh này **không chạy teleop trên robot**. Nó kiểm tra source và copy package;
@@ -77,8 +77,8 @@ không install/start/enable service, không arm motor và không tạo publisher
 ## Bộ giải trên đường phần cứng
 
 ```bash
-make teleop-hardware ROBOT=unitree@192.168.1.104                       # vendor IK (mặc định)
-make teleop-hardware ROBOT=... HB_TELEOP_SOLVER=coupled                # bộ giải cũ của repo
+make teleop-hardware                                    # vendor IK (mặc định)
+make teleop-hardware HB_TELEOP_SOLVER=coupled           # bộ giải cũ của repo
 ```
 
 Mặc định là bộ giải vendor `R1_A5_ArmIK` chạy nguyên xi, cùng bộ giải và cùng

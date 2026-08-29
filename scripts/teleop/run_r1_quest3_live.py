@@ -25,6 +25,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -580,6 +581,26 @@ def _install_stop_handlers() -> tuple[threading.Event, dict[str, str], dict[int,
 def _restore_stop_handlers(previous: dict[int, object]) -> None:
     for signum, handler in previous.items():
         signal.signal(signum, handler)
+
+
+def _close_simulation_app_and_exit(
+    simulation_app: object,
+    *,
+    timeout_s: float = 30.0,
+    exit_fn: Callable[[int], None] = os._exit,
+) -> None:
+    """Bound Kit shutdown and end the process even if worker threads survive."""
+
+    closer = threading.Thread(target=simulation_app.close, daemon=True)
+    closer.start()
+    closer.join(timeout=timeout_s)
+    if closer.is_alive():
+        print(
+            f"Isaac Sim shutdown did not return within {timeout_s:g} s; forcing exit.",
+            file=sys.stderr,
+            flush=True,
+        )
+    exit_fn(0)
 
 
 def main() -> int:
@@ -1643,17 +1664,14 @@ def main() -> int:
     print(json.dumps(metrics, sort_keys=True), flush=True)
     print(f"{'T007' if arm_head_mode else 'T001'} evidence written to: {output_dir}", flush=True)
 
-    # `SimulationApp.close()` can block indefinitely on this workstation. Every
-    # evidence file is already on disk, so give the clean shutdown a bounded
-    # chance and then force process exit rather than hanging the pipeline.
+    # `SimulationApp.close()` can block indefinitely on this workstation and,
+    # even when it returns, Kit may leave non-daemon threads alive. Every
+    # evidence file is already on disk, so give close a bounded chance and then
+    # terminate without running Python's thread finalizers. Returning from main
+    # is insufficient: completed runs have otherwise retained GPU for days.
     sys.stdout.flush()
     sys.stderr.flush()
-    closer = threading.Thread(target=simulation_app.close, daemon=True)
-    closer.start()
-    closer.join(timeout=30.0)
-    if closer.is_alive():
-        print("Isaac Sim shutdown did not return within 30 s; forcing exit.", file=sys.stderr, flush=True)
-        os._exit(0)
+    _close_simulation_app_and_exit(simulation_app)
     return 0
 
 

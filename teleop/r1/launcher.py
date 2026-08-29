@@ -23,6 +23,7 @@ import json
 import signal
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -51,6 +52,7 @@ class PilotLaunchSpec:
     disable_self_collisions: bool
     extra_sim_args: list[str] = field(default_factory=list)
     idle_stop_s: float | None = None
+    quest_ready_timeout_s: float | None = None
     solver_args: list[str] | None = None
     """Arguments to a solver stage placed between the bridge and the simulator.
 
@@ -61,11 +63,14 @@ class PilotLaunchSpec:
 
 
 def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, connection_log: Path):
+    # When the launcher waits for WebXR, the bridge must stay alive for both the
+    # readiness window and the requested simulator duration.
+    bridge_duration_s = spec.duration_s + (spec.quest_ready_timeout_s or 0.0)
     bridge_command = [
         "conda", "run", "--no-capture-output", "-n", BRIDGE_ENV,
         "python", "scripts/teleop/quest_bridge.py",
         "--host-ip", spec.host_ip,
-        "--duration-s", str(spec.duration_s),
+        "--duration-s", str(bridge_duration_s),
         "--trigger-value-threshold", str(spec.trigger_value_threshold),
         "--cert-file", str(spec.cert_file.expanduser()),
         "--key-file", str(spec.key_file.expanduser()),
@@ -95,6 +100,29 @@ def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, con
     return bridge_command, solver_command, sim_command
 
 
+def _wait_for_quest_ready(
+    connection_log: Path,
+    bridge: subprocess.Popen,
+    timeout_s: float,
+) -> bool:
+    """Wait until the bridge records a validated motion-ready WebXR sample."""
+
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if connection_log.is_file():
+            for line in connection_log.read_text(encoding="utf-8").splitlines():
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if record.get("event") == "connected":
+                    return True
+        if bridge.poll() is not None:
+            return False
+        time.sleep(0.1)
+    return False
+
+
 def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     """Allocate one run id, then run the bridge piped into the simulator."""
 
@@ -102,6 +130,8 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
         raise SystemExit("--duration-s must be positive.")
     if not 0.0 <= spec.trigger_value_threshold < 10.0:
         raise SystemExit("--trigger-value-threshold must be in [0, 10).")
+    if spec.quest_ready_timeout_s is not None and spec.quest_ready_timeout_s <= 0.0:
+        raise SystemExit("Quest readiness timeout must be positive when enabled.")
     for path in (spec.cert_file, spec.key_file):
         if not path.expanduser().is_file():
             raise SystemExit(f"Certificate file does not exist: {path}")
@@ -149,6 +179,27 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     # die first and orphan a running Isaac Sim.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     bridge = subprocess.Popen(bridge_command, cwd=spec.repo_root, stdout=subprocess.PIPE)
+    if spec.quest_ready_timeout_s is not None:
+        print(
+            f"Waiting up to {spec.quest_ready_timeout_s:g} s for Quest Enter VR before starting Isaac...",
+            file=sys.stderr,
+            flush=True,
+        )
+        if not _wait_for_quest_ready(connection_log, bridge, spec.quest_ready_timeout_s):
+            bridge.terminate()
+            try:
+                bridge.wait(timeout=10.0)
+            except subprocess.TimeoutExpired:
+                bridge.kill()
+                bridge.wait()
+            print(
+                "Quest readiness timeout: Isaac was not started. Open the URL, accept the "
+                "certificate and Enter VR during the readiness window.",
+                file=sys.stderr,
+                flush=True,
+            )
+            return 2
+        print("Quest motion stream ready; starting Isaac.", file=sys.stderr, flush=True)
     solver = None
     try:
         if solver_command is not None:
@@ -207,4 +258,10 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     return simulator_status or solver_status or bridge_status
 
 
-__all__ = ["BRIDGE_ENV", "SIM_ENV", "PilotLaunchSpec", "build_commands", "run_pilot"]
+__all__ = [
+    "BRIDGE_ENV",
+    "SIM_ENV",
+    "PilotLaunchSpec",
+    "build_commands",
+    "run_pilot",
+]

@@ -32,7 +32,13 @@ case "$HB_TELEOP_SOLVER" in
     upstream|coupled) ;;
     *) echo "[FAIL] HB_TELEOP_SOLVER phải là 'upstream' hoặc 'coupled'." >&2; exit 2 ;;
 esac
-ROBOT="${ROBOT:-unitree@192.168.1.104}"
+# Không chốt cứng IP: wlan0 của robot lấy địa chỉ động. Thứ tự ưu tiên là
+# ROBOT= trên dòng lệnh, rồi ~/.config/hb/robot.env, rồi dò. assert_robot xác
+# minh đúng máy trước khi làm bất cứ gì — một máy lạ giữ IP cũ vẫn trả lời ping.
+# shellcheck source=../../hardware/teleop/scripts/_find_robot.sh
+source "$ROOT/hardware/teleop/scripts/_find_robot.sh"
+find_robot || exit 2
+assert_robot "$ROBOT" || exit 2
 DURATION_S="${DURATION_S:-120}"
 HOST_IP="${HOST_IP:-10.42.0.1}"
 CERT_FILE="${CERT_FILE:-$HOME/.config/xr_teleoperate/t001_10_42/cert.pem}"

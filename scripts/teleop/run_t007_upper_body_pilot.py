@@ -57,6 +57,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--physics-hz", type=float, default=200.0)
     parser.add_argument("--control-hz", type=float, default=30.0)
     parser.add_argument(
+        "--device",
+        default="cuda:0",
+        help="Isaac Lab simulation device, for example cuda:0 or cuda:1.",
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run Isaac without a desktop viewport; useful for transport baselines.",
+    )
+    parser.add_argument(
+        "--no-video",
+        action="store_true",
+        help="Disable evidence cameras/video to minimize load during connectivity tests.",
+    )
+    parser.add_argument(
         "--video-fps",
         type=float,
         default=10.0,
@@ -96,6 +111,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.0,
         help="Stop after this many seconds with no command; 0 keeps a recoverable WebXR gap alive.",
+    )
+    parser.add_argument(
+        "--quest-ready-timeout-s",
+        type=float,
+        default=180.0,
+        help=(
+            "Start Vuer first and wait this long for a validated Enter VR pose before "
+            "starting Isaac. This preserves one WebSocket session across startup."
+        ),
     )
     parser.add_argument(
         "--upstream-solver",
@@ -142,7 +166,12 @@ def main() -> int:
         extra = ["--whole-upper-body-config", str(profile), "--video-fps", str(args.video_fps)]
         if args.body_mode:
             extra += ["--body-mode", args.body_mode]
-    if not args.single_view:
+    extra += ["--device", args.device]
+    if args.headless:
+        extra.append("--headless")
+    if args.no_video:
+        extra.append("--no-video")
+    if not args.no_video and not args.single_view:
         extra.append("--dual-view")
 
     return run_pilot(
@@ -161,6 +190,7 @@ def main() -> int:
             disable_self_collisions=not args.self_collisions,
             extra_sim_args=extra,
             idle_stop_s=args.idle_stop_s,
+            quest_ready_timeout_s=args.quest_ready_timeout_s,
             solver_args=solver_args,
         ),
         dry_run=args.dry_run,

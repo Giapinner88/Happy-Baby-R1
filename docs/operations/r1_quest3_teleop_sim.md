@@ -22,8 +22,7 @@ commands. It does not import Unitree DDS or `hardware/high_level/`.
   experiment configuration after a matching IsaacLab R1 policy evaluation has
   recorded its task, R1 USD hash, and observation/action signature. When a
   config enables velocity, `--policy-manifest` is mandatory and must point to a
-  promoted IsaacLab policy whose linked evaluation manifest has `status:
-  "passed"`; the runner otherwise refuses to start.
+  promoted IsaacLab policy whose linked evaluation manifest has `status: "passed"`; the runner otherwise refuses to start.
 
 T009 and T010 are provisional future hardware experiments after the T008
 simulation gate. They have no executable command or hardware authority in this
@@ -140,11 +139,11 @@ in the resolved configuration when interpreting T001-B results.
 Run the whole pipeline with one command from the repository root:
 
 ```bash
-make teleop HOST_IP=10.42.0.1
+make teleop HOST_IP=192.168.1.106
 ```
 
-`make teleop-dry-run` prints the allocated run paths and both underlying
-commands without starting anything. The launcher is
+`make teleop-dry-run HOST_IP=192.168.1.106` prints the allocated run paths and
+both underlying commands without starting anything. The launcher is
 `scripts/teleop/run_t007_upper_body_pilot.py`; it allocates the run id, stop
 file and evidence directory exactly as the T001-B launcher does.
 

@@ -25,10 +25,24 @@ Không đủ một trong các điều dưới đây thì không chạy.
 
 ## 2. Topology
 
+> **Địa chỉ robot là động.** `wlan0` lấy IP qua DHCP, nên số IP đổi giữa các lần
+> bật. Đừng chép IP vào lệnh. Mọi script lấy địa chỉ theo thứ tự: biến `ROBOT=`
+> trên dòng lệnh → `~/.config/hb/robot.env` → dò tự động; rồi **xác minh đúng
+> máy** trước khi ghi bất cứ thứ gì.
+>
+> Mất liên lạc thì tìm robot theo MAC cố định `c0:3a:55:f1:41:84`:
+>
+> ```bash
+> for i in $(seq 2 254); do (ping -c1 -W1 192.168.1.$i >/dev/null 2>&1 &); done; sleep 5
+> ip neigh | grep -i c0:3a:55:f1:41:84
+> ```
+>
+> rồi sửa đúng một dòng trong `~/.config/hb/robot.env`.
+
 | Thành phần             | Địa chỉ / interface                                |
 | ------------------------ | ----------------------------------------------------- |
 | Workstation (Quest + IK) | `192.168.1.106`, `wlp77s0`                        |
-| Robot SSH                | `unitree@192.168.1.104`                             |
+| Robot SSH                | `$ROBOT` — IP động, xem cảnh báo trên               |
 | DDS trên robot          | `eth10` — `rt/lowstate`, `rt/lowcmd`           |
 | UTL1 loopback            | `127.0.0.1:5560` (chỉ loopback)                    |
 | Quest                    | cùng Wi-Fi`HappyBaby`                              |
@@ -56,7 +70,7 @@ Hai lựa chọn, **không bao giờ chạy cùng lúc**.
 ### 4a. Bản service thường — chân và eo thả limp
 
 ```bash
-ssh unitree@192.168.1.104 'systemctl is-active hb_high_level'   # phải: active
+ssh $ROBOT 'systemctl is-active hb_high_level'   # phải: active
 ```
 
 ### 4b. Bản cô lập khoá khớp — chân và eo giữ cứng tại tư thế lúc bóp cò
@@ -79,7 +93,7 @@ Chi tiết: [`hardware/high_level_lock/README_LOCK.md`](../../hardware/high_leve
 
 ```bash
 # workstation, từ root repo
-make teleop-hardware-prepare ROBOT=unitree@192.168.1.104
+make teleop-hardware-prepare
 ```
 
 Lệnh này sync source, kiểm đường Quest và copy package. Nó **không** install,
@@ -88,13 +102,13 @@ start, enable service, không arm motor, không tạo publisher.
 Xem trước rồi mới đẩy:
 
 ```bash
-ROBOT=unitree@192.168.1.104 ./hardware/teleop/scripts/deploy_teleop.sh diff   # dry-run
+./hardware/teleop/scripts/deploy_teleop.sh diff   # dry-run
 ```
 
 Kiểm read-only trên robot, không tạo publisher:
 
 ```bash
-ssh unitree@192.168.1.104   # menu đăng nhập: chọn foxy (1)
+ssh $ROBOT   # menu đăng nhập: chọn foxy (1)
 cd /tmp && PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.run_teleop --interface eth10
 ```
 
@@ -125,7 +139,6 @@ Nếu đứng mãi ở `[kDisarmed]` thì đọc mục 9.
 
 ```bash
 make teleop-hardware \
-  ROBOT=unitree@192.168.1.104 \
   HOST_IP=192.168.1.106 \
   DURATION_S=180 \
   CERT_FILE=$HOME/.config/xr_teleoperate/happybaby_192_168_1_106/cert.pem \
@@ -200,7 +213,7 @@ vận hành.
 **Xác minh đã dừng**
 
 ```bash
-ssh unitree@192.168.1.104 \
+ssh $ROBOT \
   'ps -eo pid,args | grep -E "high_level_sidecar|run_r1" | grep -v grep; systemctl is-active hb_high_level hb_teleop'
 ```
 

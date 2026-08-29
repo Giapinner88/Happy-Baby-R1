@@ -60,7 +60,7 @@ conda run --no-capture-output -n tv python scripts/teleop/capture_quest_transpor
 python3 scripts/teleop/run_t001_b_pilot.py --host-ip 10.42.0.1 --duration-s 90
 
 # T007 coupled whole-upper-body pilot: one command for the whole pipeline
-make teleop HOST_IP=10.42.0.1
+make teleop HOST_IP=192.168.1.106
 ```
 
 Both launchers share `teleop/r1/launcher.py`, so run-id allocation, the stop
@@ -103,12 +103,25 @@ effective transition with both raw representations in its connection JSONL.
   a projected boundary solution, not exact tracking. Check
   `solver_solution_kind` and the recorded residual before reading a run as
   successful trajectory following.
-- `SimulationApp.close()` has been observed not to return on this workstation.
-  The runner writes every evidence file before closing and force-exits after a
-  30 s shutdown grace period.
+- `SimulationApp.close()` has either blocked or returned while Kit worker
+  threads kept Python alive on this workstation. The runner writes every
+  evidence file first, gives close a 30 s grace period, and then always exits
+  the simulator process so completed runs cannot retain CPU/GPU resources.
 - Achieved control rate depends on GPU load; the runner records
   `achieved_control_hz` and `sim_to_wall_ratio` so a slow run is visible in the
   evidence rather than silently distorting it.
+- For a first network baseline, use `--headless --no-video --device cuda:1` on
+  `run_t007_upper_body_pilot.py`. Re-enable a viewport/video only after the
+  bridge records a live WebXR connection and nonzero accepted commands.
+- The Makefile deliberately has no fixed Wi-Fi address. Pass it for every run,
+  for example `make teleop HOST_IP=192.168.1.106`. By default the certificate
+  is resolved as
+  `~/.config/xr_teleoperate/happybaby_192_168_1_106/{cert.pem,key.pem}`;
+  override `CERT_FILE` and `KEY_FILE` when the files live elsewhere. GPU 1 and
+  the headless/no-video connectivity baseline remain the defaults.
+- T007 now starts Vuer first and waits for a validated `Enter VR` pose before
+  launching Isaac (`--quest-ready-timeout-s`, 180 s by default). This avoids
+  restarting the WebSocket between a transport check and the simulator.
 
 ## Plot live Quest kinematics
 
