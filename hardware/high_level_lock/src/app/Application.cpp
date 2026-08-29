@@ -1707,6 +1707,29 @@ void Application::RunZeroTorqueTeleop() {
     const bool operator_ready = input_.gamepad().InputActive();
     teleop_.Update(spec::kLoopDt, teleop_runtime_on_ && operator_ready);
     if (!teleop_.Active()) {
+        // Giữ nguyên tay/đầu tại lệnh cuối, nếu phiên này đã từng có người lái
+        // và chưa quá hạn giữ. Trước lần bóp cò đầu tiên thì không: robot chưa
+        // được ai lái, không có lý do cấp dòng cho tay.
+        const bool may_hold = tuning_.teleop_hold_on_release && teleop_engaged_once_;
+        if (may_hold) {
+            if (hold_started_at_.time_since_epoch().count() == 0)
+                hold_started_at_ = std::chrono::steady_clock::now();
+            const float held_s = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - hold_started_at_).count() / 1000.0f;
+            if (held_s < tuning_.teleop_hold_timeout_s) {
+                sender_.SendUpperBodyHold(
+                    tuning_.teleop_arm_kp, tuning_.teleop_arm_kd,
+                    estimator_.state().mode_machine, teleop_.HeadValid(),
+                    tuning_.teleop_lock_others_enabled ? tuning_.teleop_lock_kp : 0.0f,
+                    tuning_.teleop_lock_kd);
+                return;
+            }
+            if (!hold_timeout_announced_) {
+                std::cout << "\n[Teleop] Giu qua " << tuning_.teleop_hold_timeout_s
+                          << "s ma khong ai lai -> tra ve ZERO TORQUE.\n";
+                hold_timeout_announced_ = true;
+            }
+        }
         // Trong thời gian thụ động, đồng bộ slew origin theo encoder để
         // lần bóp cò tiếp theo không kéo về target cũ.
         {
@@ -1719,6 +1742,9 @@ void Application::RunZeroTorqueTeleop() {
         sender_.ZeroTorque(estimator_.state().mode_machine);
         return;
     }
+    teleop_engaged_once_ = true;
+    hold_started_at_ = {};
+    hold_timeout_announced_ = false;
 
     // Chốt tư thế khoá ở đúng frame teleop bắt đầu active, cùng thời điểm
     // sidecar chốt source_zero/start_q phía robot.

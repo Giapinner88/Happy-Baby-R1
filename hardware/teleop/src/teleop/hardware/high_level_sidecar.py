@@ -86,8 +86,14 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--input-timeout-s must be in [0.1, 1.0]")
     if not 0.05 <= args.state_timeout_s <= 1.0:
         raise SystemExit("--state-timeout-s must be in [0.05, 1.0]")
-    if not 10 <= args.send_hz <= 250 or not 0.02 <= args.max_offset_rad <= 0.30:
-        raise SystemExit("invalid send rate or session envelope")
+    if not 10 <= args.send_hz <= 250:
+        raise SystemExit("invalid send rate")
+    # Trần nâng 0.30 -> 1.0 sau phiên 2026-08-29: ở 0.15 rad/s thì 10/12 khớp
+    # bão hoà envelope, tức người vận hành liên tục đụng tường. 1.0 rad (57 độ)
+    # đủ gấp duỗi khuỷu và đưa tay quanh thân mà vẫn là bao an toàn thật — một
+    # lệnh sai không thể quăng tay qua cả tầm.
+    if not 0.02 <= args.max_offset_rad <= 1.0:
+        raise SystemExit("invalid session envelope (0.02..1.0 rad)")
     if not 0.05 <= args.head_yaw_max_rad <= 1.0:
         raise SystemExit("--head-yaw-max-rad must be in [0.05, 1.0]")
     if not 0.05 <= args.head_pitch_max_rad <= 0.6:
@@ -113,7 +119,7 @@ def validate_args(args: argparse.Namespace) -> None:
 
 def parse_target(
     line: str, previous_sequence: int
-) -> tuple[int, list[float], bool, str] | None:
+) -> tuple[int, list[float], bool, str, bool] | None:
     try:
         payload = json.loads(line)
         names = tuple(str(value) for value in payload["joint_names"])
@@ -121,6 +127,7 @@ def parse_target(
         sequence = int(payload["sequence_id"])
         schema_version = int(payload.get("schema_version", 1))
         target_mode = str(payload.get("target_mode", "relative_source"))
+        rehome = bool(payload.get("rehome", False))
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
     if schema_version != 1 or target_mode not in {"relative_source", "absolute_robot"}:
@@ -133,7 +140,7 @@ def parse_target(
         return None
     if sequence <= previous_sequence or not all(math.isfinite(value) for value in positions):
         return None
-    return sequence, positions, head_valid, target_mode
+    return sequence, positions, head_valid, target_mode, rehome
 
 
 def encode_target(sequence: int, positions: list[float], head_valid: bool = True) -> bytes:
@@ -306,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
         parsed = parse_target(line, upstream_sequence)
         if parsed is None:
             continue
-        upstream_sequence, latest_source, head_valid, target_mode = parsed
+        upstream_sequence, latest_source, head_valid, target_mode, _ = parsed
         source_zero = latest_source.copy()
         last_input_at = time.monotonic()
 
@@ -434,7 +441,7 @@ def main(argv: list[str] | None = None) -> int:
                     break
                 parsed = parse_target(line, upstream_sequence)
                 if parsed is not None:
-                    upstream_sequence, latest_source, head_valid, target_mode = parsed
+                    upstream_sequence, latest_source, head_valid, target_mode, _ = parsed
                     last_input_at = time.monotonic()
             if input_closed or time.monotonic() - last_input_at > args.input_timeout_s:
                 # Nhả cò giữa chừng homing là hủy: không giữ tay ở lưng chừng.
@@ -549,6 +556,11 @@ def main(argv: list[str] | None = None) -> int:
     started_at = time.monotonic()
     period = 1.0 / args.send_hz
     sample_index = 0
+    # Cò trái không còn là dừng phiên. Nó xin đưa robot về lại tư thế nominal
+    # rồi chốt lại mốc — thứ người vận hành thực sự cần khi tay đã trôi tới rìa
+    # envelope và muốn bắt đầu lại mà không phải chạy lại cả pipeline.
+    rehome_requested = False
+    rehome_count = 0
     try:
         metadata["status"] = "running"
         metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
@@ -564,7 +576,8 @@ def main(argv: list[str] | None = None) -> int:
                     break
                 parsed = parse_target(line, upstream_sequence)
                 if parsed is not None:
-                    parsed_sequence, parsed_source, parsed_head_valid, parsed_target_mode = parsed
+                    (parsed_sequence, parsed_source, parsed_head_valid,
+                     parsed_target_mode, parsed_rehome) = parsed
                     if parsed_head_valid != head_valid or parsed_target_mode != target_mode:
                         status = "failed"
                         stop_reason = "stream_contract_changed"
@@ -572,6 +585,8 @@ def main(argv: list[str] | None = None) -> int:
                         break
                     upstream_sequence, latest_source = parsed_sequence, parsed_source
                     last_input_at = time.monotonic()
+                    if parsed_rehome:
+                        rehome_requested = True
             if input_closed:
                 if stop_reason != "stream_contract_changed":
                     stop_reason = "stream_closed"
@@ -592,6 +607,28 @@ def main(argv: list[str] | None = None) -> int:
                 status = "failed"
                 break
             assert latest_source is not None
+            if rehome_requested and args.home_to_nominal:
+                goal = list(args.home_pose_rad)
+                if not head_valid:
+                    goal = goal[: len(ARM_MOTOR_INDICES)]
+                commanded = list(start_q)
+                step = args.home_rate_rad_s / args.send_hz
+                # Ramp ngay trong vòng chính, dùng đúng bộ đếm và đúng transport,
+                # nên không có khe hở nào để owner nhả về ZERO TORQUE.
+                while max(abs(g - c) for g, c in zip(goal, commanded)) > args.home_tolerance_rad:
+                    commanded = ramp_toward(commanded, goal, step)
+                    local_sequence = next_sequence(local_sequence)
+                    client.send(encode_target(local_sequence, commanded, head_valid))
+                    time.sleep(period)
+                    if time.monotonic() - started_at >= args.duration_s:
+                        break
+                start_q = list(commanded)
+                source_zero = list(latest_source)
+                rehome_requested = False
+                rehome_count += 1
+                print(f"[HOME] cò trái: đã về nominal và chốt lại mốc (lần {rehome_count}).")
+                continue
+            rehome_requested = False
             local_sequence = next_sequence(local_sequence)
             if target_mode == "relative_source":
                 desired = [
@@ -660,6 +697,7 @@ def main(argv: list[str] | None = None) -> int:
         metadata.update(
             status=status,
             stop_reason=stop_reason,
+            rehome_count=rehome_count,
             last_ipc_sequence_id=local_sequence,
             finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         )

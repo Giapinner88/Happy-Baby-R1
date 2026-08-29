@@ -179,6 +179,50 @@ public:
 
     bool NonTeleopHoldLatched() const { return hold_latched_; }
 
+    // Giữ tay/đầu tại đúng lệnh cuối cùng, thay vì thả limp khi nhả cò. Không
+    // slew và không nhận target mới: nó chỉ phát lại chỗ đang đứng, nên tay
+    // dừng ở đâu thì ở yên đó. Chân/eo vẫn khoá nếu đang bật.
+    void SendUpperBodyHold(float arm_kp, float arm_kd, uint8_t mode_machine,
+                           bool head_valid, float lock_kp, float lock_kd) {
+        unitree_hg::msg::dds_::LowCmd_ cmd{};
+        cmd.mode_machine() = mode_machine;
+        for (int i = 0; i < spec::kNumMotorsIdl; ++i) {
+            cmd.motor_cmd()[i].mode() = 1;
+            cmd.motor_cmd()[i].tau() = 0.0f;
+            cmd.motor_cmd()[i].q() = 0.0f;
+            cmd.motor_cmd()[i].dq() = 0.0f;
+            cmd.motor_cmd()[i].kp() = 0.0f;
+            cmd.motor_cmd()[i].kd() = 0.0f;
+        }
+        if (lock_kp > 0.0f && hold_latched_) {
+            for (int idl : lockset::kNonTeleopIdl) {
+                const size_t slot = static_cast<size_t>(idl);
+                if (!hold_ok_[slot]) continue;
+                cmd.motor_cmd()[idl].q() = last_cmd_q_[slot];
+                cmd.motor_cmd()[idl].kp() = lock_kp;
+                cmd.motor_cmd()[idl].kd() = lock_kd;
+            }
+        }
+        for (int j = 0; j < spec::kNumArmJoints; ++j) {
+            const int idl = spec::MotorIdl(spec::kArmBeginPolicyIdx + j);
+            cmd.motor_cmd()[idl].q() = last_cmd_q_[static_cast<size_t>(idl)];
+            cmd.motor_cmd()[idl].kp() = arm_kp;
+            cmd.motor_cmd()[idl].kd() = arm_kd;
+        }
+        if (head_valid) {
+            for (int idl : {spec::kHeadYawIdl, spec::kHeadPitchIdl}) {
+                const bool yaw = (idl == spec::kHeadYawIdl);
+                cmd.motor_cmd()[idl].q() = last_cmd_q_[static_cast<size_t>(idl)];
+                cmd.motor_cmd()[idl].kp() = yaw ? tuning_->head_yaw_kp : tuning_->head_pitch_kp;
+                cmd.motor_cmd()[idl].kd() = yaw ? tuning_->head_yaw_kd : tuning_->head_pitch_kd;
+            }
+        }
+        cmd.crc() = Crc32(reinterpret_cast<uint32_t*>(&cmd),
+                          (sizeof(unitree_hg::msg::dds_::LowCmd_) >> 2) - 1);
+        RecordCrc(cmd.crc());
+        pub_->Write(cmd);
+    }
+
     // ZERO TORQUE hỗn hợp: chỉ 10 khớp tay và head target hợp lệ có PD. Vẫn là
     // cùng một publisher/CRC ring nên không thể tranh rt/lowcmd với high-level.
     //

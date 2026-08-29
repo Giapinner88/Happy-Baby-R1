@@ -277,6 +277,14 @@ struct Tuning {
     float teleop_arm_kp           = 40.0f;   // chỉ dùng cho tay trong ZERO TORQUE
     float teleop_arm_kd           = 2.0f;
     float teleop_max_rate_rad_s   = 0.30f;   // slew limit tại sole lowcmd owner
+    // Nhả cò thì giữ nguyên tay/đầu tại lệnh cuối thay vì thả limp. Bản gốc thả
+    // limp nên tay rơi ngay khi nhả — trên giá treo đó là một cú sụp mỗi lần
+    // dừng tay. Chỉ giữ SAU khi teleop đã từng active trong phiên: trước đó
+    // robot chưa được ai lái, không có lý do gì cấp dòng cho tay.
+    bool  teleop_hold_on_release   = false;
+    // Giữ mãi nghĩa là người vận hành bỏ đi mà tay vẫn có dòng. Quá ngưỡng này
+    // mà không ai lái thì trả về ZERO TORQUE.
+    float teleop_hold_timeout_s    = 120.0f;
     // Khoá cứng mọi khớp KHÔNG thuộc teleop (chân 0-11, eo 12-13) trong ZERO
     // TORQUE teleop. Bản gốc để chúng limp: kp=kd=0. Với robot treo trên giá,
     // chân đung đưa tự do là nhiễu cơ khí lẫn vào đúng thứ đang cần đo, nên bản

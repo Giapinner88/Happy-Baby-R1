@@ -147,13 +147,17 @@ def main() -> int:
     parser.add_argument(
         "--max-joint-velocity-rad-s",
         type=float,
-        default=0.5,
-        help="Hardware joint speed ceiling; applies in both solver modes.",
+        default=1.0,
+        help=(
+            "Hardware joint speed ceiling; applies in both solver modes. Kept "
+            "above the owner's own slew so the owner stays the binding limit "
+            "rather than this process silently becoming it."
+        ),
     )
     parser.add_argument(
         "--max-joint-acceleration-rad-s2",
         type=float,
-        default=1.0,
+        default=2.0,
         help="Hardware joint acceleration ceiling; applies in both solver modes.",
     )
     args = parser.parse_args()
@@ -235,6 +239,7 @@ def main() -> int:
     deadline = time.monotonic() + args.duration_s
     previous_sequence = -1
     stream_started = False
+    rehome_pending = False
     period = 1.0 / args.control_hz
     while time.monotonic() < deadline:
         loop_start = time.monotonic()
@@ -262,13 +267,14 @@ def main() -> int:
             newest_payload = document
         if newest is not None:
             if newest.reset_requested:
-                if stream_started:
-                    print("[STOP] left-trigger reset requested; restart to establish a new neutral", file=sys.stderr)
-                    return 0
+                # Cò trái từng là dừng phiên: người vận hành phải chạy lại cả
+                # pipeline chỉ để lập lại mốc. Nay nó xin robot về nominal rồi
+                # chốt lại mốc, và phiên chạy tiếp. Cờ đi kèm chính command nên
+                # nó tới receiver đúng thứ tự với dòng lệnh, không cần kênh phụ.
+                rehome_pending = True
                 if sink is not None:
                     sink.reset_session()
                 limiter.hold()
-                stream_started = False
             target = mapper.map(newest, time.monotonic())
             if not target.enabled:
                 if stream_started:
@@ -295,6 +301,9 @@ def main() -> int:
                     "positions_rad": to_receiver_order(limited),
                     "solution_kind": "upstream_xr_teleoperate_R1_A5_ArmIK",
                 }
+                if rehome_pending:
+                    payload["rehome"] = True
+                    rehome_pending = False
                 try:
                     print(json.dumps(payload, separators=(",", ":")), flush=True)
                 except BrokenPipeError:
@@ -318,6 +327,9 @@ def main() -> int:
                         "positions_rad": to_receiver_order(handle.positions),
                         "solution_kind": application.get("solver_solution_kind"),
                     }
+                    if rehome_pending:
+                        payload["rehome"] = True
+                        rehome_pending = False
                     try:
                         print(json.dumps(payload, separators=(",", ":")), flush=True)
                     except BrokenPipeError:

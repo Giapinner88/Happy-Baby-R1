@@ -108,13 +108,14 @@ class HardwareTargetProducerTests(unittest.TestCase):
         }
         parsed = self.sidecar.parse_target(json.dumps(payload), previous_sequence=6)
         self.assertIsNotNone(parsed)
-        sequence, positions, head_valid, target_mode = parsed
+        sequence, positions, head_valid, target_mode, rehome = parsed
         self.assertEqual(sequence, 7)
         self.assertEqual(len(positions), 12)
         # A 12-joint stream is what tells the receiver the head is being driven;
         # the arm-only form it also accepts would silently leave the head out.
         self.assertTrue(head_valid)
         self.assertEqual(target_mode, "relative_source")
+        self.assertFalse(rehome)
         self.sidecar.encode_target(sequence, positions, head_valid)
 
     def test_the_hardware_ceilings_bound_a_vendor_sized_step(self):

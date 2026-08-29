@@ -29,7 +29,7 @@ def test_sidecar_protocol_and_joint_order() -> None:
     }
     import json
 
-    sequence, positions, head_valid, target_mode = sidecar.parse_target(json.dumps(payload), 3)
+    sequence, positions, head_valid, target_mode, rehome = sidecar.parse_target(json.dumps(payload), 3)
     assert sequence == 4
     assert head_valid is True
     assert target_mode == "relative_source"
@@ -61,7 +61,7 @@ def test_arm_only_stream_clears_the_head_flag() -> None:
         "joint_names": sidecar.ARM_JOINT_NAMES,
         "positions_rad": [0.0] * 10,
     }
-    sequence, positions, head_valid, _ = sidecar.parse_target(json.dumps(payload), 3)
+    sequence, positions, head_valid, _, _ = sidecar.parse_target(json.dumps(payload), 3)
     assert (sequence, head_valid, len(positions)) == (4, False, 10)
     encoded = sidecar.PACKET.unpack(sidecar.encode_target(9, positions, head_valid))
     assert encoded[4] == 0
@@ -266,4 +266,52 @@ def test_head_gate_moves_behind_homing_when_homing_is_on() -> None:
     # Sau homing phải kiểm ENCODER, không phải giá trị vừa ra lệnh: ramp là vòng
     # hở và owner còn kẹp lệnh đầu ở teleop_head_yaw_max trước khi slew.
     assert "latest_state.motor_state[i].q" in post
+
+
+def test_rehome_flag_rides_on_the_command_stream() -> None:
+    """Cò trái đi kèm chính command, không qua kênh phụ.
+
+    Nhờ vậy yêu cầu về-nominal tới receiver đúng thứ tự với dòng lệnh nó đi
+    cùng, và một dòng cũ không thể kích hoạt lại homing sau khi đã xử lý.
+    """
+
+    import json
+
+    sidecar = _sidecar()
+    base = {
+        "schema_version": 1,
+        "sequence_id": 4,
+        "joint_names": sidecar.JOINT_NAMES,
+        "positions_rad": [0.0] * 12,
+    }
+    *_, rehome = sidecar.parse_target(json.dumps(base), 3)
+    assert rehome is False
+
+    asked = dict(base, rehome=True)
+    *_, rehome = sidecar.parse_target(json.dumps(asked), 3)
+    assert rehome is True
+
+
+def test_session_envelope_accepts_the_widened_range() -> None:
+    """±1.0 rad được nhận, quá 1.0 thì không.
+
+    Phiên 2026-08-29 bão hoà 10/12 khớp ở 0.15 rad, nên trần cũ 0.30 là thứ giữ
+    robot trong một hộp 8.6 độ. 1.0 rad vẫn là bao an toàn thật.
+    """
+
+    import os
+
+    import pytest
+
+    os.environ["HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP"] = "1"
+    sidecar = _sidecar()
+    parser = sidecar.build_parser()
+    base = ["--confirm-suspended-with-estop", "--confirm-dev-mode"]
+
+    for value in ("0.15", "0.5", "1.0"):
+        sidecar.validate_args(parser.parse_args(base + ["--max-offset-rad", value]))
+
+    for value in ("1.01", "3.2", "0.01"):
+        with pytest.raises(SystemExit):
+            sidecar.validate_args(parser.parse_args(base + ["--max-offset-rad", value]))
 

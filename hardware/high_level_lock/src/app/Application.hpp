@@ -171,7 +171,11 @@ private:
 
     // Teleop thân trên (tay + đầu) qua UDP — nguồn override ưu tiên hơn gesture.
     TeleopReceiver teleop_;
-    bool teleop_runtime_on_ = false;   // arm-head profile bật khi InitTeleop; L2+Phải vẫn có thể tắt.
+    bool teleop_runtime_on_ = false;
+    // Giữ tay khi nhả cò chỉ có nghĩa sau khi đã từng lái trong phiên này.
+    bool teleop_engaged_once_ = false;
+    std::chrono::steady_clock::time_point hold_started_at_{};
+    bool hold_timeout_announced_ = false;   // arm-head profile bật khi InitTeleop; L2+Phải vẫn có thể tắt.
     void InitTeleop();
 
     std::map<int, std::unique_ptr<MotionData>> motions_;

@@ -212,6 +212,8 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "teleop_arm_kp")           teleop_arm_kp = f();
     else if (key == "teleop_arm_kd")           teleop_arm_kd = f();
     else if (key == "teleop_max_rate_rad_s")   teleop_max_rate_rad_s = f();
+    else if (key == "teleop_hold_on_release")  teleop_hold_on_release = ToBool(value);
+    else if (key == "teleop_hold_timeout_s")   teleop_hold_timeout_s = f();
     else if (key == "teleop_lock_others_enabled") teleop_lock_others_enabled = ToBool(value);
     else if (key == "teleop_lock_kp")          teleop_lock_kp = f();
     else if (key == "teleop_lock_kd")          teleop_lock_kd = f();
@@ -299,8 +301,14 @@ bool Tuning::Validate() const {
             "teleop_arm_kp must be finite and in [1.0, 60.0]");
     require(finite_in(teleop_arm_kd, 0.1f, 5.0f),
             "teleop_arm_kd must be finite and in [0.1, 5.0]");
-    require(finite_in(teleop_max_rate_rad_s, 0.05f, 0.50f),
-            "teleop_max_rate_rad_s must be finite and in [0.05, 0.50]");
+    // Trần nâng từ 0.50 lên 1.50 sau phiên 2026-08-29: đo được tay bám sát trần
+    // 0.30 cũ (p95 0.19, max 0.38 rad/s) và người vận hành phải đợi robot. Vẫn
+    // dưới xa đỉnh 5.94 rad/s của mô phỏng, nên một lệnh sai còn thời gian để
+    // nhấn E-stop.
+    require(finite_in(teleop_max_rate_rad_s, 0.05f, 1.50f),
+            "teleop_max_rate_rad_s must be finite and in [0.05, 1.50]");
+    require(finite_in(teleop_hold_timeout_s, 5.0f, 600.0f),
+            "teleop_hold_timeout_s must be finite and in [5.0, 600.0]");
     // Trần bằng kKpTrain của hông/eo (100): khoá là giữ đúng tư thế robot đang
     // treo sẵn, nên nó chỉ phải dập dao động chứ không phải nâng chân lên. 20 là
     // điểm bắt đầu; nếu trên giá chân vẫn đung đưa thì chỉnh trong yaml, không

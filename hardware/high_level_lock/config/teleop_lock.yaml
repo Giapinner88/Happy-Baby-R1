@@ -22,3 +22,19 @@ teleop_lock_others_enabled: true
 teleop_lock_kp: 20.0
 teleop_lock_kd: 3.0
 teleop_lock_max_rate_rad_s: 0.20
+
+# --- Nới sau phiên đo 2026-08-29 -------------------------------------------
+# Phiên đó bão hoà 10/12 khớp ở envelope ±0.15 rad, và tốc độ đo được bám sát
+# trần 0.30 (p95 0.19, max 0.38 rad/s). Người vận hành phải đợi robot, và không
+# gian làm việc chỉ ±8.6° mỗi khớp.
+#
+# 0.6 rad/s vẫn chậm hơn 10 lần đỉnh 5.94 rad/s của mô phỏng, nên một lệnh sai
+# còn thời gian để nhấn E-stop. CHƯA ĐƯỢC HARDWARE GATE DUYỆT.
+teleop_max_rate_rad_s: 0.6
+
+# Nhả cò thì giữ nguyên tay/đầu thay vì thả limp. Bản gốc thả limp nên mỗi lần
+# dừng tay là một cú sụp. Chỉ giữ sau khi đã từng lái trong phiên; quá
+# teleop_hold_timeout_s mà không ai lái thì trả về ZERO TORQUE, để người vận
+# hành bỏ đi không làm tay nằm mãi trong trạng thái có dòng.
+teleop_hold_on_release: true
+teleop_hold_timeout_s: 120.0
