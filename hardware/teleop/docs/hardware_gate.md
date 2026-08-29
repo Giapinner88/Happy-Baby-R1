@@ -78,8 +78,15 @@ Hiện trạng: run mới nhất `t007_whole_upper_body_20260818T114338Z` vẫn 
 ## 2. Đối chiếu mô hình với robot thật
 
 - [ ] Xác nhận dấu và thứ tự khớp của FK so với pose đo được trên robot.
-- [ ] Giải quyết xung đột chỉ số motor đầu giữa spec high-level nội bộ và
+- [x] Giải quyết xung đột chỉ số motor đầu giữa spec high-level nội bộ và
       interface R1-A5 của hãng (đã ghi trong method record).
+
+      Đo trên robot 2026-08-29: `rt/lowstate` cho IDL 30 = **2.0068 rad**, đúng
+      bằng giới hạn ±2.0071 của `head_yaw_joint` trong `assets/R1.urdf`, trong
+      khi IDL 29 = −0.001. Nếu 30 là pitch thì giá trị đó đã vượt xa giới hạn
+      ±0.6283 của pitch nên không thể tồn tại. **IDL 29 = pitch, IDL 30 = yaw**,
+      khớp với `spec::kHeadPitchIdl`/`kHeadYawIdl` và với thứ tự UTL1 của
+      sidecar. Đây là phép đo trên phần cứng, không phải suy từ tài liệu.
 - [ ] Kiểm tra `assets/R1.urdf` khớp với robot đang dùng.
 
 ## 3. Giới hạn an toàn

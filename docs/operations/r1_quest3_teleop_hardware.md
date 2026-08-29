@@ -242,8 +242,18 @@ Hai tiến trình `run_r1` cùng chạy cũng bị chặn ở đây (vi phạm D
 luôn là sai thứ tự tên khớp hoặc sai định dạng; kiểm producer có phát
 `joint_names` kết thúc bằng `head_yaw_joint, head_pitch_joint` không.
 
-**`[SAFE] head not neutral`** — đầu lệch quá gate lúc chốt phiên. Nắn đầu về
-thẳng rồi chạy lại.
+**`[SAFE] head not neutral`** — đầu lệch quá gate lúc chốt phiên (`|yaw| > 0.60`
+hoặc `|pitch| > 0.35` rad). Đầu đang ZERO TORQUE nên xoay tay được. Vừa xoay vừa
+nhìn số:
+
+```bash
+./scripts/teleop/watch_r1_head_angle.sh      # read-only, Ctrl+C để thoát
+```
+
+Ghi nhận 2026-08-29: đọc được `yaw = +2.007 rad`, đúng bằng giới hạn ±2.0071 của
+`head_yaw_joint` trong asset — đầu nằm sát chặn cơ khí, xoay hết cỡ 115°. Con số
+này cũng xác nhận độc lập rằng **IDL 29 là pitch và IDL 30 là yaw**: nếu ngược
+lại thì 2.007 đã vượt xa giới hạn ±0.628 của pitch, không thể tồn tại.
 
 **`connect_count=0`** — Quest chưa cùng mạng, chưa chấp nhận cert, hoặc chưa Enter VR.
 
