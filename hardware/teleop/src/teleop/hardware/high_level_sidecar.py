@@ -192,6 +192,16 @@ def constrain_absolute_target(
     return bounded, worst_index, worst_offset, was_clamped
 
 
+def head_outside_gate(yaw_rad: float, pitch_rad: float, yaw_max: float, pitch_max: float) -> bool:
+    """Đầu có lệch quá mức cho phép lúc chốt mốc phiên không.
+
+    Tách riêng vì cùng một phép kiểm được dùng ở hai chỗ với hai ý nghĩa khác
+    nhau: trước homing nó kiểm điều kiện ban đầu, sau homing nó kiểm kết quả.
+    """
+
+    return abs(yaw_rad) > yaw_max or abs(pitch_rad) > pitch_max
+
+
 def ramp_toward(current: list[float], goal: list[float], max_step: float) -> list[float]:
     """One rate-limited step from `current` toward `goal`.
 
@@ -321,8 +331,17 @@ def main(argv: list[str] | None = None) -> int:
         start_head_yaw, start_head_pitch = start_q[-2:]
     else:
         start_head_yaw, start_head_pitch = 0.0, 0.0
-    if head_valid and (abs(start_head_yaw) > args.head_yaw_max_rad or
-                       abs(start_head_pitch) > args.head_pitch_max_rad):
+    # Gate này tồn tại vì phiên là tương đối: đầu lệch bao nhiêu lúc chốt thì
+    # lệch bấy nhiêu suốt phiên. Khi homing bật thì tiền đề đó không còn — đầu
+    # được đưa về nominal trước khi chốt, nên gate chuyển xuống chạy SAU homing.
+    #
+    # Encoder là tuyệt đối, nên robot biết chính xác đầu đang ở đâu ngay khi bật;
+    # thứ nó thiếu để tự về chỉ là mô-men và một lệnh. Chặn ở đây tức là chặn
+    # đúng cái cơ chế sửa được vấn đề. Và khi đầu đang tì vào chặn cơ khí thì đi
+    # về giữa là RỜI KHỎI giới hạn — hướng an toàn nhất.
+    if head_valid and not args.home_to_nominal and head_outside_gate(
+        start_head_yaw, start_head_pitch, args.head_yaw_max_rad, args.head_pitch_max_rad
+    ):
         metadata.update(
             status="unsafe_start",
             stop_reason="head_not_neutral",
@@ -479,6 +498,45 @@ def main(argv: list[str] | None = None) -> int:
         start_q = list(commanded)
         assert latest_source is not None
         source_zero = latest_source.copy()
+
+        # Gate đầu chạy ở đây thay vì trước homing: bây giờ nó kiểm KẾT QUẢ chứ
+        # không kiểm điều kiện ban đầu. Homing nhắm tới nominal nên bình thường
+        # phải đạt; không đạt nghĩa là đầu bị kẹt hoặc owner đang kẹp lệnh, và
+        # đó mới là lúc phải dừng.
+        if head_valid:
+            # Đọc encoder, KHÔNG đọc giá trị vừa ra lệnh. Ramp ở đây là vòng hở,
+            # và owner còn kẹp lệnh đầu ở teleop_head_yaw_max (1.0 rad) trước
+            # khi slew, nên "đã ra lệnh 0" không chứng minh được "đầu đã về 0".
+            # Kiểm bằng chính cái mình ra lệnh thì gate này luôn pass và vô dụng.
+            observed = subscriber.Read()
+            if observed is not None:
+                latest_state = observed
+            measured = [float(latest_state.motor_state[i].q) for i in selected_motor_indices]
+            reached_yaw, reached_pitch = measured[-2:]
+            if head_outside_gate(
+                reached_yaw, reached_pitch, args.head_yaw_max_rad, args.head_pitch_max_rad
+            ):
+                metadata.update(
+                    status="unsafe_start",
+                    stop_reason="head_not_neutral_after_home",
+                    start_head_yaw_rad=reached_yaw,
+                    start_head_pitch_rad=reached_pitch,
+                    commanded_head_yaw_rad=start_q[-2],
+                    commanded_head_pitch_rad=start_q[-1],
+                    home=home_report,
+                )
+                metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+                try:
+                    client.send(encode_stop(next_sequence(local_sequence)))
+                except OSError:
+                    pass
+                client.close()
+                print(
+                    "[SAFE] homing xong mà đầu vẫn lệch: "
+                    f"yaw(IDL30)={reached_yaw:.3f}, pitch(IDL29)={reached_pitch:.3f}; "
+                    "kiểm đầu có bị vướng không."
+                )
+                return 3
 
     metadata.update(
         joint_names=selected_names,

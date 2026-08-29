@@ -157,7 +157,8 @@ Mặc định là bộ giải vendor, tay + đầu. Đường cũ: thêm `HB_TEL
 5. Kiểm lần cuối: robot không còn chuyển động chuyển tiếp nào.
 6. **Giữ cò index bên phải.** Nếu homing đang bật (mặc định), robot **tự gập
    khuỷu** đưa cẳng tay từ buông thõng lên ngang hướng ra trước, khoảng 9 giây
-   ở 0.15 rad/s, rồi mới bám theo tay bạn. **Giữ nguyên cò suốt lúc đó** — nhả
+   ở 0.15 rad/s, **và tự xoay đầu về giữa** nếu đầu đang lệch (từ chặn cơ khí
+   2.007 rad về 0 mất ~13 giây), rồi mới bám theo tay bạn. **Giữ nguyên cò suốt lúc đó** — nhả
    giữa chừng là hủy phiên, không để tay ở lưng chừng. Chỉ cẳng tay quét, quanh
    khuỷu bán kính ~0.16 m; vai và cánh tay trên gần như đứng yên.
    Frame hợp lệ đầu tiên được chốt làm `source_zero`,
@@ -242,9 +243,12 @@ Hai tiến trình `run_r1` cùng chạy cũng bị chặn ở đây (vi phạm D
 luôn là sai thứ tự tên khớp hoặc sai định dạng; kiểm producer có phát
 `joint_names` kết thúc bằng `head_yaw_joint, head_pitch_joint` không.
 
-**`[SAFE] head not neutral`** — đầu lệch quá gate lúc chốt phiên (`|yaw| > 0.60`
-hoặc `|pitch| > 0.35` rad). Đầu đang ZERO TORQUE nên xoay tay được. Vừa xoay vừa
-nhìn số:
+**`[SAFE] head not neutral`** — chỉ xảy ra khi **homing tắt**. Khi homing bật,
+đầu lệch được chính homing đưa về nominal, nên gate chuyển xuống chạy sau đó và
+kiểm kết quả (`head_not_neutral_after_home`) bằng **encoder đo được**, không phải
+giá trị vừa ra lệnh.
+
+Với homing tắt: đầu đang ZERO TORQUE nên xoay tay được. Vừa xoay vừa nhìn số:
 
 ```bash
 ./scripts/teleop/watch_r1_head_angle.sh      # read-only, Ctrl+C để thoát

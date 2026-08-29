@@ -241,3 +241,29 @@ def test_homing_arguments_are_bounded() -> None:
         with pytest.raises(SystemExit):
             sidecar.validate_args(parser.parse_args(base + extra))
 
+
+def test_head_gate_thresholds() -> None:
+    sidecar = _sidecar()
+    assert sidecar.head_outside_gate(2.007, 0.0, 0.60, 0.35) is True     # đầu ở chặn cơ khí
+    assert sidecar.head_outside_gate(0.0, 0.50, 0.60, 0.35) is True
+    assert sidecar.head_outside_gate(0.59, 0.34, 0.60, 0.35) is False
+    assert sidecar.head_outside_gate(0.0, 0.0, 0.60, 0.35) is False
+
+
+def test_head_gate_moves_behind_homing_when_homing_is_on() -> None:
+    """Bật homing thì đầu lệch không được chặn phiên TRƯỚC khi kịp sửa.
+
+    Gate có mặt vì phiên là tương đối, nên đầu lệch lúc chốt sẽ lệch cả phiên.
+    Homing đưa đầu về nominal trước khi chốt nên tiền đề đó biến mất; giữ gate ở
+    trước tức là chặn đúng cái cơ chế sửa được vấn đề, và với đầu đang tì vào
+    chặn cơ khí thì đi về giữa còn là hướng rời khỏi giới hạn.
+    """
+
+    source = SIDECAR_PATH.read_text(encoding="utf-8")
+    pre, post = source.split("--- Pha homing ---", 1)
+    assert "not args.home_to_nominal and head_outside_gate" in pre
+    assert "head_not_neutral_after_home" in post
+    # Sau homing phải kiểm ENCODER, không phải giá trị vừa ra lệnh: ramp là vòng
+    # hở và owner còn kẹp lệnh đầu ở teleop_head_yaw_max trước khi slew.
+    assert "latest_state.motor_state[i].q" in post
+
