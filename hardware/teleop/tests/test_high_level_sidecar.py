@@ -315,3 +315,38 @@ def test_session_envelope_accepts_the_widened_range() -> None:
         with pytest.raises(SystemExit):
             sidecar.validate_args(parser.parse_args(base + ["--max-offset-rad", value]))
 
+
+def test_shoulder_envelope_can_be_widened_without_touching_the_rest() -> None:
+    """Vai đi hết tầm, cổ tay và đầu thì không.
+
+    Một con số chung cho cả 12 khớp bó vai theo khớp hẹp nhất. Vai là nơi tầm
+    hoạt động lớn nhất và giới hạn khớp theo asset đã được kẹp ở producer, nên
+    nới riêng vai là nới đúng chỗ cần.
+    """
+
+    sidecar = _sidecar()
+    names = sidecar.JOINT_NAMES
+    same = sidecar.per_joint_envelope(names, 1.0, None)
+    assert same == [1.0] * 12
+
+    wide = sidecar.per_joint_envelope(names, 1.0, 3.2)
+    for name, bound in zip(names, wide):
+        assert bound == (3.2 if "shoulder" in name else 1.0), name
+    assert sum(1 for b in wide if b == 3.2) == 6
+
+
+def test_shoulder_envelope_is_bounded_too() -> None:
+    import os
+
+    import pytest
+
+    os.environ["HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP"] = "1"
+    sidecar = _sidecar()
+    parser = sidecar.build_parser()
+    base = ["--confirm-suspended-with-estop", "--confirm-dev-mode"]
+
+    sidecar.validate_args(parser.parse_args(base + ["--max-offset-rad-shoulders", "3.2"]))
+    for value in ("3.21", "10.0", "0.0"):
+        with pytest.raises(SystemExit):
+            sidecar.validate_args(parser.parse_args(base + ["--max-offset-rad-shoulders", value]))
+

@@ -17,7 +17,7 @@ import struct
 import sys
 import threading
 import time
-from typing import Any
+from typing import Any, Sequence
 
 STATE_TOPIC = "rt/lowstate"
 TELEOP_MAGIC = 0x314C5455
@@ -53,6 +53,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-timeout-s", type=float, default=0.20)
     parser.add_argument("--send-hz", type=float, default=100.0)
     parser.add_argument("--max-offset-rad", type=float, default=0.15)
+    parser.add_argument(
+        "--max-offset-rad-shoulders", type=float, default=None,
+        help=(
+            "Envelope riêng cho 6 khớp vai. Bỏ trống thì dùng chung "
+            "--max-offset-rad. Vai là nơi tầm hoạt động lớn nhất, và giới hạn "
+            "khớp theo asset đã được producer kẹp trước rồi."
+        ),
+    )
     parser.add_argument(
         "--home-to-nominal", action="store_true",
         help="Ramp arms/head to the nominal pose before teleop, then anchor there.",
@@ -94,6 +102,12 @@ def validate_args(args: argparse.Namespace) -> None:
     # lệnh sai không thể quăng tay qua cả tầm.
     if not 0.02 <= args.max_offset_rad <= 1.0:
         raise SystemExit("invalid session envelope (0.02..1.0 rad)")
+    if args.max_offset_rad_shoulders is not None:
+        # 3.2 phủ trọn khớp rộng nhất (shoulder pitch ±3.142 trong asset), nên
+        # ở mức đó envelope thôi ràng buộc vai và giới hạn khớp của asset —
+        # producer đã kẹp theo R1.urdf — trở thành lớp chặn duy nhất.
+        if not 0.02 <= args.max_offset_rad_shoulders <= 3.2:
+            raise SystemExit("invalid shoulder envelope (0.02..3.2 rad)")
     if not 0.05 <= args.head_yaw_max_rad <= 1.0:
         raise SystemExit("--head-yaw-max-rad must be in [0.05, 1.0]")
     if not 0.05 <= args.head_pitch_max_rad <= 0.6:
@@ -199,6 +213,22 @@ def constrain_absolute_target(
     return bounded, worst_index, worst_offset, was_clamped
 
 
+SHOULDER_JOINT_NAMES = tuple(n for n in JOINT_NAMES if "shoulder" in n)
+
+
+def per_joint_envelope(names: Sequence[str], default_rad: float, shoulder_rad: float | None) -> list[float]:
+    """Envelope cho từng khớp, vai có thể rộng hơn phần còn lại.
+
+    Một con số chung cho cả 12 khớp khiến vai — nơi tầm hoạt động lớn nhất —
+    bị bó theo khớp hẹp nhất. Tách ra để nới vai mà không đụng tới cổ tay hay
+    đầu, vốn không cần và không nên đi xa.
+    """
+
+    if shoulder_rad is None:
+        return [default_rad] * len(names)
+    return [shoulder_rad if "shoulder" in n else default_rad for n in names]
+
+
 def head_outside_gate(yaw_rad: float, pitch_rad: float, yaw_max: float, pitch_max: float) -> bool:
     """Đầu có lệch quá mức cho phép lúc chốt mốc phiên không.
 
@@ -281,6 +311,7 @@ def main(argv: list[str] | None = None) -> int:
         "joint_names": JOINT_NAMES,
         "motor_indices": MOTOR_INDICES,
         "max_offset_from_start_rad": args.max_offset_rad,
+        "max_offset_from_start_shoulders_rad": args.max_offset_rad_shoulders,
         "absolute_envelope_tolerance_rad": ABSOLUTE_ENVELOPE_TOLERANCE_RAD,
         "send_hz": args.send_hz,
         "input_timeout_s": args.input_timeout_s,
@@ -332,6 +363,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[SAFE] mode_machine={state.mode_machine} before first command; refusing teleop")
         return 3
     selected_names = JOINT_NAMES if head_valid else ARM_JOINT_NAMES
+    envelope = per_joint_envelope(
+        selected_names, args.max_offset_rad, args.max_offset_rad_shoulders
+    )
     selected_motor_indices = MOTOR_INDICES if head_valid else ARM_MOTOR_INDICES
     start_q = [float(state.motor_state[index].q) for index in selected_motor_indices]
     if head_valid:
@@ -546,6 +580,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 3
 
     metadata.update(
+        per_joint_envelope_rad=envelope,
         joint_names=selected_names,
         motor_indices=selected_motor_indices,
         head_valid=head_valid,
@@ -632,8 +667,10 @@ def main(argv: list[str] | None = None) -> int:
             local_sequence = next_sequence(local_sequence)
             if target_mode == "relative_source":
                 desired = [
-                    start + min(args.max_offset_rad, max(-args.max_offset_rad, source - zero))
-                    for start, source, zero in zip(start_q, latest_source, source_zero)
+                    start + min(bound, max(-bound, source - zero))
+                    for start, source, zero, bound in zip(
+                        start_q, latest_source, source_zero, envelope
+                    )
                 ]
             else:
                 try:

@@ -25,6 +25,36 @@ if [[ "${CONFIRM_SUSPENDED_WITH_ESTOP:-0}" != "1" ]]; then
     [[ "$confirmation" == "YES" ]] || { echo "[SAFE] Hủy; không đụng service." >&2; exit 2; }
 fi
 
+# --- Núm chỉnh lúc chạy -----------------------------------------------------
+# Sinh ra một file override được tuning.yaml include SAU CÙNG, nên chỉnh tốc độ
+# là đặt biến môi trường rồi chạy lại script này — không sửa file, không build
+# lại. Chỉ có tác dụng từ lần khởi động sau: owner đọc config một lần lúc start.
+#
+#   HB_TELEOP_RATE=0.9 ./scripts/run_lock_foreground.sh
+#
+# Trần do Tuning::Validate() ép: teleop_max_rate_rad_s trong [0.05, 1.50].
+HB_TELEOP_RATE="${HB_TELEOP_RATE:-0.6}"
+HB_TELEOP_ARM_KP="${HB_TELEOP_ARM_KP:-40.0}"
+HB_TELEOP_ARM_KD="${HB_TELEOP_ARM_KD:-2.0}"
+HB_TELEOP_LOCK_KP="${HB_TELEOP_LOCK_KP:-20.0}"
+HB_TELEOP_HOLD_TIMEOUT_S="${HB_TELEOP_HOLD_TIMEOUT_S:-120.0}"
+
+cat > config/teleop_runtime.yaml <<YAML
+# SINH TỰ ĐỘNG bởi scripts/run_lock_foreground.sh — đừng sửa tay, sẽ bị ghi đè.
+# Đặt biến môi trường rồi chạy lại script để đổi.
+teleop_max_rate_rad_s: $HB_TELEOP_RATE
+teleop_arm_kp: $HB_TELEOP_ARM_KP
+teleop_arm_kd: $HB_TELEOP_ARM_KD
+teleop_lock_kp: $HB_TELEOP_LOCK_KP
+teleop_hold_timeout_s: $HB_TELEOP_HOLD_TIMEOUT_S
+YAML
+grep -q "include: teleop_runtime.yaml" config/tuning.yaml \
+    || printf '\n# Núm chỉnh lúc chạy, include SAU CÙNG để ghi đè.\ninclude: teleop_runtime.yaml\n' >> config/tuning.yaml
+
+echo "[TUNE] tốc độ bám $HB_TELEOP_RATE rad/s | tay kp=$HB_TELEOP_ARM_KP kd=$HB_TELEOP_ARM_KD"
+echo "[TUNE] khoá chân/eo kp=$HB_TELEOP_LOCK_KP | giữ tay tối đa ${HB_TELEOP_HOLD_TIMEOUT_S}s"
+echo "[TUNE] đổi: HB_TELEOP_RATE=0.9 $0    (trần 1.50)"
+
 restore() {
     echo ""
     echo "[RESTORE] Bật lại hb_high_level..."

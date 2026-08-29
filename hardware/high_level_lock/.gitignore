@@ -1,3 +1,5 @@
 build/
 compile_commands.json
 test_tts
+# Sinh tự động mỗi lần chạy run_lock_foreground.sh
+config/teleop_runtime.yaml

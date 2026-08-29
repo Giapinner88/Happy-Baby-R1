@@ -29,6 +29,11 @@ fi
 # Envelope mỗi khớp so với mốc phiên. 0.15 là giá trị cũ; phiên 2026-08-29 bão
 # hoà nó trên 10/12 khớp nên mặc định lên 1.0 rad (57 độ). Trần sidecar là 1.0.
 HB_TELEOP_MAX_OFFSET_RAD="${HB_TELEOP_MAX_OFFSET_RAD:-1.0}"
+# Envelope riêng cho 6 khớp vai. 3.2 phủ trọn khớp rộng nhất (shoulder pitch
+# ±3.142 trong asset), nên vai chạy hết tầm và giới hạn khớp của asset — do
+# producer kẹp — là lớp chặn duy nhất còn lại. Người vận hành xác nhận an toàn
+# trên giá treo ngày 2026-08-29.
+HB_TELEOP_MAX_OFFSET_SHOULDER_RAD="${HB_TELEOP_MAX_OFFSET_SHOULDER_RAD:-3.2}"
 HB_TELEOP_HOME="${HB_TELEOP_HOME:-1}"
 HB_TELEOP_SOLVER="${HB_TELEOP_SOLVER:-upstream}"
 case "$HB_TELEOP_SOLVER" in
@@ -112,6 +117,8 @@ if [[ "$HB_TELEOP_HOME" == "1" ]]; then
 else
     echo "[READY] Homing TẮT: robot giữ nguyên tư thế hiện tại làm mốc."
 fi
+echo "[READY] Envelope: ${HB_TELEOP_MAX_OFFSET_RAD} rad/khớp; VAI ${HB_TELEOP_MAX_OFFSET_SHOULDER_RAD} rad (hết tầm)."
+echo "[READY] Cò trái = đưa về nominal và chốt lại mốc; nhả cò phải = tay giữ nguyên tư thế."
 
 conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --host-ip "$HOST_IP" \
@@ -135,5 +142,5 @@ conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --control-hz 10 \
     $([[ "$HB_TELEOP_SOLVER" == "upstream" ]] && echo --upstream-joint-stream || echo --coupled-ik) \
 | ssh -o BatchMode=yes "$ROBOT" \
-    "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad ${HB_TELEOP_MAX_OFFSET_RAD:-1.0} $([[ "$HB_TELEOP_HOME" == "1" ]] && echo --home-to-nominal) --log-dir /home/unitree/HB/teleop/logs" \
+    "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad $HB_TELEOP_MAX_OFFSET_RAD --max-offset-rad-shoulders $HB_TELEOP_MAX_OFFSET_SHOULDER_RAD $([[ "$HB_TELEOP_HOME" == "1" ]] && echo --home-to-nominal) --log-dir /home/unitree/HB/teleop/logs" \
 | tee "$RUN_DIR/robot_receiver.log"

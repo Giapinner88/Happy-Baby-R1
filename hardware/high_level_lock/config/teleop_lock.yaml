@@ -30,6 +30,8 @@ teleop_lock_max_rate_rad_s: 0.20
 #
 # 0.6 rad/s vẫn chậm hơn 10 lần đỉnh 5.94 rad/s của mô phỏng, nên một lệnh sai
 # còn thời gian để nhấn E-stop. CHƯA ĐƯỢC HARDWARE GATE DUYỆT.
+# Giá trị nền; scripts/run_lock_foreground.sh sinh teleop_runtime.yaml include
+# sau file này nên biến môi trường HB_TELEOP_RATE sẽ ghi đè.
 teleop_max_rate_rad_s: 0.6
 
 # Nhả cò thì giữ nguyên tay/đầu thay vì thả limp. Bản gốc thả limp nên mỗi lần

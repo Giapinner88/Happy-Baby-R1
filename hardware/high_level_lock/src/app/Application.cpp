@@ -1717,9 +1717,14 @@ void Application::RunZeroTorqueTeleop() {
             const float held_s = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - hold_started_at_).count() / 1000.0f;
             if (held_s < tuning_.teleop_hold_timeout_s) {
+                // Dùng cờ đã chốt, KHÔNG dùng teleop_.HeadValid(): hàm đó là
+                // `head_valid_ && weight_ > 0`, mà weight_ tụt về 0 ngay khi nhả
+                // cò. Hỏi nó lúc này luôn ra false, nên đầu không được giữ và
+                // rơi xuống trong khi tay đứng yên — đúng triệu chứng đo được
+                // ngày 2026-08-29.
                 sender_.SendUpperBodyHold(
                     tuning_.teleop_arm_kp, tuning_.teleop_arm_kd,
-                    estimator_.state().mode_machine, teleop_.HeadValid(),
+                    estimator_.state().mode_machine, head_was_valid_,
                     tuning_.teleop_lock_others_enabled ? tuning_.teleop_lock_kp : 0.0f,
                     tuning_.teleop_lock_kd);
                 return;
@@ -1743,6 +1748,7 @@ void Application::RunZeroTorqueTeleop() {
         return;
     }
     teleop_engaged_once_ = true;
+    if (teleop_.HeadValid()) head_was_valid_ = true;
     hold_started_at_ = {};
     hold_timeout_announced_ = false;
 

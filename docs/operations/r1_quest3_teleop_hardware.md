@@ -191,9 +191,10 @@ Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, c
 | Producer — giới hạn khớp                          | theo asset`R1.urdf`        |
 | Producer — nhịp phát                               | 10 Hz                        |
 | Sidecar — envelope mỗi khớp so với`source_zero` | **±1.0 rad** (`HB_TELEOP_MAX_OFFSET_RAD`) |
+| Sidecar — envelope 6 khớp VAI                        | **±3.2 rad = hết tầm** (`HB_TELEOP_MAX_OFFSET_SHOULDER_RAD`) |
 | Sidecar — watchdog lệnh vào /`rt/lowstate`       | 0.75 s / 0.20 s              |
 | Sidecar — nhịp gửi UTL1                            | 100 Hz                       |
-| Owner — slew                                         | **0.6 rad/s**                |
+| Owner — slew                                         | **0.6 rad/s** (`HB_TELEOP_RATE`, trần 1.50) |
 | Owner — PD tay                                       | kp 40, kd 2                  |
 | Owner — giới hạn đầu                             | yaw 1.0 rad, pitch 0.62 rad  |
 | Owner — timeout UTL1                                 | 300 ms                       |
@@ -201,6 +202,32 @@ Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, c
 | Bản cô lập — giữ tay khi nhả cò              | bật, hết hạn sau 120 s       |
 
 Không nới bất kỳ giá trị nào trong bảng này mà chưa qua hardware gate.
+
+### Chỉnh lúc chạy
+
+Tốc độ bám và gain đặt bằng biến môi trường khi khởi động bản cô lập; không sửa
+file, không build lại. Có tác dụng từ lần khởi động sau vì owner đọc config một
+lần lúc start.
+
+```bash
+HB_TELEOP_RATE=0.9 ./scripts/run_lock_foreground.sh      # trần 1.50
+```
+
+| biến | mặc định | tác dụng |
+| --- | --- | --- |
+| `HB_TELEOP_RATE` | 0.6 | slew của owner, rad/s |
+| `HB_TELEOP_ARM_KP` / `_KD` | 40 / 2 | PD tay: cao hơn thì bám cứng hơn |
+| `HB_TELEOP_LOCK_KP` | 20 | độ cứng khoá chân/eo |
+| `HB_TELEOP_HOLD_TIMEOUT_S` | 120 | giữ tay bao lâu sau khi nhả cò |
+
+Script sinh `config/teleop_runtime.yaml` và cho `tuning.yaml` include nó sau
+cùng, nên nó ghi đè mọi tầng bên dưới. File đó sinh tự động, đừng sửa tay.
+
+Envelope thì đặt ở phía workstation, lúc chạy `make teleop-hardware`:
+
+```bash
+HB_TELEOP_MAX_OFFSET_SHOULDER_RAD=2.0 make teleop-hardware ...
+```
 
 ## 8. Dừng
 

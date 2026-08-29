@@ -174,6 +174,9 @@ private:
     bool teleop_runtime_on_ = false;
     // Giữ tay khi nhả cò chỉ có nghĩa sau khi đã từng lái trong phiên này.
     bool teleop_engaged_once_ = false;
+    // Phiên này đã từng lái đầu chưa. Phải chốt riêng vì TeleopReceiver::HeadValid()
+    // gồm cả weight_ > 0, tức nó false ngay khi nhả cò.
+    bool head_was_valid_ = false;
     std::chrono::steady_clock::time_point hold_started_at_{};
     bool hold_timeout_announced_ = false;   // arm-head profile bật khi InitTeleop; L2+Phải vẫn có thể tắt.
     void InitTeleop();
