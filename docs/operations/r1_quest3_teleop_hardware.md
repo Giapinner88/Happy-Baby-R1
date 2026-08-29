@@ -173,8 +173,12 @@ Tắt homing: `HB_TELEOP_HOME=0`. Khi tắt, robot giữ nguyên tư thế tay �
 làm mốc và **sẽ không bao giờ giống dáng sim** — envelope ±0.15 rad chỉ cho
 dịch 8.6°/khớp, trong khi khuỷu treo tự do lệch tới 78°.
 
-Cò trái **không** dùng để điều khiển. Bấm cò trái giữa phiên thì pipeline dừng và
-phải chạy lại từ đầu để lập neutral mới.
+**Cò trái = về lại nominal.** Bấm giữa phiên thì robot chạy lại homing, chốt lại
+mốc, rồi phiên **tiếp tục** — không phải chạy lại pipeline. Dùng khi tay đã trôi
+tới rìa envelope và muốn bắt đầu lại.
+
+**Nhả cò phải thì tay giữ nguyên tư thế**, không sụp như trước. Bóp lại là đi
+tiếp từ đúng chỗ đó. Quá 120 giây không ai lái thì owner trả về ZERO TORQUE.
 
 Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, chạy lại từ
 đầu. Không vặn tay/đầu sang tư thế bù trong khi controller còn active.
@@ -183,17 +187,18 @@ Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, c
 
 | Chặn ở đâu                                        | Giá trị                    |
 | ----------------------------------------------------- | ---------------------------- |
-| Producer — vận tốc / gia tốc khớp                | 0.5 rad/s, 1.0 rad/s²       |
+| Producer — vận tốc / gia tốc khớp                | 1.0 rad/s, 2.0 rad/s² (để owner là thứ chặn thật) |
 | Producer — giới hạn khớp                          | theo asset`R1.urdf`        |
 | Producer — nhịp phát                               | 10 Hz                        |
-| Sidecar — envelope mỗi khớp so với`source_zero` | ±0.15 rad                   |
+| Sidecar — envelope mỗi khớp so với`source_zero` | **±1.0 rad** (`HB_TELEOP_MAX_OFFSET_RAD`) |
 | Sidecar — watchdog lệnh vào /`rt/lowstate`       | 0.75 s / 0.20 s              |
 | Sidecar — nhịp gửi UTL1                            | 100 Hz                       |
-| Owner — slew                                         | 0.30 rad/s                   |
+| Owner — slew                                         | **0.6 rad/s**                |
 | Owner — PD tay                                       | kp 40, kd 2                  |
 | Owner — giới hạn đầu                             | yaw 1.0 rad, pitch 0.62 rad  |
 | Owner — timeout UTL1                                 | 300 ms                       |
 | Bản cô lập — khoá chân/eo                       | kp 20, kd 3, slew 0.20 rad/s |
+| Bản cô lập — giữ tay khi nhả cò              | bật, hết hạn sau 120 s       |
 
 Không nới bất kỳ giá trị nào trong bảng này mà chưa qua hardware gate.
 
