@@ -18,7 +18,10 @@ EXCLUDES=(--exclude '__pycache__/' --exclude '*.pyc' --exclude '.cache/'
           --exclude 'logs/' --exclude 'docs/' --exclude '*.env')
 
 sync_teleop() {
-    rsync "${RSYNC_BASE[@]}" --delete-delay "$@" "${EXCLUDES[@]}" \
+    # Robot deployments are overlays.  The destination also holds runtime-only
+    # logs, evidence, third_party assets and recovery backups that are not part
+    # of this narrow package; a root-level rsync --delete would erase them.
+    rsync "${RSYNC_BASE[@]}" "$@" "${EXCLUDES[@]}" \
         "$TELEOP_DIR/" "$ROBOT:$DEST/teleop/"
 }
 

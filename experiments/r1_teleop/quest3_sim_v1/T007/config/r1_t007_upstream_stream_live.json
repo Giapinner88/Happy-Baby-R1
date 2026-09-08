@@ -5,7 +5,15 @@
   "mode": "simulation_only",
   "method_record": "experiments/r1_teleop/quest3_sim_v1/T007/REPORT_20260823_upstream.md",
   "fixed_base": true,
-  "comparability": "Not comparable with any run whose joints came from this project's own solvers. The joint targets here are produced by third_party/xr_teleoperate_v1_6 R1_A5_ArmIK, unmodified, in a separate process; this configuration governs only how they are applied.",
+  "comparability": "Not comparable with runs made before the initial-head-anchor wrist re-expression or with runs whose joints came from this project's own solvers. The joint targets here are produced by third_party/xr_teleoperate_v1_6 R1_A5_ArmIK, unmodified, in a separate process after this repository removes current-head motion from the vendor wrist transport frame.",
+  "session_calibration": {
+    "mode": "initial_head_position_yaw_anchor",
+    "confirmation_samples": 3,
+    "capture": "third consecutive deadman-enabled head pose",
+    "head_output": "pitch/yaw relative to the captured orientation",
+    "wrist_output": "vendor current-head-relative wrist pose inverted to robot-basis XR world, then expressed against the captured head position/yaw",
+    "lifetime": "one upstream streamer process; deadman release does not reset the anchor"
+  },
   "model": {
     "urdf_path": "assets/R1.urdf",
     "body_mode": "arms_head",
@@ -26,8 +34,8 @@
     "output_filter": [0.4, 0.3, 0.2, 0.1],
     "locked_joints": ["waist_yaw_joint", "head_pitch_joint", "head_yaw_joint"],
     "controlled_frames": ["L_ee", "R_ee"],
-    "target_frame": "neutral_waist_yaw_link, passed unconverted",
-    "target_frame_reason": "The vendor r1_a5.urdf gives waist_yaw_joint a zero origin, so its root frame coincides with waist_yaw_link. This project's R1.urdf carries a 58.8 mm offset there because it has a real waist_roll_link. Applying that offset to vendor targets displaces every one of them by that distance."
+    "target_frame": "neutral_waist_yaw_link after initial-head-anchor wrist re-expression",
+    "target_frame_reason": "TeleVuer first emits its audited current-head-yaw-relative waist pose. The streamer reverses only that moving-head transform and applies the captured initial head position/yaw, retaining the vendor's fixed [0.15, 0, 0.45] m workspace offset and wrist convention. The vendor r1_a5.urdf gives waist_yaw_joint a zero origin, so no project-asset waist offset is added."
   },
   "rate_limiting": {
     "applied": false,

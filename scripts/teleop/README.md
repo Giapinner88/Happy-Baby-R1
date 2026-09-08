@@ -90,6 +90,15 @@ flag or a valid TeleVuer analog value at/below `--trigger-value-threshold` on
 the wrapper's inverted `10=released, 0=fully pressed` scale, and records every
 effective transition with both raw representations in its connection JSONL.
 
+For the upstream IK path, keep the head and controllers in a comfortable
+neutral pose for the first three consecutive deadman samples (about 0.1 s at
+30 Hz). The third sample establishes one session anchor containing the initial
+head position and yaw. Wrist poses are then re-expressed against that fixed
+anchor before entering `R1_A5_ArmIK`, so later head motion does not drag a
+stationary hand target. Releasing and pressing deadman again keeps the same
+anchor; restarting the pipeline creates a new one. The same anchor makes the
+robot head pitch/yaw relative to the initial headset direction.
+
 ## Known constraints
 
 - `--disable-self-collisions` is required for the head joints to move at all.
@@ -110,15 +119,20 @@ effective transition with both raw representations in its connection JSONL.
 - Achieved control rate depends on GPU load; the runner records
   `achieved_control_hz` and `sim_to_wall_ratio` so a slow run is visible in the
   evidence rather than silently distorting it.
-- For a first network baseline, use `--headless --no-video --device cuda:1` on
-  `run_t007_upper_body_pilot.py`. Re-enable a viewport/video only after the
-  bridge records a live WebXR connection and nonzero accepted commands.
+- For a lightweight network baseline, explicitly use
+  `--headless --no-video --device cuda:1` on
+  `run_t007_upper_body_pilot.py`. The Makefile default opens the viewport and
+  records a single evidence-camera view.
 - The Makefile deliberately has no fixed Wi-Fi address. Pass it for every run,
   for example `make teleop HOST_IP=192.168.1.106`. By default the certificate
   is resolved as
   `~/.config/xr_teleoperate/happybaby_192_168_1_106/{cert.pem,key.pem}`;
-  override `CERT_FILE` and `KEY_FILE` when the files live elsewhere. GPU 1 and
-  the headless/no-video connectivity baseline remain the defaults.
+  when both files are absent, the launcher creates a one-year self-signed
+  certificate whose SAN matches `HOST_IP`. Existing pairs are reused, and a
+  partial pair is never overwritten automatically. Override `CERT_FILE` and
+  `KEY_FILE` when the files live elsewhere. GPU 0 and a visible single-view
+  recording remain the defaults because Isaac Sim 5.1's USDRT camera path does
+  not support `cuda:1`; headless/no-video runs may still override the device.
 - T007 now starts Vuer first and waits for a validated `Enter VR` pose before
   launching Isaac (`--quest-ready-timeout-s`, 180 s by default). This avoids
   restarting the WebSocket between a transport check and the simulator.

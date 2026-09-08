@@ -19,10 +19,13 @@ supplied by the calling entry point.
 
 from __future__ import annotations
 
+import ipaddress
 import json
+import os
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,6 +35,85 @@ from evidence.run_id import allocate_run_id
 
 BRIDGE_ENV = "tv"
 SIM_ENV = "unitree_sim_env"
+
+
+def ensure_self_signed_certificate(host_ip: str, cert_file: Path, key_file: Path) -> bool:
+    """Ensure a current local HTTPS certificate for ``host_ip`` exists.
+
+    A valid existing pair is reused so the headset does not need to trust a
+    different certificate on every launch. An expired, malformed, or wrong-SAN
+    pair is atomically replaced. A partial pair is not repaired by overwriting
+    the remaining credential; the operator must inspect it first.
+    """
+
+    try:
+        address = ipaddress.ip_address(host_ip)
+    except ValueError as exc:
+        raise SystemExit(f"Cannot create certificate: invalid --host-ip {host_ip!r}.") from exc
+
+    cert_path = cert_file.expanduser()
+    key_path = key_file.expanduser()
+    cert_exists = cert_path.is_file()
+    key_exists = key_path.is_file()
+    if cert_exists and key_exists:
+        inspection = subprocess.run(
+            [
+                "openssl", "x509", "-in", str(cert_path), "-noout",
+                "-checkend", "0", "-ext", "subjectAltName",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if inspection.returncode == 0 and f"IP Address:{address}" in inspection.stdout:
+            return False
+    if cert_exists != key_exists:
+        missing = key_path if cert_exists else cert_path
+        existing = cert_path if cert_exists else key_path
+        raise SystemExit(
+            f"Refusing to replace a partial certificate pair: {existing} exists but "
+            f"{missing} does not. Move or repair the pair, then retry."
+        )
+
+    cert_path.parent.mkdir(parents=True, exist_ok=True)
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    cert_handle = tempfile.NamedTemporaryFile(
+        prefix=f".{cert_path.name}.", dir=cert_path.parent, delete=False
+    )
+    key_handle = tempfile.NamedTemporaryFile(
+        prefix=f".{key_path.name}.", dir=key_path.parent, delete=False
+    )
+    temporary_cert = Path(cert_handle.name)
+    temporary_key = Path(key_handle.name)
+    cert_handle.close()
+    key_handle.close()
+    try:
+        result = subprocess.run(
+            [
+                "openssl", "req", "-x509", "-newkey", "rsa:2048", "-sha256",
+                "-nodes", "-days", "365", "-keyout", str(temporary_key),
+                "-out", str(temporary_cert), "-subj", f"/CN={address}",
+                "-addext", f"subjectAltName=IP:{address}",
+                "-addext", "keyUsage=digitalSignature,keyEncipherment",
+                "-addext", "extendedKeyUsage=serverAuth",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "unknown OpenSSL error"
+            raise SystemExit(f"Failed to create HTTPS certificate with OpenSSL: {detail}")
+        os.chmod(temporary_key, 0o600)
+        os.chmod(temporary_cert, 0o644)
+        temporary_key.replace(key_path)
+        temporary_cert.replace(cert_path)
+    except OSError as exc:
+        raise SystemExit(f"Failed to create HTTPS certificate: {exc}") from exc
+    finally:
+        temporary_cert.unlink(missing_ok=True)
+        temporary_key.unlink(missing_ok=True)
+    return True
 
 
 @dataclass(frozen=True)
@@ -132,9 +214,13 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
         raise SystemExit("--trigger-value-threshold must be in [0, 10).")
     if spec.quest_ready_timeout_s is not None and spec.quest_ready_timeout_s <= 0.0:
         raise SystemExit("Quest readiness timeout must be positive when enabled.")
-    for path in (spec.cert_file, spec.key_file):
-        if not path.expanduser().is_file():
-            raise SystemExit(f"Certificate file does not exist: {path}")
+    if ensure_self_signed_certificate(spec.host_ip, spec.cert_file, spec.key_file):
+        print(
+            f"Created self-signed Quest certificate for {spec.host_ip}: "
+            f"{spec.cert_file.expanduser()}",
+            file=sys.stderr,
+            flush=True,
+        )
 
     spec.run_root.mkdir(parents=True, exist_ok=True)
     run_id = allocate_run_id(spec.run_root, spec.protocol)
@@ -263,5 +349,6 @@ __all__ = [
     "SIM_ENV",
     "PilotLaunchSpec",
     "build_commands",
+    "ensure_self_signed_certificate",
     "run_pilot",
 ]

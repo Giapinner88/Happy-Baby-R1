@@ -63,6 +63,13 @@ def test_deploy_excludes_env_files() -> None:
     assert "--exclude '*.env'" in script
 
 
+def test_deploy_never_deletes_remote_runtime_artifacts() -> None:
+    script = (TELEOP_DIR / "scripts" / "deploy_teleop.sh").read_text(encoding="utf-8")
+    command_lines = [line for line in script.splitlines() if line.lstrip().startswith("rsync ")]
+    assert command_lines
+    assert all("--delete" not in line for line in command_lines)
+
+
 def test_deploy_does_not_start_or_enable_anything() -> None:
     """`deploy` chỉ được copy file."""
     script = (TELEOP_DIR / "scripts" / "deploy_teleop.sh").read_text(encoding="utf-8")

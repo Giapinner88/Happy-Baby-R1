@@ -22,14 +22,16 @@ DURATION_S  ?= 180
 PHYSICS_HZ  ?= 200
 CONTROL_HZ  ?= 30
 VIDEO_FPS   ?= 10
-DEVICE      ?= cuda:1
+# Isaac Sim 5.1's USDRT evidence-camera path currently supports cuda:0 only.
+# Headless/no-video baselines may still override this with DEVICE=cuda:1.
+DEVICE      ?= cuda:0
 CERT_FILE   ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/cert.pem
 KEY_FILE    ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/key.pem
 # arms_head | waist_yaw | full_upper_body. Empty keeps the profile's own value.
 BODY_MODE   ?=
-# Temporary connectivity baseline for the current Wi-Fi. Override with
-# `TELEOP_ARGS=--single-view` after the live bridge has been verified.
-TELEOP_ARGS ?= --headless --no-video
+# Open Isaac Sim and record one evidence-camera view by default. For a lighter
+# connectivity-only run, override with `TELEOP_ARGS="--headless --no-video"`.
+TELEOP_ARGS ?= --single-view
 WHOLE_UPPER_BODY_CONFIG ?= experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json
 
 TELEOP_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \

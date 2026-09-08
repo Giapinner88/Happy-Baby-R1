@@ -9,7 +9,9 @@ assert the wiring rather than trusting it.
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,6 +24,7 @@ from teleop.r1.launcher import (
     PilotLaunchSpec,
     _wait_for_quest_ready,
     build_commands,
+    ensure_self_signed_certificate,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -83,6 +86,66 @@ class LauncherSolverStageTest(unittest.TestCase):
         self.assertIn(BRIDGE_ENV, solver)
         self.assertNotIn(SIM_ENV, solver)
         self.assertIn("--passthrough", solver)
+
+
+class AutomaticCertificateTest(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("openssl"), "OpenSSL is required by the launcher")
+    def test_missing_pair_is_created_with_matching_ip_san(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+
+            self.assertTrue(ensure_self_signed_certificate("192.168.1.19", cert, key))
+            self.assertTrue(cert.is_file())
+            self.assertTrue(key.is_file())
+            self.assertEqual(os.stat(key).st_mode & 0o777, 0o600)
+            details = subprocess.run(
+                ["openssl", "x509", "-in", str(cert), "-noout", "-ext", "subjectAltName"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertIn("IP Address:192.168.1.19", details)
+
+    def test_existing_pair_is_reused_without_overwrite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+            self.assertTrue(ensure_self_signed_certificate("192.168.1.19", cert, key))
+            original_cert = cert.read_bytes()
+            original_key = key.read_bytes()
+
+            self.assertFalse(ensure_self_signed_certificate("192.168.1.19", cert, key))
+            self.assertEqual(cert.read_bytes(), original_cert)
+            self.assertEqual(key.read_bytes(), original_key)
+
+    @unittest.skipUnless(shutil.which("openssl"), "OpenSSL is required by the launcher")
+    def test_invalid_existing_pair_is_replaced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+            cert.write_text("expired-or-malformed-cert", encoding="utf-8")
+            key.write_text("stale-key", encoding="utf-8")
+
+            self.assertTrue(ensure_self_signed_certificate("10.42.0.1", cert, key))
+            details = subprocess.run(
+                ["openssl", "x509", "-in", str(cert), "-noout", "-checkend", "0", "-ext", "subjectAltName"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertIn("IP Address:10.42.0.1", details)
+
+    def test_partial_pair_is_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+            cert.write_text("keep-me", encoding="utf-8")
+
+            with self.assertRaisesRegex(SystemExit, "partial certificate pair"):
+                ensure_self_signed_certificate("192.168.1.19", cert, key)
+            self.assertEqual(cert.read_text(encoding="utf-8"), "keep-me")
+            self.assertFalse(key.exists())
 
 
 class TeleopArmsWiringTest(unittest.TestCase):

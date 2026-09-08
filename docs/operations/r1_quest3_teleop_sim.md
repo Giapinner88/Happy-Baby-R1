@@ -151,6 +151,15 @@ The underlying `--whole-upper-body-config` selects the schema-3 coupled solver.
 It owns waist yaw, both arms, and head in one atomic target while fixing the
 root and legs. It is mutually exclusive with the legacy `--arm-head-config`.
 
+When the pilot uses `--upstream-solver` (`make teleop-arms`), hold the head and
+controllers at a comfortable neutral for the first three consecutive
+right-deadman samples. The streamer records the third head pose as a fixed
+session position/yaw anchor and expresses both wrists against that anchor
+before vendor IK. Turning or translating the headset after calibration then
+drives only the head; a stationary controller no longer moves an arm. Restart
+the pipeline to choose a new anchor. Releasing and pressing deadman within the
+same run deliberately retains the existing anchor.
+
 Two options change what a run means and must be read from its resolved config:
 
 - `allow_projected_position_solution` (on by default in the T007 profile)

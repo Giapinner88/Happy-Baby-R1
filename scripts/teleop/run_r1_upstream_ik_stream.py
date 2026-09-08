@@ -21,11 +21,18 @@ in one interpreter means one of them stops resolving. Reading the wire format
 directly keeps this process free of that collision, and the format is stable
 enough to parse in a dozen lines.
 
-Wrist targets are consumed in the `neutral_waist_yaw_link` frame and passed to
-the solver unconverted: the vendor's `r1_a5.urdf` gives `waist_yaw_joint` a
-zero origin, so its root frame and the waist frame coincide. Head pitch and yaw
-are taken from the recorded head pose because upstream's reduced model locks
-both head joints along with `waist_yaw_joint`.
+The vendor wrapper emits wrists relative to the *current* head position and
+yaw. Before solving, this process reverses that transform and expresses both
+wrists relative to the session's initial head anchor. Moving the head therefore
+does not move an otherwise stationary controller target. The resulting poses
+remain in `neutral_waist_yaw_link`: the vendor's `r1_a5.urdf` gives
+`waist_yaw_joint` a zero origin, so its root frame and the waist frame coincide.
+
+Head pitch and yaw are taken from the recorded head pose because upstream's
+reduced model locks both head joints along with `waist_yaw_joint`. The start of
+the first sustained deadman press supplies both the wrist anchor and the head
+angular neutral. Requiring a few consecutive samples avoids calibrating against
+a one-frame startup pulse.
 
 While the deadman is released no solve is performed and the last solved target
 is repeated, so a released trigger holds position instead of drifting toward
@@ -58,6 +65,8 @@ ARM_JOINT_NAMES = (
 )
 HEAD_JOINT_NAMES = ("head_pitch_joint", "head_yaw_joint")
 DEFAULT_URDF = REPO_ROOT / "assets" / "R1.urdf"
+HEAD_NEUTRAL_CONFIRM_SAMPLES = 3
+VENDOR_HEAD_TO_WAIST_OFFSET_M = np.array([0.15, 0.0, 0.45])
 
 
 def head_limits_rad(urdf_path: Path) -> tuple[tuple[float, float], ...]:
@@ -106,6 +115,19 @@ def pose_to_matrix(pose: dict) -> np.ndarray:
     return transform
 
 
+def _head_angles_unbounded(pose: dict) -> tuple[float, float]:
+    """Extract pitch and yaw before applying robot limits."""
+
+    forward = pose_to_matrix(pose)[:3, 0]
+    norm = float(np.linalg.norm(forward))
+    if norm <= 0.0:
+        raise ValueError("head pose carries a degenerate forward axis")
+    forward = forward / norm
+    yaw = float(np.arcsin(float(np.clip(forward[1], -1.0, 1.0))))
+    pitch = float(np.arctan2(-forward[2], forward[0]))
+    return pitch, yaw
+
+
 def head_angles(pose: dict, limits: tuple[tuple[float, float], ...]) -> tuple[float, float]:
     """Head joint angles that aim the R1 head down the headset's forward axis.
 
@@ -125,14 +147,110 @@ def head_angles(pose: dict, limits: tuple[tuple[float, float], ...]) -> tuple[fl
     a branch that flips the head around when the operator turns far enough.
     """
 
-    forward = pose_to_matrix(pose)[:3, 0]
-    norm = float(np.linalg.norm(forward))
-    if norm <= 0.0:
-        raise ValueError("head pose carries a degenerate forward axis")
-    forward = forward / norm
-    yaw = float(np.arcsin(float(np.clip(forward[1], -1.0, 1.0))))
-    pitch = float(np.arctan2(-forward[2], forward[0]))
+    pitch, yaw = _head_angles_unbounded(pose)
     return float(np.clip(pitch, *limits[0])), float(np.clip(yaw, *limits[1]))
+
+
+def relative_head_angles(
+    pose: dict,
+    neutral_pitch_yaw: tuple[float, float],
+    limits: tuple[tuple[float, float], ...],
+) -> tuple[float, float]:
+    """Return bounded head angles relative to the session's initial pose."""
+
+    pitch, yaw = _head_angles_unbounded(pose)
+    neutral_pitch, neutral_yaw = neutral_pitch_yaw
+    pitch = float(np.arctan2(np.sin(pitch - neutral_pitch), np.cos(pitch - neutral_pitch)))
+    yaw = float(np.arctan2(np.sin(yaw - neutral_yaw), np.cos(yaw - neutral_yaw)))
+    return float(np.clip(pitch, *limits[0])), float(np.clip(yaw, *limits[1]))
+
+
+def head_yaw_rotation(head_pose_matrix: np.ndarray) -> np.ndarray:
+    """Mirror the vendor's horizontal-head-axis yaw extraction exactly."""
+
+    forward = np.asarray(head_pose_matrix[:3, 0], dtype=float).copy()
+    forward[2] = 0.0
+    norm = float(np.linalg.norm(forward))
+    if not np.isfinite(norm) or norm <= 1e-6:
+        return np.eye(3)
+    forward /= norm
+    up = np.array([0.0, 0.0, 1.0])
+    left = np.cross(up, forward)
+    left /= np.linalg.norm(left)
+    return np.column_stack((forward, left, up))
+
+
+def reanchor_wrist_matrix(
+    wrist_pose_matrix: np.ndarray,
+    current_head_pose_matrix: np.ndarray,
+    anchor_head_pose_matrix: np.ndarray,
+) -> np.ndarray:
+    """Move a vendor current-head-relative wrist pose to the initial head anchor.
+
+    TeleVuer emits ``A_t = yaw(H_t)^-1 * W`` plus its fixed waist offset.
+    Recovering ``W`` with the current head and applying ``yaw(H_0)^-1`` removes
+    head motion without changing the vendor wrist convention or workspace
+    offset.
+    """
+
+    wrist = np.asarray(wrist_pose_matrix, dtype=float)
+    current_head = np.asarray(current_head_pose_matrix, dtype=float)
+    anchor_head = np.asarray(anchor_head_pose_matrix, dtype=float)
+    current_yaw = head_yaw_rotation(current_head)
+    anchor_yaw = head_yaw_rotation(anchor_head)
+
+    world_wrist_rotation = current_yaw @ wrist[:3, :3]
+    world_wrist_position = (
+        current_yaw @ (wrist[:3, 3] - VENDOR_HEAD_TO_WAIST_OFFSET_M)
+        + current_head[:3, 3]
+    )
+
+    anchored = np.eye(4)
+    anchored[:3, :3] = anchor_yaw.T @ world_wrist_rotation
+    anchored[:3, 3] = (
+        anchor_yaw.T @ (world_wrist_position - anchor_head[:3, 3])
+        + VENDOR_HEAD_TO_WAIST_OFFSET_M
+    )
+    return anchored
+
+
+class HeadNeutralCalibrator:
+    """Capture one stable session neutral and hold the head with deadman off."""
+
+    def __init__(
+        self,
+        limits: tuple[tuple[float, float], ...],
+        confirm_samples: int = HEAD_NEUTRAL_CONFIRM_SAMPLES,
+    ) -> None:
+        if confirm_samples < 1:
+            raise ValueError("confirm_samples must be positive")
+        self.limits = limits
+        self.confirm_samples = confirm_samples
+        self.neutral: tuple[float, float] | None = None
+        self.anchor_pose_matrix: np.ndarray | None = None
+        self.candidate_count = 0
+        self.last = (0.0, 0.0)
+
+    @property
+    def ready(self) -> bool:
+        return self.anchor_pose_matrix is not None
+
+    def update(self, pose: dict, enabled: bool) -> tuple[float, float]:
+        if not enabled:
+            if self.neutral is None:
+                self.candidate_count = 0
+            return self.last
+
+        if self.neutral is None:
+            self.candidate_count += 1
+            self.last = (0.0, 0.0)
+            if self.candidate_count >= self.confirm_samples:
+                self.neutral = _head_angles_unbounded(pose)
+                self.anchor_pose_matrix = pose_to_matrix(pose)
+            return self.last
+
+        self.last = relative_head_angles(pose, self.neutral, self.limits)
+        return self.last
 
 
 def load_solver():
@@ -189,7 +307,10 @@ def main() -> int:
     sink = args.output.open("w", encoding="utf-8") if args.output else sys.stdout
     solve_ms: list[float] = []
     held = 0
+    calibration_samples_skipped = 0
     last_arms: np.ndarray | None = None
+    last_wrist_targets: tuple[np.ndarray, np.ndarray] | None = None
+    head_calibrator = HeadNeutralCalibrator(head_bounds)
 
     downstream_closed = False
     try:
@@ -199,21 +320,34 @@ def main() -> int:
                 continue
             command = json.loads(line)
             enabled = bool(command.get("deadman_enabled", False))
+            pitch, yaw = head_calibrator.update(command["head_pose"], enabled)
+            if enabled and not head_calibrator.ready:
+                calibration_samples_skipped += 1
+                continue
             if enabled:
-                started = time.perf_counter()
-                solution, _torque = solver.solve_ik(
+                assert head_calibrator.anchor_pose_matrix is not None
+                current_head = pose_to_matrix(command["head_pose"])
+                left_wrist = reanchor_wrist_matrix(
                     pose_to_matrix(command["left_wrist_pose"]),
-                    pose_to_matrix(command["right_wrist_pose"]),
+                    current_head,
+                    head_calibrator.anchor_pose_matrix,
                 )
+                right_wrist = reanchor_wrist_matrix(
+                    pose_to_matrix(command["right_wrist_pose"]),
+                    current_head,
+                    head_calibrator.anchor_pose_matrix,
+                )
+                started = time.perf_counter()
+                solution, _torque = solver.solve_ik(left_wrist, right_wrist)
                 solve_ms.append(1000.0 * (time.perf_counter() - started))
                 last_arms = np.asarray(solution, dtype=float)
+                last_wrist_targets = (left_wrist, right_wrist)
             elif last_arms is None:
                 # Nothing solved yet, so there is no pose to hold and emitting a
                 # zero vector would be a command, not a hold.
                 continue
             else:
                 held += 1
-            pitch, yaw = head_angles(command["head_pose"], head_bounds)
             solved = [*(float(v) for v in last_arms), pitch, yaw]
             if args.passthrough:
                 # The original command is preserved verbatim so the consumer's
@@ -224,6 +358,10 @@ def main() -> int:
                 record["upstream_joint_names"] = joint_names
                 record["upstream_joint_position_rad"] = solved
                 record["upstream_solved_this_sample"] = enabled
+                record["upstream_wrist_reference_mode"] = "initial_head_position_yaw_anchor"
+                assert last_wrist_targets is not None
+                record["upstream_left_wrist_target_matrix"] = last_wrist_targets[0].tolist()
+                record["upstream_right_wrist_target_matrix"] = last_wrist_targets[1].tolist()
             else:
                 record = {
                     "schema_version": 1,
@@ -259,6 +397,8 @@ def main() -> int:
                 {
                     "solved_sample_count": int(len(values)),
                     "held_sample_count": int(held),
+                    "calibration_samples_skipped": int(calibration_samples_skipped),
+                    "wrist_reference_mode": "initial_head_position_yaw_anchor",
                     "solve_ms": {
                         "mean": float(np.mean(values)),
                         "median": float(np.median(values)),
@@ -266,6 +406,14 @@ def main() -> int:
                         "max": float(np.max(values)),
                     },
                     "implied_rate_ceiling_hz": float(1000.0 / float(np.mean(values))),
+                    "head_neutral_pitch_yaw_rad": (
+                        list(head_calibrator.neutral) if head_calibrator.neutral else None
+                    ),
+                    "head_anchor_pose_matrix": (
+                        head_calibrator.anchor_pose_matrix.tolist()
+                        if head_calibrator.anchor_pose_matrix is not None
+                        else None
+                    ),
                     "stop_reason": "downstream_closed" if downstream_closed else "input_exhausted",
                 },
                 indent=2,

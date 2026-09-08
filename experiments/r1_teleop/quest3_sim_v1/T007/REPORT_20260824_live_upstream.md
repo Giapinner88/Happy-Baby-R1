@@ -136,3 +136,13 @@ Quy mô ảnh hưởng, tính ngược từ chính trace này (phép đổi kh�
 **Tạm chấp nhận, không đổi.** Ghi lại ở đây để lần sau không ai đi tối ưu bộ giải vì một triệu
 chứng mà bộ giải không gây ra. Khi nào muốn thử: đổi `arm_reference_mode` sang `head_position`
 trong `BridgeConfig` cùng cái contract đang chốt nó, chạy lại một phiên, so trên cùng một trace.
+
+### Cập nhật 2026-09-08
+
+Quyết định tạm thời trên đã được thay thế cho đường live upstream. Thay vì đổi
+sang `head_position` (vẫn làm tay phụ thuộc head translation), streamer giờ
+chốt head position/yaw ở mẫu deadman ổn định đầu tiên, đảo transform
+current-head của vendor về robot-basis XR world rồi biểu diễn wrist lại theo
+anchor ban đầu. Cách này loại cả head translation lẫn yaw khỏi target tay mà
+không sửa `third_party` hoặc vector nghiệm của `R1_A5_ArmIK`. Protocol mới được
+khai báo trong `r1_t007_upstream_stream_live.json`; các run cũ không comparable.

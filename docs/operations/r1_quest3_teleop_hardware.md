@@ -42,7 +42,7 @@ Không đủ một trong các điều dưới đây thì không chạy.
 | Thành phần             | Địa chỉ / interface                                |
 | ------------------------ | ----------------------------------------------------- |
 | Workstation (Quest + IK) | `192.168.1.106`, `wlp77s0`                        |
-| Robot SSH                | `$ROBOT` — IP động, xem cảnh báo trên               |
+| Robot SSH                | `$ROBOT` — IP động, xem cảnh báo trên         |
 | DDS trên robot          | `eth10` — `rt/lowstate`, `rt/lowcmd`           |
 | UTL1 loopback            | `127.0.0.1:5560` (chỉ loopback)                    |
 | Quest                    | cùng Wi-Fi`HappyBaby`                              |
@@ -147,6 +147,11 @@ make teleop-hardware \
 
 Mặc định là bộ giải vendor, tay + đầu. Đường cũ: thêm `HB_TELEOP_SOLVER=coupled`.
 
+Entrypoint kiểm tra cert trước mỗi lần chạy. Pair còn hạn và có SAN khớp
+`HOST_IP` được reuse; pair hết hạn, hỏng hoặc sai SAN được tạo lại atomically.
+Nếu chỉ còn một trong `cert.pem`/`key.pem`, lệnh dừng để người vận hành kiểm tra
+thay vì tự ghi đè credential còn lại.
+
 **Bước 4 — Quest.**
 
 1. Wi-Fi `HappyBaby`, mở `https://192.168.1.106:8012/?ws=wss://192.168.1.106:8012`.
@@ -169,6 +174,13 @@ Mặc định là bộ giải vendor, tay + đầu. Đường cũ: thêm `HB_TEL
    không bị tính thành lệch.
 8. Di chuyển **chậm**.
 
+Producer upstream còn dùng ba mẫu deadman liên tiếp đầu tiên để chốt head pose
+làm spatial anchor. Hai wrist được biểu diễn theo position/yaw của anchor này
+trước khi giải IK, nên xoay hoặc dịch đầu sau đó không kéo tay theo nếu
+controller đứng yên. Nhả/bóp lại cò phải giữ nguyên anchor; chạy lại pipeline
+mới tạo anchor mới. Đây là mốc không gian phía Quest, khác với `source_zero` và
+`start_q` của sidecar dùng cho ánh xạ tương đối sang encoder robot.
+
 Tắt homing: `HB_TELEOP_HOME=0`. Khi tắt, robot giữ nguyên tư thế tay đang buông
 làm mốc và **sẽ không bao giờ giống dáng sim** — envelope ±0.15 rad chỉ cho
 dịch 8.6°/khớp, trong khi khuỷu treo tự do lệch tới 78°.
@@ -185,21 +197,21 @@ Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, c
 
 ## 7. Giới hạn đang áp
 
-| Chặn ở đâu                                        | Giá trị                    |
-| ----------------------------------------------------- | ---------------------------- |
-| Producer — vận tốc / gia tốc khớp                | 1.0 rad/s, 2.0 rad/s² (để owner là thứ chặn thật) |
-| Producer — giới hạn khớp                          | theo asset`R1.urdf`        |
-| Producer — nhịp phát                               | 10 Hz                        |
-| Sidecar — envelope mỗi khớp so với`source_zero` | **±1.0 rad** (`HB_TELEOP_MAX_OFFSET_RAD`) |
-| Sidecar — envelope 6 khớp VAI                        | **±3.2 rad = hết tầm** (`HB_TELEOP_MAX_OFFSET_SHOULDER_RAD`) |
-| Sidecar — watchdog lệnh vào /`rt/lowstate`       | 0.75 s / 0.20 s              |
-| Sidecar — nhịp gửi UTL1                            | 100 Hz                       |
-| Owner — slew                                         | **0.6 rad/s** (`HB_TELEOP_RATE`, trần 1.50) |
-| Owner — PD tay                                       | kp 40, kd 2                  |
-| Owner — giới hạn đầu                             | yaw 1.0 rad, pitch 0.62 rad  |
-| Owner — timeout UTL1                                 | 300 ms                       |
-| Bản cô lập — khoá chân/eo                       | kp 20, kd 3, slew 0.20 rad/s |
-| Bản cô lập — giữ tay khi nhả cò              | bật, hết hạn sau 120 s       |
+| Chặn ở đâu                                        | Giá trị                                                               |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| Producer — vận tốc / gia tốc khớp                | 1.0 rad/s, 2.0 rad/s² (để owner là thứ chặn thật)                |
+| Producer — giới hạn khớp                          | theo asset`R1.urdf`                                                   |
+| Producer — nhịp phát                               | 10 Hz                                                                   |
+| Sidecar — envelope mỗi khớp so với`source_zero` | **±1.0 rad** (`HB_TELEOP_MAX_OFFSET_RAD`)                      |
+| Sidecar — envelope 6 khớp VAI                       | **±3.2 rad = hết tầm** (`HB_TELEOP_MAX_OFFSET_SHOULDER_RAD`) |
+| Sidecar — watchdog lệnh vào /`rt/lowstate`       | 0.75 s / 0.20 s                                                         |
+| Sidecar — nhịp gửi UTL1                            | 100 Hz                                                                  |
+| Owner — slew                                         | **0.6 rad/s** (`HB_TELEOP_RATE`, trần 1.50)                    |
+| Owner — PD tay                                       | kp 40, kd 2                                                             |
+| Owner — giới hạn đầu                             | yaw 1.0 rad, pitch 0.62 rad                                             |
+| Owner — timeout UTL1                                 | 300 ms                                                                  |
+| Bản cô lập — khoá chân/eo                       | kp 20, kd 3, slew 0.20 rad/s                                            |
+| Bản cô lập — giữ tay khi nhả cò                | bật, hết hạn sau 120 s                                               |
 
 Không nới bất kỳ giá trị nào trong bảng này mà chưa qua hardware gate.
 
@@ -213,12 +225,12 @@ lần lúc start.
 HB_TELEOP_RATE=0.9 ./scripts/run_lock_foreground.sh      # trần 1.50
 ```
 
-| biến | mặc định | tác dụng |
-| --- | --- | --- |
-| `HB_TELEOP_RATE` | 0.6 | slew của owner, rad/s |
-| `HB_TELEOP_ARM_KP` / `_KD` | 40 / 2 | PD tay: cao hơn thì bám cứng hơn |
-| `HB_TELEOP_LOCK_KP` | 20 | độ cứng khoá chân/eo |
-| `HB_TELEOP_HOLD_TIMEOUT_S` | 120 | giữ tay bao lâu sau khi nhả cò |
+| biến                          | mặc định | tác dụng                            |
+| ------------------------------ | ----------- | ------------------------------------- |
+| `HB_TELEOP_RATE`             | 0.6         | slew của owner, rad/s                |
+| `HB_TELEOP_ARM_KP` / `_KD` | 40 / 2      | PD tay: cao hơn thì bám cứng hơn |
+| `HB_TELEOP_LOCK_KP`          | 20          | độ cứng khoá chân/eo             |
+| `HB_TELEOP_HOLD_TIMEOUT_S`   | 120         | giữ tay bao lâu sau khi nhả cò    |
 
 Script sinh `config/teleop_runtime.yaml` và cho `tuning.yaml` include nó sau
 cùng, nên nó ghi đè mọi tầng bên dưới. File đó sinh tự động, đừng sửa tay.

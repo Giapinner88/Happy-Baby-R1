@@ -64,6 +64,19 @@ trap cleanup EXIT INT TERM
 HB_TELEOP_HOST_IP="$HOST_IP" \
 HB_TELEOP_CERT_FILE="$CERT_FILE" \
 HB_TELEOP_KEY_FILE="$KEY_FILE" \
+python3 -c '
+import sys
+from pathlib import Path
+from teleop.r1.launcher import ensure_self_signed_certificate
+
+changed = ensure_self_signed_certificate(sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3]))
+if changed:
+    print(f"[OK] Đã tạo/gia hạn cert Quest cho {sys.argv[1]}: {sys.argv[2]}")
+' "$HOST_IP" "$CERT_FILE" "$KEY_FILE"
+
+HB_TELEOP_HOST_IP="$HOST_IP" \
+HB_TELEOP_CERT_FILE="$CERT_FILE" \
+HB_TELEOP_KEY_FILE="$KEY_FILE" \
     ./hardware/teleop/scripts/check_vuer.sh
 # Điều kiện thật là "có ĐÚNG MỘT chủ rt/lowcmd và nó đang giữ 5560", chứ không
 # phải "service đang active". Bản cô lập high_level_lock chạy foreground và cố ý

@@ -100,7 +100,7 @@ $$
 
 Controller tracking là ngoại lệ: source ghi rằng controller pose đã theo Unitree arm URDF initial convention nên không cần bước alignment này.
 
-## 4. Head-yaw reference
+## 4. Vendor head-yaw reference
 
 Mode mặc định:
 
@@ -184,7 +184,57 @@ $$
 - dùng yaw làm heading reference;
 - bỏ head pitch/roll để tránh wrist motion giả khi chỉ cúi/ngẩng/nghiêng đầu.
 
-## 5. Head → waist offset
+Đây là **transport frame của vendor**, không còn là frame cuối đưa vào IK ở
+đường live upstream. Nếu dùng trực tiếp, controller đứng yên trong world nhưng
+đầu đổi vị trí hoặc yaw vẫn làm target tay đổi.
+
+## 5. Session head anchor cho live upstream
+
+`run_r1_upstream_ik_stream.py` chờ ba mẫu deadman liên tiếp rồi lưu head pose
+thứ ba làm anchor $H_0$. Xung deadman một mẫu lúc Quest khởi động không tạo
+calibration. Anchor gồm cả vị trí và head-yaw; cùng mốc này cũng đặt head
+pitch/yaw robot về zero tương đối.
+
+Với mỗi mẫu sau, streamer đảo phép đổi frame ở mục 4 để khôi phục wrist trong
+robot-basis XR world:
+
+$$
+{}^{W_R}R_A
+=
+{}^{W_R}R_{H_y(t)}{}^{H_y(t)}R_A
+$$
+
+$$
+{}^{W_R}p_A
+=
+{}^{W_R}R_{H_y(t)}
+\left(p_{\text{vendor}}-p_{\text{offset}}\right)
++{}^{W_R}p_{H(t)}.
+$$
+
+Sau đó wrist được biểu diễn lại theo anchor ban đầu:
+
+$$
+{}^{H_y(0)}R_A
+=
+({}^{W_R}R_{H_y(0)})^T{}^{W_R}R_A
+$$
+
+$$
+p_{\text{IK}}
+=
+({}^{W_R}R_{H_y(0)})^T
+\left({}^{W_R}p_A-{}^{W_R}p_{H(0)}\right)
++p_{\text{offset}}.
+$$
+
+Do đó chuyển động head sau calibration bị triệt khỏi target tay, còn chuyển
+động thật của controller trong world vẫn được giữ nguyên. Anchor sống trong
+process streamer: chạy pipeline mới sẽ calibration lại; nhả rồi bóp lại
+deadman trong cùng process không đổi anchor. Hai mẫu xác nhận đầu tiên không
+được giải hoặc phát xuống robot.
+
+## 6. Head → waist offset
 
 Vendor wrapper thêm:
 
@@ -204,13 +254,14 @@ $$
 
 Đây là workspace/retargeting offset trong source, không phải head-to-waist transform được suy ra từ URDF.
 
-## 6. Chuỗi transform cuối
+## 7. Chuỗi transform cuối
 
 ```text
 XR WORLD pose
 → Robot basis
 → Unitree wrist convention
-→ Head-yaw relative pose
+→ Vendor current-head-yaw relative pose
+→ Re-anchor vào initial head position/yaw (live upstream)
 → Waist/workspace offset
 → wrist target for IK
 ```
@@ -229,7 +280,7 @@ $$
 {}^{W_{IK}}T_{EE,d}.
 $$
 
-## 7. Hand keypoints
+## 8. Hand keypoints
 
 Hand keypoints đi theo nhánh riêng:
 

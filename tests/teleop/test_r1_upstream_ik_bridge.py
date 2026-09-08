@@ -65,6 +65,31 @@ def quaternion_from_rotation(rotation: np.ndarray) -> tuple[float, float, float,
     )
 
 
+def pose_dict(transform: np.ndarray) -> dict[str, dict[str, float]]:
+    return {
+        "position": dict(zip("xyz", (float(value) for value in transform[:3, 3]))),
+        "orientation": dict(zip("xyzw", quaternion_from_rotation(transform[:3, :3]))),
+    }
+
+
+def yaw_rotation(angle: float) -> np.ndarray:
+    c, s = math.cos(angle), math.sin(angle)
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+def vendor_head_relative_wrist(world_wrist: np.ndarray, head: np.ndarray) -> np.ndarray:
+    """The audited TeleVuer ``head_yaw`` transform, reproduced for a fixture."""
+
+    head_yaw = load_stream_module().head_yaw_rotation(head)
+    result = np.eye(4)
+    result[:3, :3] = head_yaw.T @ world_wrist[:3, :3]
+    result[:3, 3] = (
+        head_yaw.T @ (world_wrist[:3, 3] - head[:3, 3])
+        + np.array([0.15, 0.0, 0.45])
+    )
+    return result
+
+
 def joint_origin(urdf_path: Path, joint_name: str) -> np.ndarray:
     text = urdf_path.read_text(encoding="utf-8")
     match = re.search(
@@ -155,6 +180,135 @@ class StreamHelperTest(unittest.TestCase):
                 np.testing.assert_allclose(
                     model.head_rotation(read_pitch, read_yaw)[:, 0], rotation[:, 0], atol=1e-9
                 )
+
+    def test_relative_head_angles_make_initial_pose_neutral(self):
+        from teleop.r1.upper_body_kinematics import load_r1_a5_upper_body_model
+
+        model = load_r1_a5_upper_body_model(control_waist_yaw=False)
+        limits = self.module.head_limits_rad(PROJECT_URDF)
+        initial_rotation = model.head_rotation(math.radians(-14.0), math.radians(-53.0))
+        initial_pose = {
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "orientation": dict(zip("xyzw", quaternion_from_rotation(initial_rotation))),
+        }
+        neutral = self.module._head_angles_unbounded(initial_pose)
+
+        self.assertEqual(self.module.relative_head_angles(initial_pose, neutral, limits), (0.0, 0.0))
+
+        moved_rotation = model.head_rotation(math.radians(-4.0), math.radians(-33.0))
+        moved_pose = {
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "orientation": dict(zip("xyzw", quaternion_from_rotation(moved_rotation))),
+        }
+        pitch, yaw = self.module.relative_head_angles(moved_pose, neutral, limits)
+        self.assertAlmostEqual(pitch, math.radians(10.0), places=9)
+        self.assertAlmostEqual(yaw, math.radians(20.0), places=9)
+
+    def test_relative_head_angles_clip_after_neutral_is_removed(self):
+        limits = ((-0.1, 0.1), (-0.2, 0.2))
+        pose = {
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "orientation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": math.sin(math.radians(40.0) / 2.0),
+                "w": math.cos(math.radians(40.0) / 2.0),
+            },
+        }
+        pitch, yaw = self.module.relative_head_angles(pose, (0.0, 0.0), limits)
+        self.assertAlmostEqual(pitch, 0.0, places=12)
+        self.assertAlmostEqual(yaw, 0.2, places=12)
+
+    def test_head_neutral_ignores_a_one_sample_deadman_pulse(self):
+        limits = self.module.head_limits_rad(PROJECT_URDF)
+        calibrator = self.module.HeadNeutralCalibrator(limits, confirm_samples=3)
+        pose = {
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+        }
+
+        self.assertEqual(calibrator.update(pose, True), (0.0, 0.0))
+        self.assertIsNone(calibrator.neutral)
+        self.assertFalse(calibrator.ready)
+        calibrator.update(pose, False)
+        self.assertEqual(calibrator.candidate_count, 0)
+
+    def test_head_neutral_is_captured_after_sustained_deadman(self):
+        limits = self.module.head_limits_rad(PROJECT_URDF)
+        calibrator = self.module.HeadNeutralCalibrator(limits, confirm_samples=3)
+        pose = {
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "orientation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": math.sin(math.radians(-50.0) / 2.0),
+                "w": math.cos(math.radians(-50.0) / 2.0),
+            },
+        }
+
+        for _ in range(3):
+            self.assertEqual(calibrator.update(pose, True), (0.0, 0.0))
+        self.assertIsNotNone(calibrator.neutral)
+        self.assertTrue(calibrator.ready)
+        np.testing.assert_allclose(calibrator.anchor_pose_matrix, self.module.pose_to_matrix(pose))
+
+        # Deadman release holds the last target rather than following the headset.
+        turned_pose = dict(pose)
+        turned_pose["orientation"] = {
+            "x": 0.0, "y": 0.0,
+            "z": math.sin(math.radians(20.0) / 2.0),
+            "w": math.cos(math.radians(20.0) / 2.0),
+        }
+        self.assertEqual(calibrator.update(turned_pose, False), (0.0, 0.0))
+        _pitch, yaw = calibrator.update(turned_pose, True)
+        self.assertAlmostEqual(yaw, math.radians(70.0), places=9)
+
+    def test_wrist_reanchor_removes_current_head_translation_and_yaw(self):
+        world_wrist = np.eye(4)
+        world_wrist[:3, :3] = yaw_rotation(math.radians(15.0))
+        world_wrist[:3, 3] = [0.62, -0.18, 1.20]
+
+        anchor_head = np.eye(4)
+        anchor_head[:3, :3] = yaw_rotation(math.radians(-35.0))
+        anchor_head[:3, 3] = [0.10, 0.05, 1.68]
+
+        moved_head = np.eye(4)
+        moved_head[:3, :3] = yaw_rotation(math.radians(42.0))
+        moved_head[:3, 3] = [-0.08, 0.21, 1.55]
+
+        wrist_at_anchor = vendor_head_relative_wrist(world_wrist, anchor_head)
+        wrist_after_head_motion = vendor_head_relative_wrist(world_wrist, moved_head)
+        self.assertGreater(
+            float(np.linalg.norm(wrist_after_head_motion - wrist_at_anchor)),
+            0.1,
+            "fixture must reproduce visible vendor head coupling",
+        )
+
+        reanchored = self.module.reanchor_wrist_matrix(
+            wrist_after_head_motion, moved_head, anchor_head
+        )
+        np.testing.assert_allclose(reanchored, wrist_at_anchor, atol=1e-12)
+
+    def test_wrist_reanchor_preserves_real_controller_motion(self):
+        anchor_head = np.eye(4)
+        anchor_head[:3, :3] = yaw_rotation(math.radians(20.0))
+        anchor_head[:3, 3] = [0.0, 0.0, 1.65]
+        moved_head = np.eye(4)
+        moved_head[:3, :3] = yaw_rotation(math.radians(-25.0))
+        moved_head[:3, 3] = [0.12, -0.04, 1.58]
+
+        first_world_wrist = np.eye(4)
+        first_world_wrist[:3, 3] = [0.55, 0.25, 1.20]
+        moved_world_wrist = first_world_wrist.copy()
+        moved_world_wrist[:3, 3] += [0.08, -0.03, 0.05]
+
+        expected = vendor_head_relative_wrist(moved_world_wrist, anchor_head)
+        observed = self.module.reanchor_wrist_matrix(
+            vendor_head_relative_wrist(moved_world_wrist, moved_head),
+            moved_head,
+            anchor_head,
+        )
+        np.testing.assert_allclose(observed, expected, atol=1e-12)
 
     def test_pose_to_matrix_is_a_rotation_plus_translation(self):
         pose = {
