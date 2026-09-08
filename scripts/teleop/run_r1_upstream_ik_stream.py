@@ -191,6 +191,7 @@ def main() -> int:
     held = 0
     last_arms: np.ndarray | None = None
 
+    downstream_closed = False
     try:
         for line in source:
             line = line.strip()
@@ -233,8 +234,18 @@ def main() -> int:
                     "joint_names": joint_names,
                     "joint_position_rad": solved,
                 }
-            sink.write(json.dumps(record) + "\n")
-            sink.flush()
+            try:
+                sink.write(json.dumps(record) + "\n")
+                sink.flush()
+            except BrokenPipeError:
+                # Isaac đóng ống trước khi solver kịp nhận ra phiên đã kết thúc.
+                # Đó là trình tự tắt máy bình thường của pipeline ba tiến trình,
+                # không phải solver hỏng. `quest_bridge.py:313` xử lý y hệt. Đổi
+                # stdout sang /dev/null để lượt flush lúc Python thoát không ném
+                # thêm một lỗi thứ hai, rồi vẫn ghi thống kê ra file.
+                sys.stdout = open(os.devnull, "w", encoding="utf-8")
+                downstream_closed = True
+                break
     finally:
         if args.input:
             source.close()
@@ -255,6 +266,7 @@ def main() -> int:
                         "max": float(np.max(values)),
                     },
                     "implied_rate_ceiling_hz": float(1000.0 / float(np.mean(values))),
+                    "stop_reason": "downstream_closed" if downstream_closed else "input_exhausted",
                 },
                 indent=2,
             )
