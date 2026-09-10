@@ -1,7 +1,8 @@
 {
   "schema_version": 1,
   "experiment_id": "t007",
-  "title": "R1-A5 live teleop driven by the unmodified xr_teleoperate solver",
+  "title": "Canonical R1-A5 live teleop driven by the unmodified xr_teleoperate solver",
+  "selection_status": "canonical_live_solver_default",
   "mode": "simulation_only",
   "method_record": "experiments/r1_teleop/quest3_sim_v1/T007/REPORT_20260823_upstream.md",
   "fixed_base": true,
@@ -13,6 +14,12 @@
     "head_output": "pitch/yaw relative to the captured orientation",
     "wrist_output": "vendor current-head-relative wrist pose inverted to robot-basis XR world, then expressed against the captured head position/yaw",
     "lifetime": "one upstream streamer process; deadman release does not reset the anchor"
+  },
+  "independence_contract": {
+    "head_only_motion": "changes only relative head pitch/yaw; stationary world-space controllers retain identical anchored wrist targets",
+    "controller_motion": "changes the corresponding anchored wrist target independently of headset translation or rotation",
+    "implementation_owner": "scripts/teleop/run_r1_upstream_ik_stream.py::reanchor_wrist_matrix",
+    "scope": "Quest-to-IK target generation; simulator and hardware share this producer"
   },
   "model": {
     "urdf_path": "assets/R1.urdf",

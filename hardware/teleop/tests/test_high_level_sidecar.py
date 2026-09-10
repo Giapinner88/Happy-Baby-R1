@@ -143,6 +143,7 @@ def test_hardware_launcher_requires_active_high_level_owner() -> None:
     assert 'ss -H -lun "sport = :5560"' in source
     assert "127.0.0.1:5560" in source
     assert "teleop.hardware.high_level_sidecar" in source
+    assert 'HOME_ARG="--home-to-source"' in source
     assert "HB_TELEOP_ALLOW_MOTOR_WRITE" not in source
     assert "teleop.hardware.run_teleop" not in source
 
@@ -241,6 +242,66 @@ def test_homing_arguments_are_bounded() -> None:
         with pytest.raises(SystemExit):
             sidecar.validate_args(parser.parse_args(base + extra))
 
+    source = parser.parse_args([
+        "--confirm-suspended-with-estop", "--confirm-dev-mode", "--home-to-source",
+    ])
+    sidecar.validate_args(source)
+    assert source.home_pose_rad is None
+    with pytest.raises(SystemExit):
+        parser.parse_args(base + ["--home-to-source"])
+    with pytest.raises(SystemExit):
+        sidecar.validate_args(parser.parse_args([
+            "--confirm-suspended-with-estop", "--confirm-dev-mode", "--home-to-source",
+            "--home-pose-rad", *(["0.0"] * 12),
+        ]))
+
+
+def test_source_home_goal_is_bounded_without_silent_clipping() -> None:
+    import pytest
+
+    sidecar = _sidecar()
+    envelope = [3.2] * 3 + [1.0] * 2 + [3.2] * 3 + [1.0] * 4
+    first_vendor_q = [0.24, -0.23, -0.20, -0.07, -0.07,
+                      0.27, 0.14, 0.15, -0.11, 0.02, 0.0, 0.0]
+    index, magnitude = sidecar.validate_source_home_goal(first_vendor_q, envelope)
+    assert index == 8
+    assert magnitude == pytest.approx(0.11)
+
+    unsafe = list(first_vendor_q)
+    unsafe[3] = 1.01
+    with pytest.raises(ValueError):
+        sidecar.validate_source_home_goal(unsafe, envelope)
+
+
+def test_source_aligned_relative_session_matches_vendor_q_until_envelope() -> None:
+    """The hardware transfer preserves the simulator's absolute upstream q.
+
+    Source homing deliberately sets the robot anchor and source anchor to the
+    same first vendor vector. The relative-session formula must then be the
+    identity, while a later out-of-envelope target remains visibly clamped.
+    """
+
+    import pytest
+
+    sidecar = _sidecar()
+    first = [0.1 * index for index in range(12)]
+    current = [value + 0.2 for value in first]
+    desired, clamped, worst = sidecar.relative_session_target(
+        first, current, first, [1.0] * 12
+    )
+    assert desired == pytest.approx(current)
+    assert clamped == ()
+    assert worst == pytest.approx(0.2)
+
+    far = list(current)
+    far[4] = first[4] + 1.4
+    desired, clamped, worst = sidecar.relative_session_target(
+        first, far, first, [1.0] * 12
+    )
+    assert clamped == (4,)
+    assert desired[4] == pytest.approx(first[4] + 1.0)
+    assert worst == pytest.approx(1.4)
+
 
 def test_head_gate_thresholds() -> None:
     sidecar = _sidecar()
@@ -250,18 +311,32 @@ def test_head_gate_thresholds() -> None:
     assert sidecar.head_outside_gate(0.0, 0.0, 0.60, 0.35) is False
 
 
+def test_head_target_clamp_reports_each_affected_axis() -> None:
+    import pytest
+
+    sidecar = _sidecar()
+    yaw, pitch, clamped = sidecar.constrain_head_target(1.29, -0.54, 0.60, 0.35)
+    assert yaw == pytest.approx(0.60)
+    assert pitch == pytest.approx(-0.35)
+    assert clamped == ("head_yaw_joint", "head_pitch_joint")
+
+    yaw, pitch, clamped = sidecar.constrain_head_target(0.20, -0.10, 0.60, 0.35)
+    assert (yaw, pitch) == pytest.approx((0.20, -0.10))
+    assert clamped == ()
+
+
 def test_head_gate_moves_behind_homing_when_homing_is_on() -> None:
     """Bật homing thì đầu lệch không được chặn phiên TRƯỚC khi kịp sửa.
 
     Gate có mặt vì phiên là tương đối, nên đầu lệch lúc chốt sẽ lệch cả phiên.
-    Homing đưa đầu về nominal trước khi chốt nên tiền đề đó biến mất; giữ gate ở
+    Homing đưa đầu về goal đã kiểm tra trước khi chốt nên tiền đề đó biến mất; giữ gate ở
     trước tức là chặn đúng cái cơ chế sửa được vấn đề, và với đầu đang tì vào
     chặn cơ khí thì đi về giữa còn là hướng rời khỏi giới hạn.
     """
 
     source = SIDECAR_PATH.read_text(encoding="utf-8")
     pre, post = source.split("--- Pha homing ---", 1)
-    assert "not args.home_to_nominal and head_outside_gate" in pre
+    assert "not home_enabled and head_outside_gate" in pre
     assert "head_not_neutral_after_home" in post
     # Sau homing phải kiểm ENCODER, không phải giá trị vừa ra lệnh: ramp là vòng
     # hở và owner còn kẹp lệnh đầu ở teleop_head_yaw_max trước khi slew.
@@ -349,4 +424,3 @@ def test_shoulder_envelope_is_bounded_too() -> None:
     for value in ("3.21", "10.0", "0.0"):
         with pytest.raises(SystemExit):
             sidecar.validate_args(parser.parse_args(base + ["--max-offset-rad-shoulders", value]))
-

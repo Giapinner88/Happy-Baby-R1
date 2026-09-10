@@ -289,6 +289,37 @@ class StreamHelperTest(unittest.TestCase):
         )
         np.testing.assert_allclose(reanchored, wrist_at_anchor, atol=1e-12)
 
+    def test_wrist_reanchor_is_invariant_to_full_head_pose_motion(self):
+        """Pitch/roll are ignored by the vendor arm frame; yaw/position are removed here."""
+
+        world_wrist = np.eye(4)
+        world_wrist[:3, :3] = yaw_rotation(math.radians(-18.0))
+        world_wrist[:3, 3] = [0.57, 0.16, 1.11]
+
+        anchor_head = np.eye(4)
+        anchor_head[:3, :3] = yaw_rotation(math.radians(12.0))
+        anchor_head[:3, 3] = [0.02, -0.04, 1.62]
+
+        pitch = math.radians(31.0)
+        roll = math.radians(-24.0)
+        pitch_rotation = np.array(
+            [[math.cos(pitch), 0.0, math.sin(pitch)], [0.0, 1.0, 0.0],
+             [-math.sin(pitch), 0.0, math.cos(pitch)]]
+        )
+        roll_rotation = np.array(
+            [[1.0, 0.0, 0.0], [0.0, math.cos(roll), -math.sin(roll)],
+             [0.0, math.sin(roll), math.cos(roll)]]
+        )
+        moved_head = np.eye(4)
+        moved_head[:3, :3] = yaw_rotation(math.radians(-47.0)) @ pitch_rotation @ roll_rotation
+        moved_head[:3, 3] = [-0.13, 0.19, 1.48]
+
+        expected = vendor_head_relative_wrist(world_wrist, anchor_head)
+        observed = self.module.reanchor_wrist_matrix(
+            vendor_head_relative_wrist(world_wrist, moved_head), moved_head, anchor_head
+        )
+        np.testing.assert_allclose(observed, expected, atol=1e-12)
+
     def test_wrist_reanchor_preserves_real_controller_motion(self):
         anchor_head = np.eye(4)
         anchor_head[:3, :3] = yaw_rotation(math.radians(20.0))

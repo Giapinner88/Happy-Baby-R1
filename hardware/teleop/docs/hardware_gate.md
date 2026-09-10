@@ -71,9 +71,22 @@ validate.
       phải suy ra.
 - [ ] Chạy lại được: cùng config, cùng commit, ra cùng kết luận.
 
-Hiện trạng: run mới nhất `t007_whole_upper_body_20260818T114338Z` vẫn là
-`unassessed`, đạt 9.98 Hz so với 20 Hz yêu cầu, và phần lớn target được
-*projected* chứ không hội tụ chính xác.
+**Cập nhật 2026-09-09.** Researcher chọn video của
+`t007_whole_upper_body_20260909T072030Z` làm tham chiếu chuyển sang hardware.
+Run upstream live hoàn tất ở 27.03 Hz, `sim_to_wall_ratio=0.99998`, không có
+joint-limit clamp trong simulator; vận tốc q upstream p95 4.008 rad/s, max
+12.149 rad/s. Đây là đánh giá hình ảnh tốt, nhưng `status.json` vẫn ghi
+`scientific_outcome: unassessed`, nên ba checkbox trên chưa được tự động tick và
+run này chưa phải bằng chứng hardware.
+
+Phân tích `raw_commands.jsonl` của chính run cho thấy q vendor đầu tiên có
+`max(|q|)=0.2703 rad`, phù hợp làm candidate source-alignment. Trong toàn phiên,
+delta lớn nhất của nhóm không phải vai là 1.7755 rad, vượt envelope mặc định
+1.0 rad. Head pitch nằm trong [-0.5421, 0.2244] và yaw trong
+[-1.2986, 1.2965] rad, cũng vượt gate hardware 0.35/0.60 rad. Bởi vậy không được
+tuyên bố toàn bộ video sẽ tái tạo không clamp trên robot. Sidecar mới ghi rõ số
+lần/tên khớp chạm envelope và head gate; limiter producer vẫn là một khác biệt
+thời gian riêng.
 
 ## 2. Đối chiếu mô hình với robot thật
 
@@ -94,16 +107,17 @@ Hiện trạng: run mới nhất `t007_whole_upper_body_20260818T114338Z` vẫn 
 - [ ] Thay `max_joint_velocity_rad_s` / `max_joint_acceleration_rad_s2` bằng
       giới hạn phần cứng đã được duyệt, không dùng số tuning của mô phỏng.
 
-      Hiện đang dùng 0.5 rad/s và 1.0 rad/s², áp trong
+      Hiện đang dùng 1.0 rad/s và 2.0 rad/s², áp trong
       `run_r1_quest3_hardware_targets.py` cho cả hai chế độ giải. **Đây vẫn là
-      số chưa được duyệt.** Hai điều đã đo, cần biết trước khi duyệt:
+      số chưa được duyệt.** Phép đo cũ ở cấu hình 0.5/1.0 cho thấy hai điều cần
+      kiểm lại ở cấu hình hiện tại:
 
-      1. **0.5 rad/s là chặn thật, không phải chặn dự phòng.** Trên đoạn thử,
+      1. **0.5 rad/s từng là chặn thật, không phải chặn dự phòng.** Trên đoạn thử,
          limiter bão hoà ở đúng 0.5 rad/s gần như mọi bước, trong khi bản mô
          phỏng của cùng đường này chạy tới p95 2.33 và max 5.94 rad/s. Nghĩa là
          trên phần cứng tay sẽ **bám trễ rõ rệt** so với người vận hành. Nâng
          trần là quyết định của cổng này, không phải của người vận hành lúc chạy.
-      2. **Trần gia tốc không được đảm bảo khi dừng.** `OnlineJointLimiter` cố ý
+      2. **Trần gia tốc cũ không được đảm bảo khi dừng.** `OnlineJointLimiter` cố ý
          zero vận tốc khi tới đích hoặc khi chạm giới hạn khớp, nên gia tốc đo
          được đạt **5.6 rad/s² so với trần 1.0**. Đều là giảm tốc, và hành vi này
          có sẵn từ trước chứ không do đổi bộ giải, nhưng phải được duyệt như một
@@ -129,6 +143,65 @@ hành vi mà cổng này chưa xét:
 
 Cả ba đã được ghim bằng test trong `tests/test_high_level_sidecar.py` để chúng
 là quyết định chứ không phải bất ngờ.
+
+## 3d. Chuyển target upstream từ sim sang hardware — HARDWARE ATTEMPT FAILED
+
+- [x] Producer khai báo tường minh `target_mode: relative_source`.
+- [x] Upstream launcher chọn `--home-to-source`; coupled legacy vẫn chọn
+      `--home-to-nominal`.
+- [x] Sidecar đóng băng q vendor đầu tiên, kiểm nó trong zero-centred per-joint
+      bound và ramp tới đó ở tốc độ homing với command tolerance 0.02 rad.
+- [x] Sau alignment, `start_q = source_zero = q_source_initial`; test chứng minh
+      công thức relative không cộng posture offset vào q upstream đã rate-limit.
+- [x] Metadata ghi `home_mode`, goal/sai số encoder, envelope và head-gate clamp counters.
+- [x] Package deploy-only đã được copy tới robot `10.42.0.33`; SHA-256 sidecar
+      local/remote cùng là
+      `6fd63324abe22cfac99a945a77d07c8d2cdb16a005f1def7326e88c50ec26ee8`.
+      Sau deploy, `hb_teleop.service` vẫn inactive và không có Python sidecar.
+- [ ] Chạy một bounded suspended pilot; đối chiếu `target_q`/`observed_q` và xác
+      nhận đầu-only motion không kéo tay thật.
+
+Thay đổi này sửa semantic mismatch trước đó: simulator áp q vendor tuyệt đối,
+trong khi hardware home về nominal rồi re-anchor source mới nhất, nên hai bên
+không thể có cùng posture. Nó không nới vận tốc, gia tốc, head gate, envelope,
+watchdog hay quyền ghi `rt/lowcmd`. Hardware vẫn không phải temporal parity:
+producer giới hạn 1.0 rad/s và 2.0 rad/s², trong khi run reference có q-speed
+p95 4.008 và max 12.149 rad/s.
+
+Ba pilot ngày 2026-09-10 (`030102Z`, `030330Z`, `030448Z`) đều được người vận
+hành mô tả về goal nhưng không vào teleop; metadata lặp lại
+`stop_reason=home_aborted_input`. Encoder tolerance 0.02 rad từng được nghi là
+điều kiện giữ homing quá lâu, nhưng artifact không đủ để khẳng định đó là nguyên
+nhân. Điều kiện này đã bỏ: command ramp quyết định khi home hoàn tất, encoder
+residual vẫn được ghi và head vẫn qua gate riêng.
+
+Pilot `031455Z` xác nhận một lỗi thứ hai: bridge ghi cò phải chuyển sang `true`
+và không có transition về `false`, nhưng sidecar dừng lúc homing với
+`home_aborted_input`; 120 giây sau owner ghi `Giu qua 120s ... -> ZERO TORQUE`.
+Vì vậy cú sụp là hậu quả của mất target rồi hết hạn hold, không phải người vận
+hành nhả cò. Artifact cũ không phân biệt EOF với watchdog và không lưu exit code
+của từng process, nên tầng đầu tiên đóng vẫn **chưa xác định**. Launcher mới lưu
+stderr/exit code riêng cho bridge, upstream solver, hardware target producer và
+SSH; solver luôn ghi timing/status kể cả khi exception; sidecar tách
+`home_aborted_stream_closed` khỏi `home_aborted_input_watchdog`. Owner cũng log
+cạnh `stream ACTIVE/INACTIVE` với nguyên nhân. Các thay đổi này chỉ tăng khả năng
+quan sát, không đổi timeout hoặc fallback.
+
+Bản `high_level_lock` có log transition đã build thành công trên x86_64 và
+ARM64 tại `/home/unitree/HB/high_level_lock/build/run_r1`; binary ARM64 chứa các
+chuỗi diagnostic mới. Build/deploy không restart owner: `hb_high_level` vẫn
+active bằng `/home/unitree/HB/high_level_2/build/run_r1`, còn `hb_teleop`
+inactive.
+
+Sửa tiếp sau run `035042Z`: lowstate chuyển từ `Read()` chặn sang callback lấy
+mẫu mới nhất với timestamp nhận; rehome chạy từng tick ngoài để giữ watchdog
+input/state/mode. Test vòng sidecar với transport giả lập: home thành công và
+EOF/input timeout/state timeout (kể cả rehome) đều đạt. Tổng bộ liên quan:
+90 passed, 1 skipped; trực tiếp Python 3.8 robot: 42 passed, 4 skipped. Replay
+150 target qua IK/limiter/SSH không phát motor có gap lớn nhất 0.111 s. Đây là
+code/transport evidence, chưa chứng minh giải quyết gap 0.756 s của live run;
+run đó vẫn thực hiện ~109 bước trong 1.099 s, không chứng minh DDS bị chặn.
+Chi tiết freshness và compatibility ở runbook `docs/teleop/r1_quest3_teleop_hardware.md`.
 
 ## 3c. Khoá cứng khớp ngoài teleop — CHƯA DUYỆT, CHƯA CHẠY
 

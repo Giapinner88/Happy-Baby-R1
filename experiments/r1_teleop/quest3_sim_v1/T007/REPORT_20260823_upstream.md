@@ -201,3 +201,138 @@ hoặc bằng limiter phía sidecar, hoặc bằng cách xác nhận driver củ
    Cần **xoay khoá**, xoá file là không đủ. Chưa xử lý.
 7. Xung đột nhánh develop với `d0a22a4` của đồng đội chưa giải quyết; chưa force-push.
 8. Hardware gate chưa tick mục nào. Báo cáo này **không** cho phép actuation R1.
+
+---
+
+# Phần 3 — Chuẩn hoá upstream và contract độc lập đầu/tay (2026-09-09)
+
+## Yêu cầu và hành vi thực thi
+
+Theo quyết định của researcher, vendor `R1_A5_ArmIK` cùng initial-head anchor là
+đường live chuẩn cho cả simulator và hardware. `make teleop` và launcher T007
+chọn upstream khi không có flag; `--upstream-solver` vẫn được nhận để lệnh cũ
+không hỏng. Bộ giải của repo chỉ còn là đối chứng qua `--coupled-solver`.
+
+Contract hành vi của chuẩn này là **đầu và hai tay độc lập**: chuyển động chỉ của
+headset thay đổi head pitch/yaw nhưng không thay đổi wrist target đưa vào IK;
+chuyển động controller vẫn thay đổi wrist target. Producer tháo wrist khỏi
+current-head position/yaw của TeleVuer rồi biểu diễn lại trong position/yaw của
+head anchor chốt ở mẫu deadman thứ ba. Pitch/roll không nằm trong arm reference
+frame của vendor; chúng chỉ đi vào nhánh head tương đối.
+
+```text
+Quest head + wrists
+→ TeleVuer head-yaw-relative wrists
+→ initial-head re-anchor
+→ unmodified vendor R1_A5_ArmIK
+→ absolute joint targets in Isaac / bounded hardware transport
+```
+
+## Lựa chọn và compatibility
+
+| Lựa chọn | Trạng thái | Nguồn |
+|---|---|---|
+| upstream là default | specified | quyết định researcher 2026-09-09 |
+| giữ `--upstream-solver` | inherited compatibility | lệnh/runbook cũ |
+| coupled chỉ qua `--coupled-solver` | AI-selected interface | giữ khả năng A/B mà không làm mơ hồ default |
+| ba mẫu deadman để chốt anchor | inherited | implementation đã accepted ở commit `7fe635a` |
+
+Observation, data schema và solver numerics không đổi. Baseline selection đổi;
+run coupled cũ vẫn là evidence lịch sử của coupled, không phải replicate của
+default mới. Mọi run upstream trước initial-head anchor, gồm
+`t007_whole_upper_body_20260908T073844Z`, **requires reproduction** trước khi
+dùng làm evidence cho tính độc lập đầu/tay. Thay đổi default này mới ở mức code
+verified cho tới khi có một live sim run hậu thay đổi.
+
+## Review surface
+
+- `scripts/teleop/run_t007_upper_body_pilot.py`: default/opt-in solver selection.
+- `scripts/teleop/run_r1_upstream_ik_stream.py::reanchor_wrist_matrix`: contract độc lập.
+- `tests/teleop/test_r1_upstream_ik_bridge.py`: bất biến wrist dưới head-only motion.
+- `tests/teleop/test_r1_upstream_pilot_wiring.py`: pipeline mặc định và coupled opt-in.
+
+---
+
+# Phần 4 — Chuyển cùng target upstream sang hardware (2026-09-09)
+
+## Reference run và giới hạn claim
+
+Researcher chọn video của
+`runs/t007_whole_upper_body_20260909T072030Z` làm reference để chuyển sang
+hardware. Run nhận 2879 command, có 1678 target enabled, đạt 27.030 Hz và
+`sim_to_wall_ratio=0.999978`; simulator không clamp joint limit. Vận tốc q
+upstream có p95 4.008 rad/s và max 12.149 rad/s. Đây là run được đánh giá tốt
+bằng hình ảnh; `status.json` vẫn ghi `scientific_outcome: unassessed`, nên phần
+này không nâng nó thành hardware evidence hay scientific reproduction.
+
+Q vendor đầu tiên có `max(|q|)=0.2703 rad`. Trong cả run, delta lớn nhất so với
+q đầu ở một khớp không phải vai là 1.7755 rad, lớn hơn envelope hardware mặc
+định 1.0 rad. Head pitch/yaw cũng vượt gate hardware. Do đó transfer dưới đây
+loại affine posture offset; nó không hứa toàn bộ chuyển động hay timing của
+video sẽ được tái tạo nguyên vẹn.
+
+## Semantic mismatch đã sửa
+
+Trước thay đổi:
+
+```text
+sim:      q_sim = q_vendor
+hardware: q_hw  = q_nominal + (q_source - q_source_at_end_of_home)
+```
+
+Homing nominal rồi re-anchor source mới nhất làm posture hardware khác sim dù
+cùng solver. `q_source` là output vendor sau limiter hardware. Upstream hardware
+giờ dùng source alignment:
+
+```text
+q_source_initial = q_vendor_initial  # limiter khởi tạo từ mẫu đầu
+goal = q_source_initial
+ramp robot chậm tới goal và xác nhận encoder
+start_q = source_zero = q_source_initial
+q_sidecar = start_q + clamp(q_source - source_zero, envelope)
+```
+
+Vì vậy, khi chưa clamp, `q_sidecar = q_source`: sidecar không còn cộng offset
+làm sai posture. Đây không phải temporal parity với Isaac vì producer vẫn giới
+hạn 1.0 rad/s và 2.0 rad/s², còn sidecar vẫn có head/session clamp. Sole-owner
+UTL1, target mode tương đối, watchdog, limiter, head gate và envelope không đổi.
+
+## Implementation disclosure
+
+| Lựa chọn | Phân loại | Hành vi |
+|---|---|---|
+| upstream hardware source-align theo q vendor đầu tiên | specified | chuyển reference posture sim được researcher chọn sang hardware |
+| coupled legacy vẫn home nominal | inherited | không đổi semantics của đối chứng |
+| dùng per-joint session envelope làm zero-centred acceptance bound cho initial q | AI-selected | target đầu vượt bound bị từ chối, không clamp im lặng |
+| command cách goal ≤ 0.02 rad; encoder residual chỉ ghi nhận | inherited completion, measured observability | tránh khóa vĩnh viễn do sai số bám tĩnh trên hardware |
+| giữ source goal đóng băng trong alignment | AI-selected | robot không đuổi theo controller đang di chuyển trong pha tự chạy |
+| ghi envelope/head clamp count, joint và max offset | AI-selected observability | cho biết khác biệt nào được thêm ở sidecar |
+
+Đổi actuation semantics ở bước khởi tạo và vì thế evidence hardware cũ trước
+source alignment không comparable về absolute posture. Observation contract,
+vendor IK numerics, initial-head wrist re-anchor, data schema version, sole
+lowcmd ownership và success metric không đổi.
+
+## Review và validation surface
+
+- `scripts/teleop/run_r1_quest3_hardware.sh`: upstream chọn
+  `--home-to-source`, coupled chọn `--home-to-nominal`.
+- `scripts/teleop/run_r1_quest3_hardware_targets.py`: khai báo tường minh
+  `target_mode: relative_source`.
+- `hardware/teleop/src/teleop/hardware/high_level_sidecar.py`:
+  `validate_source_home_goal`, `relative_session_target`, `constrain_head_target`,
+  command-complete home và encoder residual.
+- `hardware/teleop/tests/test_high_level_sidecar.py`: identity q và clamp/bound.
+- `tests/teleop/test_r1_hardware_upstream_targets.py`: contract producer/sidecar.
+
+Trạng thái hiện tại: **code verified và deploy-only verified**, chưa chạy motor
+trong thay đổi này. Package đã copy tới robot `10.42.0.33`; SHA-256 sidecar
+local/remote cùng là
+`54d658fcd4eb7c2588dd6c63810f44e611a2a13ecd7bb87fdd7e1396c371cf54`, service
+teleop vẫn inactive và không có Python sidecar sau deploy. Vì worktree dirty,
+`SOURCE.txt` ghi commit nền `7fe635a` cùng trạng thái `dirty`; diff hiện tại là
+phần provenance bắt buộc để tái tạo.
+
+Một suspended bounded run mới là bước phân biệt còn thiếu; phải đọc metadata
+clamp cùng `target_q`/`observed_q` trước khi tuyên bố hardware tracking; temporal
+parity với sim không được kỳ vọng khi giữ hardware limiter hiện tại.

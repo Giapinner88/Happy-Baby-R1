@@ -1,8 +1,14 @@
 # T007 configuration
 
-`r1_t007_arm_head_live.json` is the editable schema-2 live profile. It owns the
+## Default và đối chứng
+
+Live chuẩn dùng `r1_t007_upstream_stream_live.json` qua `make teleop`.
+Các profile arm/head, coupled và differential bên dưới giữ cho replay hoặc
+đối chứng; không áp semantics của chúng lên run upstream.
+
+`r1_t007_arm_head_live.json` is the legacy schema-2 live profile. It owns the
 vendor virtual-endpoint definition, absolute 1:1 mapping, q=0 startup/reset,
-joint-limited projection policy, and simulation rate limits. Every new T007 run
+joint-limited projection policy, and simulation rate limits. Every schema-2 run
 must snapshot this file as `experiment_config.json`; schema-1 runs are legacy
 and must not be reinterpreted with this endpoint model.
 
@@ -16,15 +22,15 @@ identical-protocol replicates.
 It is not directly comparable with schema-2 independent-arm runs and is not a
 hardware configuration.
 
-`r1_t007_upstream_stream_live.json` is the arms/head profile for the unmodified
-vendor `R1_A5_ArmIK`. Its live producer captures the third consecutive
+`r1_t007_upstream_stream_live.json` is the canonical live arms/head profile for
+the unmodified vendor `R1_A5_ArmIK`; both `make teleop` and the hardware launcher
+select upstream by default. Its live producer captures the third consecutive
 deadman-enabled head pose as a session position/yaw anchor. Vendor wrist poses
 are inverted out of the moving current-head frame and expressed against that
 fixed anchor before IK, while head pitch/yaw are relative to the same initial
 pose. Runs made before this calibration change are not protocol-comparable.
 
-`r1_t007_differential_live.json` is an opt-in schema-4 live profile; default
-`make teleop` remains the schema-3 pose-sequence baseline. It replaces the per-command iterative
+`r1_t007_differential_live.json` is an opt-in schema-4 comparison profile. It replaces the per-command iterative
 pose solve with one differential DLS step, uses strict wrist-position before
 wrist-orientation priority, and projects wrists outside the URDF-derived
 conservative reach sphere before the Jacobian is evaluated. Its current scale
@@ -32,7 +38,7 @@ conservative reach sphere before the Jacobian is evaluated. Its current scale
 box-constrained DLS were selected by exact-timing Isaac replay of the
 2026-08-20 Quest trace. The replay passed the simulation gate, but a new live
 Quest run is still required before any hardware-facing claim. Select it with
-`--whole-upper-body-config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_differential_live.json`.
+`--coupled-solver` and `--whole-upper-body-config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_differential_live.json`.
 The current Isaac Sim 5.1 environment has no JAX installation, so the effective
 backend is the validated NumPy central-difference implementation and that fact
 is preserved in every run snapshot.

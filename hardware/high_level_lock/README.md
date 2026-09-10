@@ -50,7 +50,7 @@ Trình tự chuẩn: treo robot → `./run_r1 eth0` → `0` (đứng dậy) → 
 nhận target từ `127.0.0.1:5560`; sidecar không tạo publisher DDS. Cò phải
 mở phiên, R3 `L2+B` luôn ưu tiên E-stop, và timeout nhả tay/đầu về
 zero torque. Chạy từ root workstation bằng `make teleop-hardware`; xem SOP
-`docs/operations/r1_quest3_teleop_hardware.md`.
+`docs/teleop/r1_quest3_teleop_hardware.md`.
 
 ### Kết thúc chương trình
 

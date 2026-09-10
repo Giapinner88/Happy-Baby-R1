@@ -78,6 +78,22 @@ def to_receiver_order(positions_rad) -> list[float]:
     return values[:10] + [values[11], values[10]]
 
 
+def make_receiver_payload(sequence_id, positions, solution_kind, rehome=False) -> dict:
+    """One wire contract for both solvers; inputs are already safety-limited."""
+    payload = {
+        "schema_version": 1,
+        "target_mode": "relative_source",
+        "sequence_id": sequence_id,
+        "sent_monotonic_s": time.monotonic(),
+        "joint_names": RECEIVER_JOINT_NAMES,
+        "positions_rad": to_receiver_order(positions),
+        "solution_kind": solution_kind,
+    }
+    if rehome:
+        payload["rehome"] = True
+    return payload
+
+
 class TargetHandle:
     def __init__(self, initial: tuple[float, ...]) -> None:
         self.positions = np.asarray(initial, dtype=float)
@@ -121,6 +137,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--control-hz", type=float, default=10.0)
     parser.add_argument("--duration-s", type=float, default=120.0)
+    parser.add_argument("--command-log", type=Path, default=None,
+                        help="Record emitted targets and workstation monotonic timestamps.")
     parser.add_argument(
         "--profile",
         type=Path,
@@ -268,17 +286,32 @@ def main() -> int:
         if newest is not None:
             if newest.reset_requested:
                 # Cò trái từng là dừng phiên: người vận hành phải chạy lại cả
-                # pipeline chỉ để lập lại mốc. Nay nó xin robot về nominal rồi
-                # chốt lại mốc, và phiên chạy tiếp. Cờ đi kèm chính command nên
+                # pipeline chỉ để lập lại mốc. Nay nó xin sidecar căn lại theo
+                # home mode đang chọn, và phiên chạy tiếp. Cờ đi kèm chính command nên
                 # nó tới receiver đúng thứ tự với dòng lệnh, không cần kênh phụ.
                 rehome_pending = True
                 if sink is not None:
                     sink.reset_session()
                 limiter.hold()
-            target = mapper.map(newest, time.monotonic())
+            positions = None
+            solution_kind = None
+            mapped_at = time.monotonic()
+            target = mapper.map(newest, mapped_at)
             if not target.enabled:
                 if stream_started:
-                    print("[STOP] deadman released or command disabled", file=sys.stderr, flush=True)
+                    print(
+                        json.dumps(
+                            {
+                                "event": "hardware_target_stop",
+                                "reason": target.reason,
+                                "sequence_id": newest.sequence_id,
+                                "command_age_s": mapped_at - newest.timestamp_monotonic_s,
+                            },
+                            separators=(",", ":"),
+                        ),
+                        file=sys.stderr,
+                        flush=True,
+                    )
                     return 0
             elif args.upstream_joint_stream:
                 assert newest_payload is not None
@@ -292,55 +325,71 @@ def main() -> int:
                         "pipe the Quest bridge through "
                         "`run_r1_upstream_ik_stream.py --passthrough` first"
                     )
-                limited = limiter.step(model.clamp(solved))
-                payload = {
-                    "schema_version": 1,
-                    "sequence_id": newest.sequence_id,
-                    "sent_monotonic_s": time.monotonic(),
-                    "joint_names": RECEIVER_JOINT_NAMES,
-                    "positions_rad": to_receiver_order(limited),
-                    "solution_kind": "upstream_xr_teleoperate_R1_A5_ArmIK",
-                }
-                if rehome_pending:
-                    payload["rehome"] = True
-                    rehome_pending = False
-                try:
-                    print(json.dumps(payload, separators=(",", ":")), flush=True)
-                except BrokenPipeError:
-                    sys.stdout = open("/dev/null", "w", encoding="utf-8")
-                    return 0
-                stream_started = True
+                positions = limiter.step(model.clamp(solved))
+                solution_kind = "upstream_xr_teleoperate_R1_A5_ArmIK"
             else:
                 assert sink is not None
                 sink.apply_upper_body(target, ownership.upper_body)
                 application = sink.last_application or {}
                 if application.get("accepted"):
-                    payload = {
-                        "schema_version": 1,
-                        "sequence_id": newest.sequence_id,
-                        "sent_monotonic_s": time.monotonic(),
-                        "joint_names": RECEIVER_JOINT_NAMES,
-                        # No limiter call here: the coupled sink already limits
-                        # with these same ceilings, and a second one in series
-                        # would only add lag to a path this change is not meant
-                        # to alter.
-                        "positions_rad": to_receiver_order(handle.positions),
-                        "solution_kind": application.get("solver_solution_kind"),
-                    }
-                    if rehome_pending:
-                        payload["rehome"] = True
-                        rehome_pending = False
-                    try:
-                        print(json.dumps(payload, separators=(",", ":")), flush=True)
-                    except BrokenPipeError:
-                        sys.stdout = open("/dev/null", "w", encoding="utf-8")
-                        return 0
-                    stream_started = True
+                    # The coupled sink already rate-limits; do not limit twice.
+                    positions = handle.positions
+                    solution_kind = application.get("solver_solution_kind")
+            if positions is not None:
+                payload = make_receiver_payload(
+                    newest.sequence_id, positions, solution_kind, rehome_pending
+                )
+                rehome_pending = False
+                try:
+                    print(json.dumps(payload, separators=(",", ":")), flush=True)
+                    if args.command_log is not None:
+                        with args.command_log.open("a", encoding="utf-8") as log:
+                            log.write(json.dumps(payload, separators=(",", ":")) + "\n")
+                except BrokenPipeError:
+                    print(
+                        json.dumps(
+                            {
+                                "event": "hardware_target_stop",
+                                "reason": "downstream_closed",
+                                "sequence_id": newest.sequence_id,
+                            },
+                            separators=(",", ":"),
+                        ),
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    sys.stdout = open("/dev/null", "w", encoding="utf-8")
+                    return 0
+                stream_started = True
         if closed:
+            print(
+                json.dumps(
+                    {
+                        "event": "hardware_target_stop",
+                        "reason": "upstream_stream_closed",
+                        "last_sequence_id": previous_sequence,
+                    },
+                    separators=(",", ":"),
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
             return 0
         remaining = period - (time.monotonic() - loop_start)
         if remaining > 0.0:
             time.sleep(remaining)
+    print(
+        json.dumps(
+            {
+                "event": "hardware_target_stop",
+                "reason": "duration_elapsed",
+                "last_sequence_id": previous_sequence,
+            },
+            separators=(",", ":"),
+        ),
+        file=sys.stderr,
+        flush=True,
+    )
     return 0
 
 

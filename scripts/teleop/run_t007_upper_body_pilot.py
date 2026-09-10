@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""Launch the T007 coupled whole-upper-body pilot as one command.
+"""Launch the canonical T007 upstream arms/head pilot as one command.
 
 Replaces the hand-typed two-process `conda run ... | conda run ...` pipeline
 from `experiments/r1_teleop/quest3_sim_v1/T007/T007.md`. It allocates one run id
 under T007, derives the stop file and evidence directory from it, and starts the
-Quest bridge piped into the IsaacLab simulator.
+Quest bridge, vendor R1-A5 IK, and IsaacLab simulator.
 
     python3 scripts/teleop/run_t007_upper_body_pilot.py --host-ip 10.42.0.1
 
 This is a simulation-only path. It fixes the root and legs, prohibits base
-velocity, and produces no DDS or hardware output.
+velocity, and produces no DDS or hardware output. The canonical upstream path
+expresses both wrists against the initial head anchor before IK, so head-only
+motion and controller motion remain independent. The repository's coupled
+solver is retained only as an explicit comparison via ``--coupled-solver``.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -28,7 +32,7 @@ from teleop.r1.launcher import PilotLaunchSpec, run_pilot  # noqa: E402
 EXPERIMENT_ROOT = ROOT / "experiments" / "r1_teleop" / "quest3_sim_v1" / "T007"
 RUN_ROOT = EXPERIMENT_ROOT / "runs"
 PROTOCOL = "t007_whole_upper_body"
-DEFAULT_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_whole_upper_body_live.json"
+COUPLED_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_whole_upper_body_live.json"
 UPSTREAM_PROFILE = EXPERIMENT_ROOT / "config" / "r1_t007_upstream_stream_live.json"
 
 
@@ -51,8 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--whole-upper-body-config",
         type=Path,
-        default=DEFAULT_PROFILE,
-        help="Editable T007 schema-3 coupled upper-body profile.",
+        default=None,
+        help=(
+            "Explicit solver profile. By default the canonical upstream profile is used; "
+            "--coupled-solver selects the schema-3 coupled profile."
+        ),
     )
     parser.add_argument("--physics-hz", type=float, default=200.0)
     parser.add_argument("--control-hz", type=float, default=30.0)
@@ -121,18 +128,32 @@ def build_parser() -> argparse.ArgumentParser:
             "starting Isaac. This preserves one WebSocket session across startup."
         ),
     )
-    parser.add_argument(
+    solver = parser.add_mutually_exclusive_group()
+    solver.add_argument(
         "--upstream-solver",
-        action="store_true",
+        dest="solver",
+        action="store_const",
+        const="upstream",
         help=(
-            "Solve with the unmodified xr_teleoperate R1_A5_ArmIK instead of any solver in "
-            "this repository. The solver runs between the bridge and the simulator, in the "
+            "Explicitly select the canonical unmodified xr_teleoperate R1_A5_ArmIK path "
+            "(already the default). The solver runs between the bridge and the simulator, in the "
             "bridge environment, because CasADi and the Pinocchio 3 CasADi bindings exist "
             "there and not in the simulator's. The simulator then only applies joints. "
             "Implies body_mode='arms_head': the vendor model locks waist yaw and both head "
             "joints, so no other mode is representable."
         ),
     )
+    solver.add_argument(
+        "--coupled-solver",
+        dest="solver",
+        action="store_const",
+        const="coupled",
+        help=(
+            "Use the repository's coupled upper-body solver as an explicit comparison. "
+            "This is not the canonical live teleop path."
+        ),
+    )
+    parser.set_defaults(solver="upstream")
     parser.add_argument("--stop-file-dir", type=Path, default=Path("/tmp"), help="Where the stop file is created.")
     parser.add_argument("--dry-run", action="store_true", help="Print the allocated paths and commands, run nothing.")
     return parser
@@ -141,28 +162,47 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     solver_args = None
-    if args.upstream_solver:
+    if args.solver == "upstream":
         if args.body_mode not in (None, "arms_head"):
             raise SystemExit(
-                "--upstream-solver locks waist yaw and both head joints in the vendor model, "
+                "The canonical upstream solver locks waist yaw and both head joints in the vendor model, "
                 f"so --body-mode {args.body_mode} cannot be represented."
             )
-        # The profile default belongs to this repository's coupled solver. Only
-        # override it when the caller left it alone, so an explicitly chosen
-        # upstream profile is still honoured.
         profile = (
             UPSTREAM_PROFILE
-            if args.whole_upper_body_config == DEFAULT_PROFILE
+            if args.whole_upper_body_config is None
             else args.whole_upper_body_config.expanduser()
         )
         if not profile.is_file():
             raise SystemExit(f"Upstream stream profile does not exist: {profile}")
+        try:
+            profile_payload = json.loads(profile.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(f"Cannot read upstream stream profile {profile}: {exc}") from exc
+        if "R1_A5_ArmIK" not in str(profile_payload.get("solver", {}).get("source", "")):
+            raise SystemExit(
+                f"{profile} is not an upstream R1_A5_ArmIK profile; "
+                "use --coupled-solver for repository-solved profiles."
+            )
         extra = ["--upstream-joint-stream-config", str(profile), "--video-fps", str(args.video_fps)]
         solver_args = ["scripts/teleop/run_r1_upstream_ik_stream.py", "--passthrough"]
     else:
-        profile = args.whole_upper_body_config.expanduser()
+        profile = (
+            COUPLED_PROFILE
+            if args.whole_upper_body_config is None
+            else args.whole_upper_body_config.expanduser()
+        )
         if not profile.is_file():
             raise SystemExit(f"Whole-upper-body profile does not exist: {profile}")
+        try:
+            profile_payload = json.loads(profile.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(f"Cannot read coupled solver profile {profile}: {exc}") from exc
+        if "whole_upper_body" not in profile_payload:
+            raise SystemExit(
+                f"{profile} is not a repository coupled-solver profile; "
+                "remove --coupled-solver to use the canonical upstream profile."
+            )
         extra = ["--whole-upper-body-config", str(profile), "--video-fps", str(args.video_fps)]
         if args.body_mode:
             extra += ["--body-mode", args.body_mode]

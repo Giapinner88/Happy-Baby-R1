@@ -6,7 +6,7 @@
 #
 #   make help              list every target
 #   make teleop HOST_IP=192.168.1.106
-#                          run the T007 coupled whole-upper-body Quest pilot
+#                          run the canonical upstream arms/head Quest pilot
 #   make teleop-dry-run    show the allocated paths and commands, run nothing
 #
 # Override any variable on the command line, e.g.
@@ -27,12 +27,14 @@ VIDEO_FPS   ?= 10
 DEVICE      ?= cuda:0
 CERT_FILE   ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/cert.pem
 KEY_FILE    ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/key.pem
-# arms_head | waist_yaw | full_upper_body. Empty keeps the profile's own value.
+# Coupled-comparison only: arms_head | waist_yaw | full_upper_body.
 BODY_MODE   ?=
 # Open Isaac Sim and record one evidence-camera view by default. For a lighter
 # connectivity-only run, override with `TELEOP_ARGS="--headless --no-video"`.
 TELEOP_ARGS ?= --single-view
-WHOLE_UPPER_BODY_CONFIG ?= experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json
+# Optional explicit profile. Empty lets the launcher select the canonical
+# upstream profile (or the coupled profile when --coupled-solver is requested).
+WHOLE_UPPER_BODY_CONFIG ?=
 
 TELEOP_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
 	--host-ip $(HOST_IP) \
@@ -43,20 +45,8 @@ TELEOP_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
 	--device $(DEVICE) \
 	--cert-file $(CERT_FILE) \
 	--key-file $(KEY_FILE) \
-	--whole-upper-body-config $(WHOLE_UPPER_BODY_CONFIG) \
+	$(if $(WHOLE_UPPER_BODY_CONFIG),--whole-upper-body-config $(WHOLE_UPPER_BODY_CONFIG)) \
 	$(if $(BODY_MODE),--body-mode $(BODY_MODE)) \
-	$(TELEOP_ARGS)
-
-TELEOP_UPSTREAM_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
-	--host-ip $(HOST_IP) \
-	--duration-s $(DURATION_S) \
-	--physics-hz $(PHYSICS_HZ) \
-	--control-hz $(CONTROL_HZ) \
-	--video-fps $(VIDEO_FPS) \
-	--device $(DEVICE) \
-	--cert-file $(CERT_FILE) \
-	--key-file $(KEY_FILE) \
-	--upstream-solver \
 	$(TELEOP_ARGS)
 
 .DEFAULT_GOAL := help
@@ -66,11 +56,11 @@ TELEOP_UPSTREAM_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
 
 help:
 	@echo "Happy Baby R1 targets:"
-	@echo "  make teleop           T007 coupled whole-upper-body Quest pilot (simulation-only)"
-	@echo "  make teleop-arms      arms + head via the UNMODIFIED vendor xr_teleoperate IK"
+	@echo "  make teleop           canonical arms + head via vendor IK; head/hands independent"
+	@echo "  make teleop-arms      compatibility alias for make teleop"
 	@echo "  make teleop-arms-dry-run      print the three-process upstream pipeline, run nothing"
 	@echo "  make teleop-arms-differential the old arms+head path, solved in this repo"
-	@echo "  make teleop-dry-run   print allocated run paths and both commands, run nothing"
+	@echo "  make teleop-dry-run   print allocated run paths and the three-stage pipeline"
 	@echo "  make teleop-head-only T001-B head-only connectivity pilot"
 	@echo "  make test-teleop      run the teleop test suite"
 	@echo "  make teleop-upstream-solve   solve a recorded trace with the vendor xr_teleoperate IK"
@@ -79,8 +69,8 @@ help:
 	@echo "  make teleop-hardware  foreground R1 arms/head; prompts for fixture/E-stop confirmation"
 	@echo ""
 	@echo "Variables: SOURCE_RUN UPSTREAM_PYTHON HOST_IP DURATION_S PHYSICS_HZ CONTROL_HZ VIDEO_FPS DEVICE CERT_FILE KEY_FILE BODY_MODE TELEOP_ARGS WHOLE_UPPER_BODY_CONFIG"
-	@echo "BODY_MODE: arms_head (torso frozen) | waist_yaw (default) | full_upper_body (+waist roll)"
-	@echo "Example:   make teleop HOST_IP=192.168.1.106 BODY_MODE=arms_head"
+	@echo "BODY_MODE applies only to the explicit coupled-solver comparison."
+	@echo "Example:   make teleop HOST_IP=192.168.1.106"
 
 check-teleop-network:
 	@test -n "$(strip $(HOST_IP))" || { \
@@ -88,8 +78,8 @@ check-teleop-network:
 		exit 2; \
 	}
 
-## Run the coupled whole-upper-body teleop pilot end to end.
-## Allocates the run id, starts the Quest bridge piped into Isaac Sim, and
+## Run the canonical upstream arms/head pilot end to end.
+## Allocates the run id, starts Quest -> vendor IK -> Isaac Sim, and
 ## writes evidence under experiments/r1_teleop/quest3_sim_v1/T007/runs/.
 teleop: check-teleop-network
 	$(TELEOP_CMD)
@@ -98,20 +88,18 @@ teleop: check-teleop-network
 ## Nothing in this repository solves on this path: the bridge feeds the vendor
 ## solver, and the simulator only applies the joints it returns. The torso is
 ## frozen because the vendor model locks waist yaw and both head joints.
-teleop-arms: check-teleop-network
-	$(TELEOP_UPSTREAM_CMD)
+teleop-arms: teleop
 
 ## The previous arms+head path, solved by this repository's differential
 ## controller. Kept so the two can still be compared on one trace.
-teleop-arms-differential:
-	$(MAKE) teleop BODY_MODE=arms_head \
-		WHOLE_UPPER_BODY_CONFIG=experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_differential_live.json
+teleop-arms-differential: check-teleop-network
+	$(TELEOP_CMD) --coupled-solver --body-mode arms_head \
+		--whole-upper-body-config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_differential_live.json
 
 teleop-dry-run: check-teleop-network
 	$(TELEOP_CMD) --dry-run
 
-teleop-arms-dry-run: check-teleop-network
-	$(TELEOP_UPSTREAM_CMD) --dry-run
+teleop-arms-dry-run: teleop-dry-run
 
 teleop-head-only: check-teleop-network
 	$(PYTHON) scripts/teleop/run_t001_b_pilot.py \

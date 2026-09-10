@@ -134,7 +134,7 @@ not the state immediately before a target is applied.
 R1 head/cervical collision issue. It is not a model fix and must remain visible
 in the resolved configuration when interpreting T001-B results.
 
-## T007 coupled upper-body simulation
+## T007 canonical upstream arms/head simulation
 
 Run the whole pipeline with one command from the repository root:
 
@@ -143,16 +143,16 @@ make teleop HOST_IP=192.168.1.106
 ```
 
 `make teleop-dry-run HOST_IP=192.168.1.106` prints the allocated run paths and
-both underlying commands without starting anything. The launcher is
+three-stage pipeline without starting anything. The launcher is
 `scripts/teleop/run_t007_upper_body_pilot.py`; it allocates the run id, stop
 file and evidence directory exactly as the T001-B launcher does.
 
-The underlying `--whole-upper-body-config` selects the schema-3 coupled solver.
-It owns waist yaw, both arms, and head in one atomic target while fixing the
-root and legs. It is mutually exclusive with the legacy `--arm-head-config`.
+The default is the unmodified vendor `R1_A5_ArmIK` with
+`r1_t007_upstream_stream_live.json`; `--upstream-solver` remains accepted only
+for compatibility with older commands. `make teleop-arms` is likewise a
+compatibility alias for `make teleop`.
 
-When the pilot uses `--upstream-solver` (`make teleop-arms`), hold the head and
-controllers at a comfortable neutral for the first three consecutive
+Hold the head and controllers at a comfortable neutral for the first three consecutive
 right-deadman samples. The streamer records the third head pose as a fixed
 session position/yaw anchor and expresses both wrists against that anchor
 before vendor IK. Turning or translating the headset after calibration then
@@ -160,7 +160,15 @@ drives only the head; a stationary controller no longer moves an arm. Restart
 the pipeline to choose a new anchor. Releasing and pressing deadman within the
 same run deliberately retains the existing anchor.
 
-Two options change what a run means and must be read from its resolved config:
+The repository's coupled solver is retained as an explicit comparison:
+
+```bash
+python3 scripts/teleop/run_t007_upper_body_pilot.py \
+  --host-ip 192.168.1.106 --coupled-solver \
+  --whole-upper-body-config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json
+```
+
+The following options belong to that coupled comparison and change what its run means:
 
 - `allow_projected_position_solution` (on by default in the T007 profile)
   dispatches the closest reachable joint solution for a wrist target outside the

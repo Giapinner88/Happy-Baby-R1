@@ -22,10 +22,9 @@ if [[ "${CONFIRM_SUSPENDED_WITH_ESTOP:-0}" != "1" ]]; then
     fi
 fi
 
-# Chuẩn hoá dáng robot về nominal của sim ngay sau khi bóp cò, trước khi teleop
-# bám tay. Mặc định BẬT: đường phần cứng là phiên tương đối nên không có bước
-# này thì robot giữ nguyên tư thế tay đang buông và không bao giờ tương ứng với
-# sim. HB_TELEOP_HOME=0 để bỏ qua.
+# Chuẩn hoá dáng robot ngay sau khi bóp cò, trước khi teleop bám tay. Upstream
+# ramp tới target vendor đầu tiên để hardware và sim có cùng reference q; coupled legacy
+# vẫn ramp về nominal. HB_TELEOP_HOME=0 để bỏ qua.
 # Envelope mỗi khớp so với mốc phiên. 0.15 là giá trị cũ; phiên 2026-08-29 bão
 # hoà nó trên 10/12 khớp nên mặc định lên 1.0 rad (57 độ). Trần sidecar là 1.0.
 HB_TELEOP_MAX_OFFSET_RAD="${HB_TELEOP_MAX_OFFSET_RAD:-1.0}"
@@ -40,6 +39,14 @@ case "$HB_TELEOP_SOLVER" in
     upstream|coupled) ;;
     *) echo "[FAIL] HB_TELEOP_SOLVER phải là 'upstream' hoặc 'coupled'." >&2; exit 2 ;;
 esac
+HOME_ARG=""
+if [[ "$HB_TELEOP_HOME" == "1" ]]; then
+    if [[ "$HB_TELEOP_SOLVER" == "upstream" ]]; then
+        HOME_ARG="--home-to-source"
+    else
+        HOME_ARG="--home-to-nominal"
+    fi
+fi
 # Không chốt cứng IP: wlan0 của robot lấy địa chỉ động. Thứ tự ưu tiên là
 # ROBOT= trên dòng lệnh, rồi ~/.config/hb/robot.env, rồi dò. assert_robot xác
 # minh đúng máy trước khi làm bất cứ gì — một máy lạ giữ IP cũ vẫn trả lời ping.
@@ -124,15 +131,27 @@ echo "[READY] Giữ cò phải để điều khiển; nhả cò để receiver w
 echo "[READY] Evidence local: $RUN_DIR"
 echo "[READY] Solver: $HB_TELEOP_SOLVER"
 if [[ "$HB_TELEOP_HOME" == "1" ]]; then
-    echo "[READY] Homing BẬT: sau khi bóp cò, robot TỰ gập khuỷu về nominal rồi mới bám tay bạn."
-    echo "[READY] Chỉ CẲNG TAY đi: từ buông thõng lên ngang, hướng ra trước, quét quanh khuỷu ~0.16m."
-    echo "[READY] Cánh tay trên và vai gần như không đổi. Kiểm chỗ trống trước hai cẳng tay."
+    if [[ "$HB_TELEOP_SOLVER" == "upstream" ]]; then
+        echo "[READY] Source alignment BẬT: GIỮ YÊN đầu và hai controller sau khi bóp cò."
+        echo "[READY] Robot ramp chậm tới target vendor đầu tiên; sau đó không cộng offset posture vào q upstream."
+    else
+        echo "[READY] Homing coupled BẬT: robot ramp về nominal rồi mới bám tay bạn."
+    fi
+    echo "[READY] Robot đang tự đi trong dòng [HOME]; kiểm khoảng trống quanh cả hai tay và đầu."
 else
     echo "[READY] Homing TẮT: robot giữ nguyên tư thế hiện tại làm mốc."
 fi
 echo "[READY] Envelope: ${HB_TELEOP_MAX_OFFSET_RAD} rad/khớp; VAI ${HB_TELEOP_MAX_OFFSET_SHOULDER_RAD} rad (hết tầm)."
-echo "[READY] Cò trái = đưa về nominal và chốt lại mốc; nhả cò phải = tay giữ nguyên tư thế."
+echo "[READY] Cò trái = căn lại theo mode hiện tại; nhả cò phải = tay giữ nguyên tư thế."
 
+# Mỗi tầng có stderr và exit code riêng. Trước đây một downstream close lan
+# ngược qua cả pipe nhưng chỉ còn lại robot_receiver.log, nên không thể biết IK,
+# target producer, SSH hay sidecar là tầng đóng trước.
+: >"$RUN_DIR/bridge.stderr.log"
+: >"$RUN_DIR/upstream_solver.stderr.log"
+: >"$RUN_DIR/hardware_targets.stderr.log"
+: >"$RUN_DIR/ssh.stderr.log"
+set +e
 conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --host-ip "$HOST_IP" \
     --duration-s "$DURATION_S" \
@@ -142,18 +161,41 @@ conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --key-file "$KEY_FILE" \
     --stop-file "$STOP_FILE" \
     --connection-log "$RUN_DIR/bridge_connection.jsonl" \
+    2> >(tee -a "$RUN_DIR/bridge.stderr.log" >&2) \
 | if [[ "$HB_TELEOP_SOLVER" == "upstream" ]]; then
     # The vendor solver needs CasADi and the Pinocchio 3 bindings, which exist
     # in `tv` and nowhere else here, so it stays a process of its own exactly as
     # it does in simulation. The robot side still receives joint angles only.
-    conda run --no-capture-output -n tv python scripts/teleop/run_r1_upstream_ik_stream.py --passthrough
+    conda run --no-capture-output -n tv python scripts/teleop/run_r1_upstream_ik_stream.py \
+        --passthrough \
+        --stats-path "$RUN_DIR/upstream_solver_stats.json" \
+        2> >(tee -a "$RUN_DIR/upstream_solver.stderr.log" >&2)
   else
     cat
   fi \
 | conda run --no-capture-output -n unitree_sim_env python scripts/teleop/run_r1_quest3_hardware_targets.py \
     --duration-s "$DURATION_S" \
     --control-hz 10 \
+    --command-log "$RUN_DIR/hardware_targets.jsonl" \
     $([[ "$HB_TELEOP_SOLVER" == "upstream" ]] && echo --upstream-joint-stream || echo --coupled-ik) \
+    2> >(tee -a "$RUN_DIR/hardware_targets.stderr.log" >&2) \
 | ssh -o BatchMode=yes "$ROBOT" \
-    "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad $HB_TELEOP_MAX_OFFSET_RAD --max-offset-rad-shoulders $HB_TELEOP_MAX_OFFSET_SHOULDER_RAD $([[ "$HB_TELEOP_HOME" == "1" ]] && echo --home-to-nominal) --log-dir /home/unitree/HB/teleop/logs" \
+    "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad $HB_TELEOP_MAX_OFFSET_RAD --max-offset-rad-shoulders $HB_TELEOP_MAX_OFFSET_SHOULDER_RAD $HOME_ARG --log-dir /home/unitree/HB/teleop/logs" \
+    2> >(tee -a "$RUN_DIR/ssh.stderr.log" >&2) \
 | tee "$RUN_DIR/robot_receiver.log"
+PIPELINE_STATUS=("${PIPESTATUS[@]}")
+set -e
+
+printf '{\n  "bridge": %s,\n  "solver_or_passthrough": %s,\n  "hardware_targets": %s,\n  "ssh_sidecar": %s,\n  "receiver_tee": %s\n}\n' \
+    "${PIPELINE_STATUS[0]}" "${PIPELINE_STATUS[1]}" "${PIPELINE_STATUS[2]}" \
+    "${PIPELINE_STATUS[3]}" "${PIPELINE_STATUS[4]}" \
+    >"$RUN_DIR/pipeline_status.json"
+
+PIPELINE_RC=0
+for stage_rc in "${PIPELINE_STATUS[@]}"; do
+    if [[ "$stage_rc" -ne 0 ]]; then
+        PIPELINE_RC="$stage_rc"
+    fi
+done
+echo "[DONE] Pipeline status: $RUN_DIR/pipeline_status.json"
+exit "$PIPELINE_RC"

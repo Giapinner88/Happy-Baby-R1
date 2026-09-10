@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -118,6 +119,24 @@ public:
         int64_t now_ns = NowNs();
         bool fresh = armed && have && p.enable &&
                      (now_ns - recv_ns) < static_cast<int64_t>(timeout_ms_ * 1e6f);
+
+        // Chỉ log ở cạnh chuyển trạng thái để biết owner mất target vì gói
+        // STOP tường minh, watchdog UDP hay R3 không còn sẵn sàng. Trước đây cả
+        // ba đều chỉ hiện ra như tay rơi về hold/zero torque ở tầng Application.
+        if (fresh && !stream_fresh_) {
+            const float age_ms = have ? static_cast<float>(now_ns - recv_ns) / 1e6f : -1.0f;
+            std::cout << "\n[Teleop] stream ACTIVE seq=" << p.seq
+                      << " age_ms=" << age_ms << "\n";
+        } else if (!fresh && stream_fresh_) {
+            const float age_ms = have ? static_cast<float>(now_ns - recv_ns) / 1e6f : -1.0f;
+            const char* reason = !armed ? "operator_not_ready"
+                               : !have ? "no_packet"
+                               : !p.enable ? "explicit_stop"
+                               : "udp_watchdog";
+            std::cout << "\n[Teleop] stream INACTIVE reason=" << reason
+                      << " seq=" << p.seq << " age_ms=" << age_ms << "\n";
+        }
+        stream_fresh_ = fresh;
 
         // Weight ramp.
         if (fresh) weight_ = std::min(1.0f, weight_ + dt / blend_in_s_);
@@ -234,4 +253,5 @@ private:
     Packet latest_{};
     int64_t last_recv_ns_ = 0;
     bool have_packet_ = false;
+    bool stream_fresh_ = false;  // Update() thread only; log transition edges.
 };

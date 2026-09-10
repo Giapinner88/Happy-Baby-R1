@@ -98,14 +98,11 @@ class HardwareTargetProducerTests(unittest.TestCase):
                     )
 
     def test_the_emitted_payload_is_what_the_sidecar_parses(self):
-        payload = {
-            "schema_version": 1,
-            "sequence_id": 7,
-            "sent_monotonic_s": 1.0,
-            "joint_names": self.producer.RECEIVER_JOINT_NAMES,
-            "positions_rad": [0.01 * index for index in range(12)],
-            "solution_kind": "upstream_xr_teleoperate_R1_A5_ArmIK",
-        }
+        payload = self.producer.make_receiver_payload(
+            7,
+            [0.01 * index for index in range(12)],
+            "upstream_xr_teleoperate_R1_A5_ArmIK",
+        )
         parsed = self.sidecar.parse_target(json.dumps(payload), previous_sequence=6)
         self.assertIsNotNone(parsed)
         sequence, positions, head_valid, target_mode, rehome = parsed
@@ -117,6 +114,14 @@ class HardwareTargetProducerTests(unittest.TestCase):
         self.assertEqual(target_mode, "relative_source")
         self.assertFalse(rehome)
         self.sidecar.encode_target(sequence, positions, head_valid)
+
+    def test_rehome_uses_the_same_wire_contract(self):
+        payload = self.producer.make_receiver_payload(
+            8, [0.0] * 12, "upstream_xr_teleoperate_R1_A5_ArmIK", rehome=True
+        )
+        parsed = self.sidecar.parse_target(json.dumps(payload), previous_sequence=7)
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed[3:], ("relative_source", True))
 
     def test_the_hardware_ceilings_bound_a_vendor_sized_step(self):
         """A step the vendor path really produces must leave here bounded.
@@ -145,6 +150,27 @@ class HardwareTargetProducerTests(unittest.TestCase):
             speed = np.abs(current - previous) / 0.1
             self.assertLessEqual(float(speed.max()), 0.5 + 1e-9)
             previous = current
+
+    def test_first_vendor_target_passes_unchanged_for_source_alignment(self):
+        """The sidecar's first source goal must be the actual vendor q.
+
+        OnlineJointLimiter intentionally initializes at its first desired
+        vector. Later samples are rate-limited, while the robot-side homing ramp
+        is solely responsible for moving safely to this initial target.
+        """
+
+        from teleop.r1.rate_limit import OnlineJointLimiter
+
+        limiter = OnlineJointLimiter(
+            max_velocity_rad_s=1.0,
+            max_acceleration_rad_s2=2.0,
+            dt_s=0.1,
+        )
+        first = np.asarray([
+            0.2418, -0.2263, -0.1968, -0.0736, -0.0688,
+            0.2703, 0.1440, 0.1531, -0.1137, 0.0227, 0.0, 0.0,
+        ])
+        np.testing.assert_allclose(limiter.step(first), first)
 
 
 if __name__ == "__main__":

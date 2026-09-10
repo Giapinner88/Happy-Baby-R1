@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -163,7 +162,7 @@ class TeleopArmsWiringTest(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         result = subprocess.run(
             [sys.executable, "scripts/teleop/run_t007_upper_body_pilot.py",
-             "--host-ip", "192.168.1.106", "--upstream-solver", "--dry-run",
+             "--host-ip", "192.168.1.106", "--dry-run",
              "--cert-file", str(cert), "--key-file", str(key)],
             cwd=ROOT, capture_output=True, text=True,
         )
@@ -191,21 +190,77 @@ class TeleopArmsWiringTest(unittest.TestCase):
         self.assertIn("--passthrough", solver_line)
 
 
+class CoupledSolverOptInTest(unittest.TestCase):
+    def test_coupled_solver_requires_an_explicit_flag(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/teleop/run_t007_upper_body_pilot.py",
+                    "--host-ip", "192.168.1.106",
+                    "--coupled-solver",
+                    "--dry-run",
+                    "--cert-file", str(cert),
+                    "--key-file", str(key),
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+            )
+            output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertNotIn("solver:", output)
+        sim_line = next(line for line in output.splitlines() if line.startswith("sim:"))
+        self.assertIn("--whole-upper-body-config", sim_line)
+        self.assertNotIn("--upstream-joint-stream-config", sim_line)
+
+    def test_coupled_profile_without_opt_in_fails_with_actionable_message(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "cert.pem"
+            key = Path(directory) / "key.pem"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/teleop/run_t007_upper_body_pilot.py",
+                    "--host-ip", "192.168.1.106",
+                    "--whole-upper-body-config",
+                    "experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json",
+                    "--dry-run",
+                    "--cert-file", str(cert),
+                    "--key-file", str(key),
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+            )
+            output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("use --coupled-solver", output)
+
+
 class MakefileTest(unittest.TestCase):
     def setUp(self):
         self.makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 
-    def test_teleop_arms_uses_the_upstream_command(self):
-        block = re.search(
-            r"^teleop-arms(?:\s*:[^\n]*)?\n(.*?)(?=\n\S)",
-            self.makefile,
-            re.MULTILINE | re.DOTALL,
-        )
-        self.assertIsNotNone(block, "teleop-arms target not found")
-        self.assertIn("TELEOP_UPSTREAM_CMD", block.group(1))
+    def test_teleop_arms_uses_the_canonical_command(self):
+        for alias, canonical in (
+            ("teleop-arms", "teleop"),
+            ("teleop-arms-dry-run", "teleop-dry-run"),
+        ):
+            outputs = [
+                subprocess.check_output(
+                    ["make", "--no-print-directory", "-n", target,
+                     "HOST_IP=192.168.1.106"],
+                    cwd=ROOT, text=True,
+                )
+                for target in (alias, canonical)
+            ]
+            self.assertEqual(*outputs)
 
-    def test_the_upstream_command_passes_the_vendor_flag(self):
-        self.assertIn("--upstream-solver", self.makefile)
+    def test_the_coupled_path_is_explicit_opt_in(self):
+        self.assertIn("--coupled-solver", self.makefile)
 
     def test_the_differential_path_is_still_reachable(self):
         # Kept so the two solvers can still be compared on one trace.

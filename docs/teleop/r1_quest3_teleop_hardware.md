@@ -156,22 +156,23 @@ thay vì tự ghi đè credential còn lại.
 
 1. Wi-Fi `HappyBaby`, mở `https://192.168.1.106:8012/?ws=wss://192.168.1.106:8012`.
 2. Chấp nhận cert nếu hỏi. Chọn **Enter VR**.
-3. **Chưa bóp cò phải.** Đưa tay/đầu robot và tư thế người vận hành về neutral.
-4. Đầu robot phải gần thẳng: sidecar từ chối khởi động nếu `|yaw| > 0.60` hoặc
-   `|pitch| > 0.35` rad. Đầu đang limp thì nắn tay cho thẳng trước.
+3. **Chưa bóp cò phải.** Giữ đầu và hai controller ở đúng neutral thoải mái đã
+   dùng trong run sim chuẩn; dọn khoảng trống quanh cả hai tay robot và đầu.
+4. Với upstream mặc định, không cần nắn robot về đúng dáng sim bằng tay. Sidecar
+   sẽ kiểm và ramp tới target vendor đầu tiên. Khi tắt alignment, đầu robot phải
+   gần thẳng: sidecar từ chối nếu `|yaw| > 0.60` hoặc `|pitch| > 0.35` rad.
 5. Kiểm lần cuối: robot không còn chuyển động chuyển tiếp nào.
-6. **Giữ cò index bên phải.** Nếu homing đang bật (mặc định), robot **tự gập
-   khuỷu** đưa cẳng tay từ buông thõng lên ngang hướng ra trước, khoảng 9 giây
-   ở 0.15 rad/s, **và tự xoay đầu về giữa** nếu đầu đang lệch (từ chặn cơ khí
-   2.007 rad về 0 mất ~13 giây), rồi mới bám theo tay bạn. **Giữ nguyên cò suốt lúc đó** — nhả
-   giữa chừng là hủy phiên, không để tay ở lưng chừng. Chỉ cẳng tay quét, quanh
-   khuỷu bán kính ~0.16 m; vai và cánh tay trên gần như đứng yên.
-   Frame hợp lệ đầu tiên được chốt làm `source_zero`,
-   encoder tay/đầu hiện tại làm `start_q`. Mọi target sau đó là độ lệch giữa hai
-   mốc. Với bản cô lập, chân và eo cũng bị chốt và khoá tại đúng thời điểm này.
-7. Homing xong, sidecar **chốt lại cả hai mốc**: `start_q` là tư thế vừa tới,
-   `source_zero` là mẫu Quest mới nhất. Nên tay bạn cử động trong lúc homing
-   không bị tính thành lệch.
+6. **Giữ cò index bên phải và GIỮ YÊN đầu/controller trong dòng `[HOME]`.** Với
+   upstream mặc định, target hợp lệ đầu tiên được đóng băng làm goal. Robot ramp
+   tới đúng vector 12 khớp đó ở 0.15 rad/s; sidecar vào teleop khi ramp command
+   còn sai không quá 0.02 rad và ghi riêng residual encoder. Nhả cò, mất lowstate, đổi mode,
+   quá 45 giây, hoặc target ban đầu vượt bound đều làm alignment fail-closed.
+7. Khi alignment đạt, `start_q = source_zero = q_source_initial`. Vì vậy công
+   thức tương đối của sidecar rút gọn thành
+   `q_sidecar = q_source_initial + (q_source - q_source_initial) = q_source`
+   trong phần chưa chạm envelope/head gate. `q_source` là q vendor đã qua limiter
+   hardware 1.0 rad/s và 2.0 rad/s²; do đó posture không còn offset, nhưng đáp
+   ứng thời gian vẫn chậm hơn simulator. Với bản cô lập, chân và eo cũng bị khoá.
 8. Di chuyển **chậm**.
 
 Producer upstream còn dùng ba mẫu deadman liên tiếp đầu tiên để chốt head pose
@@ -179,15 +180,15 @@ làm spatial anchor. Hai wrist được biểu diễn theo position/yaw của an
 trước khi giải IK, nên xoay hoặc dịch đầu sau đó không kéo tay theo nếu
 controller đứng yên. Nhả/bóp lại cò phải giữ nguyên anchor; chạy lại pipeline
 mới tạo anchor mới. Đây là mốc không gian phía Quest, khác với `source_zero` và
-`start_q` của sidecar dùng cho ánh xạ tương đối sang encoder robot.
+`start_q` của sidecar dùng cho ánh xạ tương đối sang encoder robot. Ở upstream,
+hai mốc sidecar cố ý bằng nhau sau source alignment để không thêm posture offset
+vào q upstream đã qua limiter của producer.
 
-Tắt homing: `HB_TELEOP_HOME=0`. Khi tắt, robot giữ nguyên tư thế tay đang buông
-làm mốc và **sẽ không bao giờ giống dáng sim** — envelope ±0.15 rad chỉ cho
-dịch 8.6°/khớp, trong khi khuỷu treo tự do lệch tới 78°.
+Tắt alignment: `HB_TELEOP_HOME=0`. Khi tắt, robot giữ encoder hiện tại làm mốc;
+mapping trở lại dạng offset và không còn đảm bảo giống dáng sim.
 
-**Cò trái = về lại nominal.** Bấm giữa phiên thì robot chạy lại homing, chốt lại
-mốc, rồi phiên **tiếp tục** — không phải chạy lại pipeline. Dùng khi tay đã trôi
-tới rìa envelope và muốn bắt đầu lại.
+**Cò trái = căn lại.** Với upstream, goal mới là q source tại thời điểm bấm;
+với coupled legacy, goal vẫn là nominal. Phiên tiếp tục sau khi ramp và chốt mốc.
 
 **Nhả cò phải thì tay giữ nguyên tư thế**, không sụp như trước. Bóp lại là đi
 tiếp từ đúng chỗ đó. Quá 120 giây không ai lái thì owner trả về ZERO TORQUE.
@@ -197,21 +198,22 @@ Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, c
 
 ## 7. Giới hạn đang áp
 
-| Chặn ở đâu                                        | Giá trị                                                               |
-| ----------------------------------------------------- | ----------------------------------------------------------------------- |
-| Producer — vận tốc / gia tốc khớp                | 1.0 rad/s, 2.0 rad/s² (để owner là thứ chặn thật)                |
-| Producer — giới hạn khớp                          | theo asset`R1.urdf`                                                   |
-| Producer — nhịp phát                               | 10 Hz                                                                   |
-| Sidecar — envelope mỗi khớp so với`source_zero` | **±1.0 rad** (`HB_TELEOP_MAX_OFFSET_RAD`)                      |
-| Sidecar — envelope 6 khớp VAI                       | **±3.2 rad = hết tầm** (`HB_TELEOP_MAX_OFFSET_SHOULDER_RAD`) |
-| Sidecar — watchdog lệnh vào /`rt/lowstate`       | 0.75 s / 0.20 s                                                         |
-| Sidecar — nhịp gửi UTL1                            | 100 Hz                                                                  |
-| Owner — slew                                         | **0.6 rad/s** (`HB_TELEOP_RATE`, trần 1.50)                    |
-| Owner — PD tay                                       | kp 40, kd 2                                                             |
-| Owner — giới hạn đầu                             | yaw 1.0 rad, pitch 0.62 rad                                             |
-| Owner — timeout UTL1                                 | 300 ms                                                                  |
-| Bản cô lập — khoá chân/eo                       | kp 20, kd 3, slew 0.20 rad/s                                            |
-| Bản cô lập — giữ tay khi nhả cò                | bật, hết hạn sau 120 s                                               |
+| Chặn ở đâu                                        | Giá trị                                                                  |
+| ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| Producer — vận tốc / gia tốc khớp                | 1.0 rad/s, 2.0 rad/s² (để owner là thứ chặn thật)                   |
+| Producer — giới hạn khớp                          | theo asset`R1.urdf`                                                      |
+| Producer — nhịp phát                               | 10 Hz                                                                      |
+| Sidecar — envelope mỗi khớp so với`source_zero` | **±1.0 rad** (`HB_TELEOP_MAX_OFFSET_RAD`)                         |
+| Sidecar — envelope 6 khớp VAI                       | **±3.2 rad = hết tầm** (`HB_TELEOP_MAX_OFFSET_SHOULDER_RAD`)    |
+| Sidecar — watchdog lệnh vào /`rt/lowstate`       | 0.75 s / 0.20 s                                                            |
+| Sidecar — nhịp gửi UTL1                            | 100 Hz                                                                     |
+| Sidecar — source alignment                           | 0.15 rad/s, timeout 45 s, command tolerance 0.02 rad; ghi residual encoder |
+| Owner — slew                                         | **0.6 rad/s** (`HB_TELEOP_RATE`, trần 1.50)                       |
+| Owner — PD tay                                       | kp 40, kd 2                                                                |
+| Owner — giới hạn đầu                             | yaw 1.0 rad, pitch 0.62 rad                                                |
+| Owner — timeout UTL1                                 | 300 ms                                                                     |
+| Bản cô lập — khoá chân/eo                       | kp 20, kd 3, slew 0.20 rad/s                                               |
+| Bản cô lập — giữ tay khi nhả cò                | bật, hết hạn sau 120 s                                                  |
 
 Không nới bất kỳ giá trị nào trong bảng này mà chưa qua hardware gate.
 
@@ -287,10 +289,20 @@ Hai tiến trình `run_r1` cùng chạy cũng bị chặn ở đây (vi phạm D
 luôn là sai thứ tự tên khớp hoặc sai định dạng; kiểm producer có phát
 `joint_names` kết thúc bằng `head_yaw_joint, head_pitch_joint` không.
 
-**`[SAFE] head not neutral`** — chỉ xảy ra khi **homing tắt**. Khi homing bật,
-đầu lệch được chính homing đưa về nominal, nên gate chuyển xuống chạy sau đó và
-kiểm kết quả (`head_not_neutral_after_home`) bằng **encoder đo được**, không phải
-giá trị vừa ra lệnh.
+**`[SAFE] head not neutral`** — chỉ xảy ra khi **alignment tắt**. Khi alignment
+bật, gate chuyển xuống sau pha ramp và kiểm kết quả
+(`head_not_neutral_after_home`) bằng **encoder đo được**, không phải giá trị vừa
+ra lệnh. Với upstream, goal đầu bình thường bằng 0 vì output đầu được đo tương
+đối từ headset anchor ban đầu.
+
+**`source_home_goal_outside_envelope`** — target vendor đầu tiên không phải một
+neutral an toàn theo bound đã khai báo. Không clamp im lặng và không nới bound;
+nhả cò, đặt lại đầu/controller về neutral rồi chạy lại pipeline.
+
+`final_measured_error_rad` trong metadata là sai số bám được quan sát lúc ramp
+command hoàn tất; nó không chặn chuyển sang teleop. Head vẫn phải qua gate riêng
+sau home. Sai số tay lớn cần được đọc cùng `target_q`/`observed_q` để kiểm
+owner/mode/gain hoặc cơ khí.
 
 Với homing tắt: đầu đang ZERO TORQUE nên xoay tay được. Vừa xoay vừa nhìn số:
 
@@ -307,7 +319,12 @@ lại thì 2.007 đã vượt xa giới hạn ±0.628 của pitch, không thể 
 
 **`deadman_enabled=false`** — đang nhả cò, hoặc bấm nhầm cò trái.
 
-**`input_watchdog`** — producer không đưa target mới trong 0.75 s; owner đã release.
+**`home_aborted_stream_closed`** — một tầng upstream đã đóng pipe trong lúc
+homing. Đọc `pipeline_status.json` rồi stderr của tầng có exit code khác 0.
+
+**`home_aborted_input_watchdog` / `input_watchdog`** — pipe còn mở nhưng sidecar
+không nhận target hợp lệ mới trong 0.75 s. Đối chiếu solver timing và stderr của
+target producer; không mặc định coi đây là nhả cò.
 
 **Thiếu listener `127.0.0.1:5560`** — high-level chưa chạy hoặc sai config. Không
 chạy direct-lowcmd để lách kiểm tra này; đường đó đã bị loại.
@@ -320,9 +337,35 @@ robot       : /home/unitree/HB/teleop/logs/<UTC>_r1_high_level_teleop/
 bản cô lập  : ~/HB/high_level_lock/logs/<UTC>_run_lock.log
 ```
 
+Mỗi run workstation còn ghi `pipeline_status.json`, `bridge.stderr.log`,
+`upstream_solver.stderr.log`, `upstream_solver_stats.json`,
+`hardware_targets.stderr.log` và `ssh.stderr.log`. Các file này xác định tầng
+đóng đầu tiên; `bridge_stop=downstream_closed` chỉ là hậu quả lan ngược, không
+tự nó chứng minh bridge lỗi.
+
+Sửa vòng nhận lowstate 2026-09-10: sidecar dùng callback `LatestLowState.receive`
+và đọc snapshot không chặn, thay `ChannelSubscriber.Read()` vốn có thể chờ
+vô hạn. Tuổi lowstate tính từ callback nhận mẫu, đọc lại snapshot không gia hạn
+watchdog 0.20 s. Cả homing và căn lại bằng cò trái đều kiểm input/lowstate/mode
+mỗi tick 100 Hz. Đây là thay đổi cách nhận và đo freshness, không đổi IK, gain,
+ngưỡng watchdog hay hold 120 s của owner. Callback/latest-sample là lựa chọn
+triển khai; mẫu trung gian được bỏ, encoder mới nhất được dùng.
+
+`hardware_targets.jsonl` lưu sequence và thời điểm phát ở workstation để đối
+chiếu với sequence cuối receiver nhận; không trừ trực tiếp monotonic của hai máy.
+Run `035042Z` dừng sau 1.099 s homing, command còn lệch 0.551 rad và loop đã
+thực hiện khoảng 109 bước: log này chưa chứng minh DDS đã block trong run đó.
+Watchdog input 0.756 s là xác nhận; nguồn gây gap cụ thể vẫn chưa tái hiện.
+Test vòng thật với DDS/UDP giả lập kiểm homing, EOF, mất input, mất lowstate và
+rehome; replay qua IK/limiter/SSH chỉ thu dữ liệu kiểm đường truyền, không phải
+bằng chứng bám quỹ đạo trên robot. Cần pilot mới để xác nhận sửa được sự cố thực tế.
+
 Trên robot, `metadata.json` ghi `joint_names`, `motor_indices`, `target_mode`,
-`head_valid` và envelope của phiên; `samples.jsonl` ghi `target_q` và `observed_q`
-ở 10 Hz. Đây là hai file để đối chiếu tay/đầu có bám không.
+`home_mode`, goal/sai số alignment, số lần envelope clamp, các khớp từng clamp,
+`head_gate_clamp_count`, `head_valid` và envelope của phiên; `samples.jsonl` ghi
+`target_q` và `observed_q` ở 10 Hz. Clamp count lớn hơn 0 nghĩa là đoạn đó bị
+thêm giới hạn ở sidecar và phải được nêu khi đọc evidence. Ngay cả khi count
+bằng 0, limiter phía producer vẫn làm hardware chậm hơn q thô trong simulator.
 
 ## 11. Chuyển Dev Mode / Regular mode
 

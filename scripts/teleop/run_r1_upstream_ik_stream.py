@@ -308,17 +308,23 @@ def main() -> int:
     solve_ms: list[float] = []
     held = 0
     calibration_samples_skipped = 0
+    input_line_count = 0
+    last_sequence_id: int | None = None
     last_arms: np.ndarray | None = None
     last_wrist_targets: tuple[np.ndarray, np.ndarray] | None = None
     head_calibrator = HeadNeutralCalibrator(head_bounds)
 
     downstream_closed = False
+    failure: str | None = None
     try:
         for line in source:
             line = line.strip()
             if not line:
                 continue
             command = json.loads(line)
+            input_line_count += 1
+            sequence_value = command.get("sequence_id")
+            last_sequence_id = int(sequence_value) if sequence_value is not None else None
             enabled = bool(command.get("deadman_enabled", False))
             pitch, yaw = head_calibrator.update(command["head_pose"], enabled)
             if enabled and not head_calibrator.ready:
@@ -384,43 +390,58 @@ def main() -> int:
                 sys.stdout = open(os.devnull, "w", encoding="utf-8")
                 downstream_closed = True
                 break
+    except BaseException as exc:
+        failure = f"{type(exc).__name__}: {exc}"
+        raise
     finally:
         if args.input:
             source.close()
         if args.output:
             sink.close()
-
-    if args.stats_path and solve_ms:
-        values = np.asarray(solve_ms, dtype=float)
-        args.stats_path.write_text(
-            json.dumps(
-                {
-                    "solved_sample_count": int(len(values)),
-                    "held_sample_count": int(held),
-                    "calibration_samples_skipped": int(calibration_samples_skipped),
-                    "wrist_reference_mode": "initial_head_position_yaw_anchor",
-                    "solve_ms": {
-                        "mean": float(np.mean(values)),
-                        "median": float(np.median(values)),
-                        "p95": float(np.quantile(values, 0.95)),
-                        "max": float(np.max(values)),
+        if args.stats_path:
+            values = np.asarray(solve_ms, dtype=float)
+            solve_summary = None
+            implied_rate = None
+            if len(values):
+                solve_summary = {
+                    "mean": float(np.mean(values)),
+                    "median": float(np.median(values)),
+                    "p95": float(np.quantile(values, 0.95)),
+                    "max": float(np.max(values)),
+                }
+                implied_rate = float(1000.0 / float(np.mean(values)))
+            args.stats_path.write_text(
+                json.dumps(
+                    {
+                        "status": "failed" if failure else "completed",
+                        "failure": failure,
+                        "input_line_count": input_line_count,
+                        "last_sequence_id": last_sequence_id,
+                        "solved_sample_count": int(len(values)),
+                        "held_sample_count": int(held),
+                        "calibration_samples_skipped": int(calibration_samples_skipped),
+                        "wrist_reference_mode": "initial_head_position_yaw_anchor",
+                        "solve_ms": solve_summary,
+                        "implied_rate_ceiling_hz": implied_rate,
+                        "head_neutral_pitch_yaw_rad": (
+                            list(head_calibrator.neutral) if head_calibrator.neutral else None
+                        ),
+                        "head_anchor_pose_matrix": (
+                            head_calibrator.anchor_pose_matrix.tolist()
+                            if head_calibrator.anchor_pose_matrix is not None
+                            else None
+                        ),
+                        "stop_reason": (
+                            "exception" if failure
+                            else "downstream_closed" if downstream_closed
+                            else "input_exhausted"
+                        ),
                     },
-                    "implied_rate_ceiling_hz": float(1000.0 / float(np.mean(values))),
-                    "head_neutral_pitch_yaw_rad": (
-                        list(head_calibrator.neutral) if head_calibrator.neutral else None
-                    ),
-                    "head_anchor_pose_matrix": (
-                        head_calibrator.anchor_pose_matrix.tolist()
-                        if head_calibrator.anchor_pose_matrix is not None
-                        else None
-                    ),
-                    "stop_reason": "downstream_closed" if downstream_closed else "input_exhausted",
-                },
-                indent=2,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
             )
-            + "\n",
-            encoding="utf-8",
-        )
     return 0
 
 

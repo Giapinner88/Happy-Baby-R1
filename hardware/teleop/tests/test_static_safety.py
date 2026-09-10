@@ -116,11 +116,44 @@ def test_sidecar_has_relative_envelope_and_watchdogs() -> None:
     assert "--input-timeout-s" in source
     assert "--state-timeout-s" in source
     assert 'stop_reason = "input_watchdog"' in source
-    assert "source - zero" in source
+    assert '"home_aborted_stream_closed"' in source
+    assert '"home_aborted_input_watchdog"' in source
+    assert '"last_input_age_s"' in source
+    assert '"accepted_input_count"' in source
+    assert "relative_session_target" in source
+    assert "value - zero" in source
     assert "HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP" in source
     assert "--confirm-suspended-with-estop" in source
     assert "--confirm-dev-mode" in source
     assert "ChannelPublisher" not in source
+
+
+def test_hardware_launcher_persists_each_pipeline_stage_failure() -> None:
+    launcher = TELEOP_DIR.parents[1] / "scripts/teleop/run_r1_quest3_hardware.sh"
+    if not launcher.is_file():
+        pytest.skip("workstation launcher is not deployed in robot package")
+    source = launcher.read_text(encoding="utf-8")
+    for artifact in (
+        "bridge.stderr.log",
+        "upstream_solver.stderr.log",
+        "upstream_solver_stats.json",
+        "hardware_targets.stderr.log",
+        "ssh.stderr.log",
+        "pipeline_status.json",
+    ):
+        assert artifact in source
+    assert 'PIPELINE_STATUS=("${PIPESTATUS[@]}")' in source
+
+
+def test_high_level_owner_logs_why_the_udp_stream_became_inactive() -> None:
+    receiver = TELEOP_DIR.parent / "high_level_lock/src/input/TeleopReceiver.hpp"
+    if not receiver.is_file():
+        pytest.skip("owner source is outside robot sidecar package")
+    source = receiver.read_text(encoding="utf-8")
+    assert "stream ACTIVE" in source
+    assert "stream INACTIVE" in source
+    for reason in ("explicit_stop", "udp_watchdog", "operator_not_ready", "no_packet"):
+        assert reason in source
 
 
 def test_workspace_sync_preserves_hardware_adapter() -> None:

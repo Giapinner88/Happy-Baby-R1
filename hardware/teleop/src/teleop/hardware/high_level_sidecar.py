@@ -61,9 +61,17 @@ def build_parser() -> argparse.ArgumentParser:
             "khớp theo asset đã được producer kẹp trước rồi."
         ),
     )
-    parser.add_argument(
+    home = parser.add_mutually_exclusive_group()
+    home.add_argument(
         "--home-to-nominal", action="store_true",
         help="Ramp arms/head to the nominal pose before teleop, then anchor there.",
+    )
+    home.add_argument(
+        "--home-to-source", action="store_true",
+        help=(
+            "Ramp to the first validated relative-source target, then use that "
+            "same vector as both robot and source anchor."
+        ),
     )
     parser.add_argument(
         "--home-pose-rad", type=float, nargs=12, default=None,
@@ -112,7 +120,10 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--head-yaw-max-rad must be in [0.05, 1.0]")
     if not 0.05 <= args.head_pitch_max_rad <= 0.6:
         raise SystemExit("--head-pitch-max-rad must be in [0.05, 0.6]")
-    if args.home_to_nominal:
+    home_enabled = args.home_to_nominal or args.home_to_source
+    if args.home_to_source and args.home_pose_rad is not None:
+        raise SystemExit("--home-pose-rad is only valid with --home-to-nominal")
+    if home_enabled:
         # Chậm hơn hẳn trần teleop: robot đang tự đi chứ không bám theo người,
         # nên tốc độ phải là tốc độ nhìn thấy kịp và nhả cò kịp.
         if not 0.02 <= args.home_rate_rad_s <= 0.30:
@@ -121,14 +132,15 @@ def validate_args(args: argparse.Namespace) -> None:
             raise SystemExit("--home-timeout-s must be in [5.0, 120.0]")
         if not 0.005 <= args.home_tolerance_rad <= 0.10:
             raise SystemExit("--home-tolerance-rad must be in [0.005, 0.10]")
-        pose = args.home_pose_rad if args.home_pose_rad is not None else [0.0] * len(JOINT_NAMES)
-        if len(pose) != len(JOINT_NAMES) or not all(math.isfinite(v) for v in pose):
-            raise SystemExit("--home-pose-rad must be 12 finite values")
-        # Không có URDF ở phía robot, nên chặn bằng một biên thô: tư thế home là
-        # một hằng số đã biết, không phải luồng, nên cái này chỉ để bắt lỗi gõ.
-        if max(abs(v) for v in pose) > 1.6:
-            raise SystemExit("--home-pose-rad outside +-1.6 rad; refusing")
-        args.home_pose_rad = list(pose)
+        if args.home_to_nominal:
+            pose = args.home_pose_rad if args.home_pose_rad is not None else [0.0] * len(JOINT_NAMES)
+            if len(pose) != len(JOINT_NAMES) or not all(math.isfinite(v) for v in pose):
+                raise SystemExit("--home-pose-rad must be 12 finite values")
+            # Không có URDF ở phía robot, nên chặn bằng một biên thô: tư thế home là
+            # một hằng số đã biết, không phải luồng, nên cái này chỉ để bắt lỗi gõ.
+            if max(abs(v) for v in pose) > 1.6:
+                raise SystemExit("--home-pose-rad outside +-1.6 rad; refusing")
+            args.home_pose_rad = list(pose)
 
 
 def parse_target(
@@ -229,6 +241,80 @@ def per_joint_envelope(names: Sequence[str], default_rad: float, shoulder_rad: f
     return [shoulder_rad if "shoulder" in n else default_rad for n in names]
 
 
+def validate_source_home_goal(source: Sequence[float], envelope: Sequence[float]) -> tuple[int, float]:
+    """Refuse a first vendor posture outside the declared zero-centred bounds.
+
+    Source homing is the one intentional move that may cross the session offset
+    from the limp encoder pose. It is nevertheless a named, bounded posture:
+    the workstation already clamps it to the R1 asset limits, and this robot-side
+    check independently requires every absolute angle to fit the declared
+    per-joint envelope. Nothing is silently clipped during alignment.
+    """
+
+    values = [float(value) for value in source]
+    bounds = [float(value) for value in envelope]
+    if not values or len(values) != len(bounds):
+        raise ValueError("source home goal/envelope shape mismatch")
+    if not all(math.isfinite(value) for value in values + bounds) or min(bounds) <= 0.0:
+        raise ValueError("source home goal/envelope must be finite and positive")
+    ratios = [abs(value) / bound for value, bound in zip(values, bounds)]
+    worst_index = max(range(len(values)), key=ratios.__getitem__)
+    if ratios[worst_index] > 1.0:
+        raise ValueError("source home goal outside zero-centred envelope")
+    return worst_index, abs(values[worst_index])
+
+
+def relative_session_target(
+    start: Sequence[float],
+    source: Sequence[float],
+    source_zero: Sequence[float],
+    envelope: Sequence[float],
+) -> tuple[list[float], tuple[int, ...], float]:
+    """Map a relative source into the robot session and expose all clipping.
+
+    When source homing makes ``start == source_zero``, this reduces exactly to
+    ``target == source`` until an envelope is reached. That identity is the
+    contract which makes the sidecar reproduce the producer's upstream joint
+    stream without adding an affine offset. The hardware producer may still
+    rate-limit the raw vendor stream before it reaches this process.
+    """
+
+    lengths = {len(start), len(source), len(source_zero), len(envelope)}
+    if len(lengths) != 1 or len(start) == 0:
+        raise ValueError("relative session vectors must have one non-empty shape")
+    raw_offsets = [value - zero for value, zero in zip(source, source_zero)]
+    bounded_offsets = [
+        min(bound, max(-bound, offset))
+        for offset, bound in zip(raw_offsets, envelope)
+    ]
+    clamped = tuple(
+        index
+        for index, (raw, bounded) in enumerate(zip(raw_offsets, bounded_offsets))
+        if abs(raw - bounded) > 1e-12
+    )
+    desired = [anchor + offset for anchor, offset in zip(start, bounded_offsets)]
+    worst_offset = max(abs(value) for value in raw_offsets)
+    return desired, clamped, worst_offset
+
+
+def constrain_head_target(
+    yaw_rad: float,
+    pitch_rad: float,
+    yaw_max_rad: float,
+    pitch_max_rad: float,
+) -> tuple[float, float, tuple[str, ...]]:
+    """Apply the explicit hardware head gate and report every affected axis."""
+
+    bounded_yaw = min(yaw_max_rad, max(-yaw_max_rad, yaw_rad))
+    bounded_pitch = min(pitch_max_rad, max(-pitch_max_rad, pitch_rad))
+    clamped = []
+    if abs(yaw_rad - bounded_yaw) > 1e-12:
+        clamped.append("head_yaw_joint")
+    if abs(pitch_rad - bounded_pitch) > 1e-12:
+        clamped.append("head_pitch_joint")
+    return bounded_yaw, bounded_pitch, tuple(clamped)
+
+
 def head_outside_gate(yaw_rad: float, pitch_rad: float, yaw_max: float, pitch_max: float) -> bool:
     """Đầu có lệch quá mức cho phép lúc chốt mốc phiên không.
 
@@ -266,11 +352,33 @@ def stdin_reader(lines: "queue.Queue[str | None]") -> None:
     lines.put(None)
 
 
-def wait_for_state(subscriber: Any, timeout_s: float = 5.0) -> Any:
+class LatestLowState:
+    """DDS callback mailbox; reading never waits for a DDS sample.
+
+    Receipt time belongs to the callback, not the control loop. Re-reading an
+    old sample must never refresh the watchdog.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._state: Any = None
+        self._received_at = 0.0
+
+    def receive(self, state: Any) -> None:
+        with self._lock:
+            self._state = state
+            self._received_at = time.monotonic()
+
+    def snapshot(self) -> tuple[Any, float]:
+        with self._lock:
+            return self._state, self._received_at
+
+
+def wait_for_state(states: LatestLowState, timeout_s: float = 5.0, max_age_s: float = 0.2) -> Any:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        state = subscriber.Read()
-        if state is not None:
+        state, received_at = states.snapshot()
+        if state is not None and time.monotonic() - received_at <= max_age_s:
             return state
         time.sleep(0.01)
     raise TimeoutError(f"no {STATE_TOPIC} sample within {timeout_s:.1f}s")
@@ -290,8 +398,9 @@ def main(argv: list[str] | None = None) -> int:
 
     ChannelFactoryInitialize(0, args.interface)
     subscriber = ChannelSubscriber(STATE_TOPIC, LowState_)
-    subscriber.Init()
-    state = wait_for_state(subscriber)
+    states = LatestLowState()
+    subscriber.Init(states.receive)
+    state = wait_for_state(states, max_age_s=args.state_timeout_s)
     if int(state.mode_machine) != args.expected_mode_machine:
         raise SystemExit(
             f"mode_machine={state.mode_machine}, expected {args.expected_mode_machine}; refusing sidecar"
@@ -317,6 +426,11 @@ def main(argv: list[str] | None = None) -> int:
         "input_timeout_s": args.input_timeout_s,
         "state_timeout_s": args.state_timeout_s,
         "duration_s": args.duration_s,
+        "home_mode": (
+            "source_aligned" if args.home_to_source
+            else "nominal" if args.home_to_nominal
+            else "disabled"
+        ),
     }
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
 
@@ -356,7 +470,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Mau state doc luc khoi dong co the da cu trong khi cho Quest toi 120 s.
     # Chot neutral tu mot mau moi ngay sau target dau tien.
-    state = wait_for_state(subscriber)
+    state = wait_for_state(states, max_age_s=args.state_timeout_s)
     if int(state.mode_machine) != args.expected_mode_machine:
         metadata.update(status="unsafe_start", stop_reason="mode_machine_changed_before_start")
         metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
@@ -372,15 +486,16 @@ def main(argv: list[str] | None = None) -> int:
         start_head_yaw, start_head_pitch = start_q[-2:]
     else:
         start_head_yaw, start_head_pitch = 0.0, 0.0
+    home_enabled = args.home_to_nominal or args.home_to_source
     # Gate này tồn tại vì phiên là tương đối: đầu lệch bao nhiêu lúc chốt thì
     # lệch bấy nhiêu suốt phiên. Khi homing bật thì tiền đề đó không còn — đầu
-    # được đưa về nominal trước khi chốt, nên gate chuyển xuống chạy SAU homing.
+    # được đưa về goal đã kiểm tra trước khi chốt, nên gate chuyển xuống chạy SAU homing.
     #
     # Encoder là tuyệt đối, nên robot biết chính xác đầu đang ở đâu ngay khi bật;
     # thứ nó thiếu để tự về chỉ là mô-men và một lệnh. Chặn ở đây tức là chặn
     # đúng cái cơ chế sửa được vấn đề. Và khi đầu đang tì vào chặn cơ khí thì đi
     # về giữa là RỜI KHỎI giới hạn — hướng an toàn nhất.
-    if head_valid and not args.home_to_nominal and head_outside_gate(
+    if head_valid and not home_enabled and head_outside_gate(
         start_head_yaw, start_head_pitch, args.head_yaw_max_rad, args.head_pitch_max_rad
     ):
         metadata.update(
@@ -398,6 +513,30 @@ def main(argv: list[str] | None = None) -> int:
             "manually center the limp head before squeezing the trigger"
         )
         return 3
+    if args.home_to_source and target_mode != "relative_source":
+        metadata.update(status="unsafe_start", stop_reason="source_home_requires_relative_stream")
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        print("[SAFE] --home-to-source requires target_mode=relative_source")
+        return 3
+    if args.home_to_source:
+        try:
+            validate_source_home_goal(source_zero, envelope)
+        except ValueError:
+            ratios = [abs(value) / bound for value, bound in zip(source_zero, envelope)]
+            worst_index = max(range(len(ratios)), key=ratios.__getitem__)
+            metadata.update(
+                status="unsafe_start",
+                stop_reason="source_home_goal_outside_envelope",
+                violating_joint=selected_names[worst_index],
+                source_home_goal_rad=source_zero[worst_index],
+                source_home_limit_rad=envelope[worst_index],
+            )
+            metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+            print(
+                f"[SAFE] source home goal {selected_names[worst_index]}="
+                f"{source_zero[worst_index]:.3f} rad exceeds its {envelope[worst_index]:.3f} rad bound"
+            )
+            return 3
     if target_mode == "absolute_robot":
         try:
             _, worst_index, worst_initial_error, _ = constrain_absolute_target(
@@ -423,32 +562,31 @@ def main(argv: list[str] | None = None) -> int:
     # Mở transport và các mốc watchdog TRƯỚC pha homing: homing cũng gửi gói và
     # cũng phải chịu đúng những watchdog đó, không phải một đường vòng.
     latest_state = state
-    last_state_at = time.monotonic()
+    latest_state, last_state_at = states.snapshot()
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client.connect((args.udp_host, args.udp_port))
     status = "completed"
     stop_reason = "duration_elapsed"
 
     # --- Pha homing ---------------------------------------------------------
-    # Đường phần cứng là phiên tương đối: target = start_q + lệch, chặn ở
-    # +-max_offset_rad. Robot vì thế giữ nguyên chỗ tay đang buông và không bao
-    # giờ tự về được tư thế nominal của sim -- khuỷu treo tự do lệch tới 78 độ,
-    # gấp chín lần envelope. Không chuẩn hoá thì dáng robot và dáng người vận
-    # hành không tương ứng, và evidence phần cứng không so được với sim.
+    # Đường phần cứng vẫn là phiên tương đối: target = start_q + lệch, có
+    # envelope. Với upstream, goal là target vendor đầu tiên và hai mốc được
+    # chốt cùng một vector; vì thế công thức rút gọn thành target = source q,
+    # không cộng offset posture. Producer hardware vẫn rate-limit q vendor trước
+    # khi gửi source. Coupled giữ cách
+    # cũ là về nominal rồi chốt lại source mới nhất.
     #
-    # Chuyển động thực tế là GẬP KHUỶU: khuỷu và cánh tay trên gần như đứng yên,
-    # chỉ cẳng tay đi từ buông thõng lên ngang hướng ra trước. Giá trị khớp elbow
-    # giảm (1.36 -> 0) nên đọc số dễ tưởng là duỗi, nhưng zero của khớp chính là
-    # vị trí cẳng tay ngang, còn góc dương là cẳng tay buông xuống. Gọi sai tên
-    # thì người vận hành dọn nhầm chỗ trống -- cho cả cánh tay quét từ vai thay
-    # vì cẳng tay quét quanh khuỷu.
+    # Source goal phụ thuộc neutral của người vận hành, nên không giả định chỉ
+    # khuỷu chuyển động: mọi khớp tay và đầu đều có thể đi. Launcher phải yêu cầu
+    # dọn khoảng trống quanh toàn bộ upper body trước khi bóp cò.
     #
     # Homing phải nằm TRONG phiên này chứ không thể là một tool riêng chạy trước:
     # owner nhả về ZERO TORQUE sau teleop_timeout_ms khi ngừng nhận gói, nên tay
     # vừa gập xong sẽ limp và rơi lại trước khi teleop kịp tiếp quản.
     home_report: dict[str, object] | None = None
-    if args.home_to_nominal:
-        goal = list(args.home_pose_rad)
+    if home_enabled:
+        goal_kind = "source vendor ban đầu" if args.home_to_source else "nominal"
+        goal = list(source_zero) if args.home_to_source else list(args.home_pose_rad)
         if not head_valid:
             goal = goal[: len(ARM_MOTOR_INDICES)]
         commanded = list(start_q)
@@ -456,15 +594,19 @@ def main(argv: list[str] | None = None) -> int:
         period = 1.0 / args.send_hz
         started = time.monotonic()
         worst = max(abs(g - s) for g, s in zip(goal, start_q))
+        command_error = worst
+        measured_error = worst
+        accepted_home_input_count = 0
         print(
-            f"[HOME] đưa {len(goal)} khớp về tư thế nominal, lệch lớn nhất {worst:.3f} rad, "
+            f"[HOME] đưa {len(goal)} khớp về {goal_kind}, lệch lớn nhất {worst:.3f} rad, "
             f"{args.home_rate_rad_s:.2f} rad/s -> khoảng {worst / args.home_rate_rad_s:.1f}s. "
             "GIỮ NGUYÊN cò; robot đang tự đi, chưa bám theo tay."
         )
         while True:
             loop_start = time.monotonic()
             # Vẫn phải rút stdin: producer bơm đều, không đọc thì đầy pipe và nó
-            # chặn. Giữ mẫu mới nhất để chốt lại source_zero khi homing xong.
+            # chặn. Giữ mẫu mới nhất; goal source ban đầu vẫn được đóng băng để
+            # pha tự chạy không đuổi theo một tay người đang di chuyển.
             while True:
                 try:
                     line = lines.get_nowait()
@@ -475,17 +617,48 @@ def main(argv: list[str] | None = None) -> int:
                     break
                 parsed = parse_target(line, upstream_sequence)
                 if parsed is not None:
-                    upstream_sequence, latest_source, head_valid, target_mode, _ = parsed
+                    (parsed_sequence, parsed_source, parsed_head_valid,
+                     parsed_target_mode, _) = parsed
+                    if parsed_head_valid != head_valid or parsed_target_mode != target_mode:
+                        stop_reason = "home_aborted_stream_contract_changed"
+                        status = "failed"
+                        input_closed = True
+                        break
+                    upstream_sequence, latest_source = parsed_sequence, parsed_source
+                    accepted_home_input_count += 1
                     last_input_at = time.monotonic()
-            if input_closed or time.monotonic() - last_input_at > args.input_timeout_s:
-                # Nhả cò giữa chừng homing là hủy: không giữ tay ở lưng chừng.
-                stop_reason = "home_aborted_input"
-                status = "aborted"
+            input_age_s = time.monotonic() - last_input_at
+            if input_closed or input_age_s > args.input_timeout_s:
+                # EOF và watchdog từng bị gộp thành home_aborted_input, khiến
+                # không thể biết tầng workstation đóng pipe hay chỉ ngừng phát.
+                # Tách chúng ra nhưng giữ nguyên hành vi fail-closed.
+                if stop_reason != "home_aborted_stream_contract_changed":
+                    stop_reason = (
+                        "home_aborted_stream_closed"
+                        if input_closed
+                        else "home_aborted_input_watchdog"
+                    )
+                    status = "aborted"
+                home_report = {
+                    "reached": False,
+                    "elapsed_s": time.monotonic() - started,
+                    "initial_worst_error_rad": worst,
+                    "final_command_error_rad": command_error,
+                    "final_measured_error_rad": measured_error,
+                    "goal_kind": goal_kind,
+                    "goal_q_rad": goal,
+                    "abort_input_closed": input_closed,
+                    "last_input_age_s": input_age_s,
+                    "accepted_input_count": accepted_home_input_count,
+                    "last_upstream_sequence_id": upstream_sequence,
+                }
+                print(
+                    f"[SAFE] homing mất target: {stop_reason}; "
+                    f"input_age={input_age_s:.3f}s, accepted={accepted_home_input_count}, "
+                    f"last_seq={upstream_sequence}."
+                )
                 break
-            observed = subscriber.Read()
-            if observed is not None:
-                latest_state = observed
-                last_state_at = time.monotonic()
+            latest_state, last_state_at = states.snapshot()
             if time.monotonic() - last_state_at > args.state_timeout_s:
                 stop_reason = "home_aborted_lowstate"
                 status = "failed"
@@ -497,26 +670,44 @@ def main(argv: list[str] | None = None) -> int:
             commanded = ramp_toward(commanded, goal, step)
             local_sequence = next_sequence(local_sequence)
             client.send(encode_target(local_sequence, commanded, head_valid))
-            error = max(abs(g - c) for g, c in zip(goal, commanded))
-            if error <= args.home_tolerance_rad:
+            command_error = max(abs(g - c) for g, c in zip(goal, commanded))
+            measured_q = [
+                float(latest_state.motor_state[index].q)
+                for index in selected_motor_indices
+            ]
+            measured_error = max(abs(g - q) for g, q in zip(goal, measured_q))
+            if command_error <= args.home_tolerance_rad:
                 home_report = {
                     "reached": True,
                     "elapsed_s": time.monotonic() - started,
                     "initial_worst_error_rad": worst,
-                    "final_worst_error_rad": error,
+                    "final_command_error_rad": command_error,
+                    "final_measured_error_rad": measured_error,
+                    "encoder_within_home_tolerance": measured_error <= args.home_tolerance_rad,
+                    "goal_kind": goal_kind,
+                    "goal_q_rad": goal,
                 }
-                print(f"[HOME] tới nơi sau {home_report['elapsed_s']:.1f}s; chốt lại mốc phiên tại đây.")
+                print(
+                    f"[HOME] ramp tới goal sau {home_report['elapsed_s']:.1f}s; "
+                    f"encoder residual {measured_error:.3f} rad; chốt mốc phiên."
+                )
                 break
             if time.monotonic() - started > args.home_timeout_s:
                 home_report = {
                     "reached": False,
                     "elapsed_s": time.monotonic() - started,
                     "initial_worst_error_rad": worst,
-                    "final_worst_error_rad": error,
+                    "final_command_error_rad": command_error,
+                    "final_measured_error_rad": measured_error,
+                    "goal_kind": goal_kind,
+                    "goal_q_rad": goal,
                 }
                 stop_reason = "home_timeout"
                 status = "failed"
-                print(f"[SAFE] homing quá {args.home_timeout_s:.0f}s, còn lệch {error:.3f} rad; dừng.")
+                print(
+                    f"[SAFE] homing quá {args.home_timeout_s:.0f}s; "
+                    f"lệnh còn {command_error:.3f} rad, encoder còn {measured_error:.3f} rad; dừng."
+                )
                 break
             remaining = period - (time.monotonic() - loop_start)
             if remaining > 0:
@@ -533,15 +724,16 @@ def main(argv: list[str] | None = None) -> int:
             print("[SAFE] homing không hoàn tất; không vào teleop.")
             return 3
 
-        # Chốt lại CẢ HAI mốc. start_q là tư thế vừa tới; source_zero là mẫu Quest
-        # mới nhất, nếu không thì mọi chuyển động tay trong lúc homing sẽ bị tính
-        # thành lệch và robot giật ngay khi teleop bắt đầu.
+        # Với source homing, giữ nguyên source_zero đầu tiên: start_q và
+        # source_zero cùng bằng target vendor đó, nên ánh xạ sau homing đồng nhất
+        # với q tuyệt đối trong sim. Nominal legacy vẫn re-anchor mẫu mới nhất.
         start_q = list(commanded)
         assert latest_source is not None
-        source_zero = latest_source.copy()
+        if args.home_to_nominal:
+            source_zero = latest_source.copy()
 
         # Gate đầu chạy ở đây thay vì trước homing: bây giờ nó kiểm KẾT QUẢ chứ
-        # không kiểm điều kiện ban đầu. Homing nhắm tới nominal nên bình thường
+        # không kiểm điều kiện ban đầu. Goal đầu đã qua bound nên bình thường
         # phải đạt; không đạt nghĩa là đầu bị kẹt hoặc owner đang kẹp lệnh, và
         # đó mới là lúc phải dừng.
         if head_valid:
@@ -549,9 +741,14 @@ def main(argv: list[str] | None = None) -> int:
             # và owner còn kẹp lệnh đầu ở teleop_head_yaw_max (1.0 rad) trước
             # khi slew, nên "đã ra lệnh 0" không chứng minh được "đầu đã về 0".
             # Kiểm bằng chính cái mình ra lệnh thì gate này luôn pass và vô dụng.
-            observed = subscriber.Read()
-            if observed is not None:
-                latest_state = observed
+            latest_state, last_state_at = states.snapshot()
+            if time.monotonic() - last_state_at > args.state_timeout_s:
+                metadata.update(status="failed", stop_reason="lowstate_watchdog_after_home", home=home_report)
+                metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+                client.send(encode_stop(next_sequence(local_sequence)))
+                client.close()
+                print("[SAFE] lowstate stale after homing; refusing teleop.", flush=True)
+                return 3
             measured = [float(latest_state.motor_state[i].q) for i in selected_motor_indices]
             reached_yaw, reached_pitch = measured[-2:]
             if head_outside_gate(
@@ -591,11 +788,17 @@ def main(argv: list[str] | None = None) -> int:
     started_at = time.monotonic()
     period = 1.0 / args.send_hz
     sample_index = 0
-    # Cò trái không còn là dừng phiên. Nó xin đưa robot về lại tư thế nominal
-    # rồi chốt lại mốc — thứ người vận hành thực sự cần khi tay đã trôi tới rìa
+    # Cò trái không còn là dừng phiên. Nó xin đưa robot về lại goal của mode
+    # homing rồi chốt lại mốc — thứ người vận hành thực sự cần khi tay đã trôi tới rìa
     # envelope và muốn bắt đầu lại mà không phải chạy lại cả pipeline.
     rehome_requested = False
+    rehome_goal: list[float] | None = None
     rehome_count = 0
+    relative_envelope_clamp_count = 0
+    relative_envelope_clamped_joints: set[str] = set()
+    maximum_relative_source_offset_rad = 0.0
+    head_gate_clamp_count = 0
+    head_gate_clamped_joints: set[str] = set()
     try:
         metadata["status"] = "running"
         metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
@@ -629,10 +832,7 @@ def main(argv: list[str] | None = None) -> int:
             if time.monotonic() - last_input_at > args.input_timeout_s:
                 stop_reason = "input_watchdog"
                 break
-            observed = subscriber.Read()
-            if observed is not None:
-                latest_state = observed
-                last_state_at = time.monotonic()
+            latest_state, last_state_at = states.snapshot()
             if time.monotonic() - last_state_at > args.state_timeout_s:
                 stop_reason = "lowstate_watchdog"
                 status = "failed"
@@ -642,36 +842,58 @@ def main(argv: list[str] | None = None) -> int:
                 status = "failed"
                 break
             assert latest_source is not None
-            if rehome_requested and args.home_to_nominal:
-                goal = list(args.home_pose_rad)
+            if rehome_requested and home_enabled and rehome_goal is None:
+                goal = list(latest_source) if args.home_to_source else list(args.home_pose_rad)
                 if not head_valid:
                     goal = goal[: len(ARM_MOTOR_INDICES)]
-                commanded = list(start_q)
-                step = args.home_rate_rad_s / args.send_hz
-                # Ramp ngay trong vòng chính, dùng đúng bộ đếm và đúng transport,
-                # nên không có khe hở nào để owner nhả về ZERO TORQUE.
-                while max(abs(g - c) for g, c in zip(goal, commanded)) > args.home_tolerance_rad:
-                    commanded = ramp_toward(commanded, goal, step)
-                    local_sequence = next_sequence(local_sequence)
-                    client.send(encode_target(local_sequence, commanded, head_valid))
-                    time.sleep(period)
-                    if time.monotonic() - started_at >= args.duration_s:
+                if args.home_to_source:
+                    try:
+                        validate_source_home_goal(goal, envelope)
+                    except ValueError:
+                        status = "failed"
+                        stop_reason = "rehome_source_goal_outside_envelope"
                         break
-                start_q = list(commanded)
-                source_zero = list(latest_source)
+                commanded = [
+                    float(latest_state.motor_state[index].q)
+                    for index in selected_motor_indices
+                ]
+                rehome_goal = goal
+                rehome_started_at = time.monotonic()
                 rehome_requested = False
-                rehome_count += 1
-                print(f"[HOME] cò trái: đã về nominal và chốt lại mốc (lần {rehome_count}).")
+            if rehome_goal is not None:
+                # One step per outer tick: stdin, lowstate and mode watchdogs
+                # remain active throughout rehoming as well as initial homing.
+                if time.monotonic() - rehome_started_at > args.home_timeout_s:
+                    status, stop_reason = "failed", "rehome_timeout"
+                    break
+                commanded = ramp_toward(commanded, rehome_goal, args.home_rate_rad_s / args.send_hz)
+                local_sequence = next_sequence(local_sequence)
+                client.send(encode_target(local_sequence, commanded, head_valid))
+                if max(abs(g - c) for g, c in zip(rehome_goal, commanded)) <= args.home_tolerance_rad:
+                    start_q = list(commanded)
+                    source_zero = list(rehome_goal if args.home_to_source else latest_source)
+                    rehome_goal = None
+                    rehome_count += 1
+                    print(f"[HOME] cò trái: đã về {goal_kind} và chốt lại mốc (lần {rehome_count}).", flush=True)
+                rehome_requested = False
+                remaining = period - (time.monotonic() - loop_start)
+                if remaining > 0:
+                    time.sleep(remaining)
                 continue
             rehome_requested = False
             local_sequence = next_sequence(local_sequence)
             if target_mode == "relative_source":
-                desired = [
-                    start + min(bound, max(-bound, source - zero))
-                    for start, source, zero, bound in zip(
-                        start_q, latest_source, source_zero, envelope
+                desired, clamped_indices, worst_offset = relative_session_target(
+                    start_q, latest_source, source_zero, envelope
+                )
+                maximum_relative_source_offset_rad = max(
+                    maximum_relative_source_offset_rad, worst_offset
+                )
+                if clamped_indices:
+                    relative_envelope_clamp_count += 1
+                    relative_envelope_clamped_joints.update(
+                        selected_names[index] for index in clamped_indices
                     )
-                ]
             else:
                 try:
                     desired, worst_index, worst_offset, boundary_clamped = constrain_absolute_target(
@@ -699,8 +921,12 @@ def main(argv: list[str] | None = None) -> int:
                         worst_offset,
                     )
             if head_valid:
-                desired[-2] = min(args.head_yaw_max_rad, max(-args.head_yaw_max_rad, desired[-2]))
-                desired[-1] = min(args.head_pitch_max_rad, max(-args.head_pitch_max_rad, desired[-1]))
+                desired[-2], desired[-1], head_clamped = constrain_head_target(
+                    desired[-2], desired[-1], args.head_yaw_max_rad, args.head_pitch_max_rad
+                )
+                if head_clamped:
+                    head_gate_clamp_count += 1
+                    head_gate_clamped_joints.update(head_clamped)
             client.send(encode_target(local_sequence, desired, head_valid=head_valid))
             if sample_index % max(1, round(args.send_hz / 10.0)) == 0:
                 record = {
@@ -735,6 +961,11 @@ def main(argv: list[str] | None = None) -> int:
             status=status,
             stop_reason=stop_reason,
             rehome_count=rehome_count,
+            relative_envelope_clamp_count=relative_envelope_clamp_count,
+            relative_envelope_clamped_joints=sorted(relative_envelope_clamped_joints),
+            maximum_relative_source_offset_rad=maximum_relative_source_offset_rad,
+            head_gate_clamp_count=head_gate_clamp_count,
+            head_gate_clamped_joints=sorted(head_gate_clamped_joints),
             last_ipc_sequence_id=local_sequence,
             finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         )
