@@ -128,7 +128,7 @@ def main() -> int:
     parser.add_argument(
         "--config",
         type=Path,
-        default=ROOT / "experiments/r1_teleop/quest3_sim_v1/T001/config/r1_quest3_sim_v1.json",
+        default=ROOT / "config/r1_quest3_sim.json",
     )
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--input-trace", help="Newline-delimited R1TeleopCommand JSON trace.")

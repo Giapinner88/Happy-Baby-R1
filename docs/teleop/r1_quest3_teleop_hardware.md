@@ -8,8 +8,8 @@ qua UDP loopback và không target eo hoặc chân.
 > treo/cố định trên giá. Không có gì trong tài liệu này cho phép chạy trên sàn.
 > Các mục chưa đóng: [`hardware/teleop/docs/hardware_gate.md`](../../hardware/teleop/docs/hardware_gate.md).
 
-Cập nhật 2026-08-24: bộ giải trên đường phần cứng đã đổi sang bộ giải vendor
-`xr_teleoperate` chạy nguyên xi. Đường cũ vẫn gọi được bằng `HB_TELEOP_SOLVER=coupled`.
+Cập nhật 2026-09-11: đường phần cứng chỉ còn bộ giải vendor
+`xr_teleoperate` chạy nguyên xi; fallback coupled đã được loại khỏi launcher.
 
 ---
 
@@ -60,8 +60,8 @@ quest_bridge.py                     (env tv)              đọc headset, phát 
   → hb_high_level                                (robot) chủ rt/lowcmd duy nhất
 ```
 
-Không tiến trình nào ngoài `hb_high_level` được ghi `rt/lowcmd`
-([D003](../../decisions/r1_teleop/D003_single_lowcmd_owner.md)).
+Không tiến trình nào ngoài `hb_high_level` được ghi `rt/lowcmd`; contract này
+được mô tả tại [hardware boundary](07_hardware_boundary.md).
 
 ## 4. Chọn bản chạy phía robot
 
@@ -145,7 +145,7 @@ make teleop-hardware \
   KEY_FILE=$HOME/.config/xr_teleoperate/happybaby_192_168_1_106/key.pem
 ```
 
-Mặc định là bộ giải vendor, tay + đầu. Đường cũ: thêm `HB_TELEOP_SOLVER=coupled`.
+Đây là bộ giải vendor upstream, tay + đầu; launcher không còn chế độ coupled.
 
 Entrypoint kiểm tra cert trước mỗi lần chạy. Pair còn hạn và có SAN khớp
 `HOST_IP` được reuse; pair hết hạn, hỏng hoặc sai SAN được tạo lại atomically.
@@ -187,8 +187,8 @@ vào q upstream đã qua limiter của producer.
 Tắt alignment: `HB_TELEOP_HOME=0`. Khi tắt, robot giữ encoder hiện tại làm mốc;
 mapping trở lại dạng offset và không còn đảm bảo giống dáng sim.
 
-**Cò trái = căn lại.** Với upstream, goal mới là q source tại thời điểm bấm;
-với coupled legacy, goal vẫn là nominal. Phiên tiếp tục sau khi ramp và chốt mốc.
+**Cò trái = căn lại.** Goal mới là q source tại thời điểm bấm. Phiên tiếp tục
+sau khi ramp và chốt mốc.
 
 **Nhả cò phải thì tay giữ nguyên tư thế**, không sụp như trước. Bóp lại là đi
 tiếp từ đúng chỗ đó. Quá 120 giây không ai lái thì owner trả về ZERO TORQUE.
@@ -342,6 +342,13 @@ Mỗi run workstation còn ghi `pipeline_status.json`, `bridge.stderr.log`,
 `hardware_targets.stderr.log` và `ssh.stderr.log`. Các file này xác định tầng
 đóng đầu tiên; `bridge_stop=downstream_closed` chỉ là hậu quả lan ngược, không
 tự nó chứng minh bridge lỗi.
+
+Khi sidecar thoát, launcher tự tải `metadata.json` và `samples.jsonl` từ path
+robot nói trên vào `robot/`, tính `metrics.json`, sinh
+`figures/hardware_joint_tracking.png`, `telemetry_tracking.mp4` và
+`artifact_manifest.json`. MP4 là animation của target/encoder, không phải video
+camera robot. Thiếu data, figure hoặc video làm artifact gate và toàn lệnh fail;
+artifact chẩn đoán đã có vẫn được giữ lại.
 
 Sửa vòng nhận lowstate 2026-09-10: sidecar dùng callback `LatestLowState.receive`
 và đọc snapshot không chặn, thay `ChannelSubscriber.Read()` vốn có thể chờ

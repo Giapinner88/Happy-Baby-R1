@@ -38,14 +38,11 @@ Xác nhận bằng replay + visualization:
 - head-yaw transform;
 - waist offset.
 
-### Stage 2 — Solver benchmark
+### Stage 2 — Solver baseline
 
-Chạy **cùng một target sequence** qua:
-1. upstream `R1_A5_ArmIK`;
-2. current independent arm solver;
-3. current coupled upper-body solver nếu cần.
-
-Không benchmark bằng các input trajectory khác nhau.
+Pipeline active dùng upstream `R1_A5_ArmIK`. Independent/coupled/differential
+chỉ còn là lịch sử so sánh; không có launcher active và không được mô tả như
+baseline hiện tại.
 
 ### Stage 3 — Metrics
 
@@ -102,8 +99,8 @@ vẫn là failure mode chính.
    - `third_party/xr_teleoperate_v1_6`
 
    Chúng pinned riêng và không được coi là interchangeable.
-3. Robot address `10.42.0.33` chưa có DHCP reservation được xác nhận trong review 2026-08-18.
-4. Current coupled Jacobian finite difference là compute bottleneck.
+3. Robot dùng DHCP; địa chỉ phải được resolve và xác minh lại mỗi phiên.
+4. Upstream IK compute/dispatch rate vẫn phải được ghi trong mỗi run.
 5. Chưa có hardware run xác nhận trajectory tracking accuracy/smoothness/full-pipeline rate.
 6. Chưa thiết lập collision-free claim.
 7. Current upper-body pilot chưa accepted cho robot actuation.

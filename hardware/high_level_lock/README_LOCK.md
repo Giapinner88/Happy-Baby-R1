@@ -67,7 +67,8 @@ trên robot thật, và lúc đó thì đã muộn.
 
 ## Vì sao phải cô lập
 
-`hb_high_level` là publisher `rt/lowcmd` duy nhất ([D003](../../decisions/r1_teleop/D003_single_lowcmd_owner.md)).
+`hb_high_level` là publisher `rt/lowcmd` duy nhất theo
+[hardware boundary](../../docs/teleop/07_hardware_boundary.md).
 Hai bản chạy song song là đúng thứ D003 cấm. Nên bản này **thay thế tạm thời**
 bản đang chạy chứ không chạy cùng: dừng service, chạy foreground, xong thì bật
 service lại. Không cài service cho cây này.
@@ -150,7 +151,7 @@ cạnh giá chạy — cũng là người cầm R3 và người giữ E-stop.
 
 Vào Dev Mode và ZERO TORQUE như thường lệ: `L2+R2`, giữ `R1+R2` 3 giây,
 `L2+Y`. Rồi chạy teleop từ workstation như trong
-[r1_quest3_teleop_hardware.md](../../docs/operations/r1_quest3_teleop_hardware.md).
+[r1_quest3_teleop_hardware.md](../../docs/teleop/r1_quest3_teleop_hardware.md).
 
 Xong: Ctrl+C. Script tự bật lại `hb_high_level`; nếu nó báo bật lại thất bại thì
 chạy tay `sudo systemctl start hb_high_level` rồi kiểm `systemctl is-active`.

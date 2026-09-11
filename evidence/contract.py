@@ -1,14 +1,7 @@
-"""The run-record contract shared by every experiment in this repository.
+"""The run-record contract shared by baseline and historical teleop evidence.
 
-One vocabulary, one set of filenames, one status vocabulary. Before this module
-the locomotion experiments wrote `metadata.json` / `resolved_config.json` while
-the teleop experiment wrote `provenance.json` / `config.resolved.json` for the
-same concepts, so nothing could report across them.
-
-The canonical names are the locomotion ones, because more existing evidence
-already used them and evidence directories are the thing least safe to churn.
-Legacy names remain readable through `ALIASES` so a record written before the
-unification is never silently reported as missing.
+Legacy names remain readable through ``ALIASES`` so recorded runs are not
+silently reported as missing after the workspace contraction.
 
 This module holds no experiment-specific knowledge: it does not know what a
 teleop hold event or a locomotion reward curve is. Per-experiment expectations
@@ -30,6 +23,7 @@ ARTIFACTS: dict[str, str] = {
     "resolved_config": "resolved_config.json",
     "status": "status.json",
     "evidence_completeness": "evidence_completeness.json",
+    "artifact_manifest": "artifact_manifest.json",
     "runner_command": "experiment_runner_command.txt",
 }
 
@@ -44,7 +38,9 @@ REQUIRED: tuple[str, ...] = ("metadata", "resolved_config", "status")
 
 # Expected for a complete record, but their absence is reported rather than
 # fatal: a run that died early legitimately never wrote them.
-RECOMMENDED: tuple[str, ...] = ("experiment_config", "evidence_completeness", "runner_command")
+RECOMMENDED: tuple[str, ...] = (
+    "experiment_config", "evidence_completeness", "artifact_manifest", "runner_command"
+)
 
 
 EXECUTION_STATUS: tuple[str, ...] = ("running", "completed", "failed", "aborted")

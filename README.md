@@ -1,12 +1,24 @@
-# Happy Baby R1
+# Happy Baby R1 Teleop
 
-Workspace nội bộ AiRA-Laboratory cho Unitree R1. Nhánh `teleop` tập trung vào
-Quest 3 → upstream IK → tay/đầu robot, với head anchor ban đầu tách chuyển động
-đầu khỏi target tay. Không chia sẻ code, dữ liệu hoặc hình ảnh khi chưa được phép.
+Workspace nội bộ AiRA-Laboratory cho pipeline Meta Quest 3 → Unitree R1-A5.
+Nhánh `teleop` hiện chỉ giữ phần phục vụ teleop tay/đầu: transport Vuer, chuẩn
+hoá frame, upstream IK, mô phỏng Isaac, adapter phần cứng và sole-owner
+`rt/lowcmd`. Các workflow locomotion/training/MuJoCo cũ không còn thuộc nhánh
+này.
+
+## Trạng thái
+
+- Pipeline upstream tay/đầu đã có baseline mô phỏng và đường hardware giới hạn.
+- Hardware chỉ được thử khi robot treo/cố định, có người giữ E-stop và theo
+  hardware gate; chưa có bằng chứng cho phép robot đứng hoặc chạy trên sàn.
+- Head anchor ban đầu tách chuyển động đầu khỏi target tay. Tracking phần cứng
+  sau các sửa đổi gần nhất vẫn cần đo và ghi evidence mới.
+- `hb_high_level` phải là publisher `rt/lowcmd` duy nhất. Sidecar teleop chỉ đọc
+  `rt/lowstate` và gửi UTL1 qua loopback.
 
 ## Chạy
 
-Sau khi cài môi trường theo [runbook simulator](docs/teleop/r1_quest3_teleop_sim.md):
+Đọc [runbook mô phỏng](docs/teleop/r1_quest3_teleop_sim.md), sau đó:
 
 ```bash
 make help
@@ -14,22 +26,30 @@ make teleop-dry-run HOST_IP=<IP-workstation>
 make teleop HOST_IP=<IP-workstation>
 ```
 
-Live mở Isaac và ghi video/evidence dưới `experiments/r1_teleop/quest3_sim_v1/T007/runs/`.
-Dry-run chỉ in pipeline nhưng có thể tạo cert. `teleop-arms` là alias của `teleop`.
+Live mở Isaac và ghi evidence dưới
+`experiments/r1_teleop/quest3_sim_v1/baseline/runs/`. Sau mỗi run, artifact gate
+tự sinh figures và chỉ trả thành công khi đủ data, figures và video. Dry-run chỉ in pipeline nhưng
+có thể tạo certificate.
 
-Hardware: theo [runbook robot](docs/teleop/r1_quest3_teleop_hardware.md).
-IP robot lấy từ `ROBOT` hoặc `~/.config/hb/robot.env`.
-Run sim `t007_whole_upper_body_20260909T072030Z` là tham chiếu hình ảnh;
-source alignment đã deploy, tracking hardware sau sửa vẫn cần đo.
+Hardware phải theo [runbook robot](docs/teleop/r1_quest3_teleop_hardware.md).
+IP robot lấy từ `ROBOT` hoặc `~/.config/hb/robot.env`; không hard-code địa chỉ
+động vào source.
 
-## Tra cứu
+## Bố cục
 
-- [Entrypoint teleop](scripts/teleop/README.md): launcher, replay và diagnostics.
-- [Tài liệu](docs/README.md): cài đặt, phương pháp, vận hành và policy.
-- [Config T007](experiments/r1_teleop/quest3_sim_v1/T007/config/README.md): upstream chuẩn và đối chứng.
-- [Hardware gate](hardware/teleop/docs/hardware_gate.md): giới hạn và evidence còn thiếu.
+- `teleop/r1/`: implementation dùng chung cho schema, mapping, IK và runtime.
+- `scripts/teleop/`: entrypoint live, replay, diagnostics và bundle export.
+- `experiments/.../baseline/`: cấu hình, record và evidence đối chứng vendor.
+- `hardware/teleop/`: sidecar/deploy package; `hardware/high_level_lock/` là
+  sole-owner C++ phục vụ pilot treo.
+- `assets/`: URDF/USD/mesh R1; `config/`: cấu hình dùng chung không chứa secret.
+- `docs/teleop/` và `docs/safety/`: phương pháp, runbook và giới hạn an toàn.
+- `third_party/xr_teleoperate*`: hai revision vendor bắt buộc cho transport và
+  upstream R1-A5 IK; không sửa trực tiếp.
 
-Code dùng chung ở `teleop/r1/`; triển khai robot ở `hardware/`; model ở
-`assets/`; ROS 2 ở `src/`. Vendor `third_party/` giữ nguyên.
-Workstation Ubuntu 22.04 dùng Conda theo runbook; robot Ubuntu 20.04 dùng
-Python 3.8 / ROS 2 Foxy. Run cũ giữ nguyên config và kết quả của chính nó.
+Xem [bản đồ tài liệu](docs/README.md), [entrypoint teleop](scripts/teleop/README.md),
+[baseline config](experiments/r1_teleop/quest3_sim_v1/baseline/config/README.md) và
+[hardware gate](hardware/teleop/docs/hardware_gate.md).
+
+Không chia sẻ code, dữ liệu, hình ảnh, certificate hay private key khi chưa
+được phép.

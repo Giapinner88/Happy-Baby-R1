@@ -22,7 +22,7 @@ from .contract import (
 
 # Directories inside a run that hold bulk generated output rather than record
 # files. They are summarized by size and count instead of being walked into.
-BULK_SUBDIRECTORIES = ("logs", "outputs", "videos", "derived", "sidecar_evaluations", "analysis")
+BULK_SUBDIRECTORIES = ("figures", "logs", "outputs", "videos", "derived", "sidecar_evaluations", "analysis")
 
 
 def _read_json(path: Path) -> dict[str, object] | None:

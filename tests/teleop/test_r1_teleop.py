@@ -170,7 +170,7 @@ class R1TeleopMappingTests(unittest.TestCase):
 
     def test_trace_replay_is_deterministic_with_fake_sink(self) -> None:
         repo = Path(__file__).resolve().parents[2]
-        trace = repo / "experiments" / "r1_teleop" / "quest3_sim_v1" / "inputs" / "example_trace.jsonl"
+        trace = repo / "tests" / "fixtures" / "quest_command.jsonl"
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "replay"
             subprocess.run(
@@ -200,7 +200,7 @@ class R1TeleopMappingTests(unittest.TestCase):
 
     def test_runner_rejects_non_increasing_sequence(self) -> None:
         repo = Path(__file__).resolve().parents[2]
-        trace = repo / "experiments" / "r1_teleop" / "quest3_sim_v1" / "inputs" / "t001_sequence_violation_trace.jsonl"
+        trace = repo / "tests" / "fixtures" / "quest_sequence_violation.jsonl"
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "replay"
             result = subprocess.run(

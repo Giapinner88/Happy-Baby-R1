@@ -1,11 +1,8 @@
 # Workspace entry points
 
-Đây là các lệnh ổn định của workspace, không phải nơi đặt logic framework lớn.
-Chạy từ repo root và chọn nhóm đúng mục đích:
+Nhánh này chỉ duy trì `scripts/teleop/`. Chạy từ repository root qua `make`
+hoặc theo [README teleop](teleop/README.md); không gọi vendor script trực tiếp
+khi đã có wrapper của workspace.
 
-- `training/`: train/play/export MJLab và Isaac Lab.
-- `simulation/`: viewer MuJoCo, Docker Isaac Lab và controller reference.
-- `bridge/`: DDS bridge và policy runtime local.
-- `assets/`: đồng bộ asset nguồn sang runtime MJCF.
-
-Không gọi script trong `third_party/` trực tiếp khi workspace đã có wrapper.
+Các launcher training, MuJoCo, DDS bridge và asset synchronization cũ đã được
+loại vì implementation/config tương ứng không còn thuộc nhánh `teleop`.

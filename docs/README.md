@@ -1,16 +1,19 @@
-# Tài liệu Happy Baby R1
+# Tài liệu Happy Baby R1 Teleop
 
-| Cần làm | Tài liệu |
+Nhánh này chỉ duy trì tài liệu cho Quest 3 teleop tay/đầu trên R1-A5. Nội dung
+locomotion, training, MuJoCo, ROS onboarding và các protocol T001–T006/T008 đã
+được loại khỏi active workspace; Git history vẫn giữ lịch sử của chúng.
+
+| Nhu cầu | Nguồn authoritative |
 |---|---|
-| Teleop trong Isaac | [Simulator](teleop/r1_quest3_teleop_sim.md) |
-| Teleop trên robot | [Hardware](teleop/r1_quest3_teleop_hardware.md), [gate](../hardware/teleop/docs/hardware_gate.md) |
-| Hiểu frame, IK, tracking | [Phương pháp teleop](teleop/README.md) |
-| Cài môi trường | [Development](operations/development_environment_setup_guide.md), [third-party](operations/third-party_build.md) |
-| Cài simulator | [Isaac Lab](operations/isaaclab_installation.md), [MJLab](operations/mjlab_installation.md) |
-| Mạng và DDS | [Checklist](operations/network_setup_checklist.md), [Ethernet](operations/network_configuration_static_ethernet.md), [DDS](operations/dds_implementation.md) |
-| Policy | [Workspace](operations/r1_policy_workspace.md), [MuJoCo runtime](operations/unitree_mujoco_policy_runtime.md) |
-| Vận hành | [SOP](operations/SOP_v0.md), [an toàn](safety/safety_rules.md), [rosbag2](operations/rosbag2_operation.md) |
-| Onboarding | [Bài thực hành](operations/practice/README.md) |
+| Chạy teleop trong Isaac | [Runbook mô phỏng](teleop/r1_quest3_teleop_sim.md) |
+| Chuẩn bị/chạy pilot treo | [Runbook hardware](teleop/r1_quest3_teleop_hardware.md) |
+| Kiểm tra điều kiện còn thiếu | [Hardware gate](../hardware/teleop/docs/hardware_gate.md) |
+| Hiểu frame, IK và tracking | [Bộ tài liệu phương pháp](teleop/README.md) |
+| Quy tắc an toàn | [Safety index](safety/README.md) |
+| Entrypoint và diagnostics | [Scripts teleop](../scripts/teleop/README.md) |
+| Cấu hình đối chứng active | [Baseline config](../experiments/r1_teleop/quest3_sim_v1/baseline/config/README.md) |
 
-Chi tiết và giá trị cấu hình thuộc từng runbook; cập nhật chỉ mục gần nhất khi
-thêm tài liệu. Workflow G1/Dex3 nằm [riêng](operations/teleop_quest3_vi.md).
+Thông số runtime thuộc file config hoặc run đã resolve; tài liệu chỉ giải thích
+ngữ nghĩa và dẫn tới owner đó. Không dùng tài liệu lịch sử thay cho trạng thái
+hardware gate hiện tại.

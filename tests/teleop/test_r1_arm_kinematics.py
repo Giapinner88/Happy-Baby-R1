@@ -12,7 +12,6 @@ consistency first, so a T002 mismatch points at the simulator rather than here.
 
 from __future__ import annotations
 
-import json
 import math
 import re
 import unittest
@@ -28,13 +27,6 @@ from teleop.r1.kinematics import (
     R1_A5_END_EFFECTOR_OFFSET_M,
     axis_angle_to_matrix,
     load_arm_chain,
-)
-from teleop.r1.workspace import (
-    GridSpec,
-    WorkspaceError,
-    grid_spacing_m,
-    max_consecutive_step_m,
-    serpentine_targets,
 )
 
 
@@ -321,111 +313,6 @@ class IKSolverTests(unittest.TestCase):
         config = test_config(max_joint_step_rad=0.01, max_iterations=3)
         result = solve_arm_ik(self.chain, target, 0.0, np.zeros(5), self.nominal, config)
         self.assertLessEqual(float(np.max(np.abs(result.joint_positions[:4]))), 3 * 0.01 + 1e-9)
-
-
-class WorkspaceGridTests(unittest.TestCase):
-    """The sweep order is what keeps the solver inside one elbow branch."""
-
-    def spec(self, **overrides) -> GridSpec:
-        values = {
-            "x_range_m": (0.05, 0.30),
-            "y_range_m": (0.05, 0.40),
-            "z_range_m": (-0.05, 0.35),
-            "counts": (4, 4, 4),
-            "wrist_roll_rad": 0.0,
-        }
-        values.update(overrides)
-        return GridSpec(**values)  # type: ignore[arg-type]
-
-    def test_grid_produces_the_declared_number_of_targets(self) -> None:
-        targets = serpentine_targets(self.spec())
-        self.assertEqual(len(targets), 64)
-        self.assertEqual(self.spec().target_count, 64)
-
-    def test_every_grid_cell_appears_exactly_once(self) -> None:
-        cells = [target.grid_index for target in serpentine_targets(self.spec())]
-        self.assertEqual(len(set(cells)), 64)
-
-    def test_consecutive_targets_never_jump_more_than_one_cell(self) -> None:
-        spec = self.spec()
-        targets = serpentine_targets(spec)
-        largest_spacing = max(grid_spacing_m(spec))
-        self.assertLessEqual(max_consecutive_step_m(targets), largest_spacing + 1e-12)
-
-    def test_targets_stay_inside_the_declared_bounds(self) -> None:
-        spec = self.spec()
-        for target in serpentine_targets(spec):
-            x, y, z = target.position_m
-            self.assertGreaterEqual(x, spec.x_range_m[0] - 1e-12)
-            self.assertLessEqual(x, spec.x_range_m[1] + 1e-12)
-            self.assertGreaterEqual(y, spec.y_range_m[0] - 1e-12)
-            self.assertLessEqual(y, spec.y_range_m[1] + 1e-12)
-            self.assertGreaterEqual(z, spec.z_range_m[0] - 1e-12)
-            self.assertLessEqual(z, spec.z_range_m[1] + 1e-12)
-
-    def test_single_sample_axis_is_allowed(self) -> None:
-        targets = serpentine_targets(self.spec(counts=(1, 1, 3)))
-        self.assertEqual(len(targets), 3)
-        self.assertEqual(grid_spacing_m(self.spec(counts=(1, 1, 3)))[0], 0.0)
-
-    def test_inverted_or_empty_specification_is_refused(self) -> None:
-        with self.assertRaises(WorkspaceError):
-            self.spec(x_range_m=(0.30, 0.05)).validate()
-        with self.assertRaises(WorkspaceError):
-            self.spec(counts=(0, 4, 4)).validate()
-
-    def configured_spec(self, side: str) -> GridSpec:
-        config = json.loads((REPO_ROOT / "experiments/r1_teleop/quest3_sim_v1/T002/config/r1_t002_workspace.json").read_text(encoding="utf-8"))
-        declared = config["workspace_grid"][side]
-        spec = GridSpec(
-            x_range_m=tuple(declared["x_range_m"]),
-            y_range_m=tuple(declared["y_range_m"]),
-            z_range_m=tuple(declared["z_range_m"]),
-            counts=tuple(declared["counts"]),
-            wrist_roll_rad=float(declared["wrist_roll_rad"]),
-        )
-        spec.validate()
-        return spec
-
-    @staticmethod
-    def configured_chain(side: str):
-        config = json.loads((REPO_ROOT / "experiments/r1_teleop/quest3_sim_v1/T002/config/r1_t002_workspace.json").read_text(encoding="utf-8"))
-        offset = tuple(float(value) for value in config["frames"]["end_effector_offset_m"])
-        return load_arm_chain(side, end_effector_offset_m=offset)
-
-    @staticmethod
-    def sampled_reach_m(side: str, samples: int = 4000) -> float:
-        """Largest endpoint distance from the waist over random valid postures."""
-
-        chain = WorkspaceGridTests.configured_chain(side)
-        rng = np.random.default_rng(0)
-        q = rng.uniform(chain.lower_limits, chain.upper_limits, size=(samples, chain.dof))
-        return float(max(np.linalg.norm(chain.endpoint_position(row)) for row in q))
-
-    def test_configured_grid_straddles_the_measured_reach_boundary(self) -> None:
-        """The declared grid must probe the boundary, which is its stated purpose.
-
-        Most targets must be plausibly reachable for the sweep to measure a
-        workspace, and at least one must lie beyond the measured reach so the
-        run records an unreachable result rather than only successes.
-        """
-
-        for side in ("left", "right"):
-            spec = self.configured_spec(side)
-            reach = self.sampled_reach_m(side)
-            distances = [float(np.linalg.norm(t.position_m)) for t in serpentine_targets(spec)]
-            beyond = [d for d in distances if d > reach]
-            within = [d for d in distances if d <= reach]
-            self.assertGreater(len(beyond), 0, f"{side}: grid never probes past reach {reach:.3f} m")
-            self.assertGreater(len(within), len(beyond), f"{side}: grid is mostly out of reach")
-
-    def test_configured_grid_is_not_absurdly_outside_the_asset(self) -> None:
-        """A target far beyond reach wastes the sweep on foregone conclusions."""
-
-        for side in ("left", "right"):
-            reach = self.sampled_reach_m(side)
-            for target in serpentine_targets(self.configured_spec(side)):
-                self.assertLess(float(np.linalg.norm(target.position_m)), 1.5 * reach, side)
 
 
 class IKConfigTests(unittest.TestCase):

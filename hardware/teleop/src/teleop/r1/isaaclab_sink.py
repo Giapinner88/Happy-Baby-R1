@@ -4,7 +4,7 @@ Scope is deliberately narrow. `R1TeleopMapper` already produces head yaw and
 pitch as scalars, so driving the two head joints needs no inverse kinematics.
 Arm and wrist targets are carried through the command path and recorded, but are
 **not** written to the simulator: the arm/wrist IK method gate ("Gate M" in
-`experiments/r1_teleop/quest3_sim_v1/arm_wrist_simulation_study_plan.md`)
+`docs/teleop/05_project_solvers_and_evidence.md`)
 requires a reviewed method record before any IK runs, and T001 asks only whether
 the connection is established, observed, and fails closed.
 

@@ -148,13 +148,15 @@ def test_hardware_launcher_requires_active_high_level_owner() -> None:
     assert "teleop.hardware.run_teleop" not in source
 
 
-def test_hardware_target_adapter_refuses_projected_ik() -> None:
+def test_hardware_target_adapter_is_upstream_only() -> None:
     adapter = ROOT / "scripts/teleop/run_r1_quest3_hardware_targets.py"
     if not adapter.is_file():
         import pytest
         pytest.skip("workstation target adapter is not in the robot-only package")
     source = adapter.read_text(encoding="utf-8")
-    assert "allow_projected_position_solution=False" in source
+    assert "upstream_solution" in source
+    assert "--coupled-ik" not in source
+    assert "WholeUpperBodyIsaacLabSink" not in source
 
 
 def test_high_level_is_the_only_lowcmd_owner_and_head_mapping_matches_vendor() -> None:

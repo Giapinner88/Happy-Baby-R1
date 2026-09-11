@@ -14,10 +14,10 @@ from teleop.r1.kinematics import load_arm_chain
 from teleop.r1.live_arm_head import ARM_HEAD_JOINT_NAMES, ArmHeadIsaacLabSink, ArmHeadLiveConfig
 from teleop.r1.mapping import R1JointOwnership, R1TeleopTargets
 from teleop.r1.schema import BaseVelocity, Pose, Quaternion, Vector3
-from scripts.teleop.plot_r1_t007_dynamics import _endpoint_tracking
+from scripts.teleop.plot_r1_baseline_dynamics import _endpoint_tracking
 
 ROOT = Path(__file__).resolve().parents[2]
-CONFIG = ROOT / "experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_arm_head_live.json"
+CONFIG = ROOT / "tests/fixtures/r1_legacy_arm_head.json"
 
 
 class Handle:

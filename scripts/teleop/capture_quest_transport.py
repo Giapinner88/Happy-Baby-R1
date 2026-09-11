@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Capture Quest transport telemetry without emitting any R1 command.
 
-This T001-A helper starts only the vendored TeleVuer HTTPS endpoint and records
+This diagnostic starts only the vendored TeleVuer HTTPS endpoint and records
 the vendor wrapper's pose/controller samples. It does not import project R1
 mapping, simulator, DDS, ROS, Unitree SDK, or hardware code.
 """
@@ -21,7 +21,6 @@ ROOT = Path(__file__).resolve().parents[2]
 TELEVUER_SOURCE = ROOT / "third_party" / "xr_teleoperate" / "teleop" / "televuer" / "src"
 sys.path.insert(0, str(ROOT))
 
-from evidence.run_id import allocate_run_id  # noqa: E402
 from evidence.writer import (  # noqa: E402
     write_evidence_completeness,
     write_experiment_config,
@@ -32,20 +31,9 @@ from evidence.writer import (  # noqa: E402
 )
 
 
-T001_A_RUN_ROOT = ROOT / "experiments" / "r1_teleop" / "quest3_sim_v1" / "T001" / "runs"
-T001_A_PROTOCOL = "t001_a"
-
-
 def _default_output_dir() -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return ROOT / "results" / "smoke" / "r1_teleop_transport" / stamp
-
-
-def _allocated_output_dir() -> Path:
-    """A fresh T001-A evidence directory, so no operator has to invent an id."""
-
-    T001_A_RUN_ROOT.mkdir(parents=True, exist_ok=True)
-    return T001_A_RUN_ROOT / allocate_run_id(T001_A_RUN_ROOT, T001_A_PROTOCOL)
 
 
 def _sample(telemetry: object, input_mode: str) -> dict[str, object]:
@@ -95,12 +83,7 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        help="New evidence directory; never overwritten. Omit it and use --evidence to allocate one.",
-    )
-    parser.add_argument(
-        "--evidence",
-        action="store_true",
-        help="Allocate a fresh t001_a_<UTC> run directory under the experiment instead of a disposable smoke path.",
+        help="New output directory; never overwritten. Omit for a disposable smoke path.",
     )
     parser.add_argument("--duration-s", type=float, default=120.0, help="Capture duration after the server starts.")
     parser.add_argument("--frequency-hz", type=float, default=30.0, help="Telemetry sampling rate.")
@@ -116,14 +99,7 @@ def main() -> int:
     if args.cert_file is not None and (not args.cert_file.is_file() or not args.key_file.is_file()):
         raise SystemExit("--cert-file and --key-file must both exist as regular files.")
 
-    if args.output_dir is not None and args.evidence:
-        raise SystemExit("Use either --output-dir or --evidence, not both.")
-    if args.output_dir is not None:
-        output_dir = args.output_dir
-    elif args.evidence:
-        output_dir = _allocated_output_dir()
-    else:
-        output_dir = _default_output_dir()
+    output_dir = args.output_dir if args.output_dir is not None else _default_output_dir()
     output_dir = output_dir.expanduser().resolve()
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite transport capture: {output_dir}")
@@ -191,7 +167,7 @@ def main() -> int:
             "transport_samples": (output_dir / "transport_samples.jsonl").is_file(),
             "sample_count": len(samples),
             "video": False,
-            "video_reason": "T001-A is capture-only: it records transport telemetry and runs no simulator, so there is nothing to render.",
+            "video_reason": "Capture-only diagnostic: no simulator is run, so there is nothing to render.",
         },
     )
     status_path = write_status(

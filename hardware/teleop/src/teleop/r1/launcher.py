@@ -229,7 +229,8 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     # starts first and needs a writable log path. Stage the log as a sibling and
     # place it inside the immutable run after both processes exit.
     staging_root = spec.run_root / ".staging"
-    staging_root.mkdir(parents=True, exist_ok=True)
+    if not dry_run:
+        staging_root.mkdir(parents=True, exist_ok=True)
     connection_log = staging_root / f"{run_id}.bridge.jsonl"
     final_connection_log = output_dir / "bridge_connection.jsonl"
     stop_file = spec.stop_file_dir.expanduser() / f"{run_id}.stop"
@@ -327,21 +328,31 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
                 json.dumps(completeness, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
 
+    finalizer_status = 0
+    if output_dir.is_dir():
+        finalizer_environment = os.environ.copy()
+        finalizer_environment.setdefault("MPLCONFIGDIR", "/tmp/hb-matplotlib")
+        finalizer_status = subprocess.run(
+            [
+                "conda", "run", "--no-capture-output", "-n", SIM_ENV,
+                "python", "scripts/teleop/finalize_r1_run.py", "simulation", str(output_dir),
+            ],
+            cwd=spec.repo_root,
+            env=finalizer_environment,
+        ).returncode
+
     print("", file=sys.stderr, flush=True)
     solver_note = f"  solver exit={solver_status}" if solver is not None else ""
     print(
-        f"bridge exit={bridge_status}{solver_note}  simulator exit={simulator_status}",
+        f"bridge exit={bridge_status}{solver_note}  simulator exit={simulator_status}  "
+        f"artifact gate exit={finalizer_status}",
         file=sys.stderr,
         flush=True,
     )
     if final_connection_log.is_file():
         print(f"Connection log saved: {final_connection_log}", file=sys.stderr, flush=True)
-    print(
-        f"Inspect with: python3 scripts/experiments/r1_experiments.py show r1_teleop {run_id}",
-        file=sys.stderr,
-        flush=True,
-    )
-    return simulator_status or solver_status or bridge_status
+    print(f"Run output: {output_dir}", file=sys.stderr, flush=True)
+    return simulator_status or solver_status or bridge_status or finalizer_status
 
 
 __all__ = [

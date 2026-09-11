@@ -53,7 +53,7 @@ Không dùng learning trong control loop.
 ## Chạy trên phần cứng
 
 Trình tự vận hành nằm ở
-[`docs/operations/r1_quest3_teleop_hardware.md`](../operations/r1_quest3_teleop_hardware.md).
+[`r1_quest3_teleop_hardware.md`](r1_quest3_teleop_hardware.md).
 Các mục chưa đóng của hardware gate ở
 [`hardware/teleop/docs/hardware_gate.md`](../../hardware/teleop/docs/hardware_gate.md).
 

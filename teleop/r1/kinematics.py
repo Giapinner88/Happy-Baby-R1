@@ -189,6 +189,48 @@ class ArmChain:
         return jacobian
 
 
+def arm_straightness_deg(chain: ArmChain, q: np.ndarray) -> float:
+    """Shoulder–elbow–virtual-EE angle; 180 degrees is straight."""
+
+    values = np.asarray(q, dtype=float)
+    shoulder = chain.shoulder_origin()
+    elbow = chain.link_transforms(values)[3][:3, 3]
+    endpoint = chain.endpoint_position(values)
+    upper = shoulder - elbow
+    lower = endpoint - elbow
+    denominator = float(np.linalg.norm(upper) * np.linalg.norm(lower))
+    if denominator <= 1.0e-12:
+        return float("nan")
+    cosine = float(np.clip(np.dot(upper, lower) / denominator, -1.0, 1.0))
+    return float(np.degrees(np.arccos(cosine)))
+
+
+def elbow_pole_vector_m(chain: ArmChain, q: np.ndarray) -> np.ndarray:
+    """Elbow offset from the shoulder-to-endpoint ray in the robot frame."""
+
+    values = np.asarray(q, dtype=float)
+    shoulder = chain.shoulder_origin()
+    elbow = chain.link_transforms(values)[3][:3, 3]
+    endpoint = chain.endpoint_position(values)
+    shoulder_to_endpoint = endpoint - shoulder
+    denominator = float(shoulder_to_endpoint @ shoulder_to_endpoint)
+    if denominator <= 1.0e-12:
+        return np.zeros(3, dtype=float)
+    return elbow - (
+        shoulder
+        + shoulder_to_endpoint
+        * float(np.dot(elbow - shoulder, shoulder_to_endpoint) / denominator)
+    )
+
+
+def elbow_outward_pole_m(chain: ArmChain, q: np.ndarray) -> float:
+    """Signed elbow-pole displacement; positive points away from the torso."""
+
+    pole = elbow_pole_vector_m(chain, q)
+    outward_sign = 1.0 if chain.side == "left" else -1.0
+    return float(outward_sign * pole[1])
+
+
 def _parse_joint(text: str, name: str) -> JointGeometry:
     match = re.search(r'<joint\s+name="' + re.escape(name) + r'"[^>]*type="revolute">(.*?)</joint>', text, re.S)
     if match is None:
@@ -249,7 +291,7 @@ def load_arm_chain(
 
     The current R1-A5 method uses the vendor's 0.20 m virtual tool frame.  The
     explicit argument exists only so schema-1 T002--T006 records, which used the
-    wrist-joint origin, remain reproducible without changing the active T007
+    wrist-joint origin, remain reproducible without changing the active baseline
     model.  It is a tuple (rather than an array) so cached calls are hashable.
     """
 

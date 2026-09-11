@@ -1,4 +1,6 @@
 # Safety documents
 
-Quy tắc an toàn phần cứng và phần mềm. Đây là điều kiện bắt buộc trước khi
-chuyển từ policy đã kiểm tra trong simulation sang robot thật.
+Đọc [quy tắc tổng](safety_rules.md), [phần cứng](hardware_safety_rules.md) và
+[phần mềm](software_safety_rules.md) trước mọi hardware pilot. Quy trình thao
+tác cụ thể nằm trong [runbook hardware](../teleop/r1_quest3_teleop_hardware.md);
+trạng thái cho phép nằm ở [hardware gate](../../hardware/teleop/docs/hardware_gate.md).

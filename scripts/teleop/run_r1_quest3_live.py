@@ -6,10 +6,9 @@ newline-delimited `R1TeleopCommand` stream produced by `quest_bridge.py`. It has
 no DDS, ROS, Unitree SDK, `LowCmd`, or `hardware/high_level/` import, and the
 `HeadOnlyIsaacLabSink` raises if a base-velocity dispatch ever reaches it.
 
-The default is the T001 head-only connectivity pilot. ``--arm-head-config``
-selects the legacy T007 independent-arm controller. ``--whole-upper-body-config``
-selects the coupled R1-A5 controller (waist yaw, both arms, and head). Both T007
-modes fix the root and prohibit locomotion; they are simulation evidence only.
+The canonical launcher supplies ``--upstream-joint-stream-config`` and applies
+joints produced by the unmodified vendor solver. Legacy controller flags remain
+only for reproducing historical evidence; they are not active entrypoints.
 """
 
 from __future__ import annotations
@@ -53,7 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--config",
         type=Path,
-        default=ROOT / "experiments/r1_teleop/quest3_sim_v1/T001/config/r1_quest3_sim_v1.json",
+        default=ROOT / "config/r1_quest3_sim.json",
     )
     parser.add_argument("--output-dir", type=Path, required=True, help="New evidence directory; never overwritten.")
     parser.add_argument("--duration-s", type=float, default=180.0, help="Wall-clock limit for the simulator loop.")
@@ -200,21 +199,17 @@ def _source_hashes() -> dict[str, str]:
     files = (
         ROOT / "scripts" / "teleop" / "run_r1_quest3_live.py",
         ROOT / "scripts" / "teleop" / "quest_bridge.py",
+        ROOT / "scripts" / "teleop" / "run_r1_upstream_ik_stream.py",
+        ROOT / "scripts" / "teleop" / "finalize_r1_run.py",
+        ROOT / "scripts" / "teleop" / "plot_r1_baseline_dynamics.py",
         ROOT / "teleop" / "r1" / "bridge.py",
-        ROOT / "teleop" / "r1" / "isaaclab_sink.py",
+        ROOT / "teleop" / "r1" / "frame_contract.py",
+        ROOT / "teleop" / "r1" / "kinematics.py",
         ROOT / "teleop" / "r1" / "mapping.py",
         ROOT / "teleop" / "r1" / "schema.py",
         ROOT / "teleop" / "r1" / "simulator.py",
-        ROOT / "teleop" / "r1" / "live_arm_head.py",
-        ROOT / "teleop" / "r1" / "rate_limit.py",
         ROOT / "teleop" / "r1" / "upper_body_kinematics.py",
-        ROOT / "teleop" / "r1" / "offline_replay.py",
         ROOT / "teleop" / "r1" / "upstream_joint_stream.py",
-        ROOT / "teleop" / "r1" / "upper_body_ik.py",
-        ROOT / "teleop" / "r1" / "whole_upper_body.py",
-        ROOT / "teleop" / "r1" / "differential_tracking.py",
-        ROOT / "teleop" / "r1" / "differential_live.py",
-        ROOT / "teleop" / "r1" / "workspace_projection.py",
     )
     return {str(path.relative_to(ROOT)): _sha256(path) for path in files}
 
@@ -821,7 +816,7 @@ def main() -> int:
                 f"Cannot load offline continuation config {args.offline_continuation_config}: {exc}"
             ) from exc
         if (
-            experiment_config_payload.get("experiment_id") != "t007"
+            experiment_config_payload.get("experiment_id") not in {"baseline", "t007"}
             or experiment_config_payload.get("mode") != "simulation_only"
         ):
             raise SystemExit(
@@ -857,11 +852,11 @@ def main() -> int:
                 f"{args.upstream_joint_stream_config}: {exc}"
             ) from exc
         if (
-            experiment_config_payload.get("experiment_id") != "t007"
+            experiment_config_payload.get("experiment_id") not in {"baseline", "t007"}
             or experiment_config_payload.get("mode") != "simulation_only"
         ):
             raise SystemExit(
-                "--upstream-joint-stream-config must be a T007 simulation-only configuration."
+                "--upstream-joint-stream-config must be a baseline simulation-only configuration."
             )
         model_declared = dict(experiment_config_payload["model"])
         if str(model_declared.get("body_mode")) != "arms_head":
@@ -1344,7 +1339,7 @@ def main() -> int:
         )
 
     resolved = dict(config)
-    resolved["t007_runtime" if arm_head_mode else "t001_runtime"] = {
+    resolved["baseline_runtime" if upstream_stream_mode else "t007_runtime" if arm_head_mode else "t001_runtime"] = {
         "control_hz": args.control_hz,
         "physics_hz": args.physics_hz,
         "physics_steps_per_control_step": steps_per_control,
@@ -1448,16 +1443,18 @@ def main() -> int:
     if arm_head_mode:
         assert experiment_config_payload is not None
         resolved[
-            "t007_offline_continuation_profile"
+            "baseline_upstream_profile"
+            if upstream_stream_mode
+            else "t007_offline_continuation_profile"
             if offline_trajectory_mode
             else "t007_whole_upper_body_profile"
             if whole_upper_body_mode
             else "t007_arm_head_profile"
         ] = experiment_config_payload
     write_resolved_config(output_dir, resolved)
-    # A T007 run consumes two editable configs.  The shared bridge config is
+    # A baseline run consumes two editable configs. The shared bridge config is
     # retained separately, while the contract's primary experiment snapshot is
-    # the T007 profile that determines arm/IK semantics.
+    # the baseline profile that determines arm/IK semantics.
     write_experiment_config(output_dir, experiment_config_payload if arm_head_mode else config)
     if arm_head_mode:
         write_json(output_dir / "bridge_config.json", config)
@@ -1569,7 +1566,7 @@ def main() -> int:
         ROOT,
         {
             "record_type": "experiment_run_provenance",
-            "protocol_id": "t007" if arm_head_mode else "t001_b",
+            "protocol_id": "baseline" if upstream_stream_mode else "t007" if arm_head_mode else "t001_b",
             "created_at": start_utc,
             "run": {
                     "id": output_dir.name,
@@ -1662,7 +1659,7 @@ def main() -> int:
         },
     )
     print(json.dumps(metrics, sort_keys=True), flush=True)
-    print(f"{'T007' if arm_head_mode else 'T001'} evidence written to: {output_dir}", flush=True)
+    print(f"{'Baseline' if upstream_stream_mode else 'T007' if arm_head_mode else 'T001'} evidence written to: {output_dir}", flush=True)
 
     # `SimulationApp.close()` can block indefinitely on this workstation and,
     # even when it returns, Kit may leave non-daemon threads alive. Every

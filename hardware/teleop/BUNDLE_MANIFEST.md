@@ -27,27 +27,25 @@ Workstation path:
   targets the robot receiver consumes. By default it solves nothing: joints
   arrive already solved by the vendor `xr_teleoperate` IK and this process only
   enforces the hardware envelope (asset joint limits, velocity/acceleration
-  ceilings). `--coupled-ik` selects the previous in-repo solver instead.
+  ceilings). The active hardware path has no in-repo IK fallback.
 - `scripts/teleop/run_r1_upstream_ik_stream.py`: the vendor solver stage, run
   unmodified in the `tv` environment. Present on the hardware path for the same
   reason as in simulation -- CasADi and the Pinocchio 3 bindings live only
   there, and the robot side needs no kinematic model at all.
 - `scripts/teleop/run_r1_quest3_hardware.sh`: foreground launch, checks and
-  evidence directory. `HB_TELEOP_SOLVER=upstream` (default) inserts the vendor
-  solver between bridge and targets; `coupled` reproduces the older pipeline.
+  evidence directory; it inserts the vendor solver between bridge and targets.
 - `teleop/r1/`: authoritative schema, mapping, kinematics, IK, rate limiting and
   watchdog logic.
 - `assets/R1.urdf`: geometry, joint axes, limits and signs used by the IK.
-- `experiments/r1_teleop/quest3_sim_v1/T001/config/r1_quest3_sim_v1.json`:
+- `config/r1_quest3_sim.json`:
   source/robot frames, calibration and command timeout.
-- `experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json`:
-  simulation IK method and numerical parameters.
+- `experiments/r1_teleop/quest3_sim_v1/baseline/config/upstream_stream.json`:
+  immutable vendor-baseline frame, model and solver contract.
 - `third_party/xr_teleoperate/teleop/televuer/src/`: pinned Vuer transport
   wrapper; it remains vendor code and must not be edited.
-- `AGENTS.md`, root `README.md`, `docs/`, `evidence/`, the experiment registry,
-  definitions T001–T008 and compact T001–T006 evidence: context and traceability
-  for a new machine. Bulk T007 outputs are deliberately excluded; one small
-  contract-complete T007 run is retained so registry checks remain executable.
+- `AGENTS.md`, root `README.md`, `docs/`, `evidence/` and the active baseline
+  experiment definition: context and traceability for a new machine. Bulk run
+  outputs are deliberately excluded from the bundle.
 - `third_party/xr_teleoperate_v1_6/`: only the small README/changelog, R1-A5
   URDF and upstream arm-control reference used to audit conventions.
 
@@ -79,27 +77,24 @@ Robot path:
 | IDL slots | arms 15–19 and 22–26; head pitch 29, yaw 30 | R1-A5 hardware mapping |
 | URDF | `assets/R1.urdf` | Same geometry, axes and joint limits as sim pilot |
 | Calibration | translation `[0,0,0]`, yaw `0` | Provisional identity; must be measured before general use |
-| IK tolerance | position 0.002 m; head 0.03 rad | Same T007 numerical profile |
-| IK solver | 40 iterations, damping 0.02, max step 0.12 rad | Same T007 numerical profile |
+| IK solver | unmodified vendor `R1_A5_ArmIK` | Same baseline producer in sim and hardware |
 | Quest rate | 30 Hz | Source transport |
 | IK dispatch rate | 10 Hz in the current launcher | Measured pipeline bottleneck; not a motor loop |
 | High-level loop | 500 Hz | Sole DDS command loop |
 | Sidecar send rate | 100 Hz | Local target transport |
 | Command timeout | mapping 0.5 s; sidecar 0.75 s; high-level 0.30 s | Cascaded fail-closed watchdogs |
-| Session envelope | ±0.15 rad from encoder anchor | Hardware-only safeguard |
+| Session envelope | ±1.0 rad; shoulder override ±3.2 rad | Hardware-only safeguard selected by launcher |
 | Final slew limit | 0.30 rad/s | Hardware-only safeguard |
 | Arm PD | Kp 40, Kd 2 | Provisional suspended-pilot setting |
 | Head PD | Kp 15, Kd 1 | Provisional suspended-pilot setting |
 
-The simulator's `1.5 rad/s` velocity and `4.0 rad/s^2` acceleration are tuning
-values, not approved actuator limits. The workstation hardware adapter caps
-them before output, and the sole owner applies the final `0.30 rad/s` slew
-limit. “Same as sim” therefore means the same frames, URDF, joint order,
-mapping and IK—not blindly copying simulation actuator dynamics.
+The workstation hardware adapter applies its own velocity/acceleration ceiling,
+and the sole owner applies the final `0.30 rad/s` slew limit. “Same as sim”
+means the same frames, URDF, joint order, mapping and IK—not copying simulation
+actuator dynamics.
 
-The current T007 profile permits projected solutions for unreachable targets.
-That behavior is still an open hardware-gate item. The ±0.15 rad session
-envelope bounds the suspended pilot, but it is not collision or torque proof.
+The vendor solver output is bounded by asset limits and the workstation/owner
+hardware envelopes. Those bounds are not collision or torque proof.
 
 ## Export
 
@@ -121,6 +116,6 @@ behavior. The older `hardware/high_level/tests/test_teleop_input.cpp` from
 `TeleopInput.hpp` and is not evidence for this receiver.
 
 Before any robot command, follow
-`docs/operations/r1_quest3_teleop_hardware.md`, keep the robot suspended and
+`docs/teleop/r1_quest3_teleop_hardware.md`, keep the robot suspended and
 fixed, keep an operator on the R3 E-stop, and close every item in
 `hardware/teleop/docs/hardware_gate.md` relevant to the pilot.

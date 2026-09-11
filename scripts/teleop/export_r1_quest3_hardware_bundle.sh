@@ -31,6 +31,7 @@ rsync -aR --exclude '__pycache__/' --exclude '*.pyc' \
     config/README.md \
     config/cyclonedds_config.xml \
     config/netplan_static_ethernet.yaml \
+    config/r1_quest3_sim.json \
     evidence/ \
     teleop/ \
     tests/__init__.py \
@@ -38,37 +39,15 @@ rsync -aR --exclude '__pycache__/' --exclude '*.pyc' \
     scripts/teleop/ \
     hardware/teleop/ \
     docs/README.md \
-    docs/architecture/ \
-    docs/hardware/ \
-    docs/operations/ \
     docs/teleop/ \
     docs/safety/ \
-    docs/templates/test_log_template.md \
-    decisions/r1_teleop/ \
     "$BUNDLE_DIR/"
 
-# Preserve every experimental definition and the compact T001--T006 evidence
-# required by the regression suite. The 281 MB T007 bulk outputs remain in the
-# full workspace; one small contract-complete T007 run keeps registry discovery
-# verifiable on the receiving laptop.
+# Preserve the active baseline definition and configuration, but not local runs.
 rsync -aR --exclude 'runs/' --exclude 'figures/' \
     experiments/r1_teleop/quest3_sim_v1/ "$BUNDLE_DIR/"
 rsync -aR \
     experiments/registry.json \
-    experiments/r1_teleop/quest3_sim_v1/T001/runs/ \
-    experiments/r1_teleop/quest3_sim_v1/T001/figures/ \
-    experiments/r1_teleop/quest3_sim_v1/T002/runs/ \
-    experiments/r1_teleop/quest3_sim_v1/T002/figures/ \
-    experiments/r1_teleop/quest3_sim_v1/T003/runs/ \
-    experiments/r1_teleop/quest3_sim_v1/T003/figures/ \
-    experiments/r1_teleop/quest3_sim_v1/T004/runs/ \
-    experiments/r1_teleop/quest3_sim_v1/T004/figures/ \
-    experiments/r1_teleop/quest3_sim_v1/T005/runs/ \
-    experiments/r1_teleop/quest3_sim_v1/T005/figures/ \
-    experiments/r1_teleop/quest3_sim_v1/T006/runs/ \
-    experiments/r1_teleop/quest3_sim_v1/T006/figures/ \
-    experiments/r1_teleop/quest3_sim_v1/T007/runs/t007_whole_upper_body_20260820T130250Z/ \
-    experiments/r1_teleop/quest3_sim_v1/T008/runs/ \
     "$BUNDLE_DIR/"
 
 # Vendor transport source is copied read-only into the handoff; it is never

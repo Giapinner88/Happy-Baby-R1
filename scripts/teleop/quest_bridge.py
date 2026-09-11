@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""T001 live bridge: Quest XR telemetry to normalized R1TeleopCommand JSONL.
+"""Quest XR telemetry to normalized R1TeleopCommand JSONL.
 
 This process owns the vendor boundary only. It runs in the `tv` environment,
 which has the Quest vendor wrapper but no IsaacLab, and writes newline-delimited

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stream joint targets by solving Quest wrist poses with the upstream IK.
 
-This is the online counterpart to `solve_r1_t007_upstream_ik.py`. It reads
+This is the online counterpart to `solve_r1_baseline_upstream_ik.py`. It reads
 `R1TeleopCommand` JSON lines on stdin, solves each one with `xr_teleoperate`'s
 `R1_A5_ArmIK` exactly as the vendor ships it, and writes one joint-target JSON
 line per command on stdout.

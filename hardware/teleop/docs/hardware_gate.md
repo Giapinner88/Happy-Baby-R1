@@ -65,14 +65,15 @@ validate.
 
 ## 1. Bằng chứng mô phỏng
 
-- [ ] Một run T007 đạt tiêu chí chấp nhận đã khai báo, với `scientific_outcome`
+- [ ] Một run baseline đạt tiêu chí chấp nhận đã khai báo, với `scientific_outcome`
       khác `unassessed`.
 - [ ] Sai số bám endpoint và tốc độ vòng điều khiển được đo và ghi lại, không
       phải suy ra.
 - [ ] Chạy lại được: cùng config, cùng commit, ra cùng kết luận.
 
 **Cập nhật 2026-09-09.** Researcher chọn video của
-`t007_whole_upper_body_20260909T072030Z` làm tham chiếu chuyển sang hardware.
+Run lịch sử `t007_whole_upper_body_20260909T072030Z` là tham chiếu trước đổi tên;
+run baseline mới phải đủ data, figures, video và artifact manifest.
 Run upstream live hoàn tất ở 27.03 Hz, `sim_to_wall_ratio=0.99998`, không có
 joint-limit clamp trong simulator; vận tốc q upstream p95 4.008 rad/s, max
 12.149 rad/s. Đây là đánh giá hình ảnh tốt, nhưng `status.json` vẫn ghi
@@ -147,8 +148,8 @@ là quyết định chứ không phải bất ngờ.
 ## 3d. Chuyển target upstream từ sim sang hardware — HARDWARE ATTEMPT FAILED
 
 - [x] Producer khai báo tường minh `target_mode: relative_source`.
-- [x] Upstream launcher chọn `--home-to-source`; coupled legacy vẫn chọn
-      `--home-to-nominal`.
+- [x] Upstream launcher chọn `--home-to-source`; launcher active không còn
+      fallback coupled.
 - [x] Sidecar đóng băng q vendor đầu tiên, kiểm nó trong zero-centred per-joint
       bound và ramp tới đó ở tốc độ homing với command tolerance 0.02 rad.
 - [x] Sau alignment, `start_q = source_zero = q_source_initial`; test chứng minh

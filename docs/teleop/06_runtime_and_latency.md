@@ -2,7 +2,7 @@
 
 ## 1. Reviewed metadata
 
-Metadata kết nối T007 được review:
+Metadata lịch sử T007 được review:
 
 ```text
 Reviewed 2026-08-18 against `t007_whole_upper_body_20260818T114338Z`.
@@ -14,7 +14,7 @@ Verified state:
 |---|---|
 | Host IP | `10.42.0.1` on `wlp77s0`, connection `HB-Hotspot` |
 | Certificate SAN | `IP Address:10.42.0.1` |
-| Certificate validity | to 2026-09-01 |
+| Certificate validity của run lịch sử | to 2026-09-01; không còn giá trị cho phiên mới |
 | `tv` env | vuer 0.0.60, websockets 16.0 |
 | Server bind | port 8012 |
 | Vendor tree | `third_party/xr_teleoperate` |
@@ -55,10 +55,6 @@ không dùng riêng `dropped_sample_count`.
 
 ## 4. Current bottleneck
 
-Coupled solver dùng central finite-difference Jacobian nên compute cost cao.
-
-Trước khi thêm controller phức tạp hơn, cần benchmark:
-- FK cost;
-- Jacobian cost;
-- IK solve time;
-- achievable closed-loop rate.
+Pipeline active dùng upstream solver và dispatch 10 Hz trên hardware path.
+Mỗi run mới phải ghi solve time, command age và achieved rate; không dùng số đo
+coupled lịch sử để mô tả performance hiện tại.

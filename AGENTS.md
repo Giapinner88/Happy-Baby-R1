@@ -12,50 +12,42 @@ Keep this file compact. Project-specific facts belong in Section 0. Detailed pro
 
 ### 0.1 Identity and scope
 
-**Project:** Happy Baby R1 — internal AiRA-Laboratory workspace for research, integration, and operation of the Unitree R1 humanoid.
+**Project:** Happy Baby R1 Teleop — internal AiRA-Laboratory workspace for Meta Quest 3 control of the Unitree R1-A5 arms and head.
 
-**Primary objective:** Train and operate the R1 safely and reproducibly for basic capabilities: stable walking, dance/motion imitation from GMR-generated motions, remote and teleoperation control, and real-time interaction with children. Simulation, evaluation, and integration are the evidence path before each hardware-facing capability is enabled.
+**Primary objective:** Evaluate and operate one traceable Quest 3 → frame mapping → upstream R1-A5 IK → Isaac/hardware target pipeline. This branch deliberately excludes locomotion training, MuJoCo policy work, vision/voice and child-interaction implementation.
 
-**Research question:** Which R1 models, training data and configurations, GMR motion pipeline, exported ONNX policies, teleoperation interfaces, and runtime safeguards yield measurable and repeatable walking, dance tracking, human control, and real-time child interaction — and what evidence is required before each capability advances from simulation to the real robot?
+**Research question:** Does the initial-head-anchored upstream IK pipeline produce independent, bounded and reproducible arm/head targets, and what simulation and suspended-hardware evidence is required before any broader hardware use?
 
-**Systems:** Two runtime tiers. An Ubuntu 22.04 workstation for simulation, training, evaluation, and export; and the Ubuntu 20.04 embedded computer on the R1 for ROS 2 Foxy / CycloneDDS hardware integration. The workspace also holds local Python state/control simulators, R1 MuJoCo scenes and the ONNX policy runtime, MJLab and Isaac Lab / Unitree RL Lab training overlays, GMR motion processing, remote and teleoperation interfaces, and vision/voice modules.
+**Systems:** An Ubuntu 22.04 workstation runs Vuer/Quest transport, upstream IK and Isaac simulation; the Ubuntu 20.04 R1 computer runs the read-only sidecar plus the sole-owner high-level command process. Vendor source required by the active pipeline is limited to the two pinned `xr_teleoperate` revisions under `third_party/`.
 
-**Framework role:** This repository consumes the shared research-agent framework, it does not own it. The vendored copy lives under `.agents/research_agent_framework_v2_2026-09-01/`; Section 1 onward is upstream text and must not be edited to accommodate a local task. Root `AGENTS.md` is the active instruction and routing file for agents working here, and `CLAUDE.md` only points to it.
+**Framework role:** This repository consumes the shared research-agent framework, it does not own it. Supporting guides live under `.agents/`; Section 1 onward is upstream text and must not be edited to accommodate a local task. Root `AGENTS.md` is the active instruction and routing file for agents working here, and `CLAUDE.md` only points to it.
 
-**Current stage:** Baseline integration and verification. ROS 2/DDS, assets, local simulators, the MuJoCo policy runtime, and the train/export workflow exist; policy, bridge, and teleoperation behavior require direct evaluation and traceable evidence before hardware-facing operation.
+**Current stage:** The upstream vendor simulation baseline exists; bounded suspended-hardware tracking after the latest source-alignment changes remains evidence-required. No evidence authorizes operation on the floor.
 
-**Canonical project sources:** root `README.md` and `AGENTS.md`, project-owned per-directory READMEs, current source plus resolved configuration, accepted documentation under `docs/`, recorded decisions under `decisions/`, and executed evidence under `data/` and `reports/`.
+**Canonical project sources:** root `README.md` and `AGENTS.md`; implementation in `teleop/r1/`, `scripts/teleop/` and `hardware/`; shared configuration in `config/`; accepted method/runbooks under `docs/`; baseline configuration and evidence under `experiments/r1_teleop/quest3_sim_v1/baseline/`.
 
 **Primary commands:**
 
 ```bash
-# Build and source the ROS 2 workspace
-source /opt/ros/foxy/setup.bash
-colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-source install/setup.bash
+# Inspect available teleop commands and run the simulation path safely
+make help
+make teleop-dry-run HOST_IP=<IP-workstation>
+make teleop HOST_IP=<IP-workstation>
 
-# Inspect, train, export, or collect project-owned R1 policies
-python3 scripts/training/r1_policy_workspace.py status
-
-# Exercise simulation and policy-runtime workflows before bridge/hardware work
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/simulation/run_r1_mujoco_model.py --help
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/bridge/run_unitree_mujoco_policy.py --help
-
-# Smoke-test the ROS 2/DDS environment
-python3 test/test_dds_node.py
+# Run code-level teleop checks without opening a hardware command channel
+make test
 ```
 
 ### 0.2 Project-specific authority
 
 For project facts, use the narrowest authoritative source available:
 
-- human-facing purpose, status, and verified commands: root `README.md`, `docs/README.md`, and the project-owned READMEs under `scripts/` (`training/`, `simulation/`, `bridge/`, `teleop/`, `assets/`);
-- operating and safety procedure: `docs/operations/`, `docs/safety/`, `docs/teleop/` — no hardware-facing step is authorized outside them;
-- executed behavior: active source (`src/`, `sim/`, `scripts/`, `teleop/`, `training/`) plus resolved configuration under `config/`;
-- physical/model parameters: the canonical R1 asset tree `assets/mujoco/unitree_robots/r1/` and the URDF/USD sources under `assets/`;
-- accepted method: the project-owned training overlays under `training/` and the policy runtime in `sim/unitree_mujoco_policy/`;
-- observed evidence: run data, metadata, metrics, and analyses under `data/` and `reports/`, together with the code that generated them and the records written through `evidence/`;
-- accepted technical decisions: `decisions/`;
+- human-facing purpose and commands: root `README.md`, `docs/README.md`, and `scripts/teleop/README.md`;
+- operating and safety procedure: `docs/safety/`, `docs/teleop/r1_quest3_teleop_hardware.md`, and `hardware/teleop/docs/hardware_gate.md`;
+- executed behavior: `teleop/r1/`, `scripts/teleop/`, `hardware/teleop/`, and `hardware/high_level_lock/`;
+- physical/model parameters: `assets/R1.urdf`, the R1 USD tree, and their meshes under `assets/`;
+- accepted method and historical interpretation: `docs/teleop/` and the retained baseline/history records;
+- observed evidence: immutable baseline run directories and hardware outputs, together with the code and resolved configuration that generated them;
 - framework guidance: `.agents/`.
 
 Do not transfer conventions, results, or assumptions from another robot, another R1 workspace, or vendor code merely because the code or research topic is similar. `third_party/` is reference material, not project authority.
@@ -65,17 +57,17 @@ Do not transfer conventions, results, or assumptions from another robot, another
 1. Hardware-facing work follows the repository safety procedure: dry-run and simulation evidence first, an E-stop operator present, recorded results. MuJoCo or bridge parity establishes simulation parity only, never hardware readiness.
 2. Exactly one component owns the low-level command stream to the robot at a time. A second concurrent `rt/lowcmd` writer is a safety defect, not a configuration choice; DDS does not arbitrate writers and the gamepad/E-stop path must stay authoritative.
 3. The two OS tiers are not interchangeable. Validate workstation-built artifacts and dependencies against the Ubuntu 20.04 / ROS 2 Foxy embedded target before deployment.
-4. `third_party/` is upstream/vendor code and stays unmodified; adapt it through project-owned wrappers under `scripts/`, `sim/`, or `src/`.
-5. MuJoCo, MJLab, and Isaac Lab workflows run in the project `r1_env` Conda environment, not the system Python; the ROS 2 tier uses the system Python 3.8.
+4. `third_party/` is upstream/vendor code and stays unmodified; adapt it through project-owned wrappers under `scripts/teleop/` or `teleop/r1/`.
+5. Quest/vendor IK runs in the `tv` environment, Isaac runs in its documented environment, and the Ubuntu 20.04 robot tier uses its pinned system environment.
 6. Regenerated output (`build/`, `install/`, `log/`, run artifacts) is never a documentation source, and no README is added to vendor or regenerated directories.
-7. Completed project artifacts belong in project-owned locations (`docs/`, `reports/`, `data/`, `decisions/`), not under the framework's `.agents/templates/`.
+7. Completed teleop evidence belongs under the owning baseline run or documented hardware output, not under framework templates.
 8. Do not create empty framework demonstration folders or records, and keep the repository useful as an engineering project rather than optimizing it for AI navigation alone.
 9. Project-specific paths, commands, assumptions, and evidence rules belong in Section 0 or their authoritative project files, not in the shared sections below.
 
 ### 0.4 Current project limitations
 
 - ROS 2 Foxy is end-of-life but retained to match the robot baseline; dependency, tooling, and security decisions inherit that constraint.
-- Child interaction is a stated objective, not a verified behavior; no current evidence supports a claim about it.
+- Locomotion, training, MuJoCo, vision/voice and child interaction are outside this branch, not verified capabilities of it.
 - Section 0 is intentionally conservative and must be updated when accepted project facts change.
 - Generic framework guidance cannot determine scientific importance, novelty, or research direction.
 - Tests and validators remain necessary; instruction files do not enforce correctness by themselves.

@@ -1,4 +1,4 @@
-"""What `make teleop-arms` actually launches.
+"""What the canonical `make teleop` entry point actually launches.
 
 The point of this path is that nothing in this repository solves on it. That is
 a claim about process wiring, which is easy to break silently: a stray default,
@@ -31,8 +31,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def make_spec(**overrides) -> PilotLaunchSpec:
     defaults = dict(
-        protocol="t007_whole_upper_body",
-        run_root=ROOT / "experiments" / "r1_teleop" / "quest3_sim_v1" / "T007" / "runs",
+        protocol="baseline_upstream",
+        run_root=ROOT / "experiments" / "r1_teleop" / "quest3_sim_v1" / "baseline" / "runs",
         repo_root=ROOT,
         host_ip="192.168.1.106",
         duration_s=10.0,
@@ -161,7 +161,7 @@ class TeleopArmsWiringTest(unittest.TestCase):
         key.write_text("placeholder", encoding="utf-8")
         self.addCleanup(self._tmp.cleanup)
         result = subprocess.run(
-            [sys.executable, "scripts/teleop/run_t007_upper_body_pilot.py",
+            [sys.executable, "scripts/teleop/run_r1_baseline.py",
              "--host-ip", "192.168.1.106", "--dry-run",
              "--cert-file", str(cert), "--key-file", str(key)],
             cwd=ROOT, capture_output=True, text=True,
@@ -190,88 +190,21 @@ class TeleopArmsWiringTest(unittest.TestCase):
         self.assertIn("--passthrough", solver_line)
 
 
-class CoupledSolverOptInTest(unittest.TestCase):
-    def test_coupled_solver_requires_an_explicit_flag(self):
-        with tempfile.TemporaryDirectory() as directory:
-            cert = Path(directory) / "cert.pem"
-            key = Path(directory) / "key.pem"
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "scripts/teleop/run_t007_upper_body_pilot.py",
-                    "--host-ip", "192.168.1.106",
-                    "--coupled-solver",
-                    "--dry-run",
-                    "--cert-file", str(cert),
-                    "--key-file", str(key),
-                ],
-                cwd=ROOT,
-                capture_output=True,
-                text=True,
-            )
-            output = result.stdout + result.stderr
-        self.assertEqual(result.returncode, 0, output)
-        self.assertNotIn("solver:", output)
-        sim_line = next(line for line in output.splitlines() if line.startswith("sim:"))
-        self.assertIn("--whole-upper-body-config", sim_line)
-        self.assertNotIn("--upstream-joint-stream-config", sim_line)
-
-    def test_coupled_profile_without_opt_in_fails_with_actionable_message(self):
-        with tempfile.TemporaryDirectory() as directory:
-            cert = Path(directory) / "cert.pem"
-            key = Path(directory) / "key.pem"
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "scripts/teleop/run_t007_upper_body_pilot.py",
-                    "--host-ip", "192.168.1.106",
-                    "--whole-upper-body-config",
-                    "experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json",
-                    "--dry-run",
-                    "--cert-file", str(cert),
-                    "--key-file", str(key),
-                ],
-                cwd=ROOT,
-                capture_output=True,
-                text=True,
-            )
-            output = result.stdout + result.stderr
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("use --coupled-solver", output)
-
-
 class MakefileTest(unittest.TestCase):
     def setUp(self):
         self.makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 
-    def test_teleop_arms_uses_the_canonical_command(self):
-        for alias, canonical in (
-            ("teleop-arms", "teleop"),
-            ("teleop-arms-dry-run", "teleop-dry-run"),
-        ):
-            outputs = [
-                subprocess.check_output(
-                    ["make", "--no-print-directory", "-n", target,
-                     "HOST_IP=192.168.1.106"],
-                    cwd=ROOT, text=True,
-                )
-                for target in (alias, canonical)
-            ]
-            self.assertEqual(*outputs)
-
-    def test_the_coupled_path_is_explicit_opt_in(self):
-        self.assertIn("--coupled-solver", self.makefile)
-
-    def test_the_differential_path_is_still_reachable(self):
-        # Kept so the two solvers can still be compared on one trace.
-        self.assertIn("teleop-arms-differential:", self.makefile)
+    def test_makefile_exposes_only_the_canonical_solver(self):
+        self.assertIn("run_r1_baseline.py", self.makefile)
+        self.assertNotIn("--coupled-solver", self.makefile)
+        self.assertNotIn("teleop-arms-differential:", self.makefile)
 
     def test_host_ip_is_required_at_invocation_not_hardcoded(self):
         self.assertRegex(self.makefile, r"(?m)^HOST_IP\s+\?=\s*$")
-        self.assertIn("HOST_IP=192.168.1.106", self.makefile)
+        self.assertIn("HOST_IP=<workstation-ip>", self.makefile)
 
     def test_certificate_directory_is_derived_from_host_ip(self):
-        self.assertIn("HOST_IP_TAG  = $(subst .,_,$(strip $(HOST_IP)))", self.makefile)
+        self.assertRegex(self.makefile, r"HOST_IP_TAG\s+= \$\(subst \.,_,\$\(strip \$\(HOST_IP\)\)\)")
         self.assertIn("happybaby_$(HOST_IP_TAG)/cert.pem", self.makefile)
         self.assertIn("happybaby_$(HOST_IP_TAG)/key.pem", self.makefile)
 

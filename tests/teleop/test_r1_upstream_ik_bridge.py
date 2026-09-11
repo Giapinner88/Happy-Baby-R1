@@ -372,7 +372,7 @@ class DriverContractTest(unittest.TestCase):
     """The offline driver must keep producing what the Isaac replay reads."""
 
     def test_driver_declares_the_keys_the_replay_sink_requires(self):
-        source = (ROOT / "scripts" / "teleop" / "solve_r1_t007_upstream_ik.py").read_text(
+        source = (ROOT / "scripts" / "teleop" / "solve_r1_baseline_upstream_ik.py").read_text(
             encoding="utf-8"
         )
         for key in (

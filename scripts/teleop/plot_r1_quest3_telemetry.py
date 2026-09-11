@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot Quest head/wrist position, velocity, and acceleration from T001 JSONL."""
+"""Plot Quest head/wrist position, velocity, and acceleration from capture JSONL."""
 
 from __future__ import annotations
 

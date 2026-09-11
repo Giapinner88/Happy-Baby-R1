@@ -3,13 +3,12 @@
 ## 1. Status
 
 ```text
-simulation-only opt-in experiment; not the project baseline; no hardware claim
+archived simulation-only experiment; no active launcher; no hardware claim
 ```
 
-The default live T007 path remains the pose-sequence coupled solver from
-`teleop/r1/upper_body_ik.py`. The differential implementation exists to test
-Stage 6 of `08_development_baseline.md`; it must be selected explicitly with
-`r1_t007_differential_live.json`.
+The active baseline uses the upstream vendor solver. This document preserves
+the differential implementation's historical method and evidence semantics;
+`r1_t007_differential_live.json` is not selectable from the current launcher.
 
 ## 2. Controller
 
@@ -63,10 +62,10 @@ Selecting independent best frames can splice different discrete full-pose
 solutions or disconnected position-manifold components into a physically
 invalid trajectory.
 
-## 5. Offline whole-trace continuation
+## 5. Offline whole-trace continuation (archived)
 
-`teleop/r1/offline_continuation.py` implements the recorded-trace variant for
-T007. It selects an anchor at maximum bilateral hand separation, retains a
+The removed `teleop/r1/offline_continuation.py` implemented the recorded-trace
+variant for T007. It selected an anchor at maximum bilateral hand separation, retained a
 Pareto set of multi-start solutions, continues each branch backward and
 forward, and refines interior samples with both temporal neighbours. Hard joint
 step, velocity, acceleration and position limits are applied before replay.
@@ -80,23 +79,11 @@ arm. This corrects the earlier failure in which both arms inherited the same
 world-`y` posture prior, making the right elbow fold toward the torso even
 though the wrist targets were distinct.
 
-The executable workflow is:
+The executable and editable config were removed when this branch became
+upstream-only. Git history preserves the exact workflow used by the historical
+run; there is no active command for regenerating it in this workspace.
 
-```bash
-python3 scripts/teleop/solve_r1_t007_offline_continuation.py \
-  --config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_offline_continuation.json \
-  --output-dir <new-offline-run>
-
-/home/ubuntu22/miniconda3/envs/unitree_sim_env/bin/python \
-  scripts/teleop/run_r1_quest3_live.py --headless \
-  --config experiments/r1_teleop/quest3_sim_v1/T001/config/r1_quest3_sim_v1.json \
-  --offline-joint-trajectory <new-offline-run>/offline_joint_trajectory.npz \
-  --offline-continuation-config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_offline_continuation.json \
-  --replay-command-file <source-run>/raw_commands.jsonl \
-  --output-dir <new-isaac-run> --disable-self-collisions
-```
-
-Isaac replay dispatches the precomputed vector by the original command
+The historical Isaac replay dispatched the precomputed vector by the original command
 sequence id. It does not invoke IK online. Consequently the reported lookup
 time measures replay overhead, while the offline solver wall time is reported
 separately in the continuation run.

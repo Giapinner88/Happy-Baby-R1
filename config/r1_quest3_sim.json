@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "mode": "simulation_only",
+  "source_frame": "quest_headset",
+  "robot_frame": "neutral_waist_yaw_link",
+  "command_timeout_s": 0.5,
+  "velocity": {
+    "enabled": false,
+    "requires_evaluation_manifest": true
+  },
+  "calibration": {
+    "translation_m": [0.0, 0.0, 0.0],
+    "yaw_rad": 0.0
+  },
+  "notes": [
+    "Shared Quest-to-R1 transport defaults for the active teleop workflow.",
+    "This configuration grants simulation authority only; hardware safeguards are owned by hardware/teleop/."
+  ]
+}

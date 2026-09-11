@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "experiment_id": "t007",
+  "mode": "simulation_only",
+  "arm_head": {
+    "neutral_joint_position_rad": [0.0, 0.0, 0.0, 0.0, 0.0],
+    "left_neutral_position_m": [0.328371, 0.13860574468679437, -0.018035188737750694],
+    "right_neutral_position_m": [0.328371, -0.13860574468679437, -0.018035188737750694],
+    "position_scale": 1.0,
+    "mapping_mode": "absolute_vendor_pose",
+    "allow_projected_position_solution": true,
+    "allow_clamped_roll_solution": true,
+    "enforce_workspace": false,
+    "allow_converged_joint_limit_solution": true,
+    "left_workspace": {"lower_m": [0.05, 0.05, -0.05], "upper_m": [0.30, 0.40, 0.35]},
+    "right_workspace": {"lower_m": [0.05, -0.40, -0.05], "upper_m": [0.30, -0.05, 0.35]},
+    "max_joint_velocity_rad_s": 3.5,
+    "max_joint_acceleration_rad_s2": 5.0,
+    "ik": {
+      "position_tolerance_m": 0.002,
+      "roll_tolerance_rad": 0.01,
+      "max_iterations": 400,
+      "damping": 0.01,
+      "posture_weight": 0.2,
+      "max_joint_step_rad": 0.1,
+      "posture_tolerance_rad": 0.0001
+    }
+  }
+}

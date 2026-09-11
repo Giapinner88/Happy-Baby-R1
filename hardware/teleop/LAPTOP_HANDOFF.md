@@ -15,8 +15,8 @@ và không tự cấp quyền ghi motor. Mục tiêu trước mắt là tái l�
 
 - hệ trục và phép calibration Quest-to-robot;
 - `assets/R1.urdf`, trục khớp, giới hạn hình học và thứ tự khớp;
-- mapping pose, coupled IK và quy ước đơn vị m/rad/s;
-- cấu hình T001/T007 và schema lệnh.
+- mapping pose, upstream R1-A5 IK và quy ước đơn vị m/rad/s;
+- cấu hình transport dùng chung, baseline và schema lệnh.
 
 Nó **không** có nghĩa là sao chép mù giới hạn vận tốc/gia tốc mô phỏng sang
 motor thật. Hardware thêm watchdog, session envelope, slew limit và quyền ghi
@@ -33,11 +33,11 @@ robot R1-A5.
 5. `docs/teleop/01_system_architecture.md`,
    `docs/teleop/02_quest_to_robot_frames.md` và
    `docs/teleop/05_project_solvers_and_evidence.md` — pipeline, frame và IK.
-6. `docs/operations/r1_quest3_teleop_sim.md` — cách dựng baseline mô phỏng.
-7. `docs/operations/r1_quest3_teleop_hardware.md` và
+6. `docs/teleop/r1_quest3_teleop_sim.md` — cách dựng baseline mô phỏng.
+7. `docs/teleop/r1_quest3_teleop_hardware.md` và
    `hardware/teleop/docs/hardware_gate.md` — SOP và các gate chưa đóng.
-8. `experiments/r1_teleop/quest3_sim_v1/experiment.md`, rồi T001 đến T007 —
-   lịch sử câu hỏi, config, quan sát và giới hạn của bằng chứng.
+8. `experiments/r1_teleop/quest3_sim_v1/experiment.md` và baseline — config,
+   quan sát và giới hạn của experiment active.
 
 Đừng đọc riêng một script rồi suy đoán kiến trúc. `PROVENANCE.txt`,
 `WORKTREE.patch` và `SHA256SUMS` là hồ sơ nguồn chính xác của bundle.
@@ -49,7 +49,7 @@ Meta Quest 3 browser
   -> HTTPS/WSS Vuer :8012
   -> quest_bridge.py, R1TeleopCommand JSONL, 30 Hz
   -> run_r1_quest3_hardware_targets.py
-       calibration + mapping + coupled URDF IK, arms_head
+       hardware envelope + joint ordering; không giải IK
   -> JSONL qua SSH stdin
   -> high_level_sidecar.py trên robot
        read-only rt/lowstate + UDP loopback UTL1 :5560
@@ -94,18 +94,17 @@ thành `hardware/high_level/config/tuning.yaml`.
 | Thông số | Giá trị | Ý nghĩa |
 | --- | ---: | --- |
 | Quest source rate | 30 Hz | telemetry nguồn |
-| IK dispatch hiện tại | 10 Hz | bottleneck đã đo; chưa đạt mục tiêu T007 20 Hz |
+| IK dispatch hiện tại | 10 Hz | target rate hardware hiện tại |
 | Sidecar send rate | 100 Hz | transport local target |
 | High-level motor loop | 500 Hz | sole-owner DDS loop |
 | Mapping timeout | 0.50 s | giữ/dừng khi mất command |
 | Sidecar timeout | 0.75 s | ngắt stream target |
 | High-level freshness | 0.30 s | fail-closed cuối cùng |
-| Session envelope | ±0.15 rad | quanh encoder anchor lúc bắt đầu |
+| Session envelope | ±1.0 rad; vai ±3.2 rad | quanh encoder anchor lúc bắt đầu |
 | Final slew limit | 0.30 rad/s | giới hạn ở sole owner |
 | Arm PD | Kp 40, Kd 2 | provisional, chỉ pilot treo |
 | Head PD | Kp 15, Kd 1 | provisional, chỉ pilot treo |
-| IK iterations/damping/max step | 40 / 0.02 / 0.12 rad | profile T007 |
-| IK position/head tolerance | 0.002 m / 0.03 rad | profile T007 |
+| IK solver | vendor `R1_A5_ArmIK`, không sửa | cùng producer với baseline sim |
 
 Các số `1.5 rad/s` và `4.0 rad/s^2` trong simulator chỉ là tuning mô phỏng,
 không phải giới hạn actuator được phê duyệt.
@@ -113,7 +112,7 @@ không phải giới hạn actuator được phê duyệt.
 ## 6. Bundle có và không có gì
 
 Có: source teleop, URDF, cấu hình editable, test, script dựng/chạy, tài liệu
-kiến trúc/SOP/safety, định nghĩa thí nghiệm T001–T007 (không kèm thư mục run
+kiến trúc/runbook/safety, định nghĩa baseline (không kèm thư mục run
 lớn), evidence utilities, vendor reference tối thiểu, ONNX tối thiểu mà
 high-level cần để preflight, hash và provenance.
 
@@ -159,7 +158,7 @@ evidence-catalog test tham chiếu; đó không phải lỗi controller.
 
 ## 8. Việc chưa được phép bỏ qua
 
-- T007 gần nhất vẫn `unassessed`, 9.98 Hz so với mục tiêu 20 Hz và đa số target
+- Run T007 lịch sử gần nhất vẫn `unassessed`, 9.98 Hz so với mục tiêu 20 Hz và đa số target
   là nghiệm projected.
 - Chưa đối chiếu đầy đủ dấu/thứ tự FK với pose thật và đúng revision robot.
 - Chưa phê duyệt giới hạn vận tốc, gia tốc, torque và collision guard phần cứng.

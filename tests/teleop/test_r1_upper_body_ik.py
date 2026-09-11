@@ -37,7 +37,7 @@ from teleop.r1.whole_upper_body import (
     WholeUpperBodyIsaacLabSink,
     WholeUpperBodyLiveConfig,
 )
-from scripts.teleop.plot_r1_t007_dynamics import _endpoint_tracking
+from scripts.teleop.plot_r1_baseline_dynamics import _endpoint_tracking
 
 
 ROOT = Path(__file__).resolve().parents[2]

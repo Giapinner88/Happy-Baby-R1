@@ -6,11 +6,8 @@
 accepted method for suspended arms/head pilot only
 ```
 
-Decision record:
-
-```text
-decisions/r1_teleop/D003_single_lowcmd_owner.md
-```
+Quyết định sole-owner trước đây nằm trong Git history; contract active được
+giữ tại file này và được kiểm tra bởi test tĩnh của `hardware/teleop/`.
 
 ## 2. Hardware architecture
 
@@ -63,7 +60,7 @@ q_{des,i}
 q_{0,i}
 +
 \operatorname{clamp}
-(s_i-s_{0,i},-0.15,+0.15)
+(s_i-s_{0,i},-e_i,+e_i)
 }
 $$
 
@@ -73,7 +70,8 @@ Hardware pilot assumptions:
 - robot suspended/fixed;
 - dedicated R3 E-stop operator;
 - initial pose mechanically valid;
-- ±0.15 rad envelope relative to anchor.
+- launcher envelope relative to anchor: ±1.0 rad normally and ±3.2 rad for the
+  six shoulder joints; asset joint limits still apply.
 
 Không claim:
 - collision avoidance;

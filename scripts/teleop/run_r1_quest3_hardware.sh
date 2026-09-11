@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # Foreground Quest -> arms/head IK -> SSH sidecar -> sole high-level lowcmd owner.
 #
-# HB_TELEOP_SOLVER=upstream (default) solves with the unmodified vendor
-# xr_teleoperate R1_A5_ArmIK in the `tv` environment, the same solver and the
-# same process layout the simulation baseline runs. HB_TELEOP_SOLVER=coupled
-# selects this repository's coupled IK instead, for comparison on one trace.
+# The unmodified vendor xr_teleoperate R1_A5_ArmIK is the sole solver.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -34,19 +31,8 @@ HB_TELEOP_MAX_OFFSET_RAD="${HB_TELEOP_MAX_OFFSET_RAD:-1.0}"
 # trên giá treo ngày 2026-08-29.
 HB_TELEOP_MAX_OFFSET_SHOULDER_RAD="${HB_TELEOP_MAX_OFFSET_SHOULDER_RAD:-3.2}"
 HB_TELEOP_HOME="${HB_TELEOP_HOME:-1}"
-HB_TELEOP_SOLVER="${HB_TELEOP_SOLVER:-upstream}"
-case "$HB_TELEOP_SOLVER" in
-    upstream|coupled) ;;
-    *) echo "[FAIL] HB_TELEOP_SOLVER phải là 'upstream' hoặc 'coupled'." >&2; exit 2 ;;
-esac
 HOME_ARG=""
-if [[ "$HB_TELEOP_HOME" == "1" ]]; then
-    if [[ "$HB_TELEOP_SOLVER" == "upstream" ]]; then
-        HOME_ARG="--home-to-source"
-    else
-        HOME_ARG="--home-to-nominal"
-    fi
-fi
+[[ "$HB_TELEOP_HOME" == "1" ]] && HOME_ARG="--home-to-source"
 # Không chốt cứng IP: wlan0 của robot lấy địa chỉ động. Thứ tự ưu tiên là
 # ROBOT= trên dòng lệnh, rồi ~/.config/hb/robot.env, rồi dò. assert_robot xác
 # minh đúng máy trước khi làm bất cứ gì — một máy lạ giữ IP cũ vẫn trả lời ping.
@@ -129,14 +115,10 @@ echo "[READY] TRƯỚC CÒ PHẢI: đưa robot arms/head và người vận hàn
 echo "[READY] Frame đầu tiên khi bóp cò phải được chốt làm source_zero của cả phiên."
 echo "[READY] Giữ cò phải để điều khiển; nhả cò để receiver watchdog release và dừng."
 echo "[READY] Evidence local: $RUN_DIR"
-echo "[READY] Solver: $HB_TELEOP_SOLVER"
+echo "[READY] Solver: upstream R1_A5_ArmIK"
 if [[ "$HB_TELEOP_HOME" == "1" ]]; then
-    if [[ "$HB_TELEOP_SOLVER" == "upstream" ]]; then
-        echo "[READY] Source alignment BẬT: GIỮ YÊN đầu và hai controller sau khi bóp cò."
-        echo "[READY] Robot ramp chậm tới target vendor đầu tiên; sau đó không cộng offset posture vào q upstream."
-    else
-        echo "[READY] Homing coupled BẬT: robot ramp về nominal rồi mới bám tay bạn."
-    fi
+    echo "[READY] Source alignment BẬT: GIỮ YÊN đầu và hai controller sau khi bóp cò."
+    echo "[READY] Robot ramp chậm tới target vendor đầu tiên; sau đó không cộng offset posture vào q upstream."
     echo "[READY] Robot đang tự đi trong dòng [HOME]; kiểm khoảng trống quanh cả hai tay và đầu."
 else
     echo "[READY] Homing TẮT: robot giữ nguyên tư thế hiện tại làm mốc."
@@ -162,22 +144,13 @@ conda run --no-capture-output -n tv python scripts/teleop/quest_bridge.py \
     --stop-file "$STOP_FILE" \
     --connection-log "$RUN_DIR/bridge_connection.jsonl" \
     2> >(tee -a "$RUN_DIR/bridge.stderr.log" >&2) \
-| if [[ "$HB_TELEOP_SOLVER" == "upstream" ]]; then
-    # The vendor solver needs CasADi and the Pinocchio 3 bindings, which exist
-    # in `tv` and nowhere else here, so it stays a process of its own exactly as
-    # it does in simulation. The robot side still receives joint angles only.
-    conda run --no-capture-output -n tv python scripts/teleop/run_r1_upstream_ik_stream.py \
-        --passthrough \
-        --stats-path "$RUN_DIR/upstream_solver_stats.json" \
-        2> >(tee -a "$RUN_DIR/upstream_solver.stderr.log" >&2)
-  else
-    cat
-  fi \
+| conda run --no-capture-output -n tv python scripts/teleop/run_r1_upstream_ik_stream.py \
+    --passthrough --stats-path "$RUN_DIR/upstream_solver_stats.json" \
+    2> >(tee -a "$RUN_DIR/upstream_solver.stderr.log" >&2) \
 | conda run --no-capture-output -n unitree_sim_env python scripts/teleop/run_r1_quest3_hardware_targets.py \
     --duration-s "$DURATION_S" \
     --control-hz 10 \
     --command-log "$RUN_DIR/hardware_targets.jsonl" \
-    $([[ "$HB_TELEOP_SOLVER" == "upstream" ]] && echo --upstream-joint-stream || echo --coupled-ik) \
     2> >(tee -a "$RUN_DIR/hardware_targets.stderr.log" >&2) \
 | ssh -o BatchMode=yes "$ROBOT" \
     "cd /home/unitree/HB/teleop && HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP=1 PYTHONPATH=/home/unitree/HB/teleop/src python3 -m teleop.hardware.high_level_sidecar --interface eth10 --udp-host 127.0.0.1 --udp-port 5560 --confirm-suspended-with-estop --confirm-dev-mode --duration-s '$DURATION_S' --first-input-timeout-s 120 --input-timeout-s 0.75 --state-timeout-s 0.20 --send-hz 100 --max-offset-rad $HB_TELEOP_MAX_OFFSET_RAD --max-offset-rad-shoulders $HB_TELEOP_MAX_OFFSET_SHOULDER_RAD $HOME_ARG --log-dir /home/unitree/HB/teleop/logs" \
@@ -198,4 +171,31 @@ for stage_rc in "${PIPELINE_STATUS[@]}"; do
     fi
 done
 echo "[DONE] Pipeline status: $RUN_DIR/pipeline_status.json"
-exit "$PIPELINE_RC"
+
+# Pull the robot-side encoder/target evidence into the same immutable bundle.
+# The receiver prints the exact directory only after it has flushed metadata and
+# samples; accepting any other remote prefix would make this an arbitrary copy.
+REMOTE_FETCH_RC=1
+REMOTE_RUN_DIR="$(sed -n 's/^.* evidence: //p' "$RUN_DIR/robot_receiver.log" | tail -n 1)"
+if [[ "$REMOTE_RUN_DIR" == /home/unitree/HB/teleop/logs/* ]]; then
+    mkdir -p "$RUN_DIR/robot"
+    set +e
+    scp -q -r "$ROBOT:$REMOTE_RUN_DIR/." "$RUN_DIR/robot/"
+    REMOTE_FETCH_RC=$?
+    set -e
+fi
+
+# Figures and the MP4 are derived from synchronized target/encoder telemetry.
+# They are evidence of tracking over time, explicitly not camera footage.
+set +e
+MPLCONFIGDIR=/tmp/hb-matplotlib conda run --no-capture-output -n unitree_sim_env \
+    python scripts/teleop/finalize_r1_run.py hardware "$RUN_DIR"
+FINALIZE_RC=$?
+set -e
+
+if [[ "$REMOTE_FETCH_RC" -ne 0 ]]; then
+    echo "[ARTIFACT] Không tải được robot-side samples; run bị đánh dấu incomplete." >&2
+fi
+if [[ "$PIPELINE_RC" -ne 0 ]]; then exit "$PIPELINE_RC"; fi
+if [[ "$REMOTE_FETCH_RC" -ne 0 ]]; then exit "$REMOTE_FETCH_RC"; fi
+exit "$FINALIZE_RC"

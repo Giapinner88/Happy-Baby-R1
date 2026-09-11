@@ -32,7 +32,6 @@ from .mapping import (
 from .policy_gate import PolicyGateError, validate_isaaclab_velocity_policy
 from .schema import BaseVelocity, Pose, Quaternion, R1TeleopCommand, Vector3
 from .simulator import FakeIsaacLabSink, SimulationOnlyAdapter
-from .trajectory import JointTrajectoryLimits, JointTrajectorySample, MinimumJerkSegment, TrajectoryConfigError
 from .upper_body_ik import (
     UpperBodyIKConfig,
     UpperBodyIKConfigError,
@@ -66,9 +65,6 @@ __all__ = [
     "IKResult",
     "IsaacLabArticulationHandle",
     "KinematicsError",
-    "JointTrajectoryLimits",
-    "JointTrajectorySample",
-    "MinimumJerkSegment",
     "Pose",
     "PolicyGateError",
     "Quaternion",
@@ -85,7 +81,6 @@ __all__ = [
     "SimulationOnlyAdapter",
     "TeleopCalibration",
     "TeleopLimits",
-    "TrajectoryConfigError",
     "Vector3",
     "VelocityDispatchError",
     "UPPER_BODY_JOINT_NAMES",

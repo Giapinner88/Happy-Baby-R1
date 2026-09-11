@@ -1,145 +1,58 @@
-# Happy Baby R1 — operator entry points.
-#
-# This file is a thin dispatcher: every target shells out to a documented
-# entry point. It only validates required operator input and assembles the
-# corresponding command-line arguments.
-#
-#   make help              list every target
-#   make teleop HOST_IP=192.168.1.106
-#                          run the canonical upstream arms/head Quest pilot
-#   make teleop-dry-run    show the allocated paths and commands, run nothing
-#
-# Override any variable on the command line, e.g.
-#   make teleop HOST_IP=192.168.1.106 DURATION_S=300
+# Happy Baby R1 — canonical Quest 3 teleop entry points.
 
 SHELL := /bin/bash
 PYTHON ?= python3
 
-# --- Teleop pilot -----------------------------------------------------------
-HOST_IP     ?=
-HOST_IP_TAG  = $(subst .,_,$(strip $(HOST_IP)))
-DURATION_S  ?= 180
-PHYSICS_HZ  ?= 200
-CONTROL_HZ  ?= 30
-VIDEO_FPS   ?= 10
-# Isaac Sim 5.1's USDRT evidence-camera path currently supports cuda:0 only.
-# Headless/no-video baselines may still override this with DEVICE=cuda:1.
-DEVICE      ?= cuda:0
-CERT_FILE   ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/cert.pem
-KEY_FILE    ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/key.pem
-# Coupled-comparison only: arms_head | waist_yaw | full_upper_body.
-BODY_MODE   ?=
-# Open Isaac Sim and record one evidence-camera view by default. For a lighter
-# connectivity-only run, override with `TELEOP_ARGS="--headless --no-video"`.
-TELEOP_ARGS ?= --single-view
-# Optional explicit profile. Empty lets the launcher select the canonical
-# upstream profile (or the coupled profile when --coupled-solver is requested).
-WHOLE_UPPER_BODY_CONFIG ?=
-
-TELEOP_CMD = $(PYTHON) scripts/teleop/run_t007_upper_body_pilot.py \
-	--host-ip $(HOST_IP) \
-	--duration-s $(DURATION_S) \
-	--physics-hz $(PHYSICS_HZ) \
-	--control-hz $(CONTROL_HZ) \
-	--video-fps $(VIDEO_FPS) \
-	--device $(DEVICE) \
-	--cert-file $(CERT_FILE) \
-	--key-file $(KEY_FILE) \
-	$(if $(WHOLE_UPPER_BODY_CONFIG),--whole-upper-body-config $(WHOLE_UPPER_BODY_CONFIG)) \
-	$(if $(BODY_MODE),--body-mode $(BODY_MODE)) \
-	$(TELEOP_ARGS)
+HOST_IP      ?=
+HOST_IP_TAG   = $(subst .,_,$(strip $(HOST_IP)))
+DURATION_S   ?= 180
+PHYSICS_HZ   ?= 200
+CONTROL_HZ   ?= 30
+VIDEO_FPS    ?= 10
+DEVICE       ?= cuda:0
+CERT_FILE    ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/cert.pem
+KEY_FILE     ?= $(HOME)/.config/xr_teleoperate/happybaby_$(HOST_IP_TAG)/key.pem
+TELEOP_ARGS  ?= --single-view
 
 .DEFAULT_GOAL := help
-.PHONY: help check-teleop-network teleop teleop-arms teleop-dry-run teleop-head-only test-teleop \
-	teleop-hardware-prepare teleop-hardware teleop-upstream-solve teleop-upstream-stream \
-	teleop-arms-differential teleop-arms-dry-run
+.PHONY: help check-network teleop teleop-dry-run teleop-hardware-prepare teleop-hardware test
 
 help:
-	@echo "Happy Baby R1 targets:"
-	@echo "  make teleop           canonical arms + head via vendor IK; head/hands independent"
-	@echo "  make teleop-arms      compatibility alias for make teleop"
-	@echo "  make teleop-arms-dry-run      print the three-process upstream pipeline, run nothing"
-	@echo "  make teleop-arms-differential the old arms+head path, solved in this repo"
-	@echo "  make teleop-dry-run   print allocated run paths and the three-stage pipeline"
-	@echo "  make teleop-head-only T001-B head-only connectivity pilot"
-	@echo "  make test-teleop      run the teleop test suite"
-	@echo "  make teleop-upstream-solve   solve a recorded trace with the vendor xr_teleoperate IK"
-	@echo "  make teleop-upstream-stream  stream joint targets from the vendor IK (online path)"
-	@echo "  make teleop-hardware-prepare  preflight + copy only; never starts or arms robot"
-	@echo "  make teleop-hardware  foreground R1 arms/head; prompts for fixture/E-stop confirmation"
-	@echo ""
-	@echo "Variables: SOURCE_RUN UPSTREAM_PYTHON HOST_IP DURATION_S PHYSICS_HZ CONTROL_HZ VIDEO_FPS DEVICE CERT_FILE KEY_FILE BODY_MODE TELEOP_ARGS WHOLE_UPPER_BODY_CONFIG"
-	@echo "BODY_MODE applies only to the explicit coupled-solver comparison."
-	@echo "Example:   make teleop HOST_IP=192.168.1.106"
+	@echo "Happy Baby R1 teleop:"
+	@echo "  make teleop HOST_IP=<workstation-ip>          Quest -> vendor IK -> Isaac"
+	@echo "  make teleop-dry-run HOST_IP=<workstation-ip>  validate and print the sim pipeline"
+	@echo "  make teleop-hardware HOST_IP=<ip> ROBOT=<user@ip>  Quest -> vendor IK -> R1"
+	@echo "  make teleop-hardware-prepare ROBOT=<user@ip>  preflight and deploy; never arms motors"
+	@echo "  make test                                     canonical teleop tests"
 
-check-teleop-network:
+check-network:
 	@test -n "$(strip $(HOST_IP))" || { \
-		echo "[FAIL] HOST_IP is required. Example: make teleop HOST_IP=192.168.1.106"; \
+		echo "[FAIL] HOST_IP is required, for example HOST_IP=192.168.1.19"; \
 		exit 2; \
 	}
 
-## Run the canonical upstream arms/head pilot end to end.
-## Allocates the run id, starts Quest -> vendor IK -> Isaac Sim, and
-## writes evidence under experiments/r1_teleop/quest3_sim_v1/T007/runs/.
-teleop: check-teleop-network
-	$(TELEOP_CMD)
+teleop: check-network
+	$(PYTHON) scripts/teleop/run_r1_baseline.py \
+		--host-ip $(HOST_IP) --duration-s $(DURATION_S) \
+		--physics-hz $(PHYSICS_HZ) --control-hz $(CONTROL_HZ) \
+		--video-fps $(VIDEO_FPS) --device $(DEVICE) \
+		--cert-file $(CERT_FILE) --key-file $(KEY_FILE) $(TELEOP_ARGS)
 
-## Arms + head, solved by the unmodified vendor xr_teleoperate IK.
-## Nothing in this repository solves on this path: the bridge feeds the vendor
-## solver, and the simulator only applies the joints it returns. The torso is
-## frozen because the vendor model locks waist yaw and both head joints.
-teleop-arms: teleop
+teleop-dry-run: check-network
+	$(MAKE) teleop HOST_IP="$(HOST_IP)" DURATION_S="$(DURATION_S)" \
+		PHYSICS_HZ="$(PHYSICS_HZ)" CONTROL_HZ="$(CONTROL_HZ)" \
+		VIDEO_FPS="$(VIDEO_FPS)" DEVICE="$(DEVICE)" \
+		CERT_FILE="$(CERT_FILE)" KEY_FILE="$(KEY_FILE)" \
+		TELEOP_ARGS="$(TELEOP_ARGS) --dry-run"
 
-## The previous arms+head path, solved by this repository's differential
-## controller. Kept so the two can still be compared on one trace.
-teleop-arms-differential: check-teleop-network
-	$(TELEOP_CMD) --coupled-solver --body-mode arms_head \
-		--whole-upper-body-config experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_differential_live.json
-
-teleop-dry-run: check-teleop-network
-	$(TELEOP_CMD) --dry-run
-
-teleop-arms-dry-run: teleop-dry-run
-
-teleop-head-only: check-teleop-network
-	$(PYTHON) scripts/teleop/run_t001_b_pilot.py \
-		--host-ip $(HOST_IP) \
-		--cert-file $(CERT_FILE) \
-		--key-file $(KEY_FILE) \
-		$(TELEOP_ARGS)
-
-test-teleop:
-	$(PYTHON) -m pytest tests/teleop -q
-
-# Safe one-command staging path. This deliberately stops at the hardware
-# entrypoint/gate checks and never installs, starts, enables, or arms a service.
 teleop-hardware-prepare:
-	./hardware/teleop/scripts/sync_from_workspace.sh
-	./hardware/teleop/scripts/check_vuer.sh
 	ROBOT="$(ROBOT)" ./hardware/teleop/scripts/deploy_teleop.sh deploy
 
-teleop-hardware: check-teleop-network
+teleop-hardware: check-network
 	ROBOT="$(ROBOT)" HOST_IP="$(HOST_IP)" DURATION_S="$(DURATION_S)" \
 		CERT_FILE="$(CERT_FILE)" KEY_FILE="$(KEY_FILE)" \
 		CONFIRM_SUSPENDED_WITH_ESTOP="$(CONFIRM_SUSPENDED_WITH_ESTOP)" \
 		./scripts/teleop/run_r1_quest3_hardware.sh
 
-# --- Vendor xr_teleoperate solver -------------------------------------------
-# Runs `R1_A5_ArmIK` from third_party unmodified, in the `tv` environment where
-# CasADi and the Pinocchio 3 CasADi bindings live. The Isaac environment has
-# neither, which is why the solver is a separate process rather than an import.
-SOURCE_RUN       ?= experiments/r1_teleop/quest3_sim_v1/T007/runs/t007_whole_upper_body_20260823T122433Z
-UPSTREAM_OUT     ?= experiments/r1_teleop/quest3_sim_v1/T007/runs/t007_upstream_ik_$(shell date -u +%Y%m%dT%H%M%SZ)
-UPSTREAM_PYTHON  ?= conda run --no-capture-output -n tv python
-
-## Solve a recorded trace offline with the vendor solver and write T007 evidence.
-## Produces the same offline_joint_trajectory.npz the Isaac replay path consumes.
-teleop-upstream-solve:
-	$(PYTHON) scripts/teleop/solve_r1_t007_upstream_ik.py \
-		--source-run $(SOURCE_RUN) \
-		--output-dir $(UPSTREAM_OUT)
-
-## Stream joint targets from the vendor solver: stdin commands, stdout targets.
-## This is the online path, and the one the hardware sidecar consumes.
-teleop-upstream-stream:
-	$(UPSTREAM_PYTHON) scripts/teleop/run_r1_upstream_ik_stream.py $(TELEOP_ARGS)
+test:
+	$(PYTHON) -m pytest tests/teleop hardware/teleop/tests -q

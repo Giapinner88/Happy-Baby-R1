@@ -35,8 +35,11 @@ Quest 3 (Quest Browser, immersive WebXR session)
 quest_bridge.py                   env `tv`                30 Hz
       │ newline-delimited R1TeleopCommand JSON
       ▼
+run_r1_upstream_ik_stream.py      env `tv`
+      │ initial-head anchor → vendor R1_A5_ArmIK → 12 joints
+      ▼
 run_r1_quest3_live.py             env `unitree_sim_env`
-      │ mapper → IK → rate limit
+      │ validate/apply joint targets
       ├──────────────► Isaac Sim
       │
       └─ hardware target path
@@ -80,5 +83,6 @@ $$
 
 - Không tự sinh neutral command khi XR data invalid.
 - Quest bridge, mapper, IK và hardware writer phải tách riêng.
-- Vendor upstream là reference, không mặc định là accepted project method.
+- Vendor upstream là solver duy nhất của pipeline active; wrapper project giữ
+  frame/anchor, validation và evidence boundary.
 - Simulation và hardware evidence phải có boundary rõ.
