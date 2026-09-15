@@ -54,6 +54,30 @@
         "t009",
         "t010"
       ]
+    },
+    {
+      "id": "r1_dataset/quest3_sim_v1",
+      "title": "R1 Quest 3 dataset collection simulation v1",
+      "root": "experiments/r1_dataset/quest3_sim_v1",
+      "record": "experiment.md",
+      "module": "teleop/r1/",
+      "environment": "tv (Quest bridge) + unitree_sim_env (Isaac Sim)",
+      "how_to_run": "PLAN.md",
+      "layout": "protocol-owned",
+      "run_root": "D001/runs",
+      "run_roots": {
+        "d001": "D001/runs",
+        "d002": "D002/runs"
+      },
+      "protocol_records": {
+        "d001": "D001/D001.md",
+        "d002": "D002/D002.md"
+      },
+      "pipeline": "PLAN.md",
+      "protocols": [
+        "d001",
+        "d002"
+      ]
     }
   ]
 }

@@ -84,6 +84,23 @@ class LauncherSolverStageTest(unittest.TestCase):
         self.assertNotIn(SIM_ENV, solver)
         self.assertIn("--passthrough", solver)
 
+    def test_solver_stats_path_is_scoped_to_the_run(self):
+        output = Path("/tmp/out")
+        _bridge, solver, _sim = build_commands(
+            make_spec(
+                solver_args=["scripts/teleop/run_r1_upstream_ik_stream.py", "--passthrough"],
+                solver_stats_filename="upstream_solver_stats.json",
+            ),
+            output,
+            Path("/tmp/stop"),
+            Path("/tmp/log"),
+        )
+        assert solver is not None
+        self.assertEqual(
+            solver[solver.index("--stats-path") + 1],
+            str(output / "upstream_solver_stats.json"),
+        )
+
 
 class TeleopArmsWiringTest(unittest.TestCase):
     """The dry run is the contract: it prints exactly what would be executed."""
@@ -128,6 +145,70 @@ class TeleopArmsWiringTest(unittest.TestCase):
         self.assertIn("--passthrough", solver_line)
 
 
+class D002UpstreamWiringTest(unittest.TestCase):
+    """The VLA collector keeps expensive IK out of Isaac's GUI process."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        directory = Path(self._tmp.name)
+        cert, key = directory / "cert.pem", directory / "key.pem"
+        cert.write_text("placeholder", encoding="utf-8")
+        key.write_text("placeholder", encoding="utf-8")
+        self.addCleanup(self._tmp.cleanup)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/teleop/run_d001_dataset.py",
+                "--host-ip",
+                "192.168.1.106",
+                "--dataset-config",
+                "experiments/r1_dataset/quest3_sim_v1/D002/config/r1_d002_number_pointing.json",
+                "--solver",
+                "upstream",
+                "--dry-run",
+                "--cert-file",
+                str(cert),
+                "--key-file",
+                str(key),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.returncode = result.returncode
+        self.output = result.stdout + result.stderr
+
+    def test_dry_run_succeeds_and_launches_three_stages(self):
+        self.assertEqual(self.returncode, 0, self.output)
+        self.assertIn("bridge:", self.output)
+        self.assertIn("solver:", self.output)
+        self.assertIn("sim:", self.output)
+
+    def test_vendor_solver_is_passthrough(self):
+        solver_line = next(
+            line for line in self.output.splitlines() if line.startswith("solver:")
+        )
+        self.assertIn("run_r1_upstream_ik_stream.py", solver_line)
+        self.assertIn("--passthrough", solver_line)
+        self.assertIn("--stats-path", solver_line)
+        self.assertIn("upstream_solver_stats.json", solver_line)
+
+    def test_isaac_only_consumes_joint_targets(self):
+        sim_line = next(
+            line for line in self.output.splitlines() if line.startswith("sim:")
+        )
+        self.assertIn("--upstream-joint-stream-config", sim_line)
+        self.assertNotIn("--whole-upper-body-config", sim_line)
+        self.assertIn("--dataset-scene-config", sim_line)
+
+    def test_dataset_uses_fast_rendering_and_a_fail_fast_fps_gate(self):
+        sim_line = next(
+            line for line in self.output.splitlines() if line.startswith("sim:")
+        )
+        self.assertIn("--rendering_mode performance", sim_line)
+        self.assertIn("--strict-dataset-fps", sim_line)
+
+
 class MakefileTest(unittest.TestCase):
     def setUp(self):
         self.makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
@@ -156,6 +237,15 @@ class MakefileTest(unittest.TestCase):
         self.assertIn("HOST_IP_TAG  = $(subst .,_,$(strip $(HOST_IP)))", self.makefile)
         self.assertIn("happybaby_$(HOST_IP_TAG)/cert.pem", self.makefile)
         self.assertIn("happybaby_$(HOST_IP_TAG)/key.pem", self.makefile)
+
+    def test_d002_defaults_to_the_upstream_solver(self):
+        definition = re.search(
+            r"^D002_CMD\s*=.*?(?=\n\n)",
+            self.makefile,
+            re.MULTILINE | re.DOTALL,
+        )
+        self.assertIsNotNone(definition, "D002_CMD not found")
+        self.assertIn("--solver upstream", definition.group(0))
 
 
 if __name__ == "__main__":

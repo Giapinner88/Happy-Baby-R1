@@ -30,6 +30,7 @@ TELEVUER_SOURCE = ROOT / "third_party" / "xr_teleoperate" / "teleop" / "televuer
 sys.path.insert(0, str(ROOT))
 
 from teleop.r1 import BridgeConfig, QuestCommandBridge, QuestTransportSample  # noqa: E402
+from teleop.r1.head_view_stream import stereo_side_by_side  # noqa: E402
 from teleop.r1.frame_contract import validate_vendor_frame_contract  # noqa: E402
 
 
@@ -146,6 +147,23 @@ def main() -> int:
             "A valid value at or below this threshold counts as pressed when WebXR leaves the boolean false."
         ),
     )
+    parser.add_argument(
+        "--head-view-port",
+        type=int,
+        help=(
+            "Nhận khung camera đầu robot từ simulator qua cổng ZMQ này và hiện trong kính. "
+            "Không truyền thì kính giữ nguyên pass-through, tức chỉ thấy phòng thật."
+        ),
+    )
+    parser.add_argument(
+        "--head-view-mode",
+        choices=("ego", "immersive"),
+        default="ego",
+        help=(
+            "'ego' hiện một ô nhỏ ở giữa và giữ lại hình ảnh phòng thật xung quanh; "
+            "'immersive' che kín tầm nhìn. Mặc định 'ego' vì tay người vẫn đang vung."
+        ),
+    )
     parser.add_argument("--connection-log", type=Path, help="Optional JSONL copy of the connection/status log.")
     parser.add_argument(
         "--stop-file",
@@ -171,6 +189,12 @@ def main() -> int:
     if args.connection_log is not None:
         args.connection_log.parent.mkdir(parents=True, exist_ok=True)
         connection_log = args.connection_log.open("w", encoding="utf-8")
+
+    head_view = None
+    if args.head_view_port is not None:
+        from teleop.r1.head_view_stream import HeadViewSubscriber  # noqa: E402
+
+        head_view = HeadViewSubscriber(port=args.head_view_port)
 
     bridge_config = BridgeConfig()
     vuer_url = f"https://{args.host_ip}:8012/?ws=wss://{args.host_ip}:8012"
@@ -217,8 +241,11 @@ def main() -> int:
         binocular=True,
         img_shape=(480, 1280),
         display_fps=args.frequency_hz,
-        display_mode="pass-through",
-        zmq=False,
+        # Pass-through là mặc định có chủ đích: không có nguồn ảnh thì kính phải
+        # cho người vận hành thấy phòng thật. Chỉ khi simulator thực sự phát
+        # khung mới chuyển sang chế độ hiện góc nhìn robot.
+        display_mode=args.head_view_mode if head_view is not None else "pass-through",
+        zmq=head_view is not None,
         webrtc=False,
         cert_file=str(args.cert_file.resolve()) if args.cert_file else None,
         key_file=str(args.key_file.resolve()) if args.key_file else None,
@@ -248,6 +275,10 @@ def main() -> int:
                 stop_reason = "stop_file_requested"
                 break
             loop_start = time.monotonic()
+            if head_view is not None:
+                frame = head_view.latest_bgr()
+                if frame is not None:
+                    wrapper.render_to_xr(stereo_side_by_side(frame))
             telemetry = wrapper.get_tele_data()
             left_trigger = _trigger_state(telemetry, "left", args.trigger_value_threshold)
             right_trigger = _trigger_state(telemetry, "right", args.trigger_value_threshold)
@@ -295,6 +326,8 @@ def main() -> int:
                 time.sleep(remaining)
     finally:
         wrapper.close()
+        if head_view is not None:
+            head_view.close()
         _restore_stop_handlers(previous_handlers)
 
     _log(
@@ -309,6 +342,7 @@ def main() -> int:
             "disconnect_count": bridge.state.disconnect_count,
             "dropped_sample_count": bridge.state.dropped_sample_count,
             "rejected_sample_count": bridge.state.rejected_sample_count,
+            **(head_view.stats() if head_view is not None else {}),
         },
     )
     if connection_log is not None:

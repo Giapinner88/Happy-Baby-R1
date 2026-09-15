@@ -53,6 +53,14 @@ class PilotLaunchSpec:
     extra_sim_args: list[str] = field(default_factory=list)
     idle_stop_s: float | None = None
     quest_ready_timeout_s: float | None = None
+    head_view_port: int | None = None
+    """Cổng ZMQ chở khung camera đầu robot từ simulator sang bridge.
+
+    `None` giữ nguyên hành vi cũ: kính ở pass-through và không ảnh nào rời khỏi
+    simulator. Khi đặt, cả hai đầu cùng nhận cổng này, nên chỉ có một chỗ để
+    khai và hai bên không thể lệch nhau.
+    """
+
     solver_args: list[str] | None = None
     """Arguments to a solver stage placed between the bridge and the simulator.
 
@@ -60,6 +68,9 @@ class PilotLaunchSpec:
     to a `conda run -n <bridge env> python` invocation, because a solver that
     needs the bridge environment is the only reason this stage exists.
     """
+
+    solver_stats_filename: str | None = None
+    """Optional filename under the run directory passed to solver as --stats-path."""
 
 
 def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, connection_log: Path):
@@ -77,6 +88,8 @@ def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, con
         "--stop-file", str(stop_file),
         "--connection-log", str(connection_log),
     ]
+    if spec.head_view_port is not None:
+        bridge_command += ["--head-view-port", str(spec.head_view_port)]
     sim_command = [
         "conda", "run", "--no-capture-output", "-n", SIM_ENV,
         "python", "scripts/teleop/run_r1_quest3_live.py",
@@ -86,6 +99,8 @@ def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, con
         "--control-hz", str(spec.control_hz),
         "--stop-file", str(stop_file),
     ]
+    if spec.head_view_port is not None:
+        sim_command += ["--head-view-port", str(spec.head_view_port)]
     if spec.disable_self_collisions:
         sim_command.append("--disable-self-collisions")
     if spec.idle_stop_s is not None:
@@ -97,6 +112,12 @@ def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, con
             "conda", "run", "--no-capture-output", "-n", BRIDGE_ENV, "python",
             *spec.solver_args,
         ]
+        if spec.solver_stats_filename is not None:
+            if Path(spec.solver_stats_filename).name != spec.solver_stats_filename:
+                raise ValueError("solver_stats_filename must be a plain filename")
+            solver_command += [
+                "--stats-path", str(output_dir / spec.solver_stats_filename)
+            ]
     return bridge_command, solver_command, sim_command
 
 

@@ -82,6 +82,7 @@ Thumbs.db
 # Large local data (ignore contents, keep folder with .gitkeep)
 data/datasets/*
 data/cache/*
+data/lerobot/
 data/models/*
 data/policies/*
 data/processed/*
@@ -93,6 +94,10 @@ results/demo/*
 results/smoke/*
 experiments/**/runs/*
 experiments/**/artifacts/*
+experiments/**/derived/
+experiments/**/recovery/
+experiments/**/rollouts/
+outputs/
 
 # Ảnh chụp pháp chứng kéo từ robot về: giữ trên máy trạm để phân tích, không
 # đưa binary ARM64 và bản source đã sync vào lịch sử git.

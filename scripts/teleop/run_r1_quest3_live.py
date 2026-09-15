@@ -111,6 +111,74 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--dataset-scene-config",
+        type=Path,
+        help=(
+            "Profile dataset khai báo vật thể trong cảnh và camera gắn trên đầu robot. "
+            "Không truyền thì cảnh giữ nguyên như T007: mặt đất, đèn, robot, và không có "
+            "camera nào gắn trên robot."
+        ),
+    )
+    parser.add_argument(
+        "--strict-dataset-fps",
+        action="store_true",
+        help=(
+            "Dừng sớm một phiên dataset nếu FPS wall-clock không đạt gate trong "
+            "profile sau số frame warm-up. Frame camera cũng phải có source id tăng "
+            "nghiêm ngặt khi profile yêu cầu; không lặp ảnh để giả đủ tần số."
+        ),
+    )
+    parser.add_argument(
+        "--target-digit-priority",
+        help=(
+            "Danh sách chữ số ngăn cách bởi dấu phẩy phải làm mục tiêu trước, theo đúng thứ tự. "
+            "Dùng để bù những chữ số còn thiếu trong dataset đã thu; lấy gợi ý bằng "
+            "tools/dataset_report.py --suggest-priority."
+        ),
+    )
+    parser.add_argument(
+        "--fixed-digit-layout",
+        help=(
+            "Bố cục tấm số cố định, ngăn cách bởi dấu phẩy, theo thứ tự trái sang "
+            "phải trong góc nhìn robot; ví dụ 5,4,8,2. Bỏ trống để random như cũ."
+        ),
+    )
+    parser.add_argument(
+        "--policy-prompt",
+        help=(
+            "Prompt gửi cho policy. Prompt literal phải chứa đúng một chữ số 1-9 "
+            "để tự suy target. Prompt ngữ nghĩa không ghi số, hoặc template {n}, "
+            "cần một --target-digit-priority tường minh để lưu ground truth. Bỏ "
+            "trống để dùng template trong dataset config."
+        ),
+    )
+    parser.add_argument(
+        "--viewport-camera",
+        choices=("perspective", "head"),
+        default="perspective",
+        help=(
+            "Camera nào chiếm cửa sổ Isaac. 'head' gán camera gắn trên đầu robot, tức "
+            "góc nhìn thứ nhất. Chỉ có tác dụng khi chạy có cửa sổ và có camera đầu."
+        ),
+    )
+    parser.add_argument(
+        "--head-view-port",
+        type=int,
+        help=(
+            "Phát khung camera đầu robot qua ZMQ tới cổng này để bridge hiện trong kính. "
+            "Không truyền thì không có ảnh nào rời khỏi tiến trình này."
+        ),
+    )
+    parser.add_argument(
+        "--policy-obs-port",
+        type=int,
+        help=(
+            "Phát quan sát (ảnh camera đầu + state 12 chiều + câu lệnh) qua ZMQ tới cổng "
+            "này cho một policy tự lái. Tách khỏi --head-view-port vì đó là ảnh cho người "
+            "vận hành, đã vẽ cue lên; ảnh ở đây là tensor sensor gốc mà dataset đã dạy."
+        ),
+    )
+    parser.add_argument(
         "--render-every-control-step",
         action="store_true",
         help=(
@@ -215,6 +283,10 @@ def _source_hashes() -> dict[str, str]:
         ROOT / "teleop" / "r1" / "differential_tracking.py",
         ROOT / "teleop" / "r1" / "differential_live.py",
         ROOT / "teleop" / "r1" / "workspace_projection.py",
+        ROOT / "teleop" / "r1" / "dataset_episode.py",
+        ROOT / "teleop" / "r1" / "dataset_randomizer.py",
+        ROOT / "teleop" / "r1" / "dataset_scene.py",
+        ROOT / "teleop" / "r1" / "operator_cue.py",
     )
     return {str(path.relative_to(ROOT)): _sha256(path) for path in files}
 
@@ -587,6 +659,7 @@ def _close_simulation_app_and_exit(
     simulation_app: object,
     *,
     timeout_s: float = 30.0,
+    exit_code: int = 0,
     exit_fn: Callable[[int], None] = os._exit,
 ) -> None:
     """Bound Kit shutdown and end the process even if worker threads survive."""
@@ -600,7 +673,7 @@ def _close_simulation_app_and_exit(
             file=sys.stderr,
             flush=True,
         )
-    exit_fn(0)
+    exit_fn(exit_code)
 
 
 def main() -> int:
@@ -644,6 +717,15 @@ def main() -> int:
         except (OSError, ValueError) as exc:
             raise SystemExit(f"Cannot load replay command file {replay_path}: {exc}") from exc
 
+    dataset_scene = None
+    if args.dataset_scene_config is not None:
+        from teleop.r1.dataset_scene import load_dataset_scene_config  # noqa: E402
+
+        try:
+            dataset_scene = load_dataset_scene_config(args.dataset_scene_config)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+
     try:
         config = json.loads(args.config.expanduser().resolve().read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -654,7 +736,10 @@ def main() -> int:
     if bool(velocity.get("enabled", False)):
         raise SystemExit("T001 requires base velocity disabled; refusing to run with velocity enabled.")
 
-    args.enable_cameras = not args.no_video
+    # Camera đầu robot vẫn là một camera: Isaac từ chối spawn nó nếu rendering
+    # chưa bật, kể cả khi --no-video đã tắt video bằng chứng.
+    needs_head_camera = dataset_scene is not None and dataset_scene.head_camera is not None
+    args.enable_cameras = (not args.no_video) or needs_head_camera
     app_launcher = AppLauncher(args)
     simulation_app = app_launcher.app
 
@@ -714,10 +799,22 @@ def main() -> int:
         sim_utils.SimulationCfg(dt=1.0 / args.physics_hz, device=args.device)
     )
     sim.set_camera_view([2.2, 1.6, 1.5], [0.0, 0.0, 0.9])
-    sim_utils.GroundPlaneCfg().func("/World/GroundPlane", sim_utils.GroundPlaneCfg())
-    sim_utils.DomeLightCfg(intensity=3000.0, color=(0.9, 0.9, 0.9)).func(
-        "/World/Light", sim_utils.DomeLightCfg(intensity=3000.0, color=(0.9, 0.9, 0.9))
+    # Môi trường chuẩn mang sẵn sàn của nó; trải thêm một mặt đất phẳng lên trên
+    # sẽ che mất sàn đó và làm robot đứng trên một tấm bạt xám giữa căn phòng.
+    scene_has_environment = (
+        dataset_scene is not None and dataset_scene.environment is not None
     )
+    if not scene_has_environment:
+        sim_utils.GroundPlaneCfg().func("/World/GroundPlane", sim_utils.GroundPlaneCfg())
+        sim_utils.DomeLightCfg(intensity=3000.0, color=(0.9, 0.9, 0.9)).func(
+            "/World/Light", sim_utils.DomeLightCfg(intensity=3000.0, color=(0.9, 0.9, 0.9))
+        )
+    scene_props: dict[str, object] = {"spawned": [], "rigid_objects": []}
+    if dataset_scene is not None:
+        from teleop.r1.dataset_scene import spawn_scene_props  # noqa: E402
+
+        scene_props = spawn_scene_props(dataset_scene)
+
     robot_cfg = UNITREE_R1_CFG.replace(prim_path="/World/Robot")
     if args.disable_self_collisions:
         robot_cfg.spawn.articulation_props.enabled_self_collisions = False
@@ -754,6 +851,12 @@ def main() -> int:
                     )
                 )
             )
+
+    head_camera = None
+    if dataset_scene is not None and dataset_scene.head_camera is not None:
+        from teleop.r1.dataset_scene import build_head_camera  # noqa: E402
+
+        head_camera = build_head_camera(dataset_scene.head_camera)
 
     sim.reset()
     for camera_instance, position in zip(cameras, evidence_camera_positions):
@@ -1083,6 +1186,132 @@ def main() -> int:
             str(Path(str(output_dir) + ".video.tmp.mp4")), fps=args.video_fps, macro_block_size=None
         )
 
+    if args.viewport_camera == "head" and not getattr(args, "headless", False):
+        if head_camera is None:
+            raise SystemExit(
+                "--viewport-camera head cần một camera đầu; hãy truyền --dataset-scene-config "
+                "có khai head_camera."
+            )
+        # Gán camera đầu vào viewport đang hoạt động. Bọc lại vì đây là API của
+        # Kit UI: chạy ẩn hoặc bản Kit khác thì không có viewport nào để gán, và
+        # đó không phải lý do làm hỏng cả phiên.
+        try:
+            from omni.kit.viewport.utility import get_active_viewport  # noqa: E402
+
+            viewport = get_active_viewport()
+            if viewport is None:
+                print("[viewport] không tìm thấy viewport nào; giữ camera perspective.", flush=True)
+            else:
+                viewport.camera_path = dataset_scene.head_camera.prim_path
+                print(
+                    f"[viewport] cửa sổ Isaac dùng {dataset_scene.head_camera.prim_path}",
+                    flush=True,
+                )
+        except Exception as exc:  # noqa: BLE001 - đổi góc nhìn là tiện ích, không phải bằng chứng
+            print(f"[viewport] không gán được camera đầu: {exc}", flush=True)
+
+    marker_randomizer = None
+    marker_prim_paths: dict[int, str] = {}
+    if dataset_scene is not None and dataset_scene.marker_pool is not None:
+        from teleop.r1.dataset_randomizer import MarkerRandomizer  # noqa: E402
+
+        pool = dataset_scene.marker_pool
+        marker_randomizer = MarkerRandomizer(
+            digits=list(pool.digits),
+            slot_x_m=pool.slot_x_m,
+            slot_y_m=list(pool.slot_y_m),
+            slot_z_m=pool.slot_z_m,
+            slot_y_jitter_m=pool.slot_y_jitter_m,
+            prompt_templates=list(pool.prompt_templates),
+            seed=pool.seed,
+            priority_digits=[
+                int(v) for v in (args.target_digit_priority or "").split(",") if v.strip()
+            ],
+            fixed_layout_digits=[
+                int(v) for v in (args.fixed_digit_layout or "").split(",") if v.strip()
+            ],
+            prompt_override=args.policy_prompt,
+        )
+        marker_prim_paths = {d: pool.prim_path(d) for d in pool.digits}
+
+    head_view_publisher = None
+    if args.head_view_port is not None and head_camera is not None:
+        from teleop.r1.head_view_stream import HeadViewPublisher  # noqa: E402
+
+        head_view_publisher = HeadViewPublisher(port=args.head_view_port)
+        print(f"[head-view] phát khung tới tcp://127.0.0.1:{args.head_view_port}", flush=True)
+    elif args.head_view_port is not None:
+        raise SystemExit(
+            "--head-view-port cần một camera đầu; hãy truyền --dataset-scene-config có khai head_camera."
+        )
+
+    policy_obs_publisher = None
+    if args.policy_obs_port is not None and head_camera is not None:
+        from teleop.r1.policy_obs_stream import PolicyObsPublisher  # noqa: E402
+
+        policy_obs_publisher = PolicyObsPublisher(port=args.policy_obs_port)
+        print(f"[policy-obs] phát quan sát tới tcp://127.0.0.1:{args.policy_obs_port}", flush=True)
+    elif args.policy_obs_port is not None:
+        raise SystemExit(
+            "--policy-obs-port cần một camera đầu; hãy truyền --dataset-scene-config có khai head_camera."
+        )
+
+    head_recorder = None
+    episode_recorder = None
+    if head_camera is not None:
+        # Simulator từ chối một thư mục bằng chứng đã tồn tại, nên ảnh được ghi
+        # tạm cạnh nó rồi mới chuyển vào — đúng cách video đang làm.
+        staging = Path(str(output_dir) + ".colors.tmp")
+        if dataset_scene.episode is not None and whole_upper_body_mode:
+            from teleop.r1.dataset_episode import EpisodeRecorder  # noqa: E402
+
+            episode_recorder = EpisodeRecorder(
+                staging_dir=staging,
+                camera=head_camera,
+                physics_dt_s=1.0 / args.physics_hz,
+                config=dataset_scene.episode,
+                controlled_joint_names=list(sink.model.joint_names),
+            )
+        else:
+            from teleop.r1.dataset_scene import HeadCameraRecorder  # noqa: E402
+
+            head_recorder = HeadCameraRecorder(staging, head_camera, 1.0 / args.physics_hz)
+
+    operator_cue = None
+    current_marker_layout = None
+    cue_config = dataset_scene.operator_cue if dataset_scene is not None else None
+    if cue_config is not None and cue_config.enabled:
+        from teleop.r1.operator_cue import OperatorCue  # noqa: E402
+
+        operator_cue = OperatorCue(
+            cue_config.text_template,
+            desktop_hud=cue_config.desktop_hud and not getattr(args, "headless", False),
+        )
+
+    def prepare_next_marker_episode() -> None:
+        """Chọn/hiện mục tiêu trước khi người vận hành bóp cò phải."""
+
+        nonlocal current_marker_layout
+        if marker_randomizer is None or episode_recorder is None:
+            return
+        if not episode_recorder.is_between_episodes and not episode_recorder.has_items:
+            # Bố cục đã dàn sẵn và chưa ai chạm tới. Nhả cò phải rồi bóp cò trái
+            # là HAI sự kiện nhưng chỉ mở MỘT episode, nên chỉ được bốc số một
+            # lần: bốc lại làm người vận hành vừa đọc xong mục tiêu thì nó đổi.
+            return
+        from teleop.r1.dataset_randomizer import apply_layout  # noqa: E402
+
+        current_marker_layout = marker_randomizer.next_layout()
+        apply_layout(current_marker_layout, marker_prim_paths, pool.parked_position_m)
+        episode_recorder.begin_episode(current_marker_layout.as_task_record())
+        if operator_cue is not None:
+            operator_cue.show(current_marker_layout)
+        print(f"[policy-prompt] {current_marker_layout.prompt}", flush=True)
+
+    # Trước đây mục tiêu chỉ được chọn sau frame accepted đầu tiên, tức người
+    # vận hành phải bắt đầu chuyển động khi chưa biết cần chạm số nào.
+    prepare_next_marker_episode()
+
     commands: "queue.Queue[str | None]" = queue.Queue()
     if replay_payloads is None:
         threading.Thread(target=_stdin_reader, args=(commands,), daemon=True).start()
@@ -1103,6 +1332,12 @@ def main() -> int:
     dynamics_joint_velocity_radps: list[list[float]] = []
     dynamics_body_com_position_m: list[list[list[float]]] = []
     invalid_lines: list[dict[str, object]] = []
+    head_render_time_s: list[float] = []
+    head_sensor_update_time_s: list[float] = []
+    head_gpu_readback_time_s: list[float] = []
+    head_capture_wall_time_s: list[float] = []
+    head_source_frame_ids: list[int] = []
+    dataset_fps_gate_failure: dict[str, object] | None = None
     previous_sequence = -1
     last_command: R1TeleopCommand | None = None
     last_command_wall_s: float | None = None
@@ -1119,7 +1354,14 @@ def main() -> int:
         getattr(args, "headless", False)
     )
     video_period_s = 1.0 / args.video_fps
+    head_period_s = (
+        1.0 / episode_recorder.config.fps
+        if episode_recorder is not None
+        else video_period_s
+    )
     next_video_time = 0.0
+    next_head_time = 0.0
+    scene_rigid_objects = list(scene_props.get("rigid_objects") or [])
     stop_reason = "duration_elapsed"
     stop_requested, stop_detail, previous_handlers = _install_stop_handlers()
 
@@ -1186,6 +1428,10 @@ def main() -> int:
                     else:
                         sink.ingest(candidate.sequence_id, names, solved)
                 if arm_head_mode and candidate.reset_requested:
+                    # Cò trái vốn đã có nghĩa "reset session"; ở đây nó đồng thời
+                    # là ranh giới episode. Không thêm nút điều khiển nào mới.
+                    if episode_recorder is not None and episode_recorder.has_items:
+                        episode_recorder.end_episode(wait=False)
                     sink.reset_session()
                     # A reset is a session boundary. Do not let the previously
                     # held right-trigger command be re-applied later in this
@@ -1193,6 +1439,7 @@ def main() -> int:
                     last_command = None
                     last_command_wall_s = None
                     stream_started = True
+                    prepare_next_marker_episode()
                     continue
                 newest = candidate
                 stream_started = True
@@ -1245,10 +1492,17 @@ def main() -> int:
             behind_s = max(0.0, elapsed - sim_time_s)
             steps_this_cycle = min(max_catchup_steps, max(1, int(behind_s / physics_dt)))
             for _ in range(steps_this_cycle):
+                for scene_object in scene_rigid_objects:
+                    scene_object.write_data_to_sim()
                 sim.step(render=False)
             sim_time_s += steps_this_cycle * physics_dt
             physics_step_count += steps_this_cycle
             robot.update(physics_dt)
+            # Vật trong cảnh phải được làm mới rõ ràng; thiếu bước này thì
+            # `data.root_pos_w` trả về đúng giá trị khởi tạo và một vật đã rơi
+            # vẫn trông như đang đứng yên.
+            for scene_object in scene_rigid_objects:
+                scene_object.update(physics_dt)
             if arm_head_mode:
                 dynamics_time_s.append(elapsed)
                 dynamics_root_position_m.append(robot.data.root_pos_w[0].detach().cpu().tolist())
@@ -1274,8 +1528,149 @@ def main() -> int:
                         handle.joint_positions(sink.model.joint_names)
                     )
             capture_frame = bool(cameras) and elapsed >= next_video_time
-            if render_each_control_step or capture_frame:
+            application = (adapter_applied or {}).get("whole_upper_body") or {}
+            episode_step_accepted = bool(application.get("accepted"))
+            if episode_recorder is not None:
+                if episode_step_accepted:
+                    if marker_randomizer is not None and episode_recorder.is_between_episodes:
+                        prepare_next_marker_episode()
+                elif episode_recorder.has_items:
+                    # Đóng bằng một job nằm sau toàn bộ ảnh của episode trong
+                    # cùng queue. Main thread đổi cue ngay, không chờ ổ đĩa.
+                    episode_recorder.end_episode(wait=False)
+                    prepare_next_marker_episode()
+
+            # Camera/render có nhịp riêng với control. Trước đây episode_recorder
+            # làm biểu thức này luôn True, khiến RTX + JPEG chạy ở mọi control
+            # tick và kéo GUI xuống ~5 Hz. Một deadline bị lỡ được bỏ qua thay vì
+            # "catch up" bằng nhiều render liên tiếp.
+            head_due = head_camera is not None and elapsed >= next_head_time
+            record_episode_frame = bool(
+                episode_recorder is not None and episode_step_accepted and head_due
+            )
+            capture_plain_head = bool(head_recorder is not None and head_due)
+            publish_head = bool(head_view_publisher is not None and head_due)
+            publish_policy_obs = bool(policy_obs_publisher is not None and head_due)
+            refresh_head_view = bool(
+                head_due
+                and (
+                    episode_recorder is not None
+                    or head_recorder is not None
+                    or publish_head
+                    or publish_policy_obs
+                )
+            )
+            if head_due:
+                missed_periods = max(1, int((elapsed - next_head_time) / head_period_s) + 1)
+                next_head_time += missed_periods * head_period_s
+
+            if render_each_control_step or capture_frame or refresh_head_view:
+                render_started = time.monotonic()
                 sim.render()
+                if refresh_head_view:
+                    head_render_time_s.append(time.monotonic() - render_started)
+
+            raw_head_rgb = None
+            source_camera_frame = None
+            need_head_pixels = bool(
+                publish_head
+                or publish_policy_obs
+                or (
+                    record_episode_frame
+                    and episode_recorder is not None
+                    and episode_recorder.can_accept_frame
+                )
+            )
+            if need_head_pixels:
+                # Một GPU→CPU copy dùng chung cho dataset và bản operator. Cue
+                # chỉ được vẽ lên bản sao ở nhánh publish bên dưới.
+                # Camera chỉ được gọi ở deadline ảnh, không phải mỗi physics
+                # tick. Truyền physics_dt ở đây làm đồng hồ nội bộ của sensor
+                # tiến 0.005 s cho mỗi lần capture và có thể trả lại cùng buffer
+                # nhiều lần. force_recompute tạo đúng một source frame mới cho
+                # mỗi capture, tương đương latest-frame producer của teleimager.
+                update_started = time.monotonic()
+                head_camera.update(head_period_s, force_recompute=True)
+                head_sensor_update_time_s.append(time.monotonic() - update_started)
+                readback_started = time.monotonic()
+                raw_head_rgb = head_camera.data.output["rgb"][0, ..., :3].detach().cpu().numpy()
+                source_camera_frame = int(head_camera.frame[0].item())
+                head_gpu_readback_time_s.append(time.monotonic() - readback_started)
+                head_capture_wall_time_s.append(time.monotonic() - start_monotonic)
+                head_source_frame_ids.append(source_camera_frame)
+
+            if publish_policy_obs and raw_head_rgb is not None:
+                # State và ảnh phải đến từ CÙNG một bước, và state phải là
+                # `post_physics_whole_upper_body_position_rad` — đúng trường mà
+                # converter đã ghi vào `observation.state`. Lấy nguồn khác là
+                # đưa cho policy một quan sát nó chưa từng thấy lúc train.
+                policy_state = (adapter_applied or {}).get(
+                    "post_physics_whole_upper_body_position_rad"
+                )
+                if policy_state is None and whole_upper_body_mode:
+                    # Tick ĐẦU TIÊN chưa có lệnh nào được áp, nên `adapter_applied`
+                    # còn rỗng. Nếu chờ nó thì hai bên khoá chết nhau: policy chờ
+                    # quan sát để sinh lệnh, còn quan sát lại chờ một lệnh đã áp.
+                    # Đọc thẳng tư thế hiện tại của robot cắt vòng đó, và đây đúng
+                    # là nguồn mà `post_physics_whole_upper_body_position_rad` dùng.
+                    policy_state = list(handle.joint_positions(sink.model.joint_names))
+                if policy_state is not None:
+                    policy_obs_publisher.publish(
+                        raw_head_rgb,
+                        policy_state,
+                        current_marker_layout.prompt if current_marker_layout is not None else "",
+                    )
+
+            if publish_head:
+                operator_rgb = raw_head_rgb
+                assert operator_rgb is not None
+                if (
+                    operator_cue is not None
+                    and cue_config is not None
+                    and cue_config.head_view_overlay
+                ):
+                    operator_rgb = operator_cue.decorate_head_view(operator_rgb)
+                head_view_publisher.publish(operator_rgb)
+
+            if record_episode_frame and episode_recorder is not None:
+                # Khi queue đầy, add_item(None) chỉ ghi nhận overflow và trả về;
+                # nó không gọi camera.update hay tạo một JSON item thiếu ảnh.
+                queued = episode_recorder.add_item(
+                    control_step,
+                    elapsed,
+                    (adapter_applied or {}).get("post_physics_whole_upper_body_position_rad"),
+                    application.get("limited_joint_target_rad"),
+                    application.get("solver_solution_kind"),
+                    rgb=raw_head_rgb,
+                    source_camera_frame=source_camera_frame,
+                )
+                if queued and args.strict_dataset_fps:
+                    gate = episode_recorder.config.rejection
+                    enough_samples = episode_recorder.current_item_count >= gate.fps_gate_warmup_frames
+                    measured = episode_recorder.current_measured_fps
+                    below = gate.min_measured_fps is not None and measured < gate.min_measured_fps
+                    above = gate.max_measured_fps is not None and measured > gate.max_measured_fps
+                    duplicates = episode_recorder.current_duplicate_camera_frame_count
+                    if enough_samples and (below or above or duplicates):
+                        dataset_fps_gate_failure = {
+                            "measured_fps": measured,
+                            "min_measured_fps": gate.min_measured_fps,
+                            "max_measured_fps": gate.max_measured_fps,
+                            "warmup_frames": gate.fps_gate_warmup_frames,
+                            "duplicate_camera_frame_count": duplicates,
+                        }
+                        stop_reason = "dataset_camera_fps_gate_failed"
+                        print(
+                            "[dataset-fps][FAIL] "
+                            f"measured={measured:.3f} FPS, expected="
+                            f"[{gate.min_measured_fps}, {gate.max_measured_fps}], "
+                            f"duplicates={duplicates}; stopping before collecting more invalid data.",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        break
+            elif capture_plain_head:
+                head_recorder.capture(control_step, elapsed)
 
             # Rendering is the dominant cost per control step, so the cameras
             # are only updated on the steps that actually contribute a frame.
@@ -1320,6 +1715,55 @@ def main() -> int:
         video_recorded = True
     elif video_path.exists():
         video_path.unlink()
+
+    head_camera_evidence: dict[str, object] = {}
+    capture_span_s = (
+        head_capture_wall_time_s[-1] - head_capture_wall_time_s[0]
+        if len(head_capture_wall_time_s) >= 2
+        else 0.0
+    )
+    head_camera_evidence.update(
+        {
+            "camera_pipeline": "fresh_latest_frame_bounded_async_writer",
+            "camera_render_time_s": _numeric_summary(head_render_time_s),
+            "camera_sensor_update_time_s": _numeric_summary(head_sensor_update_time_s),
+            "camera_gpu_readback_time_s": _numeric_summary(head_gpu_readback_time_s),
+            "camera_capture_count": len(head_capture_wall_time_s),
+            "camera_capture_fps_wall_clock": (
+                (len(head_capture_wall_time_s) - 1) / capture_span_s
+                if capture_span_s > 0.0
+                else None
+            ),
+            "camera_source_frame_count": len(set(head_source_frame_ids)),
+            "camera_duplicate_source_frame_count": (
+                len(head_source_frame_ids) - len(set(head_source_frame_ids))
+            ),
+            "dataset_fps_gate_strict": bool(args.strict_dataset_fps),
+            "dataset_fps_gate_failure": dataset_fps_gate_failure,
+        }
+    )
+    if head_view_publisher is not None:
+        head_camera_evidence.update(head_view_publisher.stats())
+        head_view_publisher.close()
+    if policy_obs_publisher is not None:
+        head_camera_evidence.update(policy_obs_publisher.stats())
+        policy_obs_publisher.close()
+    if operator_cue is not None:
+        operator_cue.close()
+    staging_root = Path(str(output_dir) + ".colors.tmp")
+    if head_recorder is not None:
+        staged_colors = staging_root / "colors"
+        if staged_colors.is_dir():
+            staged_colors.rename(output_dir / "colors")
+            staged_colors.parent.rmdir()
+        head_camera_evidence.update(head_recorder.write_manifest(output_dir))
+    elif episode_recorder is not None:
+        head_camera_evidence.update(episode_recorder.finalize(output_dir))
+        if staging_root.is_dir():
+            staging_root.rename(output_dir / "episodes")
+        rejected_root = Path(str(staging_root) + ".rejected")
+        if rejected_root.is_dir():
+            rejected_root.rename(output_dir / "episodes_rejected")
 
     (output_dir / "raw_commands.jsonl").write_text(
         "".join(line + "\n" for line in raw_lines), encoding="utf-8"
@@ -1423,6 +1867,8 @@ def main() -> int:
         ),
         "pelvis_pinned": True,
         "video_fps": args.video_fps if not args.no_video else None,
+        "rendering_mode": args.rendering_mode,
+        "strict_dataset_fps": bool(args.strict_dataset_fps),
         "render_every_control_step": render_each_control_step,
         "video_resolution": (
             None
@@ -1461,6 +1907,11 @@ def main() -> int:
     write_experiment_config(output_dir, experiment_config_payload if arm_head_mode else config)
     if arm_head_mode:
         write_json(output_dir / "bridge_config.json", config)
+    if dataset_scene is not None:
+        write_json(
+            output_dir / "dataset_scene_config.json",
+            json.loads(dataset_scene.source_path.read_text(encoding="utf-8")),
+        )
     write_runner_command(output_dir)
 
     holds = [event for event in sink.events if event["event"] == "hold"]
@@ -1469,6 +1920,21 @@ def main() -> int:
     metrics = {
         "schema_version": 1,
         "mode": "simulation_only",
+        "dataset_scene_config": (
+            str(dataset_scene.source_path) if dataset_scene is not None else None
+        ),
+        "dataset_scene_props": list(scene_props.get("spawned") or []),
+        "operator_cue": (
+            {
+                "enabled": bool(cue_config.enabled),
+                "desktop_hud": bool(cue_config.desktop_hud),
+                "head_view_overlay": bool(cue_config.head_view_overlay),
+                "recorded_in_sensor_images": False,
+            }
+            if cue_config is not None
+            else None
+        ),
+        **head_camera_evidence,
         "control_step_count": control_step,
         "raw_line_count": len(raw_lines),
         "invalid_line_count": len(invalid_lines),
@@ -1569,7 +2035,13 @@ def main() -> int:
         ROOT,
         {
             "record_type": "experiment_run_provenance",
-            "protocol_id": "t007" if arm_head_mode else "t001_b",
+            "protocol_id": (
+                dataset_scene.experiment_id
+                if dataset_scene is not None and dataset_scene.experiment_id is not None
+                else "t007"
+                if arm_head_mode
+                else "t001_b"
+            ),
             "created_at": start_utc,
             "run": {
                     "id": output_dir.name,
@@ -1588,6 +2060,12 @@ def main() -> int:
             "configuration": {
                 "bridge_config_path": str(args.config) if arm_head_mode else None,
                 "bridge_config_sha256": _sha256(args.config.expanduser().resolve()) if arm_head_mode else None,
+                "dataset_scene_config_path": (
+                    str(dataset_scene.source_path) if dataset_scene is not None else None
+                ),
+                "dataset_scene_config_sha256": (
+                    _sha256(dataset_scene.source_path) if dataset_scene is not None else None
+                ),
                 "arm_head_config_path": str(args.arm_head_config) if legacy_arm_head_mode else None,
                 "arm_head_config_sha256": _sha256(args.arm_head_config.expanduser().resolve()) if legacy_arm_head_mode else None,
                 "whole_upper_body_config_path": (
@@ -1649,20 +2127,30 @@ def main() -> int:
             "whole_upper_body_config_snapshot": args.whole_upper_body_config is not None,
             "offline_continuation_config_snapshot": offline_trajectory_mode,
             "bridge_config_snapshot": arm_head_mode,
+            "dataset_scene_config_snapshot": dataset_scene is not None,
         },
     )
 
+    run_failed = dataset_fps_gate_failure is not None
     write_status(
         output_dir,
-        "completed",
+        "failed" if run_failed else "completed",
         extra={
             "stop_reason": stop_reason,
+            "dataset_fps_gate_failure": dataset_fps_gate_failure,
             "dds_or_hardware_called": False,
             "base_velocity_dispatched": False,
         },
     )
     print(json.dumps(metrics, sort_keys=True), flush=True)
-    print(f"{'T007' if arm_head_mode else 'T001'} evidence written to: {output_dir}", flush=True)
+    evidence_protocol = (
+        dataset_scene.experiment_id.upper()
+        if dataset_scene is not None and dataset_scene.experiment_id is not None
+        else "T007"
+        if arm_head_mode
+        else "T001"
+    )
+    print(f"{evidence_protocol} evidence written to: {output_dir}", flush=True)
 
     # `SimulationApp.close()` can block indefinitely on this workstation and,
     # even when it returns, Kit may leave non-daemon threads alive. Every
@@ -1671,7 +2159,7 @@ def main() -> int:
     # is insufficient: completed runs have otherwise retained GPU for days.
     sys.stdout.flush()
     sys.stderr.flush()
-    _close_simulation_app_and_exit(simulation_app)
+    _close_simulation_app_and_exit(simulation_app, exit_code=2 if run_failed else 0)
     return 0
 
 

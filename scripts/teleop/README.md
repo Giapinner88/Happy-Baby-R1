@@ -11,6 +11,8 @@ or recording experiment evidence.
 | `run_t007_upper_body_pilot.py` | host Python 3 | **T007 coupled upper-body launcher**, also reachable as `make teleop`. Defaults to schema-3 pose-sequence IK; schema-4 differential DLS is explicit opt-in. |
 | `quest_bridge.py` | `tv` | T001-B input bridge: Quest telemetry to `R1TeleopCommand` JSONL on stdout. |
 | `run_r1_quest3_live.py` | `unitree_sim_env` | T001-B head-only, live T007 upper-body, or sequence-indexed offline-continuation replay in Isaac Lab. |
+| `convert_r1_xr_to_lerobot.py` | `lerobot` | Converts accepted R1 XR episodes to LeRobot with the 12-DoF `arms_head` state/action contract. |
+| `validate_r1_lerobot_dataset.py` | `lerobot` | Validates the exact 10-arm + head-pitch/yaw feature order, values, episode layout, and camera decoding. |
 | `plot_r1_quest3_telemetry.py` | `r1_env` | Derives and plots head/left-wrist/right-wrist 3D position, velocity, and acceleration from a completed live run. |
 | `run_r1_quest3_sim.py` | host Python 3 | Deterministic trace replay through the mapper with `FakeIsaacLabSink`. |
 | `run_r1_t007_mujoco_replay.py` | `r1_env` | Replays recorded T007 Quest motion through 100 Hz velocity-feedforward Cartesian tracking in fixed-base MuJoCo and plots position, velocity, joints, compute cost, and signal rate. |
