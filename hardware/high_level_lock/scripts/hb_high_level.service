@@ -1,0 +1,33 @@
+# hb_high_level.service — Tự khởi động HB R1 High-Level Runner lúc robot bật
+# nguồn, chạy HEADLESS (thuần gamepad R3-1, KHÔNG cần SSH/X11). Mất SSH vẫn
+# điều khiển được bằng R3-1 -> vẫn an toàn; service tự bật lại nếu lỗi.
+#
+# Cài trên robot (chạy scripts/install_service.sh, hoặc thủ công):
+#   sudo cp scripts/hb_high_level.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now hb_high_level
+#   journalctl -u hb_high_level -f          # xem log
+#
+# ⚠ Sửa User/WorkingDirectory/ExecStart cho đúng đường dẫn trên robot.
+# Interface DDS lấy từ config/tuning.yaml (network_interface). Headless bảo đảm
+# bằng dev_no_keyboard: true trong tuning.yaml VÀ DISPLAY trống dưới đây.
+
+[Unit]
+Description=HB R1 High-Level Runner (headless, gamepad R3-1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=unitree
+WorkingDirectory=/home/unitree/HB/high_level_2/build
+ExecStart=/home/unitree/HB/high_level_2/build/run_r1
+# Headless: không mở cửa sổ X11 (KeyboardX11 tự bỏ qua khi $DISPLAY trống).
+Environment=DISPLAY=
+# CycloneDDS config (bỏ comment nếu robot cần):
+# Environment=CYCLONEDDS_URI=file:///home/unitree/unitree_sdk2/thirdparty/cyclonedds/cyclonedds.xml
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

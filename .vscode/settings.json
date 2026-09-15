@@ -1,0 +1,16 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "cmake.sourceDirectory": "/home/ubuntu22/Projects/Happy-Baby-R1/third_party/unitree_mujoco/simulate",
+    "files.watcherExclude": {
+        "**/third_party/**": true,
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/build/**": true,
+        "**/__pycache__/**": true,
+        "**/experiments/**/runs/**": true,
+        "**/data/**": true,
+        "**/archive/**": true
+    },
+    "search.followSymlinks": false
+}

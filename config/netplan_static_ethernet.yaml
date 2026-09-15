@@ -1,0 +1,38 @@
+# Netplan Configuration for Static Ethernet IP
+# File: /etc/netplan/99-static-ethernet.yaml
+# Project: Unitree - Happy Baby (R1 Humanoid Research)
+# Purpose: Configure static IP for direct Ethernet connection to R1 robot
+#
+# INSTALLATION:
+#   sudo cp netplan_static_ethernet.yaml /etc/netplan/99-static-ethernet.yaml
+#   sudo netplan apply
+#
+# VERIFICATION:
+#   ip addr show <interface_name>
+#   ping -c 4 192.168.123.164
+
+network:
+  version: 2
+  renderer: networkd
+  
+  ethernets:
+    # Replace 'eth0' with your actual interface name (e.g., enp3s0, enp4s0)
+    eth0:
+      dhcp4: false
+      dhcp6: false
+      addresses:
+        # Static IP: 192.168.123.100/24 (matches R1 robot network)
+        - address: 192.168.123.100
+          prefix: 24
+      # Optional: Gateway and DNS (if needed for other connections)
+      # gateway4: 192.168.123.1
+      # nameservers:
+      #   addresses: [8.8.8.8, 8.8.4.4]
+      
+      # Required: Match interface by MAC address or name
+      # Uncomment one of the following:
+      match:
+        # Option 1: Match by interface name pattern
+        name: eth*
+        # Option 2: Match by MAC address (uncomment if needed)
+        # macaddress: "xx:xx:xx:xx:xx:xx"

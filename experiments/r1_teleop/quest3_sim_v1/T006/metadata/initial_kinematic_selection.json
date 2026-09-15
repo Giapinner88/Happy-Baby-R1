@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "record_type": "editable_initial_kinematic_screen_selection",
+  "selected_at": "2026-08-11T05:29:22Z",
+  "case_to_run_id": {
+    "mirror_t003": "t006_mirror_t003_20260811T052922Z",
+    "asymmetric_t003": "t006_asymmetric_t003_20260811T052922Z",
+    "inward_t002_grid": "t006_inward_t002_grid_20260811T052922Z"
+  },
+  "selection_rule": "One completed deterministic execution for each of the three predeclared T006 kinematic/ownership cases; no case is excluded.",
+  "direct_observations": {
+    "all_steps_converged": true,
+    "any_joint_clamped": false,
+    "ownership_disjoint": true,
+    "ownership_complete_for_arms": true,
+    "minimum_reported_endpoint_separation_m": 0.33331027972556726,
+    "collision_status": "inconclusive"
+  },
+  "limits_of_selection": [
+    "Endpoint separation is between wrist-roll-link endpoints only and is not a collision clearance metric.",
+    "No collision/contact events or video exist because the execution backend has no physics or rendering, and the USD self-collision defect prevents a collision-valid functional arm run.",
+    "These selected runs do not close the collision part of T006 and do not promote a bilateral live-Quest trace."
+  ]
+}

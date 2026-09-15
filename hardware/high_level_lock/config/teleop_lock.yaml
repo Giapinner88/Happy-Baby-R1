@@ -1,0 +1,42 @@
+# Profile cô lập: khoá cứng mọi khớp KHÔNG thuộc teleop.
+#
+# Được `tuning.yaml` include SAU `teleop_suspended.yaml`, nên nó chỉ thêm đúng
+# phần khoá lên trên profile pilot treo đã được review. Mọi thứ khác — gate bàn
+# giao, watchdog, giới hạn đầu, model locomotion — đến từ profile đó, không phải
+# từ cấu hình chung của bb70a20.
+#
+# CHƯA ĐƯỢC HARDWARE GATE DUYỆT. Chỉ dùng khi robot treo/cố định trên giá và có
+# người giữ E-stop.
+
+# Bản gốc để chân (IDL 0-11) và eo (12-13) hoàn toàn limp trong ZERO TORQUE
+# teleop. Trên giá treo, chân đung đưa là nhiễu cơ khí lẫn thẳng vào phép đo
+# đang cần làm, nên ở đây chúng được giữ tại encoder chốt lúc bóp cò.
+#
+# Khoá giữ ĐÚNG tư thế robot đang treo sẵn nên chỉ phải dập dao động, không phải
+# nâng chân lên. Chân còn đung đưa thì tăng kp (trần 100 = kKpTrain của hông/eo),
+# không cần build lại. Rung hoặc kêu thì tăng kd trước khi giảm kp.
+#
+# Bật khoá là bắt đầu cấp dòng cho chân. Không bật khi robot đứng trên sàn:
+# khoá giữ tư thế, nó KHÔNG đỡ trọng lượng.
+teleop_lock_others_enabled: true
+teleop_lock_kp: 20.0
+teleop_lock_kd: 3.0
+teleop_lock_max_rate_rad_s: 0.20
+
+# --- Nới sau phiên đo 2026-08-29 -------------------------------------------
+# Phiên đó bão hoà 10/12 khớp ở envelope ±0.15 rad, và tốc độ đo được bám sát
+# trần 0.30 (p95 0.19, max 0.38 rad/s). Người vận hành phải đợi robot, và không
+# gian làm việc chỉ ±8.6° mỗi khớp.
+#
+# 0.6 rad/s vẫn chậm hơn 10 lần đỉnh 5.94 rad/s của mô phỏng, nên một lệnh sai
+# còn thời gian để nhấn E-stop. CHƯA ĐƯỢC HARDWARE GATE DUYỆT.
+# Giá trị nền; scripts/run_lock_foreground.sh sinh teleop_runtime.yaml include
+# sau file này nên biến môi trường HB_TELEOP_RATE sẽ ghi đè.
+teleop_max_rate_rad_s: 0.6
+
+# Nhả cò thì giữ nguyên tay/đầu thay vì thả limp. Bản gốc thả limp nên mỗi lần
+# dừng tay là một cú sụp. Chỉ giữ sau khi đã từng lái trong phiên; quá
+# teleop_hold_timeout_s mà không ai lái thì trả về ZERO TORQUE, để người vận
+# hành bỏ đi không làm tay nằm mãi trong trạng thái có dòng.
+teleop_hold_on_release: true
+teleop_hold_timeout_s: 120.0

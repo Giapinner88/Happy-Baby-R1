@@ -1,176 +1,171 @@
-# Unitree R1 - Happy Baby Project (G1 Humanoid Research)
+# Happy Baby R1
 
-[![Project Status: Active](https://img.shields.io/badge/Project%20Status-Active-brightgreen)](#)
-[![Hardware: Unitree R1 EDU U2](https://img.shields.io/badge/Hardware-Unitree%20R1%20EDU%20U2-orange)](#)
-[![Middleware: ROS2 Humble](https://img.shields.io/badge/Middleware-ROS2%20Humble-blueviolet)](#)
-[![Build: Clang 14](https://img.shields.io/badge/Build-Clang%2014-lightgrey)](#)
+[![Project Status: Active](<https://img.shields.io/badge/Project%20Status-Active-brightgreen>)](#)
+[![Hardware: Unitree R1](<https://img.shields.io/badge/Hardware-Unitree%20R1-orange>)](#)
+[![Middleware: ROS%202%20Foxy](<https://img.shields.io/badge/Middleware-ROS%202%20Foxy-blueviolet>)](#)
+[![OS: Ubuntu 20.04](<https://img.shields.io/badge/OS-Ubuntu%2020.04-lightgrey>)](#)
 
-> **⚠️ Confidentiality Notice:** This is currently a closed-source enterprise project. Do not distribute without authorization.
+> **Confidentiality Notice:** Đây là dự án nội bộ của AiRA-Laboratory. Không chia sẻ mã nguồn, tài liệu, log vận hành, hình ảnh robot hoặc dữ liệu test ra bên ngoài khi chưa được phép.
 
------
+## 1. Tổng quan
 
-## 1\. Project Overview
+**Happy Baby R1** là workspace nghiên cứu, tích hợp và vận hành robot hình người **Unitree R1**. Baseline hiện tại của repo là **Ubuntu 20.04 LTS + ROS 2 Foxy + CycloneDDS**.
 
-**Happy Baby Project** là dự án nghiên cứu trọng điểm tại AiRA-Lab, tập trung vào việc làm chủ công nghệ điều khiển và vận hành Robot hình người **Unitree G1**. Dự án được thiết kế để giải quyết bài toán Sim-to-Real, chuyển đổi các chính sách điều khiển (control policies) từ môi trường mô phỏng vật lý độ trung thực cao sang thực thể robot.
+> **Lưu ý:** ROS 2 Foxy đã EOL. Baseline này được chọn để khớp máy Ubuntu 20.04 hiện tại. Nếu cần ROS 2 Humble, hãy dùng Ubuntu 22.04 hoặc container/VM riêng.
 
-![](asset/fig/Unitree_R1_Specs-729x1024.jpg)
+![Happy Baby R1 workspace](media/images/Unitree_R1_Specs-729x1024.jpg)
 
-### Core Technologies
+## 2. Stack kỹ thuật
 
-  * **Hardware:** Unitree G1 (26 DOF), Jetson Orin NX Onboard Computer.
-  * **Simulation:** MuJoCo (Physics), Isaac Lab (Reinforcement Learning).
-  * **Communication:** ROS2 Humble, CycloneDDS (Optimized for Real-time).
-  * **Dev Stack:** Python 3.10 (JAX/PyTorch), C++17 (Low-level Control).
+| Nhóm                | Công nghệ / cấu hình                                                           |
+| :------------------- | :--------------------------------------------------------------------------------- |
+| Robot                | Unitree R1                                                                         |
+| Host OS              | Ubuntu 20.04 LTS                                                                   |
+| Middleware           | ROS 2 Foxy, CycloneDDS                                                             |
+| Python               | System Python 3.8 cho ROS 2, Conda env riêng cho AI/Simulation                    |
+| Build                | colcon, ament_cmake                                                                |
+| Simulation hiện có | Python local simulator, UDP state/control simulator, Unitree MuJoCo policy runtime |
+| Data / operation     | rosbag2, test log, SOP vận hành                                                  |
 
-![](asset/fig/draw.png)
-
------
-
-## 2\. Technical Objectives
-
-  * **System Hardening:** Thiết lập "Golden Machine" chuẩn hóa trên Ubuntu 22.04, đảm bảo tính đồng nhất 100% về môi trường giữa các máy trạm phát triển.
-  * **Real-time Pipeline:** Tối ưu hóa giao tiếp DDS qua mạng Ethernet để đạt tần số điều khiển High-level 500Hz và Low-level 1000Hz.
-  * **Unified SDK:** Tích hợp `unitree_sdk2_python` liền mạch giữa phần cứng thật và các simulator.
-  * **Deployment Automation:** Tự động hóa quy trình deploy code lên Jetson Orin NX thông qua các script launcher và systemd services.
-
------
-
-## 3\. Hardware & Software Specifications
-
-### Onboard Computer (Jetson Orin NX)
-
-| Parameter | Specification |
-| :--- | :--- |
-| **CPU** | 8-core Arm® Cortex®-A78AE |
-| **GPU** | 1024-core NVIDIA Ampere (32 Tensor Cores) |
-| **Memory** | 16GB LPDDR5 |
-| **Default IP** | `192.168.123.164` (Standard Unitree Config) |
-| **OS** | Ubuntu 22.04 LTS |
-
-### Software Prerequisites
-
-  * **Middleware:** ROS2 Humble Hawksbill.
-  * **DDS Provider:** CycloneDDS (Required for Unitree SDK2 connectivity).
-  * **Python Env:** `pyenv` / `virtualenv` (Python 3.10.12).
-  * **Drivers:** CUDA 12.x & cuDNN (cho các tác vụ AI/Isaac Lab).
-
------
-
-## 4\. Repository Structure
+## 3. Cấu trúc repo
 
 ```text
 .
-├── .github/                        # (DevOps) Workflows CI/CD, PR Templates
-├── docs/                           # (Documentation) Tài liệu dự án
-│   ├── hardware/                   # Specs của R1, sơ đồ mạch, pin
-│   ├── safety/                     # SOPs An toàn, Emergency Procedures
-│   └── architecture/               # Sơ đồ luồng dữ liệu, Network configs
-├── scripts/                        # (Tooling) Các script tự động hóa hệ thống
-│   ├── env_setup/                  # Script cài Zsh, Conda, Clang
-│   └── network/                    # Script cấu hình Static IP, CycloneDDS
-├── src/                            # (ROS2 Workspace) Mã nguồn lõi trên robot
-│   ├── r1_bringup/                 # Launch files tổng (chạy sim hoặc real)
-│   ├── r1_description/             # URDF, Meshes, cấu hình động học
-│   ├── r1_controllers/             # (C++) NMPC, LQR, Low-level control (1000Hz)
-│   ├── r1_hardware_interface/      # (C++) Bridge kết nối với unitree_sdk2
-│   └── r1_messages/                # Định nghĩa Custom ROS2 Interfaces/Messages
-├── sim/                            # (Simulation) Môi trường giả lập
-│   ├── mujoco_env/                 # (Python/C++) Scripts chạy MuJoCo, test Control
-│   └── isaac_lab_env/              # (Python) Môi trường RL, training tasks, configs
-├── ai_modules/                     # (AI/ML) Các module trí tuệ nhân tạo độc lập
-│   ├── voice_interaction/          # STT, TTS, LLM Prompts (Vietnamese pipeline)
-│   └── vision/                     # Xử lý ảnh từ Stereo Camera của R1
-├── data/                           # (Data Pipeline) LƯU Ý: Thư mục này bị ignore bởi Git
-│   ├── rosbags/                    # Log file ROS2 từ các buổi test
-│   ├── models/                     # Checkpoints của RL/LLM
-│   └── datasets/                   # Dữ liệu thu thập từ LeRobot (Imitation Learning)
-├── third_party/                    # (Dependencies) Thư viện bên ngoài (Submodules)
-│   ├── unitree_sdk2/               # C/C++ SDK gốc từ Unitree
-│   └── unitree_ros2/               # ROS2 Wrapper do Unitree cung cấp
-├── .gitignore                      # Ignore build/, install/, log/, data/
-├── requirements.txt                # Khóa phiên bản Python dependencies (Mujoco, numpy...)
-└── README.md                       # Trang chủ của Repository
+├── ai_modules/             # Vision/voice modules, tách khỏi robot control loop
+├── assets/                 # R1 USD/URDF, meshes và MuJoCo scenes — nguồn tĩnh dùng chung
+├── config/                 # DDS, mạng và cấu hình máy chủ
+├── data/                   # Datasets, models, checkpoints, rosbags, cache và log chạy
+├── docs/                   # SOP, safety, kiến trúc, hướng dẫn và báo cáo
+├── hardware/               # Tài sản/cấu hình dành riêng cho robot thật (không chứa secret)
+├── media/                  # Ảnh và video minh họa
+├── policies/               # Vùng tương thích artefact cũ; dùng data/policies cho run mới
+├── reports/                # Báo cáo train/eval/bridge theo mốc, không phải source code
+├── scripts/                # Entry points theo training, simulation, bridge và asset sync
+├── sim/                    # Mã mô phỏng nội bộ và MuJoCo policy runtime
+├── src/                    # ROS 2 packages cho build colcon và hardware integration
+├── test/                   # Smoke test môi trường, DDS và SDK
+├── training/               # R1 task/config overlay cho MJLab và Isaac Lab
+├── third_party/            # Upstream/vendor, không chỉnh sửa trực tiếp
+└── README.md
 ```
 
------
+Các thư mục `build/`, `install/`, `log/` là output cục bộ của ROS 2/colcon và không nên được dùng như nguồn tài liệu chính.
+Các README trong từng thư mục do dự án sở hữu mô tả ranh giới và nơi đặt file mới;
+không thêm README vào vendor hoặc output tái sinh.
 
-## 5\. System Setup & Integration Guide
+## 4. Quick Start
 
-### 5.1. Network Configuration
+### 4.1. Cài môi trường
 
-Để đảm bảo giao tiếp ổn định với G1, máy tính điều khiển (Host) phải được cấu hình Static IP cùng dải mạng với Robot.
+Tài liệu chính:
+
+- [Ubuntu 20.04 setup guide](docs/operations/ubuntu_20_04_lts_setup_guide.md)
+- [Development environment setup](docs/operations/development_environment_setup_guide.md)
+- [Third-party build](docs/operations/third-party_build.md)
+- [Isaac Lab / Unitree Sim end-to-end pipeline](docs/operations/isaaclab_installation.md)
+- [MJLab one-time setup](docs/operations/mjlab_installation.md)
+- [Unitree MuJoCo policy runtime](docs/operations/unitree_mujoco_policy_runtime.md)
+- [Quest 3 teleop cho Unitree Sim G1/Dex3](docs/operations/teleop_quest3_vi.md)
+- [Golden machine spec](docs/hardware/golden_machine_spec.md)
+
+### 4.2. Build ROS 2 workspace
 
 ```bash
-# Example Setup for Ethernet Interface
-sudo nmcli connection modify "Wired connection 1" \
-    ipv4.addresses 192.168.123.100/24 \
-    ipv4.method manual
-sudo nmcli connection up "Wired connection 1"
-```
-
-### 5.2. Workspace Initialization
-
-Việc build workspace phải tuân thủ trình tự để đảm bảo các gói `unitree_ros2` được link đúng với middleware:
-
-```bash
-# Clone with submodules
-git clone --recursive <repo_url>
-cd happy-baby-g1/src
-
-# Install dependencies
+source /opt/ros/foxy/setup.bash
 rosdep update
-rosdep install --from-paths . --ignore-src -y
-
-# Build with symlink
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+rosdep install --from-paths src --ignore-src -y --rosdistro foxy
+colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+source install/setup.bash
 ```
 
------
+### 4.3. Cấu hình DDS
 
-## 6\. Branching & Development Workflow
+```bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI=file://$PWD/config/cyclonedds_config.xml
+```
 
-Chúng tôi áp dụng mô hình **Git Flow** nghiêm ngặt để bảo vệ tính ổn định của hệ thống:
+Checklist liên quan:
 
-1.  **`main`**: Chỉ chứa mã nguồn đã pass kiểm tra trên robot thật.
-2.  **`develop`**: Nhánh tích hợp chính.
-3.  **`feature/*`**: Các nhánh phát triển tính năng mới (e.g., `feature/voice-integration`).
-4.  **`sim/*`**: Các nhánh dành riêng cho tuning mô phỏng (e.g., `sim/mujoco-contact-fix`).
+- [Network setup checklist](docs/operations/network_setup_checklist.md)
+- [Network static Ethernet](docs/operations/network_configuration_static_ethernet.md)
+- [DDS implementation](docs/operations/dds_implementation.md)
+- [Ubuntu 20.04/22.04 DDS compatibility test](docs/operations/practice/09_ubuntu_20_22_dds_compatibility_test.md)
+- [Network/DDS rationale](docs/architecture/network_dds_rationale.md)
 
-> **Rule:** Mọi Pull Request (PR) vào nhánh `develop` bắt buộc phải kèm theo video/log xác nhận đã chạy thành công trong mô phỏng.
+## 5. Chạy mô phỏng cục bộ
 
-### 6.1. Commit & Push Sync
+Chạy quỹ đạo mẫu:
 
-Để đồng bộ làm việc giữa các thành viên, mọi người thống nhất quy trình sau trước khi đẩy code lên GitHub:
+```bash
+python3 sim/robot_state_sim.py --mode path --hz 20 --steps 80
+```
 
-1.  Luôn cập nhật nhánh đang làm việc trước khi sửa: `git pull --rebase origin <branch>`.
-2.  Chỉ commit khi thay đổi đã được kiểm tra cục bộ và không còn file tạm, log rác, hoặc dữ liệu lớn không cần thiết.
-3.  Viết commit message ngắn gọn, theo kiểu hành động rõ ràng, ví dụ: `fix: update DDS reconnect logic`.
-4.  Push đúng nhánh đang phụ trách: `git push origin <branch>`.
-5.  Nếu có xung đột, ưu tiên báo nhóm và xử lý trên nhánh làm việc, không force push nếu chưa được thống nhất.
-6.  Khi hoàn tất một task lớn, tạo Pull Request vào `develop` và ghi rõ nội dung thay đổi, test đã chạy, và người review nếu có.
+Chạy chế độ nhập lệnh:
 
-> **Team rule:** Không commit trực tiếp lên `main`. Mọi thay đổi phải đi qua `feature/*` hoặc `sim/*`, sau đó mới hợp nhất về `develop`.
+```bash
+python3 sim/robot_state_sim.py --mode keyboard
+```
 
------
+Mô phỏng state/control 2 terminal:
 
-## 7\. Project Roles & Contact
+```bash
+python3 sim/unitree_r1_robot_sim.py --duration 12
+python3 sim/unitree_r1_controller_sim.py --duration 12
+```
 
-| Name | Role | Core Responsibility |
-| :--- | :--- | :--- |
-| **Nguyễn Trọng Giáp** | **Integration Lead** | Workspace, Network, DDS, Onboard Deployment |
-| **Phạm Ngọc Khánh** | **Simulation Lead** | Locomotion, MuJoCo/Isaac Lab, Sim-to-Real |
-| **Nguyễn Việt Anh** | **Operation Lead** | Data Pipeline, Voice Interaction, Safety SOP |
+Chạy thử policy trong Unitree MuJoCo:
 
------
+```bash
+python3 scripts/simulation/run_unitree_mujoco_official_g1.py \
+  --duration 20 \
+  --interface lo \
+  --auto-sim \
+  --auto-passive-seconds 0.5 \
+  --auto-fixstand-seconds 3.0 \
+  --viewer
+```
 
-## 8\. Safety First
+Quy ước hiện tại: `third_party/unitree_mujoco` giữ sạch theo upstream, `third_party/unitree_rl_mjlab` là nguồn policy ONNX/motion artifact của Unitree, còn script runtime local nằm trong `sim/unitree_mujoco_policy`; ONNX/motion symlink nằm trong `data/models/unitree_mujoco_policy`. Ưu tiên controller C++ chính thức của `unitree_rl_mjlab`; runner Python chỉ dùng để debug/log nhanh. Xem README ở từng thư mục trước khi thêm file mới.
 
-Robot G1 có động lực học phức tạp và sức mạnh lớn. Tất cả thành viên phải tuân thủ:
+Tài liệu thực hành: [08_state_control_sim.md](docs/operations/practice/08_state_control_sim.md)
 
-1.  Luôn có người trực nút Emergency Stop khi vận hành.
-2.  Tuyệt đối không vận hành robot một mình.
-3.  Tuân thủ bảng mã lỗi và quy trình xử lý sự cố trong `docs/safety/Emergency_Procedure.md`.
+Tài liệu MuJoCo policy: [unitree_mujoco_policy_runtime.md](docs/operations/unitree_mujoco_policy_runtime.md)
 
------
+## 6. Kiểm thử nhanh
 
-*© 2026 AiRA-Laboratory. All Rights Reserved.*
+```bash
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+python3 test/test_dds_node.py
+```
+
+Kiểm tra môi trường AI hoặc SDK theo nhu cầu:
+
+```bash
+python3 test/test_ai_env.py
+python3 test/test_unitree_dds_helloworld.py
+```
+
+## 7. Tài liệu chính
+
+Điểm vào tài liệu: [docs/README.md](docs/README.md)
+
+- Thành viên mới: [Practice index](docs/operations/practice/README.md)
+- Người vận hành: [SOP_v0.md](docs/operations/SOP_v0.md), [Safety rules](docs/safety/safety_rules.md)
+- Kỹ sư tích hợp: [Third-party build](docs/operations/third-party_build.md), [DDS implementation](docs/operations/dds_implementation.md)
+- Kỹ sư mô phỏng: [Development environment setup](docs/operations/development_environment_setup_guide.md), [Isaac Lab / Unitree Sim end-to-end pipeline](docs/operations/isaaclab_installation.md), [MJLab one-time setup](docs/operations/mjlab_installation.md), [Unitree MuJoCo policy runtime](docs/operations/unitree_mujoco_policy_runtime.md), [Quest 3 teleop cho Unitree Sim G1/Dex3](docs/operations/teleop_quest3_vi.md), [rosbag2 operation](docs/operations/rosbag2_operation.md)
+
+## 8. An toàn vận hành
+
+Robot thật chỉ được vận hành khi đã thỏa các điều kiện an toàn:
+
+1. Có người phụ trách nút Emergency Stop.
+2. Không vận hành robot một mình.
+3. Kiểm tra khu vực lab, nguồn điện, mạng, trạng thái robot và log trước khi chạy.
+4. Chạy simulation hoặc dry-run trước khi chuyển lệnh sang hardware thật.
+5. Ghi lại kết quả theo [test log template](docs/templates/test_log_template.md).
+
+---
+
+© 2026 AiRA-Laboratory. All Rights Reserved.

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "record_type": "editable_case_run_selection",
+  "study_id": "t004",
+  "selection_id": "initial_sweep_20260811T044700Z",
+  "selection_reason": "First complete execution of the 22 predeclared T004 cases. Every manifest case is retained exactly once; no scientific failure was filtered.",
+  "aggregate_output": "T004/figures/t004_initial_20260811T044700Z",
+  "case_to_run_id": {
+    "right_baseline": "t004_right_baseline_20260811T044658Z",
+    "left_baseline": "t004_left_baseline_20260811T044658Z",
+    "right_yaw_neg10deg": "t004_right_yaw_neg10deg_20260811T044659Z",
+    "left_yaw_neg10deg": "t004_left_yaw_neg10deg_20260811T044659Z",
+    "right_yaw_neg5deg": "t004_right_yaw_neg5deg_20260811T044659Z",
+    "left_yaw_neg5deg": "t004_left_yaw_neg5deg_20260811T044659Z",
+    "right_yaw_pos5deg": "t004_right_yaw_pos5deg_20260811T044659Z",
+    "left_yaw_pos5deg": "t004_left_yaw_pos5deg_20260811T044659Z",
+    "right_yaw_pos10deg": "t004_right_yaw_pos10deg_20260811T044659Z",
+    "left_yaw_pos10deg": "t004_left_yaw_pos10deg_20260811T044659Z",
+    "right_tx_neg30mm": "t004_right_tx_neg30mm_20260811T044659Z",
+    "left_tx_neg30mm": "t004_left_tx_neg30mm_20260811T044659Z",
+    "right_tx_pos30mm": "t004_right_tx_pos30mm_20260811T044659Z",
+    "left_tx_pos30mm": "t004_left_tx_pos30mm_20260811T044659Z",
+    "right_ty_neg30mm": "t004_right_ty_neg30mm_20260811T044659Z",
+    "left_ty_neg30mm": "t004_left_ty_neg30mm_20260811T044659Z",
+    "right_ty_pos30mm": "t004_right_ty_pos30mm_20260811T044659Z",
+    "left_ty_pos30mm": "t004_left_ty_pos30mm_20260811T044659Z",
+    "right_tz_neg30mm": "t004_right_tz_neg30mm_20260811T044659Z",
+    "left_tz_neg30mm": "t004_left_tz_neg30mm_20260811T044659Z",
+    "right_tz_pos30mm": "t004_right_tz_pos30mm_20260811T044659Z",
+    "left_tz_pos30mm": "t004_left_tz_pos30mm_20260811T044700Z"
+  }
+}

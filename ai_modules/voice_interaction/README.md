@@ -3,6 +3,9 @@
 Ứng dụng hội thoại thời gian thực cho Robot Hạnh Phúc Unitree R1, sử dụng
 Pipecat, OpenAI Realtime API và mic/loa tích hợp của robot.
 
+Mọi lệnh tác động robot phải qua lớp xác nhận an toàn; module voice không gọi
+actuator trực tiếp.
+
 ## Luồng âm thanh
 
 ```text

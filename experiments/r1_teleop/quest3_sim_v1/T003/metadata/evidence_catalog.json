@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "record_type": "editable_protocol_case_catalog",
+  "experiment_id": "r1_teleop/quest3_sim_v1/T003",
+  "purpose": "Editable case selection for the T003 split. Immutable provenance remains in runs/<run-id>/.",
+  "catalog_rules": {
+    "run_directory_is_an_execution_unit": true,
+    "case_may_select_a_record_subset_from_one_execution_unit": true,
+    "raw_evidence_is_never_moved_or_rewritten_to_reclassify_it": true,
+    "selected_for_follow_up_requires_an_explicit_reason": true
+  },
+  "protocols": [
+    {
+      "protocol_id": "t003_a",
+      "evaluation_part": "nominal_rate_limited_tracking",
+      "cases": [{"case_id": "nominal", "source_runs": [{"run_id": "t003_a_nominal_20260811T034825Z", "record_selector": "all run records"}], "execution_status": "completed", "scientific_outcome": "unassessed", "selected_for_follow_up": true, "selection_reason": "Selected atomic nominal baseline; all waypoints converged, target envelope verified, and no safety hold was injected."}]
+    },
+    {
+      "protocol_id": "t003_b",
+      "evaluation_part": "fail_closed_hold_transitions",
+      "cases": [
+        {"case_id": "deadman", "source_runs": [{"run_id": "t003_b_deadman_20260811T034914Z", "record_selector": "all run records"}], "execution_status": "completed", "scientific_outcome": "unassessed", "selected_for_follow_up": true, "selection_reason": "Atomic deadman hold verified with zero lower-body/base dispatch."},
+        {"case_id": "timeout", "source_runs": [{"run_id": "t003_b_timeout_20260811T035009Z", "record_selector": "all run records"}], "execution_status": "completed", "scientific_outcome": "unassessed", "selected_for_follow_up": true, "selection_reason": "Atomic timeout hold verified with zero lower-body/base dispatch."},
+        {"case_id": "sequence", "source_runs": [{"run_id": "t003_b_sequence_20260811T035058Z", "record_selector": "all run records"}], "execution_status": "completed", "scientific_outcome": "unassessed", "selected_for_follow_up": true, "selection_reason": "Atomic sequence-rejection hold verified with zero lower-body/base dispatch."}
+      ]
+    },
+    {
+      "protocol_id": "t003",
+      "evaluation_part": "legacy_combined_replay",
+      "cases": [
+        {"case_id": "legacy_combined_runs", "source_runs": [{"run_id": "t003_20260811T015811Z", "record_selector": "all run records"}, {"run_id": "t003_20260811T020000Z", "record_selector": "all run records"}, {"run_id": "t003_20260811T020244Z", "record_selector": "all run records"}], "execution_status": "completed", "scientific_outcome": "superseded", "selected_for_follow_up": false, "selection_reason": "Pre-split executions mixed nominal tracking and several safety injections; retained for diagnosis only."}
+      ]
+    }
+  ]
+}

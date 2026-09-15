@@ -1,0 +1,13 @@
+{
+  "case_count": 22,
+  "command": "scripts/teleop/plot_r1_t004_calibration_study.py --case-table experiments/r1_teleop/quest3_sim_v1/T004/figures/t004_initial_20260811T044700Z/case_table.csv --output-dir experiments/r1_teleop/quest3_sim_v1/T004/figures/t004_initial_20260811T044700Z",
+  "failure_encoding": "x marker for non-convergence or a joint clamp; circle otherwise",
+  "output": "/home/ubuntu22/Projects/Happy-Baby-R1/experiments/r1_teleop/quest3_sim_v1/T004/figures/t004_initial_20260811T044700Z/calibration_sensitivity.png",
+  "quantities": {
+    "panel_a": "minimum_limit_margin_rad from case_metrics.json",
+    "panel_b": "1000 * max_target_displacement_m from case_metrics.json"
+  },
+  "schema_version": 1,
+  "source_case_table": "/home/ubuntu22/Projects/Happy-Baby-R1/experiments/r1_teleop/quest3_sim_v1/T004/figures/t004_initial_20260811T044700Z/case_table.csv",
+  "transformations": "unit conversion m to mm only for panel B; no filtering, smoothing, interpolation, normalization, or case exclusion"
+}

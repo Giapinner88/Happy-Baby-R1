@@ -1,0 +1,73 @@
+<mujoco model="r1 terrain playground">
+  <include file="R1.xml"/>
+
+  <statistic center="-0.9 0.15 0.75" extent="2.8"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.1 0.1 0.1" specular="0.9 0.9 0.9"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-140" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="flat" rgb1="0 0 0" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="8 8" reflectance="0.2"/>
+    <material name="lane_flat" rgba="0.16 0.23 0.30 1"/>
+    <material name="lane_slope" rgba="0.35 0.50 0.38 1"/>
+    <material name="lane_stairs" rgba="0.48 0.49 0.50 1"/>
+    <material name="lane_rough" rgba="0.31 0.42 0.34 1"/>
+    <material name="lane_obstacle" rgba="0.24 0.33 0.58 1"/>
+    <material name="obstacle_red" rgba="0.65 0.18 0.16 1"/>
+    <material name="marker" rgba="0.85 0.75 0.25 0.35"/>
+  </asset>
+
+  <worldbody>
+    <light pos="1 0 3.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" friction="1 1 1"/>
+    <site name="world_hang_site" pos="0 0 0.92" size="0.035" rgba="0.2 0.8 1 1"/>
+
+    <geom name="start_pad" type="box" pos="0 0 0.003" size="0.55 0.55 0.003" material="lane_flat" contype="0" conaffinity="0"/>
+    <geom name="flat_lane_marker" type="box" pos="-1.0 -1.15 0.004" size="1.25 0.06 0.004" material="marker" contype="0" conaffinity="0"/>
+    <geom name="stairs_lane_marker" type="box" pos="-1.0 0 0.004" size="1.25 0.06 0.004" material="marker" contype="0" conaffinity="0"/>
+    <geom name="slope_lane_marker" type="box" pos="-1.0 1.15 0.004" size="1.25 0.06 0.004" material="marker" contype="0" conaffinity="0"/>
+    <geom name="rough_lane_marker" type="box" pos="-1.15 2.05 0.004" size="1.40 0.06 0.004" material="marker" contype="0" conaffinity="0"/>
+
+    <geom name="flat_pad_1" type="box" pos="-0.6 -1.15 0.01" size="0.35 0.42 0.01" material="lane_flat" friction="1 1 1"/>
+    <geom name="flat_pad_2" type="box" pos="-1.25 -1.15 0.018" size="0.28 0.42 0.018" material="lane_flat" friction="1 1 1"/>
+    <geom name="flat_pad_3" type="box" pos="-1.85 -1.15 0.026" size="0.28 0.42 0.026" material="lane_flat" friction="1 1 1"/>
+
+    <geom name="step_1" type="box" pos="-0.65 0 0.025" size="0.18 0.48 0.025" material="lane_stairs" friction="1 1 1"/>
+    <geom name="step_2" type="box" pos="-1.01 0 0.05" size="0.18 0.48 0.05" material="lane_stairs" friction="1 1 1"/>
+    <geom name="step_3" type="box" pos="-1.37 0 0.075" size="0.18 0.48 0.075" material="lane_stairs" friction="1 1 1"/>
+    <geom name="step_4" type="box" pos="-1.73 0 0.10" size="0.18 0.48 0.10" material="lane_stairs" friction="1 1 1"/>
+
+    <geom name="ramp_up" type="box" pos="-0.82 1.15 0.10" size="0.62 0.45 0.025" quat="0.994522 0 0.104528 0" material="lane_slope" friction="1 1 1"/>
+    <geom name="ramp_platform" type="box" pos="-1.48 1.15 0.20" size="0.36 0.45 0.025" material="lane_slope" friction="1 1 1"/>
+
+    <geom name="rough_visual_pad" type="box" pos="-1.15 2.05 0.003" size="1.45 0.48 0.003" material="lane_rough" contype="0" conaffinity="0"/>
+    <geom name="rough_bump_01" type="box" pos="-0.42 1.82 0.012" size="0.12 0.08 0.012" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_02" type="box" pos="-0.47 2.05 0.020" size="0.10 0.11 0.020" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_03" type="box" pos="-0.40 2.28 0.015" size="0.13 0.09 0.015" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_04" type="box" pos="-0.78 1.92 0.030" size="0.14 0.10 0.030" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_05" type="box" pos="-0.84 2.18 0.018" size="0.11 0.12 0.018" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_06" type="box" pos="-1.08 1.78 0.022" size="0.10 0.13 0.022" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_07" type="box" pos="-1.15 2.02 0.010" size="0.15 0.08 0.010" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_08" type="box" pos="-1.12 2.30 0.035" size="0.10 0.10 0.035" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_09" type="box" pos="-1.45 1.88 0.016" size="0.12 0.12 0.016" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_10" type="box" pos="-1.52 2.12 0.028" size="0.13 0.09 0.028" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_11" type="box" pos="-1.75 1.78 0.038" size="0.09 0.11 0.038" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_12" type="box" pos="-1.84 2.02 0.018" size="0.14 0.10 0.018" material="lane_rough" friction="1 1 1"/>
+    <geom name="rough_bump_13" type="box" pos="-1.78 2.28 0.026" size="0.11 0.12 0.026" material="lane_rough" friction="1 1 1"/>
+
+    <geom name="low_bar_left" type="box" pos="-0.55 -1.95 0.045" size="0.20 0.035 0.045" material="obstacle_red" friction="1 1 1"/>
+    <geom name="low_bar_right" type="box" pos="-0.55 -1.58 0.045" size="0.20 0.035 0.045" material="obstacle_red" friction="1 1 1"/>
+    <geom name="center_block" type="box" pos="-1.0 -1.76 0.06" size="0.14 0.14 0.06" material="lane_obstacle" friction="1 1 1"/>
+    <geom name="offset_block_left" type="box" pos="-1.45 -1.95 0.055" size="0.12 0.16 0.055" material="lane_obstacle" friction="1 1 1"/>
+    <geom name="offset_block_right" type="box" pos="-1.85 -1.58 0.055" size="0.12 0.16 0.055" material="lane_obstacle" friction="1 1 1"/>
+  </worldbody>
+
+  <equality>
+    <connect name="r1_hanging_connect" site1="world_hang_site" site2="pelvis_hang_site" active="true" solref="0.005 1"/>
+  </equality>
+</mujoco>

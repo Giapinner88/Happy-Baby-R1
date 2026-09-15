@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "record_type": "editable_protocol_case_catalog",
+  "experiment_id": "r1_teleop/quest3_sim_v1/T002",
+  "purpose": "Editable case selection for T002. Immutable provenance remains in runs/<run-id>/.",
+  "catalog_rules": {
+    "run_directory_is_an_execution_unit": true,
+    "case_may_select_a_record_subset_from_one_execution_unit": true,
+    "raw_evidence_is_never_moved_or_rewritten_to_reclassify_it": true,
+    "selected_for_follow_up_requires_an_explicit_reason": true
+  },
+  "protocols": [
+    {
+      "protocol_id": "t002",
+      "evaluation_part": "workspace_reachability_without_self_collision",
+      "cases": [
+        {
+          "case_id": "t002_a_left_workspace",
+          "source_runs": [{"run_id": "t002_nocollide_20260802T120645Z", "record_selector": "targets.json where side == left"}],
+          "execution_status": "completed",
+          "scientific_outcome": "bounded_by_seed_dependence",
+          "selected_for_follow_up": true,
+          "selection_reason": "Functional no-self-collision condition; left-arm targets remain independently inspectable."
+        },
+        {
+          "case_id": "t002_a_right_workspace",
+          "source_runs": [{"run_id": "t002_nocollide_20260802T120645Z", "record_selector": "targets.json where side == right"}],
+          "execution_status": "completed",
+          "scientific_outcome": "bounded_by_seed_dependence",
+          "selected_for_follow_up": true,
+          "selection_reason": "Functional no-self-collision condition; right-arm targets seed T003."
+        }
+      ]
+    },
+    {
+      "protocol_id": "t002",
+      "evaluation_part": "self_collision_ab_probe",
+      "cases": [
+        {
+          "case_id": "t002_b_left_collision_pair",
+          "source_runs": [{"run_id": "t002_collide_20260802T120409Z", "record_selector": "targets.json where side == left"}, {"run_id": "t002_nocollide_20260802T120645Z", "record_selector": "targets.json where side == left"}],
+          "execution_status": "completed",
+          "scientific_outcome": "blocked_with_self_collisions",
+          "selected_for_follow_up": true,
+          "selection_reason": "Controlled left-arm A/B evidence; do not use as collision-free workspace evidence."
+        },
+        {
+          "case_id": "t002_b_right_collision_pair",
+          "source_runs": [{"run_id": "t002_collide_20260802T120409Z", "record_selector": "targets.json where side == right"}, {"run_id": "t002_nocollide_20260802T120645Z", "record_selector": "targets.json where side == right"}],
+          "execution_status": "completed",
+          "scientific_outcome": "blocked_with_self_collisions",
+          "selected_for_follow_up": true,
+          "selection_reason": "Controlled right-arm A/B evidence; do not use as collision-free workspace evidence."
+        }
+      ]
+    }
+  ]
+}

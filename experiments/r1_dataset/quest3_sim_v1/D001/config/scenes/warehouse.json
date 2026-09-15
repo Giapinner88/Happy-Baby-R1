@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "experiment_id": "d001",
+  "title": "D001 — nhà kho",
+  "mode": "simulation_only",
+  "status": "declared_not_implemented",
+  "status_note": "Chưa có code nào đọc file này. Nó là bản khai báo để hiện thực hoá theo; sửa nó không thay đổi hành vi của bất kỳ lệnh nào cho tới khi PLAN.md Giai đoạn 2 và 4 hoàn thành.",
+  "method_record": "experiments/r1_dataset/quest3_sim_v1/D001/D001.md",
+  "teleop_source": {
+    "entry_point": "make teleop",
+    "profile": "experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_whole_upper_body_live.json",
+    "body_mode": "arms_head",
+    "body_mode_reason": "Đóng băng thân để thân không xoay đuổi theo mục tiêu ngoài tầm với, thứ làm nhiễu quan hệ giữa ảnh quan sát và tư thế tay.",
+    "control_hz": 30.0,
+    "physics_hz": 200.0,
+    "device": "cuda:0",
+    "device_reason": "USDRT scenegraph chỉ hỗ trợ cuda:0; cuda:1 báo lỗi khi bật render."
+  },
+  "task_text": {
+    "goal": "Reach the right hand to the mustard bottle on the table.",
+    "desc": "The operator wears a Quest 3, holds the right trigger, and moves the robot's right hand to the yellow mustard bottle standing on the table in front of it. The head may follow. No grasping: this R1 asset has no end effector, so both end-effector joint groups are empty.",
+    "steps": "step1: hold the right trigger to enable motion; step2: move the right hand to the mustard bottle; step3: hold still for about one second; step4: release the trigger; step5: press the left trigger to end the episode and reset."
+  },
+  "scene": {
+    "objects": [
+      {
+        "name": "mustard_bottle",
+        "kind": "ycb_rigid",
+        "asset": "006_mustard_bottle",
+        "prim_path": "/World/DatasetObject_0",
+        "position_m": [
+          0.37,
+          -0.12,
+          0.93
+        ],
+        "placement_note": "Cách vai cùng bên 0.330 m, nằm TRONG tầm với 0.383 m. Thả từ z=1.00 xuống mặt bàn 0.95. Đổi ngày 2026-09-05 từ vị trí ngoài tầm (0.55 m): D001 chuyển từ task 'chỉ tay' sang task 'vươn tới', nên vật phải chạm được.",
+        "reach_check_m": 0.358,
+        "reach_ok": true
+      },
+      {
+        "name": "sugar_box",
+        "kind": "ycb_rigid",
+        "asset": "004_sugar_box",
+        "prim_path": "/World/DatasetObject_1",
+        "position_m": [
+          0.37,
+          0.12,
+          0.93
+        ],
+        "placement_note": "Cách vai cùng bên 0.330 m, nằm TRONG tầm với 0.383 m. Thả từ z=1.00 xuống mặt bàn 0.95. Đổi ngày 2026-09-05 từ vị trí ngoài tầm (0.55 m): D001 chuyển từ task 'chỉ tay' sang task 'vươn tới', nên vật phải chạm được.",
+        "reach_check_m": 0.358,
+        "reach_ok": true
+      }
+    ],
+    "no_physics_reason": "Vật thuần hình ảnh không rơi, không cần bàn, không cần logic reset, và không đụng vào physics của robot.",
+    "table": {
+      "kind": "primitive_box",
+      "center_m": [
+        0.7,
+        0.0,
+        0.44
+      ],
+      "size_m": [
+        0.7,
+        1.2,
+        0.88
+      ],
+      "surface_z_m": 0.88,
+      "occupies_m": {
+        "x": [
+          0.35,
+          1.05
+        ],
+        "y": [
+          -0.6,
+          0.6
+        ],
+        "z": [
+          0.0,
+          0.88
+        ]
+      },
+      "kinematic": true,
+      "clearance_note": "Robot bbox trải x[-0.066, 0.304] nên mép bàn ở x=0.35 chừa 0.046 m. Đo ngày 2026-09-04.",
+      "why_not_nvidia_props": "Đã thử hai asset bàn chuẩn và cả hai đều không dùng được cho R1. Props/Mounts/SeattleLabTable/table_instanceable.usd KHÔNG có collision (thả bi thử, bi rơi xuyên xuống sàn) và hình khối của nó trải x[-0.865,0.554] y[-0.460,1.200] z[-1.040,0.715] quanh gốc, tức hơn nửa bàn nằm dưới sàn và mặt bằng chồng lên chỗ robot — nhìn ra màn hình thành 'robot đứng trên bàn'. Props/PackingTable/packing_table.usd có collision, mặt ở z=0.994, nhưng rộng 2.474 m nên muốn đẩy khỏi robot phải để tâm ở x>=1.59, vượt tầm với. Khối hộp tự dựng cho đúng kích thước, chắc chắn có collision và không phải tải gì.",
+      "height_rationale": "Hạ từ 0.95 xuống 0.88 m ngày 2026-09-06 theo yêu cầu đưa bàn về gần tầm tay nghỉ. Tay ở tư thế gốc (mọi khớp = 0) nằm ở z = 0.781, đo trong Isaac. Nhưng đặt mặt bàn đúng 0.78 thì KHÔNG với tới được: ở độ cao đó chênh cao 0.22 m ăn hết ngân sách tầm với 0.383 m, x xa nhất chỉ tới 0.345 trong khi mép bàn không thể gần hơn 0.35 vì chân robot chìa tới 0.304. Dải dùng được rỗng. Ở 0.88 m dải là [0.35, 0.394], rộng 4.4 cm — thấp hơn 7 cm so với trước mà vẫn với tới được. Muốn bàn đúng 0.78 thì phải đặt bên hông (xem scenes/README.md)."
+    },
+    "objects_note": "Chỉ bốn vật YCB trong kho Isaac 5.1 có biến thể physics (003_cracker_box, 004_sugar_box, 005_tomato_soup_can, 006_mustard_bottle). Vật khác phải dùng kind='ycb_static'. Thả từ z=1.00 làm vật lật nghiêng khi chạm bàn (0.80); hạ xuống 0.86 để chúng đáp nhẹ và đứng thẳng.",
+    "environment": {
+      "name": "warehouse",
+      "fill_light_intensity": 1200.0
+    }
+  },
+  "cameras": {
+    "head_camera": {
+      "prim_path": "/World/Robot/head_yaw_link/head_camera",
+      "parent_link": "head_yaw_link",
+      "parent_link_reason": "Link xa nhất của chuỗi đầu (waist_yaw_link -> head_pitch_joint -> head_pitch_link -> head_yaw_joint -> head_yaw_link), nên camera xoay theo cả pitch lẫn yaw.",
+      "width": 640,
+      "height": 480,
+      "binocular": false,
+      "data_types": [
+        "rgb"
+      ],
+      "focal_length_mm": 7.6,
+      "horizontal_aperture_mm": 20.0,
+      "focus_distance": 400.0,
+      "clipping_range_m": [
+        0.1,
+        100000.0
+      ],
+      "horizontal_fov_deg_derived": 105.5,
+      "update_period_s": 0.02,
+      "offset_pos_m": [
+        0.06,
+        0.0,
+        0.03
+      ],
+      "offset_rot_wxyz": [
+        0.37993,
+        -0.59637,
+        0.59637,
+        -0.37993
+      ],
+      "offset_convention": "ros",
+      "parameter_source": "unitree_sim_isaaclab/tasks/common_config/camera_configs.py, CameraBaseCfg.get_camera_config — cùng bộ tham số Unitree dùng cho front_cam trên G1/H1-2.",
+      "rotation_check": "Chúc xuống 25°: cam +Z -> (0.906, 0, -0.423) của link đầu, cam +X -> (0,-1,0) (bên phải robot). Quy ước ROS. Nhìn thẳng (quat 0.5,-0.5,0.5,-0.5) thì hai tay robot nằm ngoài khung hình — kiểm bằng ảnh render ngày 2026-09-04 — nên chính sách học sẽ không nhìn thấy chính tay mình.",
+      "pitch_down_deg": 25.0
+    }
+  },
+  "record": {
+    "format": "unitree_episode_v1.0.0",
+    "writer_reference": "third_party/xr_teleoperate/teleop/utils/episode_writer.py",
+    "fps": 30,
+    "image_size_wh": [
+      640,
+      480
+    ],
+    "episode_boundary": {
+      "source": "left_trigger_rising_edge",
+      "existing_meaning": "teleop/r1/whole_upper_body.py:186 reset_session — đưa khớp về nominal và xoá mốc neo",
+      "mapping": "kết thúc episode hiện tại, lưu, bắt đầu episode mới"
+    },
+    "joint_names": {
+      "left_arm": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint"
+      ],
+      "right_arm": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint"
+      ],
+      "body": [
+        "head_pitch_joint",
+        "head_yaw_joint"
+      ],
+      "left_ee": [],
+      "right_ee": []
+    },
+    "ee_empty_reason": "assets/R1.urdf không có khớp ngón hay gripper; chuỗi khớp kết thúc ở wrist_roll_joint.",
+    "states_source": "vị trí khớp đo được sau bước physics (post_physics_whole_upper_body_position_rad, post_physics_head_position_rad)",
+    "actions_source": "lệnh khớp đã qua rate limiter và được dispatch (limited_joint_target_rad)",
+    "states_actions_note": "state là cái robot đang ở, action là cái ta bảo nó tới. Ghi nhầm một trong hai thành cái kia làm hỏng dataset một cách âm thầm.",
+    "fps_note": "Đây là nhịp YÊU CẦU. Nhịp THẬT được đo cho từng episode và ghi vào info.image.fps của chính episode đó; giá trị này đi kèm dưới tên info.image.fps_requested. Đo ngày 2026-09-04: 8.9 và 10.5 Hz cho hai episode sinh từ replay t007_whole_upper_body_20260820T140045Z."
+  },
+  "episode_rejection": {
+    "reject_if": [
+      "bridge phát sự kiện disconnected trong episode",
+      "deadman bị nhả giữa chừng rồi giữ lại trong cùng episode",
+      "solver_solution_kind = projected vượt quá 20% số bước của episode"
+    ],
+    "accounting": "Episode bị loại KHÔNG bị xoá: nó được chuyển sang episodes_rejected/ kèm lý do trong data.json, và episode_index.json của run ghi bản kiểm đếm theo từng lý do.",
+    "max_projected_fraction": 0.2,
+    "min_items": 30,
+    "min_items_note": "Thêm 2026-09-05. Profile ban đầu không khai điều kiện độ dài, nhưng bộ ghi cắt episode ở mọi bước không được chấp nhận, nên một lần nhấp cò lỡ tay sinh ra episode 1-2 item. Ở nhịp đo được ~9 Hz, 30 item là khoảng 3.3 giây — ngắn hơn thế thì không chứa nổi một lần vươn tay.",
+    "structurally_satisfied": [
+      "bridge phát sự kiện disconnected trong episode",
+      "deadman bị nhả giữa chừng rồi giữ lại trong cùng episode"
+    ],
+    "structurally_satisfied_note": "Hai điều kiện này không cần kiểm tra: bộ ghi cắt episode ở MỌI bước không được chấp nhận, nên không episode nào chứa được một khoảng ngắt. Kiểm tra lại sẽ không bao giờ đúng.",
+    "enforced_by": "teleop/r1/dataset_episode.py RejectionPolicy.evaluate",
+    "resolved_2026_09_05": "Mâu thuẫn đã giải: D001 thành task 'vươn tới', vật nằm trong tầm, nên nghiệm projected lại đúng nghĩa là bám hỏng và luật max_projected_fraction=0.20 giữ nguyên ý nghĩa."
+  },
+  "acceptance": {
+    "min_valid_episodes": 20,
+    "min_achieved_control_hz": null,
+    "min_achieved_control_hz_status": "chưa xác định — phải đo, không được đặt bằng phỏng đoán",
+    "measurement_note": "Đo ngày 2026-09-03 bằng replay của t007_waist_held_isaac_20260823_v25 (deadman bật 100% suốt 46.8 s): achieved_control_hz = 15.7, tức bộ giải coupled tốn khoảng 60 ms mỗi lần solve và KHÔNG giữ được 30 Hz khi phải giải liên tục. Run live t007_whole_upper_body_20260903T021432Z đạt 30.03 Hz chỉ vì 528/1083 bước là hold (deadman nhả), tức chỉ giải nửa số bước. Ngưỡng 29.0 Hz đặt ban đầu là sai: nó không đạt được với chuyển động liên tục, mà dataset thì toàn chuyển động liên tục. Trước khi chốt ngưỡng, phải đo một phiên teleop giữ deadman liên tục và lấy con số thật. Cập nhật 2026-09-04: achieved_control_hz của cả run (27.4) KHÔNG phải nhịp của dataset. Trong một episode, các item là những bước điều khiển LIÊN TIẾP (Δcontrol_step = 1 ở mọi cặp), nhưng Δt trung vị là 0.083 s tức ~12 Hz. Con số 27.4 bị thổi lên bởi các đoạn robot đứng yên: lúc đó không phải giải IK và không phải render ảnh nên vòng lặp chạy rất nhanh. Nhịp thật của dữ liệu là 8.9-10.5 Hz."
+  },
+  "validity": {
+    "invalid_if": [
+      "base velocity is dispatched",
+      "the root is not fixed",
+      "achieved control rate falls below the declared minimum",
+      "the image count does not match the recorded step count",
+      "an image and the state/action pair sharing an idx did not come from the same control step",
+      "the resolved configuration is not written alongside the run"
+    ],
+    "scientific_failure_if": [
+      "states and actions are recorded from the same source",
+      "rejected episodes are dropped without being counted",
+      "a projected (non-exact) solver solution is presented as exact tracking"
+    ],
+    "hardware_claim": "none"
+  },
+  "known_gaps": [
+    "R1 không có end-effector: không có chiều gripper trong action, và không có task thao tác nào biểu diễn được.",
+    "Chỉ một camera đơn: chưa có stereo, chưa có camera cổ tay.",
+    "Chưa có depth: chỉ ghi rgb.",
+    "Chưa đo được độ trễ ảnh tới kính; đó là cổng ra của PLAN.md Giai đoạn 3.",
+    "Nhịp dữ liệu thật chỉ 8.9-10.5 Hz. Nếu cần cao hơn thì phải giảm chi phí mỗi bước: hạ độ phân giải camera đầu, hoặc giảm số vòng lặp của bộ giải IK. Chưa thử cả hai.",
+    "Vị trí vật KHÔNG quyết định tỉ lệ projected — vị trí bàn tay NGƯỜI mới quyết định. Đo trên t007_whole_upper_body_20260820T140045Z: 61% mục tiêu cổ tay vượt tầm 0.383 m (trung vị 0.394 m, lớn nhất 0.502 m), khớp đúng 59-60% projected mà chính sách loại bắt được. Mọi phiên replay đã ghi TRƯỚC khi có bàn đều sẽ bị loại, và đó là hành vi đúng. Cách hạ tỉ lệ này là position_scale, nhưng tham số đó CHỈ áp cho bộ điều khiển differential, không áp cho đường coupled đang dùng (metrics của run d001 đầu tiên ghi effective_position_scale = null). Vậy chỉ còn hai đường: thu phiên trực tiếp với người vận hành nhìn thấy vật, hoặc thêm hệ số tỉ lệ cho đường coupled."
+  ],
+  "scene_variant": "warehouse",
+  "scene_variant_note": "Cảnh công nghiệp rộng, nhẹ hơn hospital/office."
+}

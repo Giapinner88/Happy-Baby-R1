@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "experiment_id": "d002",
+  "title": "R1 Quest 3 VLA number-pointing dataset, simulation only",
+  "mode": "simulation_only",
+  "status": "implemented_pilot",
+  "status_note": "Pipeline upstream trực tiếp đã được xác nhận trong d002_20260908T020005Z ở control 30.008 Hz nhưng camera/dataset mới đạt preset cũ 7.988-8.018 FPS. Converter project-owned arms_head đã chuyển và validate đủ 12 chiều (10 tay + head pitch/yaw) trên 733 frame của run này. Preset editable hiện yêu cầu 30 FPS và vẫn phải qua pilot 3-5 episode trước production; task QA chưa đạt vì 4/7 episode dùng tay trái trong khi nhãn yêu cầu tay phải.",
+  "method_record": "experiments/r1_dataset/quest3_sim_v1/D002/D002.md",
+  "controller_pipeline": {
+    "default": "upstream_xr_teleoperate_R1_A5_ArmIK",
+    "processes": [
+      "Quest bridge in tv",
+      "xr_teleoperate R1_A5_ArmIK stream solver in tv",
+      "Isaac joint-stream consumer in unitree_sim_env",
+      "bounded JPEG/JSON writer thread"
+    ],
+    "reason": "Run d002_20260907T040321Z showed 465/486 accepted targets were projected and the in-process solver spent 31-64 iterations on them; projected control steps averaged 0.202 s. The writer queue stayed at high-watermark 1/64 with zero drops, so moving IK off Isaac's GUI thread targets the measured bottleneck.",
+    "diagnostic_fallback": "Pass DATASET_ARGS=\"--solver local\" to make dataset-d002-live only for matched diagnosis; it is not the collection default."
+  },
+  "teleop_source": {
+    "entry_point": "make teleop",
+    "profile": "experiments/r1_teleop/quest3_sim_v1/T007/config/r1_t007_upstream_stream_live.json",
+    "body_mode": "arms_head",
+    "body_mode_reason": "Đóng băng thân để thân không xoay đuổi theo mục tiêu ngoài tầm với, thứ làm nhiễu quan hệ giữa ảnh quan sát và tư thế tay.",
+    "control_hz": 30.0,
+    "physics_hz": 200.0,
+    "device": "cuda:0",
+    "device_reason": "USDRT scenegraph chỉ hỗ trợ cuda:0; cuda:1 báo lỗi khi bật render."
+  },
+  "task_text": {
+    "goal": "Put the right hand on number {n}.",
+    "desc": "Four numbered plates lie on the table in front of the robot. The operator moves the robot's right hand to the plate named in the goal. No grasping: this R1 asset has no end effector.",
+    "steps": "step1: read the operator-only target cue; step2: hold the right trigger to begin recording; step3: move the right hand onto the numbered plate named in the goal; step4: hold still for about one second; step5: release the right trigger to end the episode and show the next target."
+  },
+  "operator_cue": {
+    "enabled": true,
+    "desktop_hud": true,
+    "head_view_overlay": true,
+    "text_template": "TARGET NUMBER: {n}",
+    "data_boundary": "Desktop HUD is omni.ui, not a USD prim. The Quest overlay is drawn only on a copy sent to the operator. Neither path modifies the RGB tensor written to colors/color_0."
+  },
+  "scene": {
+    "objects": [],
+    "no_physics_reason": "Vật thuần hình ảnh không rơi, không cần bàn, không cần logic reset, và không đụng vào physics của robot.",
+    "table": {
+      "kind": "primitive_box",
+      "center_m": [
+        0.7,
+        0.0,
+        0.44
+      ],
+      "size_m": [
+        0.7,
+        1.2,
+        0.88
+      ],
+      "surface_z_m": 0.88,
+      "occupies_m": {
+        "x": [
+          0.35,
+          1.05
+        ],
+        "y": [
+          -0.6,
+          0.6
+        ],
+        "z": [
+          0.0,
+          0.88
+        ]
+      },
+      "kinematic": true,
+      "clearance_note": "Robot bbox trải x[-0.066, 0.304] nên mép bàn ở x=0.35 chừa 0.046 m. Đo ngày 2026-09-04.",
+      "why_not_nvidia_props": "Đã thử hai asset bàn chuẩn và cả hai đều không dùng được cho R1. Props/Mounts/SeattleLabTable/table_instanceable.usd KHÔNG có collision (thả bi thử, bi rơi xuyên xuống sàn) và hình khối của nó trải x[-0.865,0.554] y[-0.460,1.200] z[-1.040,0.715] quanh gốc, tức hơn nửa bàn nằm dưới sàn và mặt bằng chồng lên chỗ robot — nhìn ra màn hình thành 'robot đứng trên bàn'. Props/PackingTable/packing_table.usd có collision, mặt ở z=0.994, nhưng rộng 2.474 m nên muốn đẩy khỏi robot phải để tâm ở x>=1.59, vượt tầm với. Khối hộp tự dựng cho đúng kích thước, chắc chắn có collision và không phải tải gì.",
+      "height_rationale": "Hạ từ 0.95 xuống 0.88 m ngày 2026-09-06 theo yêu cầu đưa bàn về gần tầm tay nghỉ. Tay ở tư thế gốc (mọi khớp = 0) nằm ở z = 0.781, đo trong Isaac. Nhưng đặt mặt bàn đúng 0.78 thì KHÔNG với tới được: ở độ cao đó chênh cao 0.22 m ăn hết ngân sách tầm với 0.383 m, x xa nhất chỉ tới 0.345 trong khi mép bàn không thể gần hơn 0.35 vì chân robot chìa tới 0.304. Dải dùng được rỗng. Ở 0.88 m dải là [0.35, 0.394], rộng 4.4 cm — thấp hơn 7 cm so với trước mà vẫn với tới được. Muốn bàn đúng 0.78 thì phải đặt bên hông (xem scenes/README.md)."
+    },
+    "objects_note": "Không có vật tĩnh: tấm số do marker_pool cấp và đổi chỗ mỗi episode.",
+    "marker_pool": {
+      "digits": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "usd_path_template": "assets/markers/marker_{digit:02d}.usd",
+      "slot_count": 4,
+      "slot_x_m": 0.37,
+      "slot_y_m": [
+        0.21,
+        0.07,
+        -0.07,
+        -0.21
+      ],
+      "slot_z_m": 0.885,
+      "parked_position_m": [
+        0.0,
+        0.0,
+        -5.0
+      ],
+      "note": "Chín tấm được dựng một lần lúc khởi động và đứng ở parked_position_m. Mỗi episode, bốn tấm được bốc ra, gán vào ô theo hoán vị ngẫu nhiên và hiện lên; năm tấm còn lại bị dời về chỗ đỗ và ẩn đi. x cố định 0.37 vì dải với tới được chỉ rộng 4.4 cm."
+    }
+  },
+  "cameras": {
+    "head_camera": {
+      "prim_path": "/World/Robot/head_yaw_link/head_camera",
+      "parent_link": "head_yaw_link",
+      "parent_link_reason": "Link xa nhất của chuỗi đầu (waist_yaw_link -> head_pitch_joint -> head_pitch_link -> head_yaw_joint -> head_yaw_link), nên camera xoay theo cả pitch lẫn yaw.",
+      "width": 640,
+      "height": 480,
+      "binocular": false,
+      "data_types": [
+        "rgb"
+      ],
+      "focal_length_mm": 7.6,
+      "horizontal_aperture_mm": 20.0,
+      "focus_distance": 400.0,
+      "clipping_range_m": [
+        0.1,
+        100000.0
+      ],
+      "horizontal_fov_deg_derived": 105.5,
+      "update_period_s": 0.02,
+      "offset_pos_m": [
+        0.06,
+        0.0,
+        0.03
+      ],
+      "offset_rot_wxyz": [
+        0.37993,
+        -0.59637,
+        0.59637,
+        -0.37993
+      ],
+      "offset_convention": "ros",
+      "parameter_source": "unitree_sim_isaaclab/tasks/common_config/camera_configs.py, CameraBaseCfg.get_camera_config — cùng bộ tham số Unitree dùng cho front_cam trên G1/H1-2.",
+      "rotation_check": "Chúc xuống 25°: cam +Z -> (0.906, 0, -0.423) của link đầu, cam +X -> (0,-1,0) (bên phải robot). Quy ước ROS. Nhìn thẳng (quat 0.5,-0.5,0.5,-0.5) thì hai tay robot nằm ngoài khung hình — kiểm bằng ảnh render ngày 2026-09-04 — nên chính sách học sẽ không nhìn thấy chính tay mình.",
+      "pitch_down_deg": 25.0
+    }
+  },
+  "record": {
+    "format": "unitree_episode_v1.0.0",
+    "writer_reference": "third_party/xr_teleoperate/teleop/utils/episode_writer.py",
+    "fps": 30,
+    "image_size_wh": [
+      640,
+      480
+    ],
+    "episode_boundary": {
+      "source": "right_deadman_accepted_segment",
+      "start": "bước điều khiển accepted đầu tiên sau khi bóp cò phải",
+      "end": "bước không accepted đầu tiên sau khi nhả cò phải",
+      "next": "lưu episode, bốc bố cục và hiện mục tiêu kế tiếp ngay"
+    },
+    "joint_names": {
+      "left_arm": [
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_joint",
+        "left_wrist_roll_joint"
+      ],
+      "right_arm": [
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_joint",
+        "right_wrist_roll_joint"
+      ],
+      "body": [
+        "head_pitch_joint",
+        "head_yaw_joint"
+      ],
+      "left_ee": [],
+      "right_ee": []
+    },
+    "ee_empty_reason": "assets/R1.urdf không có khớp ngón hay gripper; chuỗi khớp kết thúc ở wrist_roll_joint.",
+    "states_source": "vị trí khớp đo được sau bước physics (post_physics_whole_upper_body_position_rad, post_physics_head_position_rad)",
+    "actions_source": "lệnh khớp upstream đã qua WeightedMovingFilter của xr_teleoperate và được dispatch (limited_joint_target_rad; tên field được giữ tương thích dù sink upstream không thêm rate limiter thứ hai)",
+    "states_actions_note": "state là cái robot đang ở, action là cái ta bảo nó tới. Với default upstream, limited_joint_target_rad bằng vector nhận từ solver; không được diễn giải nó là đã qua limiter của sink Isaac.",
+    "fps_note": "Preset editable được nâng từ 8 lên 30 Hz ngày 2026-09-08 theo yêu cầu dataset đích. Đây là nhịp camera/dataset, tách với control 30 Hz. Run d002_20260908T020005Z chỉ xác nhận preset cũ 8 Hz; vì vậy phải thu pilot 3-5 episode và chỉ chuyển LeRobot --fps 30 khi info.image.fps_requested=30, info.image.fps nằm trong [27,33] cho mọi episode, writer zero drop và control vẫn >=20 Hz.",
+    "writer": {
+      "mode": "bounded_async_thread",
+      "queue_size": 64,
+      "jpeg_quality": 90,
+      "overflow_policy": "drop_candidate_and_reject_episode",
+      "memory_bound_note": "64 ảnh RGB 640x480 chiếm tối đa khoảng 59 MiB trước khi nén. Không dùng queue vô hạn như vendor vì ổ đĩa chậm kéo dài có thể làm cạn RAM.",
+      "integrity_note": "Encode JPEG, ghi ảnh và data.json chạy trên worker. Nếu queue đầy, candidate không được thêm vào data.json và episode bị loại với writer_overflow; không bao giờ có item trỏ tới ảnh thiếu."
+    }
+  },
+  "episode_rejection": {
+    "reject_if": [
+      "bridge phát sự kiện disconnected trong episode",
+      "deadman bị nhả giữa chừng rồi giữ lại trong cùng episode",
+      "bounded writer queue overflow làm bỏ ít nhất một capture candidate"
+    ],
+    "accounting": "Episode bị loại KHÔNG bị xoá: nó được chuyển sang episodes_rejected/ kèm lý do trong data.json, và episode_index.json của run ghi bản kiểm đếm theo từng lý do.",
+    "max_projected_fraction": 1.0,
+    "projected_solution_policy": "D002 học state/action là góc khớp hợp lệ trong simulator, không đánh giá độ trung thành pose Quest -> robot. solver_solution_kind/projected_item_count chỉ có trên fallback local; solver upstream luôn phát joint vector sau bộ lọc vendor và không gắn nhãn exact/projected.",
+    "min_items": 30,
+    "min_items_note": "Không yêu cầu 120 frame. Ngưỡng 30 chỉ lọc các cú nhấp cò rất ngắn; độ dài episode không thay thế gate FPS đo được. Ở run live d002_20260908T153548Z, 32 episode có 65-109 frame và 6.616-7.029 FPS nên được chấp nhận theo ngưỡng này, nhưng không được gọi là dữ liệu true-30-FPS.",
+    "structurally_satisfied": [
+      "bridge phát sự kiện disconnected trong episode",
+      "deadman bị nhả giữa chừng rồi giữ lại trong cùng episode"
+    ],
+    "structurally_satisfied_note": "Hai điều kiện này không cần kiểm tra: bộ ghi cắt episode ở MỌI bước không được chấp nhận, nên không episode nào chứa được một khoảng ngắt. Kiểm tra lại sẽ không bao giờ đúng.",
+    "enforced_by": "teleop/r1/dataset_episode.py RejectionPolicy.evaluate",
+    "resolved_2026_09_07": "Theo mục tiêu thu VLA simulation-only, projection không phải lý do loại: action cần học là góc khớp ảo đã dispatch, không phải pose tay người ngoài đời. Việc đổi sang upstream là để giải phóng main/UI thread, không phải để tăng độ trung thành mapping."
+  },
+  "acceptance": {
+    "min_valid_episodes": 100,
+    "min_achieved_control_hz": 20.0,
+    "min_achieved_control_hz_note": "Ngưỡng pilot cho control yêu cầu 30 Hz. Pilot upstream d002_20260908T020005Z đạt 30.008 Hz với camera 8 Hz; chưa có bằng chứng tương đương khi camera yêu cầu 30 FPS.",
+    "min_measured_dataset_fps": 27.0,
+    "max_measured_dataset_fps": 33.0,
+    "measured_dataset_fps_note": "Gate 90% quanh mục tiêu 30 FPS áp cho từng episode, dùng info.image.fps đo từ timestamp thật; không suy từ control_hz và không được thay bằng metadata ép trong converter.",
+    "require_unique_camera_frames": true,
+    "fps_gate_warmup_frames": 60,
+    "unique_camera_frames_note": "Mỗi item production phải mang source_camera_frame tăng nghiêm ngặt. Runner dừng sớm sau 60 frame nếu nhịp thật dưới gate; không lặp frame mới nhất để giả thành 30 FPS như một consumer latest-frame thuần tuý có thể làm.",
+    "min_valid_episodes_per_digit": 8,
+    "split": {
+      "train": 0.7,
+      "val": 0.15,
+      "test_permutation_holdout": 0.15
+    },
+    "split_note": "Tập test chia theo HOÁN VỊ chưa từng thấy, không phải theo episode ngẫu nhiên. Chia ngẫu nhiên theo episode rồi gọi là kiểm tra khái quát hoá là tự lừa mình.",
+    "baseline_to_beat": "Luôn với tới ô mà chữ số mục tiêu hay nằm nhất trong tập train. Mô hình không thắng baseline này nghĩa là nó chưa đọc chữ số.",
+    "min_valid_episodes_per_digit_note": "Kho 9 chữ số, 100 episode thì mỗi chữ số khoảng 11 lần làm mục tiêu. Ngưỡng 8 cho phép lệch chút ít mà vẫn đủ mẫu cho từng lớp.",
+    "slot_uniformity_chi_square_max": 7.815,
+    "slot_uniformity_note": "Chi-bình-phương của phân bố Ô MỤC TIÊU gộp mọi chữ số, so với phân bố đều, 3 bậc tự do, mức 5%. Thay cho ngưỡng 'không ô nào quá 35%' đặt lúc đầu — ngưỡng tỉ lệ cứng không dùng được ở cỡ mẫu nhỏ: mỗi chữ số chỉ làm mục tiêu ~11 lần trong 100 episode, và với 4 ô thì một ô chiếm 45% xảy ra thường xuyên chỉ do ngẫu nhiên, nên ngưỡng đó loại oan dataset sạch.",
+    "target_digit_spread_max": 1,
+    "target_digit_spread_note": "Mục tiêu được chọn TRƯỚC từ hàng đợi xáo trộn rồi mới bốc các tấm khác quanh nó, nên vòng tròn chính xác: chênh lệch giữa chữ số nhiều nhất và ít nhất tối đa là 1."
+  },
+  "validity": {
+    "invalid_if": [
+      "base velocity is dispatched",
+      "the root is not fixed",
+      "achieved control rate falls below the declared minimum",
+      "the image count does not match the recorded step count",
+      "an image and the state/action pair sharing an idx did not come from the same control step",
+      "the resolved configuration is not written alongside the run"
+    ],
+    "scientific_failure_if": [
+      "states and actions are recorded from the same source",
+      "rejected episodes are dropped without being counted",
+      "writer overflow occurs but the affected episode is accepted",
+      "operator cue appears in colors/color_0 sensor images",
+      "the per-episode text.goal names a different digit from info.task.target_digit"
+    ],
+    "hardware_claim": "none"
+  },
+  "known_gaps": [
+    "HUD desktop và overlay kính đã được tách khỏi ảnh sensor bằng cấu trúc code; cần một pilot GUI để kiểm tra trực quan trên đúng bản Isaac/Quest đang dùng.",
+    "Async writer đã được kiểm tra trong d002_20260907T040321Z: 484/484 ảnh ghi thành công, zero drop, queue high-watermark 1/64; đây không phải nút thắt của run đó.",
+    "Pipeline upstream đã được xác nhận trên Quest+D002 GUI trực tiếp ở 30.008 Hz. upstream_solver_stats.json không được tạo trong run dù sink metrics có đầy đủ velocity; cần sửa đường đóng solver để thống kê luôn được flush khi downstream đóng pipe.",
+    "Thiếu gate tự động đúng tay/đúng mục tiêu trước khi một episode được chấp nhận; pilot 2026-09-08 cho thấy 4/7 episode dùng tay trái dù task yêu cầu tay phải.",
+    "Contract LeRobot đã chốt là arms_head: observation.state/action đều 12 chiều theo thứ tự 10 khớp tay, head_pitch, head_yaw. Converter project-owned và validator đã qua round-trip local trên 733 frame; pilot Hub cũ 10 chiều vẫn chỉ là artefact lịch sử, không dùng để train.",
+    "Preset camera/dataset 30 FPS chưa có pilot live; không được chuyển hoặc upload dưới nhãn 30 FPS nếu source không đạt gate 27-33 FPS ở từng episode."
+  ],
+  "randomization": {
+    "per_episode": true,
+    "digit_slot_permutation": "4 chữ số bốc từ kho 9, gán vào 4 ô theo hoán vị ngẫu nhiên",
+    "target_digit": "Hàng đợi xáo trộn thay vì bốc độc lập: bốc độc lập cho phân bố đều về kỳ vọng nhưng lệch đáng kể trên một phiên trăm episode, mà lệch lớp là thứ phải loại trừ chứ không phải hy vọng.",
+    "slot_y_jitter_m": 0.015,
+    "slot_x_m": 0.37,
+    "slot_x_note": "Cố định: dải với tới được chỉ [0.35, 0.394], rộng 4.4 cm.",
+    "prompt_templates": [
+      "Reach the right hand to number {n}.",
+      "Touch the plate showing {n}.",
+      "Move the right hand onto marker {n}.",
+      "Put your right hand on number {n}.",
+      "Go to the {n} plate."
+    ],
+    "digits_pool": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "markers_per_episode": 4,
+    "seed": null,
+    "seed_note": "None = mỗi phiên một chuỗi khác. Đặt số nguyên để tái lập đúng một phiên."
+  }
+}
