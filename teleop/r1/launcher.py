@@ -205,6 +205,12 @@ def _wait_for_quest_ready(
     return False
 
 
+def _effective_simulator_status(process_status: int, output_exists: bool) -> int:
+    """Treat a zero exit without simulator output as an incomplete run."""
+
+    return process_status if process_status != 0 or output_exists else 1
+
+
 def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     """Allocate one run id, then run the bridge piped into the simulator."""
 
@@ -316,6 +322,14 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     simulator_status = simulator.wait()
     solver_status = solver.wait() if solver is not None else 0
     bridge_status = bridge.wait()
+    reported_simulator_status = simulator_status
+    simulator_status = _effective_simulator_status(simulator_status, output_dir.is_dir())
+    if simulator_status != reported_simulator_status:
+        print(
+            "Simulator exited without creating its evidence directory; treating the run as failed.",
+            file=sys.stderr,
+            flush=True,
+        )
     if connection_log.is_file() and output_dir.is_dir():
         if final_connection_log.exists():
             raise RuntimeError(f"Refusing to overwrite bridge evidence: {final_connection_log}")
@@ -328,7 +342,7 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
                 json.dumps(completeness, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
 
-    finalizer_status = 0
+    finalizer_status: int | None = None
     if output_dir.is_dir():
         finalizer_environment = os.environ.copy()
         finalizer_environment.setdefault("MPLCONFIGDIR", "/tmp/hb-matplotlib")
@@ -343,22 +357,24 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
 
     print("", file=sys.stderr, flush=True)
     solver_note = f"  solver exit={solver_status}" if solver is not None else ""
+    artifact_gate_note = "skipped" if finalizer_status is None else str(finalizer_status)
     print(
         f"bridge exit={bridge_status}{solver_note}  simulator exit={simulator_status}  "
-        f"artifact gate exit={finalizer_status}",
+        f"artifact gate exit={artifact_gate_note}",
         file=sys.stderr,
         flush=True,
     )
     if final_connection_log.is_file():
         print(f"Connection log saved: {final_connection_log}", file=sys.stderr, flush=True)
     print(f"Run output: {output_dir}", file=sys.stderr, flush=True)
-    return simulator_status or solver_status or bridge_status or finalizer_status
+    return simulator_status or solver_status or bridge_status or (finalizer_status or 0)
 
 
 __all__ = [
     "BRIDGE_ENV",
     "SIM_ENV",
     "PilotLaunchSpec",
+    "_effective_simulator_status",
     "build_commands",
     "ensure_self_signed_certificate",
     "run_pilot",

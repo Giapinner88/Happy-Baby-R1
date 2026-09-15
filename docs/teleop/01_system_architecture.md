@@ -39,6 +39,7 @@ run_r1_upstream_ik_stream.py      env `tv`
       │ initial-head anchor → vendor R1_A5_ArmIK → 12 joints
       ▼
 run_r1_quest3_live.py             env `unitree_sim_env`
+      │ `teleop/r1/isaaclab_robot.py` owns R1 articulation/actuator config
       │ validate/apply joint targets
       ├──────────────► Isaac Sim
       │

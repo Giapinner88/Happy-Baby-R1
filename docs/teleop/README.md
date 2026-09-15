@@ -50,6 +50,9 @@ Không dùng learning trong control loop.
 10. [`10_experimental_differential_tracking.md`](10_experimental_differential_tracking.md)
     Controller vi phân opt-in và lý do không dùng làm baseline mặc định.
 
+11. [`11_isaac_articulation_implementation.md`](11_isaac_articulation_implementation.md)
+    Ownership và semantics của cấu hình R1 articulation trong IsaacLab.
+
 ## Chạy trên phần cứng
 
 Trình tự vận hành nằm ở

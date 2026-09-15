@@ -21,6 +21,7 @@ from teleop.r1.launcher import (
     BRIDGE_ENV,
     SIM_ENV,
     PilotLaunchSpec,
+    _effective_simulator_status,
     _wait_for_quest_ready,
     build_commands,
     ensure_self_signed_certificate,
@@ -49,6 +50,17 @@ def make_spec(**overrides) -> PilotLaunchSpec:
 
 
 class LauncherSolverStageTest(unittest.TestCase):
+    def test_zero_exit_without_simulator_output_is_failure(self):
+        self.assertEqual(_effective_simulator_status(0, output_exists=False), 1)
+        self.assertEqual(_effective_simulator_status(0, output_exists=True), 0)
+        self.assertEqual(_effective_simulator_status(7, output_exists=False), 7)
+
+    def test_live_runner_owns_its_isaac_articulation_config(self):
+        runner = (ROOT / "scripts/teleop/run_r1_quest3_live.py").read_text(encoding="utf-8")
+        self.assertIn("from teleop.r1.isaaclab_robot import UNITREE_R1_CFG", runner)
+        self.assertNotIn("from training.isaaclab.robot", runner)
+        self.assertTrue((ROOT / "teleop/r1/isaaclab_robot.py").is_file())
+
     def test_bridge_lifetime_includes_quest_readiness_window(self):
         bridge, _solver, sim = build_commands(
             make_spec(duration_s=10.0, quest_ready_timeout_s=12.0),

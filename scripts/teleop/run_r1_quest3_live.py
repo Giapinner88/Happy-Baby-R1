@@ -204,6 +204,7 @@ def _source_hashes() -> dict[str, str]:
         ROOT / "scripts" / "teleop" / "plot_r1_baseline_dynamics.py",
         ROOT / "teleop" / "r1" / "bridge.py",
         ROOT / "teleop" / "r1" / "frame_contract.py",
+        ROOT / "teleop" / "r1" / "isaaclab_robot.py",
         ROOT / "teleop" / "r1" / "kinematics.py",
         ROOT / "teleop" / "r1" / "mapping.py",
         ROOT / "teleop" / "r1" / "schema.py",
@@ -691,7 +692,7 @@ def main() -> int:
         UpstreamJointStreamConfig,
         UpstreamJointStreamSink,
     )
-    from training.isaaclab.robot import UNITREE_R1_CFG  # noqa: E402
+    from teleop.r1.isaaclab_robot import UNITREE_R1_CFG  # noqa: E402
 
     calibration_config = config.get("calibration") or {}
     translation = calibration_config.get("translation_m") or [0.0, 0.0, 0.0]
