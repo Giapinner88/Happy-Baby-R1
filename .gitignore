@@ -1,0 +1,11 @@
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.git-real/
+
+checkpoints/*
+logs/*
+results/*
+!checkpoints/.gitkeep
+!logs/.gitkeep
+!results/.gitkeep
