@@ -1,4 +1,4 @@
-workspace: /home/ubuntu22/Projects/Happy-Baby-R1-1
+workspace: /home/ubuntu22/Projects/Happy-Baby-R1-teleop
 commit:    19cf8aff53ca176e7bd04efe86fbb18c67b181a1
 worktree:  dirty
 synced_at: 2026-09-11T04:14:23Z

@@ -145,7 +145,7 @@ def validate_args(args: argparse.Namespace) -> None:
 
 def parse_target(
     line: str, previous_sequence: int
-) -> tuple[int, list[float], bool, str, bool] | None:
+) -> tuple[int, list[float], bool, str, bool, bool] | None:
     try:
         payload = json.loads(line)
         names = tuple(str(value) for value in payload["joint_names"])
@@ -154,6 +154,7 @@ def parse_target(
         schema_version = int(payload.get("schema_version", 1))
         target_mode = str(payload.get("target_mode", "relative_source"))
         rehome = bool(payload.get("rehome", False))
+        operator_enabled = bool(payload.get("operator_enabled", True))
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
     if schema_version != 1 or target_mode not in {"relative_source", "absolute_robot"}:
@@ -166,7 +167,7 @@ def parse_target(
         return None
     if sequence <= previous_sequence or not all(math.isfinite(value) for value in positions):
         return None
-    return sequence, positions, head_valid, target_mode, rehome
+    return sequence, positions, head_valid, target_mode, rehome, operator_enabled
 
 
 def encode_target(sequence: int, positions: list[float], head_valid: bool = True) -> bytes:
@@ -458,7 +459,12 @@ def main(argv: list[str] | None = None) -> int:
         parsed = parse_target(line, upstream_sequence)
         if parsed is None:
             continue
-        upstream_sequence, latest_source, head_valid, target_mode, _ = parsed
+        (upstream_sequence, latest_source, head_valid, target_mode,
+         _, operator_enabled) = parsed
+        if not operator_enabled:
+            # A paused stream is fresh but is not a valid initial actuation
+            # target. Wait for the first explicit right-trigger enable.
+            continue
         source_zero = latest_source.copy()
         last_input_at = time.monotonic()
 
@@ -618,7 +624,7 @@ def main(argv: list[str] | None = None) -> int:
                 parsed = parse_target(line, upstream_sequence)
                 if parsed is not None:
                     (parsed_sequence, parsed_source, parsed_head_valid,
-                     parsed_target_mode, _) = parsed
+                     parsed_target_mode, _, parsed_enabled) = parsed
                     if parsed_head_valid != head_valid or parsed_target_mode != target_mode:
                         stop_reason = "home_aborted_stream_contract_changed"
                         status = "failed"
@@ -627,6 +633,11 @@ def main(argv: list[str] | None = None) -> int:
                     upstream_sequence, latest_source = parsed_sequence, parsed_source
                     accepted_home_input_count += 1
                     last_input_at = time.monotonic()
+                    if not parsed_enabled:
+                        stop_reason = "home_aborted_deadman_released"
+                        status = "aborted"
+                        input_closed = True
+                        break
             input_age_s = time.monotonic() - last_input_at
             if input_closed or input_age_s > args.input_timeout_s:
                 # EOF và watchdog từng bị gộp thành home_aborted_input, khiến
@@ -794,6 +805,9 @@ def main(argv: list[str] | None = None) -> int:
     rehome_requested = False
     rehome_goal: list[float] | None = None
     rehome_count = 0
+    pause_count = 0
+    operator_enabled = True
+    previous_operator_enabled = True
     relative_envelope_clamp_count = 0
     relative_envelope_clamped_joints: set[str] = set()
     maximum_relative_source_offset_rad = 0.0
@@ -815,7 +829,7 @@ def main(argv: list[str] | None = None) -> int:
                 parsed = parse_target(line, upstream_sequence)
                 if parsed is not None:
                     (parsed_sequence, parsed_source, parsed_head_valid,
-                     parsed_target_mode, parsed_rehome) = parsed
+                     parsed_target_mode, parsed_rehome, parsed_enabled) = parsed
                     if parsed_head_valid != head_valid or parsed_target_mode != target_mode:
                         status = "failed"
                         stop_reason = "stream_contract_changed"
@@ -823,6 +837,7 @@ def main(argv: list[str] | None = None) -> int:
                         break
                     upstream_sequence, latest_source = parsed_sequence, parsed_source
                     last_input_at = time.monotonic()
+                    operator_enabled = parsed_enabled
                     if parsed_rehome:
                         rehome_requested = True
             if input_closed:
@@ -831,6 +846,7 @@ def main(argv: list[str] | None = None) -> int:
                 break
             if time.monotonic() - last_input_at > args.input_timeout_s:
                 stop_reason = "input_watchdog"
+                status = "failed"
                 break
             latest_state, last_state_at = states.snapshot()
             if time.monotonic() - last_state_at > args.state_timeout_s:
@@ -841,6 +857,20 @@ def main(argv: list[str] | None = None) -> int:
                 stop_reason = "mode_machine_changed"
                 status = "failed"
                 break
+            if operator_enabled != previous_operator_enabled:
+                if not operator_enabled:
+                    pause_count += 1
+                    print("[PAUSED] nhả cò phải: gửi STOP, giữ session để có thể tiếp tục.", flush=True)
+                else:
+                    print("[ACTIVE] cò phải: tiếp tục session.", flush=True)
+                previous_operator_enabled = operator_enabled
+            if not operator_enabled:
+                local_sequence = next_sequence(local_sequence)
+                client.send(encode_stop(local_sequence))
+                remaining = period - (time.monotonic() - loop_start)
+                if remaining > 0:
+                    time.sleep(remaining)
+                continue
             assert latest_source is not None
             if rehome_requested and home_enabled and rehome_goal is None:
                 goal = list(latest_source) if args.home_to_source else list(args.home_pose_rad)
@@ -961,6 +991,7 @@ def main(argv: list[str] | None = None) -> int:
             status=status,
             stop_reason=stop_reason,
             rehome_count=rehome_count,
+            pause_count=pause_count,
             relative_envelope_clamp_count=relative_envelope_clamp_count,
             relative_envelope_clamped_joints=sorted(relative_envelope_clamped_joints),
             maximum_relative_source_offset_rad=maximum_relative_source_offset_rad,

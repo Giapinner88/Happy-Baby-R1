@@ -55,17 +55,33 @@ def to_receiver_order(positions_rad) -> list[float]:
     return values[:10] + [values[11], values[10]]
 
 
-def make_receiver_payload(sequence_id, positions, solution_kind, rehome=False) -> dict:
+def make_receiver_payload(
+    sequence_id,
+    positions,
+    solution_kind,
+    rehome=False,
+    enabled=True,
+    command_payload=None,
+) -> dict:
     """One wire contract for both solvers; inputs are already safety-limited."""
-    payload = {
+    model_positions = [float(value) for value in positions]
+    payload = dict(command_payload or {})
+    payload.update({
         "schema_version": 1,
         "target_mode": "relative_source",
         "sequence_id": sequence_id,
         "sent_monotonic_s": time.monotonic(),
         "joint_names": RECEIVER_JOINT_NAMES,
-        "positions_rad": to_receiver_order(positions),
+        "positions_rad": to_receiver_order(model_positions),
         "solution_kind": solution_kind,
-    }
+        "operator_enabled": bool(enabled),
+        # Keep this line a valid upstream simulation command too. Isaac and the
+        # robot therefore consume the same hardware-rate-limited vector and
+        # sequence; the sidecar ignores these extra project-owned fields.
+        "upstream_joint_names": list(JOINT_NAMES),
+        "upstream_joint_position_rad": model_positions,
+        "upstream_solved_this_sample": bool(enabled),
+    })
     if rehome:
         payload["rehome"] = True
     return payload
@@ -205,25 +221,19 @@ def main() -> int:
                 rehome_pending = True
                 limiter.hold()
             positions = None
-            solution_kind = None
+            solution_kind = "upstream_xr_teleoperate_R1_A5_ArmIK"
             mapped_at = time.monotonic()
             target = mapper.map(newest, mapped_at)
             if not target.enabled:
-                if stream_started:
-                    print(
-                        json.dumps(
-                            {
-                                "event": "hardware_target_stop",
-                                "reason": target.reason,
-                                "sequence_id": newest.sequence_id,
-                                "command_age_s": mapped_at - newest.timestamp_monotonic_s,
-                            },
-                            separators=(",", ":"),
-                        ),
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                    return 0
+                # Deadman release is an explicit PAUSED state, not EOF.  Keep
+                # forwarding fresh sequence ids so the robot side can send an
+                # inactive UTL1 packet without tripping its input watchdog, and
+                # so a later right-trigger press resumes the same session.
+                assert newest_payload is not None
+                held = upstream_solution(newest_payload)
+                if held is not None:
+                    positions = model.clamp(held)
+                    limiter.hold()
             else:
                 assert newest_payload is not None
                 solved = upstream_solution(newest_payload)
@@ -237,10 +247,14 @@ def main() -> int:
                         "`run_r1_upstream_ik_stream.py --passthrough` first"
                     )
                 positions = limiter.step(model.clamp(solved))
-                solution_kind = "upstream_xr_teleoperate_R1_A5_ArmIK"
             if positions is not None:
                 payload = make_receiver_payload(
-                    newest.sequence_id, positions, solution_kind, rehome_pending
+                    newest.sequence_id,
+                    positions,
+                    solution_kind,
+                    rehome_pending,
+                    enabled=target.enabled,
+                    command_payload=newest_payload,
                 )
                 rehome_pending = False
                 try:

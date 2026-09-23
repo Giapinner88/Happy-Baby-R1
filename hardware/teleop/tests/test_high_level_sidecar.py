@@ -29,10 +29,11 @@ def test_sidecar_protocol_and_joint_order() -> None:
     }
     import json
 
-    sequence, positions, head_valid, target_mode, rehome = sidecar.parse_target(json.dumps(payload), 3)
+    sequence, positions, head_valid, target_mode, rehome, enabled = sidecar.parse_target(json.dumps(payload), 3)
     assert sequence == 4
     assert head_valid is True
     assert target_mode == "relative_source"
+    assert enabled is True
     assert positions[-2:] == [1.0, 1.1]  # head_yaw, head_pitch -- the wire order
     encoded = sidecar.PACKET.unpack(sidecar.encode_target(9, positions, head_valid))
     assert len(sidecar.encode_target(9, positions, head_valid)) == 60
@@ -61,8 +62,9 @@ def test_arm_only_stream_clears_the_head_flag() -> None:
         "joint_names": sidecar.ARM_JOINT_NAMES,
         "positions_rad": [0.0] * 10,
     }
-    sequence, positions, head_valid, _, _ = sidecar.parse_target(json.dumps(payload), 3)
+    sequence, positions, head_valid, _, _, enabled = sidecar.parse_target(json.dumps(payload), 3)
     assert (sequence, head_valid, len(positions)) == (4, False, 10)
+    assert enabled is True
     encoded = sidecar.PACKET.unpack(sidecar.encode_target(9, positions, head_valid))
     assert encoded[4] == 0
     assert encoded[16:] == (0.0, 0.0)
@@ -361,12 +363,14 @@ def test_rehome_flag_rides_on_the_command_stream() -> None:
         "joint_names": sidecar.JOINT_NAMES,
         "positions_rad": [0.0] * 12,
     }
-    *_, rehome = sidecar.parse_target(json.dumps(base), 3)
+    *_, rehome, enabled = sidecar.parse_target(json.dumps(base), 3)
     assert rehome is False
+    assert enabled is True
 
     asked = dict(base, rehome=True)
-    *_, rehome = sidecar.parse_target(json.dumps(asked), 3)
+    *_, rehome, enabled = sidecar.parse_target(json.dumps(asked), 3)
     assert rehome is True
+    assert enabled is True
 
 
 def test_session_envelope_accepts_the_widened_range() -> None:

@@ -53,6 +53,12 @@ Không dùng learning trong control loop.
 11. [`11_isaac_articulation_implementation.md`](11_isaac_articulation_implementation.md)
     Ownership và semantics của cấu hình R1 articulation trong IsaacLab.
 
+12. [`13_vuer_robot_camera.md`](13_vuer_robot_camera.md)
+    Contract WebRTC và chuyển Quest/camera robot bằng controller trong Vuer.
+
+13. [`14_mirrored_hardware_sim_validation.md`](14_mirrored_hardware_sim_validation.md)
+    Hardware + Isaac đồng thời, camera evidence và semantics ACTIVE/PAUSED/REHOME.
+
 ## Chạy trên phần cứng
 
 Trình tự vận hành nằm ở

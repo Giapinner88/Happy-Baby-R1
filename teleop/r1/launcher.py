@@ -22,6 +22,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -35,6 +36,20 @@ from evidence.run_id import allocate_run_id
 
 BRIDGE_ENV = "tv"
 SIM_ENV = "unitree_sim_env"
+
+
+def _command_for_display(command: list[str]) -> str:
+    """Shell-quote a command while omitting camera URL query/fragment data."""
+
+    displayed = list(command)
+    try:
+        index = displayed.index("--robot-camera-webrtc-url") + 1
+    except ValueError:
+        pass
+    else:
+        if index < len(displayed):
+            displayed[index] = displayed[index].split("?", 1)[0].split("#", 1)[0]
+    return shlex.join(displayed)
 
 
 def ensure_self_signed_certificate(host_ip: str, cert_file: Path, key_file: Path) -> bool:
@@ -142,6 +157,10 @@ class PilotLaunchSpec:
     to a `conda run -n <bridge env> python` invocation, because a solver that
     needs the bridge environment is the only reason this stage exists.
     """
+    robot_camera_webrtc_url: str | None = None
+    camera_toggle_button: str = "right_a"
+    robot_camera_layout: str = "mono"
+    robot_camera_aspect: float = 16.0 / 9.0
 
 
 def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, connection_log: Path):
@@ -159,6 +178,13 @@ def build_commands(spec: PilotLaunchSpec, output_dir: Path, stop_file: Path, con
         "--stop-file", str(stop_file),
         "--connection-log", str(connection_log),
     ]
+    if spec.robot_camera_webrtc_url is not None:
+        bridge_command += [
+            "--robot-camera-webrtc-url", spec.robot_camera_webrtc_url,
+            "--camera-toggle-button", spec.camera_toggle_button,
+            "--robot-camera-layout", spec.robot_camera_layout,
+            "--robot-camera-aspect", str(spec.robot_camera_aspect),
+        ]
     sim_command = [
         "conda", "run", "--no-capture-output", "-n", SIM_ENV,
         "python", "scripts/teleop/run_r1_quest3_live.py",
@@ -254,10 +280,10 @@ def run_pilot(spec: PilotLaunchSpec, dry_run: bool = False) -> int:
     print(f"Stop file:      touch {stop_file}", file=sys.stderr, flush=True)
     print("", file=sys.stderr, flush=True)
     if dry_run:
-        print("bridge: " + " ".join(bridge_command), file=sys.stderr)
+        print("bridge: " + _command_for_display(bridge_command), file=sys.stderr)
         if solver_command is not None:
-            print("solver: " + " ".join(solver_command), file=sys.stderr)
-        print("sim:    " + " ".join(sim_command), file=sys.stderr)
+            print("solver: " + _command_for_display(solver_command), file=sys.stderr)
+        print("sim:    " + _command_for_display(sim_command), file=sys.stderr)
         return 0
 
     print(

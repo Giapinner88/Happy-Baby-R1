@@ -108,6 +108,25 @@ def test_hardware_preflight_is_read_only() -> None:
         assert forbidden not in source
 
 
+def test_camera_gateway_is_import_safe_and_has_no_command_publisher() -> None:
+    """Importing the read-only camera module must not initialize hardware."""
+
+    import importlib.util
+    import sys
+
+    path = TELEOP_DIR / "src/teleop/hardware/r1_camera_gateway.py"
+    source = path.read_text(encoding="utf-8")
+    for forbidden in ("ChannelPublisher", "LowCmd_", "rt/lowcmd"):
+        assert forbidden not in source
+
+    spec = importlib.util.spec_from_file_location("camera_gateway_import_safety", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    assert module.LatestFrameMailbox().snapshot() is None
+
+
 def test_sidecar_has_relative_envelope_and_watchdogs() -> None:
     source = (TELEOP_DIR / "src/teleop/hardware/high_level_sidecar.py").read_text(
         encoding="utf-8"
@@ -138,6 +157,9 @@ def test_hardware_launcher_persists_each_pipeline_stage_failure() -> None:
         "upstream_solver.stderr.log",
         "upstream_solver_stats.json",
         "hardware_targets.stderr.log",
+        "simulator.stderr.log",
+        "fanout_stats.json",
+        "auxiliary_status.json",
         "ssh.stderr.log",
         "pipeline_status.json",
     ):

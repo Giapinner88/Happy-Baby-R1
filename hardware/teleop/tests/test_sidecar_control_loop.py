@@ -17,8 +17,10 @@ import pytest
     (None, "duration_elapsed"),
     ("state", "home_aborted_lowstate"),
     ("input", "home_aborted_input_watchdog"),
+    ("active_input", "input_watchdog"),
     ("eof", "home_aborted_stream_closed"),
     ("rehome_state", "lowstate_watchdog"),
+    ("pause", "duration_elapsed"),
 ])
 def test_loop_homes_at_100hz_and_stops_on_actual_loss(monkeypatch, tmp_path, fault, expected):
     path = Path(__file__).parents[1] / "src/teleop/hardware/high_level_sidecar.py"
@@ -63,7 +65,9 @@ def test_loop_homes_at_100hz_and_stops_on_actual_loss(monkeypatch, tmp_path, fau
         def get(self, **kwargs): return self.get_nowait()
         def get_nowait(self):
             if fault == "eof" and clock.now >= 101.0: return None
-            if (fault == "input" and clock.now >= 101.0) or clock.now < self.next_at:
+            if ((fault == "input" and clock.now >= 101.0)
+                or (fault == "active_input" and clock.now >= 104.7)
+                or clock.now < self.next_at):
                 raise queue.Empty
             self.next_at = clock.now + 0.1
             self.sequence += 1
@@ -71,6 +75,7 @@ def test_loop_homes_at_100hz_and_stops_on_actual_loss(monkeypatch, tmp_path, fau
                 "sequence_id": self.sequence, "joint_names": sidecar.JOINT_NAMES,
                 "positions_rad": [0.0] * 12,
                 "rehome": fault == "rehome_state" and 104.8 <= clock.now < 104.95,
+                "operator_enabled": not (fault == "pause" and 104.8 <= clock.now < 105.0),
             })
 
     monkeypatch.setattr(sidecar, "queue", SimpleNamespace(Queue=Input, Empty=queue.Empty))
@@ -86,15 +91,19 @@ def test_loop_homes_at_100hz_and_stops_on_actual_loss(monkeypatch, tmp_path, fau
         AF_INET=0, SOCK_DGRAM=0, socket=lambda *args: transport,
     ))
     monkeypatch.setenv("HB_TELEOP_ALLOW_HIGH_LEVEL_TELEOP", "1")
-    sidecar.main([
+    exit_code = sidecar.main([
         "--confirm-suspended-with-estop", "--confirm-dev-mode", "--home-to-source",
         "--duration-s", "1", "--log-dir", str(tmp_path),
     ])
     report = json.loads(next(tmp_path.glob("*/metadata.json")).read_text())
     assert report["stop_reason"] == expected
+    if fault == "active_input":
+        assert report["status"] == "failed"
+        assert exit_code == 1
     active = [(t, p) for t, p in sends if p[2]]
     assert active
-    assert max(b[0] - a[0] for a, b in zip(active, active[1:])) < 0.011
+    if fault != "pause":
+        assert max(b[0] - a[0] for a, b in zip(active, active[1:])) < 0.011
     assert sends[-1][1][2] == 0  # explicit stop, never fake freshness
     if fault is None:
         assert report["home"]["reached"]
@@ -105,6 +114,12 @@ def test_loop_homes_at_100hz_and_stops_on_actual_loss(monkeypatch, tmp_path, fau
         assert clock.now < 105.22
     elif fault == "input":
         assert clock.now < 101.77
+    elif fault == "pause":
+        paused = [(t, p) for t, p in sends if 104.8 <= t < 105.0 and p[2] == 0]
+        resumed = [(t, p) for t, p in sends if t >= 105.0 and p[2] == 1]
+        assert paused
+        assert resumed
+        assert report["pause_count"] == 1
 
 
 def test_repeated_snapshot_does_not_refresh_receipt_time(monkeypatch):

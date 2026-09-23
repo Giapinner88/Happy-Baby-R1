@@ -11,6 +11,31 @@ qua UDP loopback và không target eo hoặc chân.
 Cập nhật 2026-09-11: đường phần cứng chỉ còn bộ giải vendor
 `xr_teleoperate` chạy nguyên xi; fallback coupled đã được loại khỏi launcher.
 
+## Chạy nhanh — camera đã nằm trong launcher
+
+Không cần mở camera server, nhập camera IP/port hoặc chạy một terminal camera
+riêng. Camera mắt R1 dùng `videohub` trên `eth10`; launcher tự chạy gateway
+read-only trên robot, forward preview qua đúng SSH target `ROBOT`, chờ frame mới,
+đưa ảnh vào Quest và ghi JPEG gốc. Isaac mirror cũng bật mặc định.
+
+```bash
+cd ~/Projects/Happy-Baby-R1-teleop
+
+# Chỉ cần khi source vừa thay đổi
+make teleop-hardware-prepare ROBOT=unitree@100.82.165.36
+
+# Mỗi phiên vận hành
+make teleop-hardware \
+  HOST_IP=100.95.122.105 \
+  ROBOT=unitree@100.82.165.36 \
+  DURATION_S=180
+```
+
+Lệnh thứ hai là entrypoint duy nhất của phiên: camera, Quest bridge, IK, Isaac
+mirror, hardware sidecar, recording và artifact validation cùng một lifecycle.
+Nếu camera không có frame mới, launcher dừng trước khi mở control pipeline.
+`HB_ROBOT_CAMERA=0` chỉ dùng để chẩn đoán/opt-out có chủ ý.
+
 ---
 
 ## 1. Điều kiện bắt buộc
@@ -25,10 +50,10 @@ Không đủ một trong các điều dưới đây thì không chạy.
 
 ## 2. Topology
 
-> **Địa chỉ robot là động.** `wlan0` lấy IP qua DHCP, nên số IP đổi giữa các lần
-> bật. Đừng chép IP vào lệnh. Mọi script lấy địa chỉ theo thứ tự: biến `ROBOT=`
-> trên dòng lệnh → `~/.config/hb/robot.env` → dò tự động; rồi **xác minh đúng
-> máy** trước khi ghi bất cứ thứ gì.
+> Ví dụ trong tài liệu dùng cặp Tailscale hiện tại: workstation
+> `100.95.122.105`, robot `100.82.165.36`. Nếu node đổi, thay đúng hai giá trị
+> `HOST_IP` và `ROBOT`; camera tự đi theo SSH target `ROBOT`, không có IP riêng.
+> Script vẫn xác minh đúng máy trước khi ghi bất cứ thứ gì.
 >
 > Mất liên lạc thì tìm robot theo MAC cố định `c0:3a:55:f1:41:84`:
 >
@@ -39,20 +64,23 @@ Không đủ một trong các điều dưới đây thì không chạy.
 >
 > rồi sửa đúng một dòng trong `~/.config/hb/robot.env`.
 
-| Thành phần             | Địa chỉ / interface                                |
-| ------------------------ | ----------------------------------------------------- |
-| Workstation (Quest + IK) | `192.168.1.106`, `wlp77s0`                        |
-| Robot SSH                | `$ROBOT` — IP động, xem cảnh báo trên         |
-| DDS trên robot          | `eth10` — `rt/lowstate`, `rt/lowcmd`           |
-| UTL1 loopback            | `127.0.0.1:5560` (chỉ loopback)                    |
-| Quest                    | cùng Wi-Fi`HappyBaby`                              |
-| Cert                     | `~/.config/xr_teleoperate/happybaby_192_168_1_106/` |
+| Thành phần             | Địa chỉ / interface                                 |
+| ------------------------ | ------------------------------------------------------ |
+| Workstation (Quest + IK) | `100.95.122.105` — `HOST_IP`                      |
+| Robot SSH                | `unitree@100.82.165.36` — `ROBOT`                 |
+| DDS trên robot          | `eth10` — `rt/lowstate`, `rt/lowcmd`            |
+| UTL1 loopback            | `127.0.0.1:5560` (chỉ loopback)                     |
+| Quest                    | truy cập được`HOST_IP`                           |
+| Cert                     | `~/.config/xr_teleoperate/happybaby_100_95_122_105/` |
 
 ## 3. Đường ống
 
-Bốn tiến trình trên workstation, một trên robot:
+Luồng control và camera được cùng launcher quản lý:
 
 ```text
+R1 eye camera → videohub/eth10 → robot gateway → SSH loopback preview
+  → Quest full-field ImageBackground; JPEG gốc → run artifact
+
 quest_bridge.py                     (env tv)              đọc headset, phát R1TeleopCommand 30 Hz
   → run_r1_upstream_ik_stream.py --passthrough   (env tv) giải bằng R1_A5_ArmIK nguyên xi
   → run_r1_quest3_hardware_targets.py            (unitree_sim_env) áp envelope, phát 12 góc khớp 10 Hz
@@ -93,7 +121,7 @@ Chi tiết: [`hardware/high_level_lock/README_LOCK.md`](../../hardware/high_leve
 
 ```bash
 # workstation, từ root repo
-make teleop-hardware-prepare
+make teleop-hardware-prepare ROBOT=unitree@100.82.165.36
 ```
 
 Lệnh này sync source, kiểm đường Quest và copy package. Nó **không** install,
@@ -139,11 +167,33 @@ Nếu đứng mãi ở `[kDisarmed]` thì đọc mục 9.
 
 ```bash
 make teleop-hardware \
-  HOST_IP=192.168.1.106 \
-  DURATION_S=180 \
-  CERT_FILE=$HOME/.config/xr_teleoperate/happybaby_192_168_1_106/cert.pem \
-  KEY_FILE=$HOME/.config/xr_teleoperate/happybaby_192_168_1_106/key.pem
+  HOST_IP=100.95.122.105 \
+  ROBOT=unitree@100.82.165.36 \
+  DURATION_S=180
 ```
+
+Camera mắt R1 built-in, recording JPEG gốc và freshness fallback được bật mặc
+định; không truyền thêm URL hay port. Khi cần tắt riêng camera để chẩn đoán:
+
+```bash
+HB_ROBOT_CAMERA=0 make teleop-hardware \
+  HOST_IP=100.95.122.105 \
+  ROBOT=unitree@100.82.165.36
+```
+
+`ROBOT_CAMERA_WEBRTC_URL` và `ROBOT_CAMERA_ZMQ_ENDPOINT` chỉ là override tương
+thích cho camera server ngoài; không dùng chúng trong workflow R1 eye-camera
+chuẩn.
+
+Hardware launcher mặc định đồng thời chạy Isaac mirror
+(`HB_TELEOP_MIRROR_SIM=1`). Cả hai nhận cùng vector đã qua limiter workstation
+và cùng `sequence_id`; Isaac không mở DDS hay command channel tới robot. Chỉ
+khi workstation không có Isaac/GPU mới opt-out bằng
+`HB_TELEOP_MIRROR_SIM=0`, và run đó không phải evidence parity sim/hardware.
+Launcher dùng Isaac Sim Python thật ở `~/isaacsim_5.1/python.sh` và source
+IsaacLab sibling repo `../Happy-Baby-R1-vla/third_party/IsaacLab`; nó kiểm import
+trước prompt/hardware pipeline. Máy có layout khác có thể override
+`ISAAC_SIM_PYTHON=... ISAACLAB_ROOT=...` ngay trên cùng lệnh `make`.
 
 Đây là bộ giải vendor upstream, tay + đầu; launcher không còn chế độ coupled.
 
@@ -154,7 +204,7 @@ thay vì tự ghi đè credential còn lại.
 
 **Bước 4 — Quest.**
 
-1. Wi-Fi `HappyBaby`, mở `https://192.168.1.106:8012/?ws=wss://192.168.1.106:8012`.
+1. Mở `https://100.95.122.105:8012/?ws=wss://100.95.122.105:8012` trên Quest.
 2. Chấp nhận cert nếu hỏi. Chọn **Enter VR**.
 3. **Chưa bóp cò phải.** Giữ đầu và hai controller ở đúng neutral thoải mái đã
    dùng trong run sim chuẩn; dọn khoảng trống quanh cả hai tay robot và đầu.
@@ -187,11 +237,42 @@ vào q upstream đã qua limiter của producer.
 Tắt alignment: `HB_TELEOP_HOME=0`. Khi tắt, robot giữ encoder hiện tại làm mốc;
 mapping trở lại dạng offset và không còn đảm bảo giống dáng sim.
 
-**Cò trái = căn lại.** Goal mới là q source tại thời điểm bấm. Phiên tiếp tục
-sau khi ramp và chốt mốc.
+**Nút điều khiển trong một session:**
+
+| Input               | Hành vi                                                                                  |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| Giữ cò phải      | `ACTIVE`: pose mới được solve/apply                                                 |
+| Nhả cò phải      | `PAUSED`: gửi explicit STOP, giữ pipeline/session sống                               |
+| Bóp lại cò phải | tiếp tục cùng session; không cần reconnect                                           |
+| Cò trái           | đặt yêu cầu reset; Quest anchor mới chốt sau ba mẫu`ACTIVE`, rồi sidecar rehome |
+| A tay phải         | đổi Quest passthrough / camera robot, không ảnh hưởng actuation                     |
+
+Khuyến nghị căn lại: nhả cò phải → bấm/nhả cò trái → đưa đầu và controllers về
+neutral → bóp cò phải và giữ yên qua ba mẫu cùng pha `[HOME]`. Nếu bấm cò trái
+khi đang giữ cò phải, reset vẫn được nhận nhưng ba mẫu kế tiếp lập tức trở
+thành anchor mới, nên người vận hành phải đứng yên.
+
+Khi camera được cấu hình, **nút A tay phải = đổi Quest passthrough / camera
+robot**. View ban đầu luôn là Quest. Nút này độc lập với cò phải deadman và cò
+trái recalibration; đổi view không cấp quyền chuyển động. Camera là hỗ trợ quan
+sát, không thay người E-stop hoặc direct line-of-sight trong pilot treo.
 
 **Nhả cò phải thì tay giữ nguyên tư thế**, không sụp như trước. Bóp lại là đi
-tiếp từ đúng chỗ đó. Quá 120 giây không ai lái thì owner trả về ZERO TORQUE.
+tiếp từ đúng chỗ đó. Sidecar vẫn nhận PAUSED heartbeat nhưng owner nhận packet
+inactive; mất heartbeat thật vẫn kích watchdog. Quá 120 giây không ai lái thì
+owner trả về ZERO TORQUE.
+
+Sau run, bundle local có:
+
+- `simulation/simulator_view.mp4` và simulation telemetry;
+- `robot_camera_original/frames/*.jpg`, `manifest.jsonl` và `summary.json` từ
+  camera mắt R1, giữ nguyên bytes JPEG trước preview;
+- `camera_transport_status.json`, `camera_evidence_validation.json` và
+  `camera_artifact_status.json`;
+- `robot/` encoder/target hardware;
+- `sim_hardware_comparison.json`, căn theo shared sequence ID;
+- `fanout_stats.json`; launcher tự đánh dấu run lỗi nếu mirror rơi/mất bất kỳ
+  command nào (`mirror_drop_count != 0` hoặc số dòng không khớp).
 
 Bóp cò phải khi chưa ở neutral: nhả cò ngay, chờ pipeline release, chạy lại từ
 đầu. Không vặn tay/đầu sang tư thế bù trong khi controller còn active.
@@ -285,6 +366,24 @@ dòng `[FAIL]` ngay trên nó. Bước kiểm điều kiện đòi **đúng mộ
 đang chạy và giữ 5560 — không quan tâm đó là service hay bản cô lập foreground.
 Hai tiến trình `run_r1` cùng chạy cũng bị chặn ở đây (vi phạm D003).
 
+**Camera transport thoát trước khi ready.** Control pipeline chưa được mở. Đọc
+`camera_transport.stderr.log` và `camera_transport_status.json` trong run mới
+nhất. Không thử `nc` vào 60001/55555: camera built-in đi qua `videohub` DDS trên
+robot rồi SSH-forward endpoint loopback `8765`. Nếu local port 8765 đã bị giữ,
+launcher fail mà không kill process lạ.
+Run `20260923T111338Z` gặp gateway thử tay còn giữ port robot `8765`: SSH
+tunnel đọc được `/health` của phiên cũ dù gateway mới báo `Address already in
+use`. Gateway nay trả `record_dir` và launcher chỉ nhận đúng thư mục của run
+hiện tại. Sau khi sửa source camera, chạy lại `make teleop-hardware-prepare`
+trước phiên mới. Đừng kill một process khác đang dùng port khi chưa xác minh
+PID và recording của nó.
+
+**`ModuleNotFoundError: isaaclab`.** Không chạy simulator bằng Python của
+`unitree_sim_env`; env đó dành cho target/evidence utilities. Entrypoint chuẩn
+tự dùng `~/isaacsim_5.1/python.sh` với source IsaacLab và fail-fast nếu thiếu.
+Kiểm local, không mở simulator, bằng dry wiring test hoặc chạy lại lệnh chuẩn;
+không cần tắt camera hay deploy lại robot cho lỗi workstation này.
+
 **`[SAFE] no valid target`** — sidecar không nhận được line hợp lệ nào. Hầu như
 luôn là sai thứ tự tên khớp hoặc sai định dạng; kiểm producer có phát
 `joint_names` kết thúc bằng `head_yaw_joint, head_pitch_joint` không.
@@ -325,6 +424,16 @@ homing. Đọc `pipeline_status.json` rồi stderr của tầng có exit code kh
 **`home_aborted_input_watchdog` / `input_watchdog`** — pipe còn mở nhưng sidecar
 không nhận target hợp lệ mới trong 0.75 s. Đối chiếu solver timing và stderr của
 target producer; không mặc định coi đây là nhả cò.
+Run `20260923T111338Z` cho thấy workstation vẫn phát target 10 Hz đến sequence
+`577`, robot ghi nhận cuối cùng sequence `550` rồi watchdog dừng. Khoảng đứt
+nằm sau producer; log hiện có chưa phân biệt được SSH truyền chậm với lịch chạy
+receiver bị trễ. Giữ nguyên timeout an toàn, thử lại qua IP LAN của đúng robot
+và lưu evidence để so sánh.
+
+**`scp: unexpected filename: .`** — OpenSSH SFTP từ chối nguồn kết thúc bằng
+`/.`, nên bản cũ không copy được `robot/samples.jsonl` dù file đã có trên robot.
+Launcher nay dùng `rsync` cho hai thư mục evidence; lỗi compare/finalize của run
+đó là hậu quả thiếu file local, không phải thiếu mẫu encoder phía robot.
 
 **Thiếu listener `127.0.0.1:5560`** — high-level chưa chạy hoặc sai config. Không
 chạy direct-lowcmd để lách kiểm tra này; đường đó đã bị loại.
@@ -342,6 +451,11 @@ Mỗi run workstation còn ghi `pipeline_status.json`, `bridge.stderr.log`,
 `hardware_targets.stderr.log` và `ssh.stderr.log`. Các file này xác định tầng
 đóng đầu tiên; `bridge_stop=downstream_closed` chỉ là hậu quả lan ngược, không
 tự nó chứng minh bridge lỗi.
+
+Camera built-in ghi tại `robot_camera_original/`. Launcher chỉ đánh dấu camera
+artifact complete khi manifest khớp số frame, byte count và SHA-256, không có
+queue drop/disk error, và accepted count bằng written count. Camera stale khi
+đang xem sẽ tự trả Quest về passthrough mà không đóng controller session.
 
 Khi sidecar thoát, launcher tự tải `metadata.json` và `samples.jsonl` từ path
 robot nói trên vào `robot/`, tính `metrics.json`, sinh

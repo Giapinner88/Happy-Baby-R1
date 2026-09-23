@@ -263,6 +263,26 @@ class StreamHelperTest(unittest.TestCase):
         _pitch, yaw = calibrator.update(turned_pose, True)
         self.assertAlmostEqual(yaw, math.radians(70.0), places=9)
 
+    def test_left_trigger_reset_requires_a_new_sustained_deadman_anchor(self):
+        limits = self.module.head_limits_rad(PROJECT_URDF)
+        calibrator = self.module.HeadNeutralCalibrator(limits, confirm_samples=3)
+        pose = {
+            "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+        }
+        for _ in range(3):
+            calibrator.update(pose, True)
+        self.assertTrue(calibrator.ready)
+
+        calibrator.reset()
+        self.assertFalse(calibrator.ready)
+        self.assertIsNone(calibrator.neutral)
+        calibrator.update(pose, False)
+        self.assertEqual(calibrator.candidate_count, 0)
+        for _ in range(3):
+            calibrator.update(pose, True)
+        self.assertTrue(calibrator.ready)
+
     def test_wrist_reanchor_removes_current_head_translation_and_yaw(self):
         world_wrist = np.eye(4)
         world_wrist[:3, :3] = yaw_rotation(math.radians(15.0))

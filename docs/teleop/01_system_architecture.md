@@ -33,12 +33,14 @@ Quest 3 (Quest Browser, immersive WebXR session)
       │ HTTPS + WSS :8012
       ▼
 quest_bridge.py                   env `tv`                30 Hz
+      ├── optional robot-camera WebRTC plane (display only)
+      │      A-button edge: Quest passthrough ↔ robot camera
       │ newline-delimited R1TeleopCommand JSON
       ▼
 run_r1_upstream_ik_stream.py      env `tv`
       │ initial-head anchor → vendor R1_A5_ArmIK → 12 joints
       ▼
-run_r1_quest3_live.py             env `unitree_sim_env`
+run_r1_quest3_live.py             Isaac Sim Python + IsaacLab source path
       │ `teleop/r1/isaaclab_robot.py` owns R1 articulation/actuator config
       │ validate/apply joint targets
       ├──────────────► Isaac Sim
@@ -53,6 +55,12 @@ run_r1_quest3_live.py             env `unitree_sim_env`
          hb_high_level (run_r1)
               └── sole `rt/lowcmd` publisher
 ```
+
+Trong hardware workflow, vector đã qua hardware rate limiter được fan-out theo
+cùng `sequence_id`: stdout ưu tiên đi sidecar, mirror queue hữu hạn đi Isaac.
+Nhánh mirror không có DDS/UDP và không được phép back-pressure đường robot.
+TeleImager ZMQ camera recorder là nhánh evidence riêng; WebRTC plane chỉ dùng
+để quan sát trong Quest.
 
 Hai Conda environments không dùng chung interpreter vì `vuer` xung đột với IsaacLab. Chúng chạy thành hai process nối bằng pipe.
 
@@ -84,6 +92,11 @@ $$
 
 - Không tự sinh neutral command khi XR data invalid.
 - Quest bridge, mapper, IK và hardware writer phải tách riêng.
+- Camera WebRTC chỉ là nhánh hiển thị trong Vuer; nó không đi vào schema lệnh,
+  IK hoặc kênh actuation. Mất ảnh không tự thay đổi deadman.
+- Hardware input có ba semantics: cò phải giữ = ACTIVE, nhả = PAUSED/explicit
+  STOP nhưng session sống, cò trái = reset pending được phát sau khi anchor mới
+  được xác nhận bằng ba mẫu ACTIVE.
 - Vendor upstream là solver duy nhất của pipeline active; wrapper project giữ
   frame/anchor, validation và evidence boundary.
 - Simulation và hardware evidence phải có boundary rõ.

@@ -108,6 +108,17 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--stop-file-dir", type=Path, default=Path("/tmp"), help="Where the stop file is created.")
+    parser.add_argument(
+        "--robot-camera-webrtc-url",
+        help="Optional robot-camera WebRTC offer URL shown in Quest; A toggles the view.",
+    )
+    parser.add_argument(
+        "--camera-toggle-button",
+        choices=("right_a", "right_b", "left_x", "left_y", "right_thumbstick", "left_thumbstick"),
+        default="right_a",
+    )
+    parser.add_argument("--robot-camera-layout", choices=("mono", "stereo-sbs"), default="mono")
+    parser.add_argument("--robot-camera-aspect", type=float, default=16.0 / 9.0)
     parser.add_argument("--dry-run", action="store_true", help="Print the allocated paths and commands, run nothing.")
     return parser
 
@@ -150,6 +161,10 @@ def main() -> int:
             idle_stop_s=args.idle_stop_s,
             quest_ready_timeout_s=args.quest_ready_timeout_s,
             solver_args=["scripts/teleop/run_r1_upstream_ik_stream.py", "--passthrough"],
+            robot_camera_webrtc_url=args.robot_camera_webrtc_url,
+            camera_toggle_button=args.camera_toggle_button,
+            robot_camera_layout=args.robot_camera_layout,
+            robot_camera_aspect=args.robot_camera_aspect,
         ),
         dry_run=args.dry_run,
     )

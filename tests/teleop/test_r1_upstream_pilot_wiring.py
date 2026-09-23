@@ -22,6 +22,7 @@ from teleop.r1.launcher import (
     SIM_ENV,
     PilotLaunchSpec,
     _effective_simulator_status,
+    _command_for_display,
     _wait_for_quest_ready,
     build_commands,
     ensure_self_signed_certificate,
@@ -50,6 +51,13 @@ def make_spec(**overrides) -> PilotLaunchSpec:
 
 
 class LauncherSolverStageTest(unittest.TestCase):
+    def test_camera_query_is_redacted_from_dry_run_display(self):
+        displayed = _command_for_display(
+            ["python", "bridge.py", "--robot-camera-webrtc-url", "https://robot/offer?token=secret"]
+        )
+        self.assertIn("https://robot/offer", displayed)
+        self.assertNotIn("secret", displayed)
+
     def test_zero_exit_without_simulator_output_is_failure(self):
         self.assertEqual(_effective_simulator_status(0, output_exists=False), 1)
         self.assertEqual(_effective_simulator_status(0, output_exists=True), 0)
@@ -97,6 +105,30 @@ class LauncherSolverStageTest(unittest.TestCase):
         self.assertIn(BRIDGE_ENV, solver)
         self.assertNotIn(SIM_ENV, solver)
         self.assertIn("--passthrough", solver)
+
+    def test_robot_camera_options_are_wired_only_when_configured(self):
+        bridge, _solver, _sim = build_commands(
+            make_spec(
+                robot_camera_webrtc_url="https://robot.local/webrtc/offer",
+                camera_toggle_button="right_b",
+                robot_camera_layout="stereo-sbs",
+                robot_camera_aspect=2.0,
+            ),
+            Path("/tmp/out"),
+            Path("/tmp/stop"),
+            Path("/tmp/log"),
+        )
+        self.assertEqual(
+            bridge[bridge.index("--robot-camera-webrtc-url") + 1],
+            "https://robot.local/webrtc/offer",
+        )
+        self.assertEqual(bridge[bridge.index("--camera-toggle-button") + 1], "right_b")
+        self.assertEqual(bridge[bridge.index("--robot-camera-layout") + 1], "stereo-sbs")
+
+        default_bridge, _solver, _sim = build_commands(
+            make_spec(), Path("/tmp/out"), Path("/tmp/stop"), Path("/tmp/log")
+        )
+        self.assertNotIn("--robot-camera-webrtc-url", default_bridge)
 
 
 class AutomaticCertificateTest(unittest.TestCase):

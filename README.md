@@ -38,7 +38,8 @@ IP robot lấy từ `ROBOT` hoặc `~/.config/hb/robot.env`; không hard-code đ
 ## Bố cục
 
 - `teleop/r1/`: implementation dùng chung cho schema, mapping, IK và runtime.
-- `scripts/teleop/`: entrypoint live, replay, diagnostics và bundle export.
+- `scripts/teleop/`: entrypoint live, replay, diagnostics, Vuer camera-view
+  adapter và bundle export.
 - `experiments/.../baseline/`: cấu hình, record và evidence đối chứng vendor.
 - `hardware/teleop/`: sidecar/deploy package; `hardware/high_level_lock/` là
   sole-owner C++ phục vụ pilot treo.

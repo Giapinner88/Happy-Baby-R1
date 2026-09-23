@@ -105,7 +105,7 @@ class HardwareTargetProducerTests(unittest.TestCase):
         )
         parsed = self.sidecar.parse_target(json.dumps(payload), previous_sequence=6)
         self.assertIsNotNone(parsed)
-        sequence, positions, head_valid, target_mode, rehome = parsed
+        sequence, positions, head_valid, target_mode, rehome, enabled = parsed
         self.assertEqual(sequence, 7)
         self.assertEqual(len(positions), 12)
         # A 12-joint stream is what tells the receiver the head is being driven;
@@ -113,6 +113,7 @@ class HardwareTargetProducerTests(unittest.TestCase):
         self.assertTrue(head_valid)
         self.assertEqual(target_mode, "relative_source")
         self.assertFalse(rehome)
+        self.assertTrue(enabled)
         self.sidecar.encode_target(sequence, positions, head_valid)
 
     def test_rehome_uses_the_same_wire_contract(self):
@@ -121,7 +122,33 @@ class HardwareTargetProducerTests(unittest.TestCase):
         )
         parsed = self.sidecar.parse_target(json.dumps(payload), previous_sequence=7)
         self.assertIsNotNone(parsed)
-        self.assertEqual(parsed[3:], ("relative_source", True))
+        self.assertEqual(parsed[3:], ("relative_source", True, True))
+
+    def test_deadman_release_is_an_explicit_pause_not_stream_eof(self):
+        payload = self.producer.make_receiver_payload(
+            9,
+            [0.0] * 12,
+            "upstream_xr_teleoperate_R1_A5_ArmIK",
+            enabled=False,
+        )
+        parsed = self.sidecar.parse_target(json.dumps(payload), previous_sequence=8)
+        self.assertIsNotNone(parsed)
+        self.assertFalse(parsed[-1])
+
+    def test_enriched_hardware_line_remains_a_simulation_command(self):
+        from teleop.r1 import R1TeleopCommand
+
+        command = json.loads((ROOT / "tests/fixtures/quest_command.jsonl").read_text())
+        payload = self.producer.make_receiver_payload(
+            command["sequence_id"],
+            [0.01 * index for index in range(12)],
+            "upstream_xr_teleoperate_R1_A5_ArmIK",
+            command_payload=command,
+        )
+        parsed = R1TeleopCommand.from_dict(payload)
+        self.assertEqual(parsed.sequence_id, command["sequence_id"])
+        self.assertEqual(payload["upstream_joint_names"], list(JOINT_NAMES))
+        self.assertEqual(len(payload["upstream_joint_position_rad"]), 12)
 
     def test_the_hardware_ceilings_bound_a_vendor_sized_step(self):
         """A step the vendor path really produces must leave here bounded.

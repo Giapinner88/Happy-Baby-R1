@@ -235,6 +235,13 @@ class HeadNeutralCalibrator:
     def ready(self) -> bool:
         return self.anchor_pose_matrix is not None
 
+    def reset(self) -> None:
+        """Forget the spatial anchor; the next sustained enable captures it."""
+
+        self.neutral = None
+        self.anchor_pose_matrix = None
+        self.candidate_count = 0
+
     def update(self, pose: dict, enabled: bool) -> tuple[float, float]:
         if not enabled:
             if self.neutral is None:
@@ -313,6 +320,8 @@ def main() -> int:
     last_arms: np.ndarray | None = None
     last_wrist_targets: tuple[np.ndarray, np.ndarray] | None = None
     head_calibrator = HeadNeutralCalibrator(head_bounds)
+    reset_pending = False
+    reset_count = 0
 
     downstream_closed = False
     failure: str | None = None
@@ -326,6 +335,10 @@ def main() -> int:
             sequence_value = command.get("sequence_id")
             last_sequence_id = int(sequence_value) if sequence_value is not None else None
             enabled = bool(command.get("deadman_enabled", False))
+            if bool(command.get("reset_requested", False)):
+                head_calibrator.reset()
+                reset_pending = True
+                reset_count += 1
             pitch, yaw = head_calibrator.update(command["head_pose"], enabled)
             if enabled and not head_calibrator.ready:
                 calibration_samples_skipped += 1
@@ -360,6 +373,11 @@ def main() -> int:
                 # own evidence stays exactly what it would have been, and the
                 # solved vector rides along under its own keys.
                 record = dict(command)
+                # A left-trigger edge is delivered only with the first command
+                # solved against the newly captured Quest anchor.  This keeps
+                # simulator reset and robot rehome on the same sequence.
+                deliver_reset = bool(reset_pending and enabled and head_calibrator.ready)
+                record["reset_requested"] = deliver_reset
                 record["upstream_solver"] = "upstream_xr_teleoperate_R1_A5_ArmIK"
                 record["upstream_joint_names"] = joint_names
                 record["upstream_joint_position_rad"] = solved
@@ -368,6 +386,8 @@ def main() -> int:
                 assert last_wrist_targets is not None
                 record["upstream_left_wrist_target_matrix"] = last_wrist_targets[0].tolist()
                 record["upstream_right_wrist_target_matrix"] = last_wrist_targets[1].tolist()
+                if deliver_reset:
+                    reset_pending = False
             else:
                 record = {
                     "schema_version": 1,
@@ -420,6 +440,7 @@ def main() -> int:
                         "solved_sample_count": int(len(values)),
                         "held_sample_count": int(held),
                         "calibration_samples_skipped": int(calibration_samples_skipped),
+                        "reset_count": reset_count,
                         "wrist_reference_mode": "initial_head_position_yaw_anchor",
                         "solve_ms": solve_summary,
                         "implied_rate_ceiling_hz": implied_rate,

@@ -28,6 +28,19 @@ Chạy baseline upstream:
 make teleop HOST_IP=192.168.1.106
 ```
 
+Nếu camera robot đã có WebRTC offer endpoint:
+
+```bash
+make teleop HOST_IP=192.168.1.106 \
+  ROBOT_CAMERA_WEBRTC_URL=https://robot-camera.local/webrtc/offer
+```
+
+View khởi động là Quest passthrough. Nhấn rồi nhả nút A tay phải để đổi qua
+camera robot; mỗi cạnh nhấn chỉ đổi một lần. Chức năng này chỉ thay scene Vuer,
+không thay deadman, pose stream, IK hay lệnh mô phỏng. Xem
+[`13_vuer_robot_camera.md`](13_vuer_robot_camera.md) cho contract endpoint và
+giới hạn xác minh.
+
 Launcher tạo run bất biến dưới
 `experiments/r1_teleop/quest3_sim_v1/baseline/runs/`. Giữ head và controllers ở
 tư thế neutral trong ba mẫu deadman đầu; mẫu thứ ba chốt head position/yaw cho

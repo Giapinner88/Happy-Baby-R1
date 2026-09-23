@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Quest live commands into an IsaacLab R1 simulator.
 
-This process runs in the `unitree_sim_env` environment and consumes the
-newline-delimited `R1TeleopCommand` stream produced by `quest_bridge.py`. It has
+This process runs with Isaac Sim's Python plus the IsaacLab source path and
+consumes the newline-delimited `R1TeleopCommand` stream produced by
+`quest_bridge.py`. It has
 no DDS, ROS, Unitree SDK, `LowCmd`, or `hardware/high_level/` import, and the
 `HeadOnlyIsaacLabSink` raises if a base-velocity dispatch ever reaches it.
 
@@ -137,6 +138,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--stop-file",
         type=Path,
         help="A path that must not exist at startup; create it to request a graceful live stop.",
+    )
+    parser.add_argument(
+        "--ready-file",
+        type=Path,
+        help="Create this JSON file after Isaac/robot/cameras are initialized and stdin is being consumed.",
     )
     parser.add_argument(
         "--replay-command-file",
@@ -625,6 +631,8 @@ def main() -> int:
         raise SystemExit("--physics-hz must be at least --control-hz.")
     if args.stop_file is not None and args.stop_file.expanduser().exists():
         raise SystemExit(f"Refusing to start: --stop-file already exists: {args.stop_file}")
+    if args.ready_file is not None and args.ready_file.expanduser().exists():
+        raise SystemExit(f"Refusing to start: --ready-file already exists: {args.ready_file}")
     output_dir = args.output_dir.expanduser().resolve()
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite T001 evidence: {output_dir}")
@@ -1088,6 +1096,22 @@ def main() -> int:
             args=(replay_payloads, commands, args.replay_speed),
             daemon=True,
         ).start()
+
+    if args.ready_file is not None:
+        ready_file = args.ready_file.expanduser().resolve()
+        ready_file.parent.mkdir(parents=True, exist_ok=True)
+        ready_file.write_text(
+            json.dumps(
+                {
+                    "event": "isaac_ready",
+                    "timestamp_monotonic_s": time.monotonic(),
+                    "output_dir": str(output_dir),
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     raw_lines: list[str] = []
     target_records: list[dict[str, object]] = []
