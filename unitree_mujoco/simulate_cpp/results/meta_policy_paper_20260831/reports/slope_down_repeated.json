@@ -1,0 +1,258 @@
+{
+  "aggregate": {
+    "cases": 192,
+    "control": {
+      "FAIL": 59,
+      "PASS": 133
+    },
+    "failure_reason": {
+      "fall": 23,
+      "metric_violation": 36,
+      "pass": 133
+    },
+    "process": {
+      "ERROR": 7,
+      "OK": 185
+    },
+    "process_reason": {
+      "cyclonedds_teardown_assertion": 7,
+      "ok": 185
+    },
+    "runs": 3
+  },
+  "case_consistency": {
+    "cases": 64,
+    "note": "Reset consistency only; the runs do not expose independent random seeds or injected noise.",
+    "pass_count_histogram": {
+      "0_of_3": 16,
+      "1_of_3": 5,
+      "2_of_3": 1,
+      "3_of_3": 42
+    },
+    "reset_repetitions": 3
+  },
+  "runs": [
+    {
+      "by_angle": {
+        "0": {
+          "fail": 1,
+          "pass": 8
+        },
+        "10": {
+          "fail": 1,
+          "pass": 8
+        },
+        "15": {
+          "fail": 3,
+          "pass": 6
+        },
+        "20": {
+          "fail": 2,
+          "pass": 7
+        },
+        "25": {
+          "fail": 6,
+          "pass": 3
+        },
+        "30": {
+          "fail": 7,
+          "pass": 2
+        },
+        "5": {
+          "pass": 9
+        },
+        "mixed": {
+          "pass": 1
+        }
+      },
+      "by_category": {
+        "CROSS": {
+          "fail": 4,
+          "pass": 10
+        },
+        "DIAGONAL": {
+          "fail": 5,
+          "pass": 9
+        },
+        "STAND": {
+          "fail": 5,
+          "pass": 2
+        },
+        "STRAIGHT": {
+          "fail": 2,
+          "pass": 13
+        },
+        "TURN": {
+          "fail": 4,
+          "pass": 10
+        }
+      },
+      "cases": 64,
+      "control": {
+        "FAIL": 20,
+        "PASS": 44
+      },
+      "directory": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_down",
+      "failure_reason": {
+        "fall": 7,
+        "metric_violation": 13,
+        "pass": 44
+      },
+      "process": {
+        "ERROR": 6,
+        "OK": 58
+      },
+      "process_reason": {
+        "cyclonedds_teardown_assertion": 6,
+        "ok": 58
+      }
+    },
+    {
+      "by_angle": {
+        "0": {
+          "fail": 1,
+          "pass": 8
+        },
+        "10": {
+          "fail": 1,
+          "pass": 8
+        },
+        "15": {
+          "fail": 2,
+          "pass": 7
+        },
+        "20": {
+          "fail": 3,
+          "pass": 6
+        },
+        "25": {
+          "fail": 7,
+          "pass": 2
+        },
+        "30": {
+          "fail": 7,
+          "pass": 2
+        },
+        "5": {
+          "pass": 9
+        },
+        "mixed": {
+          "pass": 1
+        }
+      },
+      "by_category": {
+        "CROSS": {
+          "fail": 5,
+          "pass": 9
+        },
+        "DIAGONAL": {
+          "fail": 5,
+          "pass": 9
+        },
+        "STAND": {
+          "fail": 5,
+          "pass": 2
+        },
+        "STRAIGHT": {
+          "fail": 2,
+          "pass": 13
+        },
+        "TURN": {
+          "fail": 4,
+          "pass": 10
+        }
+      },
+      "cases": 64,
+      "control": {
+        "FAIL": 21,
+        "PASS": 43
+      },
+      "directory": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260831/experts/slope_down_repeat_2",
+      "failure_reason": {
+        "fall": 7,
+        "metric_violation": 14,
+        "pass": 43
+      },
+      "process": {
+        "OK": 64
+      },
+      "process_reason": {
+        "ok": 64
+      }
+    },
+    {
+      "by_angle": {
+        "0": {
+          "fail": 1,
+          "pass": 8
+        },
+        "10": {
+          "pass": 9
+        },
+        "15": {
+          "fail": 2,
+          "pass": 7
+        },
+        "20": {
+          "fail": 2,
+          "pass": 7
+        },
+        "25": {
+          "fail": 6,
+          "pass": 3
+        },
+        "30": {
+          "fail": 7,
+          "pass": 2
+        },
+        "5": {
+          "pass": 9
+        },
+        "mixed": {
+          "pass": 1
+        }
+      },
+      "by_category": {
+        "CROSS": {
+          "fail": 4,
+          "pass": 10
+        },
+        "DIAGONAL": {
+          "fail": 3,
+          "pass": 11
+        },
+        "STAND": {
+          "fail": 5,
+          "pass": 2
+        },
+        "STRAIGHT": {
+          "fail": 2,
+          "pass": 13
+        },
+        "TURN": {
+          "fail": 4,
+          "pass": 10
+        }
+      },
+      "cases": 64,
+      "control": {
+        "FAIL": 18,
+        "PASS": 46
+      },
+      "directory": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260831/experts/slope_down_repeat_3",
+      "failure_reason": {
+        "fall": 9,
+        "metric_violation": 9,
+        "pass": 46
+      },
+      "process": {
+        "ERROR": 1,
+        "OK": 63
+      },
+      "process_reason": {
+        "cyclonedds_teardown_assertion": 1,
+        "ok": 63
+      }
+    }
+  ]
+}

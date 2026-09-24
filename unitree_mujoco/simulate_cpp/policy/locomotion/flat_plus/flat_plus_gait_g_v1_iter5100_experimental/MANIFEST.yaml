@@ -1,0 +1,27 @@
+policy_contract: flat_plus_gait_g_v1_iter5100_experimental
+status: experimental_not_release_gate_passed
+gait_task_variant: G
+source_run: logs/rsl_rl/r1_flat_plus_gait_g/2026-09-17_10-40-58_gait_g_512env_seed42_10kiter_20260917
+checkpoint_iteration: 5100
+training:
+  initialization: from_scratch
+  total_run_iterations: 10000
+  seed: 42
+  num_envs: 512
+dimensions:
+  actor: 335
+  critic: 101
+  action: 24
+artifacts:
+  onnx: exported/policy_flat_plus_gait_g_v1_iter5100_experimental.onnx
+  onnx_sha256: c092a88d5f3eb4714a708d5c83314d777bc3510911b08746b7087810cc39da75
+  checkpoint: checkpoints/model_5100.pt
+  checkpoint_sha256: d19e07acb6a9f9ae95c025926f47518824aa0c0f7c9c84204e675efcba4eb98d
+release_gate:
+  passed: false
+  mean_reward: -2.07
+  required_mean_reward: 45.0
+hb:
+  active: false
+  activation_blocked_until: release-gate pass AND HB 335-D gait v3 GATHER/SETTLE FSM
+    runtime (not yet implemented, see gait_bfg_deploy_package/PLAN.md)

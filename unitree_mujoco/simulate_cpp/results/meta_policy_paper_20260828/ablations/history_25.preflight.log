@@ -1,0 +1,17 @@
+slope_meta_preflight=PASS
+package="/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/history_25"
+actor_observation=83
+experts=3
+history_steps=50
+effective_history_steps=25
+blend_space=target_q
+outer_crossfade_enabled=true
+upright_release_step=1
+upright_selected_class=NEUTRAL
+upright_probabilities=7.94542e-10,1.15627e-08,7.3954e-09,1
+upright_max_abs_raw_action=0.688011
+upright_max_abs_leg_target_delta_rad=0.225754
+upright_max_step_leg_target_delta_rad=0.0225754
+mean_ms=2.431423
+p99_ms=4.220717
+budget_ms=20.000000

@@ -1,0 +1,129 @@
+[EXPERT_ACCEPTANCE] expert=slope_up 1: scene=flat angle=0 category=STAND direction=neutral cmd=(0,0,0)
+[EXPERT_ACCEPTANCE] control=FAIL process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_STAND_neutral.log
+[EXPERT_ACCEPTANCE] expert=slope_up 2: scene=flat angle=0 category=STRAIGHT direction=up cmd=(0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_STRAIGHT_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 3: scene=flat angle=0 category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_STRAIGHT_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 4: scene=flat angle=0 category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_DIAGONAL_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 5: scene=flat angle=0 category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_DIAGONAL_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 6: scene=flat angle=0 category=CROSS direction=left cmd=(0,0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_CROSS_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 7: scene=flat angle=0 category=CROSS direction=right cmd=(0,-0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_CROSS_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 8: scene=flat angle=0 category=TURN direction=left cmd=(0,0,0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_TURN_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 9: scene=flat angle=0 category=TURN direction=right cmd=(0,0,-0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/flat_TURN_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 10: scene=5 angle=5 category=STAND direction=neutral cmd=(0,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5_STAND_neutral.log
+[EXPERT_ACCEPTANCE] expert=slope_up 11: scene=5-platform angle=5 category=STRAIGHT direction=up cmd=(0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5-platform_STRAIGHT_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 12: scene=5-platform angle=5 category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5-platform_STRAIGHT_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 13: scene=5-platform angle=5 category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5-platform_DIAGONAL_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 14: scene=5-platform angle=5 category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5-platform_DIAGONAL_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 15: scene=5 angle=5 category=CROSS direction=left cmd=(0,0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5_CROSS_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 16: scene=5 angle=5 category=CROSS direction=right cmd=(0,-0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5_CROSS_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 17: scene=5 angle=5 category=TURN direction=left cmd=(0,0,0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5_TURN_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 18: scene=5 angle=5 category=TURN direction=right cmd=(0,0,-0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/5_TURN_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 19: scene=10 angle=10 category=STAND direction=neutral cmd=(0,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10_STAND_neutral.log
+[EXPERT_ACCEPTANCE] expert=slope_up 20: scene=10-platform angle=10 category=STRAIGHT direction=up cmd=(0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10-platform_STRAIGHT_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 21: scene=10-platform angle=10 category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10-platform_STRAIGHT_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 22: scene=10-platform angle=10 category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10-platform_DIAGONAL_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 23: scene=10-platform angle=10 category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10-platform_DIAGONAL_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 24: scene=10 angle=10 category=CROSS direction=left cmd=(0,0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10_CROSS_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 25: scene=10 angle=10 category=CROSS direction=right cmd=(0,-0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10_CROSS_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 26: scene=10 angle=10 category=TURN direction=left cmd=(0,0,0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10_TURN_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 27: scene=10 angle=10 category=TURN direction=right cmd=(0,0,-0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/10_TURN_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 28: scene=15 angle=15 category=STAND direction=neutral cmd=(0,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15_STAND_neutral.log
+[EXPERT_ACCEPTANCE] expert=slope_up 29: scene=15-platform angle=15 category=STRAIGHT direction=up cmd=(0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15-platform_STRAIGHT_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 30: scene=15-platform angle=15 category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15-platform_STRAIGHT_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 31: scene=15-platform angle=15 category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15-platform_DIAGONAL_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 32: scene=15-platform angle=15 category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15-platform_DIAGONAL_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 33: scene=15 angle=15 category=CROSS direction=left cmd=(0,0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15_CROSS_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 34: scene=15 angle=15 category=CROSS direction=right cmd=(0,-0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15_CROSS_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 35: scene=15 angle=15 category=TURN direction=left cmd=(0,0,0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15_TURN_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 36: scene=15 angle=15 category=TURN direction=right cmd=(0,0,-0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/15_TURN_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 37: scene=20 angle=20 category=STAND direction=neutral cmd=(0,0,0)
+[EXPERT_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20_STAND_neutral.log
+[EXPERT_ACCEPTANCE] expert=slope_up 38: scene=20-platform angle=20 category=STRAIGHT direction=up cmd=(0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20-platform_STRAIGHT_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 39: scene=20-platform angle=20 category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20-platform_STRAIGHT_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 40: scene=20-platform angle=20 category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20-platform_DIAGONAL_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 41: scene=20-platform angle=20 category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20-platform_DIAGONAL_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 42: scene=20 angle=20 category=CROSS direction=left cmd=(0,0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20_CROSS_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 43: scene=20 angle=20 category=CROSS direction=right cmd=(0,-0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20_CROSS_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 44: scene=20 angle=20 category=TURN direction=left cmd=(0,0,0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20_TURN_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 45: scene=20 angle=20 category=TURN direction=right cmd=(0,0,-0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/20_TURN_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 46: scene=25 angle=25 category=STAND direction=neutral cmd=(0,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25_STAND_neutral.log
+[EXPERT_ACCEPTANCE] expert=slope_up 47: scene=25-platform angle=25 category=STRAIGHT direction=up cmd=(0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25-platform_STRAIGHT_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 48: scene=25-platform angle=25 category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25-platform_STRAIGHT_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 49: scene=25-platform angle=25 category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25-platform_DIAGONAL_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 50: scene=25-platform angle=25 category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25-platform_DIAGONAL_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 51: scene=25 angle=25 category=CROSS direction=left cmd=(0,0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25_CROSS_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 52: scene=25 angle=25 category=CROSS direction=right cmd=(0,-0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25_CROSS_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 53: scene=25 angle=25 category=TURN direction=left cmd=(0,0,0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25_TURN_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 54: scene=25 angle=25 category=TURN direction=right cmd=(0,0,-0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25_TURN_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 55: scene=30 angle=30 category=STAND direction=neutral cmd=(0,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30_STAND_neutral.log
+[EXPERT_ACCEPTANCE] expert=slope_up 56: scene=30-platform angle=30 category=STRAIGHT direction=up cmd=(0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30-platform_STRAIGHT_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 57: scene=30-platform angle=30 category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30-platform_STRAIGHT_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 58: scene=30-platform angle=30 category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30-platform_DIAGONAL_up.log
+[EXPERT_ACCEPTANCE] expert=slope_up 59: scene=30-platform angle=30 category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[EXPERT_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30-platform_DIAGONAL_down.log
+[EXPERT_ACCEPTANCE] expert=slope_up 60: scene=30 angle=30 category=CROSS direction=left cmd=(0,0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30_CROSS_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 61: scene=30 angle=30 category=CROSS direction=right cmd=(0,-0.3,0)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30_CROSS_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 62: scene=30 angle=30 category=TURN direction=left cmd=(0,0,0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30_TURN_left.log
+[EXPERT_ACCEPTANCE] expert=slope_up 63: scene=30 angle=30 category=TURN direction=right cmd=(0,0,-0.5)
+[EXPERT_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/30_TURN_right.log
+[EXPERT_ACCEPTANCE] expert=slope_up 64: scene=mixed angle=mixed category=STRAIGHT direction=traverse cmd=(0.4,0,0)
+[EXPERT_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/mixed_STRAIGHT_traverse.log
+[EXPERT_ACCEPTANCE] expert=slope_up cases=64 control_failures=3 process_errors=8 summary=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/summary.csv

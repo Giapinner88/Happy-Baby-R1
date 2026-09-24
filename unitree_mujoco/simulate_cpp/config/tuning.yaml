@@ -1,0 +1,141 @@
+# Locomotion profiles
+# TAB chọn trực tiếp bộ speed thường/nhanh theo family; không nhân chung các trục.
+# The active 335-D gait policy uses the Flat profile. Slow must stay inside its
+# train range vx±0.6, vy±0.6, yaw±1.0. Fast vx=1.5 is intentionally retained
+# for evaluation; it is outside this gait policy's current train envelope.
+flat_gait_period_s: 0.6
+flat_speed_vx: 0.6
+flat_speed_vy: 0.6
+flat_speed_yaw: 1.0
+flat_fast_speed_vx: 1.5
+flat_fast_speed_vy: 1.0
+flat_fast_speed_yaw: 2.0
+
+# Rough 270-D: khớp gait period 0.6 lúc train/deploy. Fast vx chạm trần train,
+# còn vy/yaw được giới hạn riêng để không bị nhân lên 1.0/2.0 như trước.
+rough_gait_period_s: 0.6
+rough_speed_vx: 1.0
+rough_speed_vy: 0.5
+rough_speed_yaw: 1.0
+rough_fast_speed_vx: 2.0
+rough_fast_speed_vy: 0.8
+rough_fast_speed_yaw: 1.0
+
+# Slope expert 83-D dùng gait 0.6; giới hạn fast bảo thủ hơn Flat.
+slope_gait_period_s: 0.6
+slope_speed_vx: 1.0
+slope_speed_vy: 0.5
+slope_speed_yaw: 1.0
+slope_fast_speed_vx: 1.5
+slope_fast_speed_vy: 0.5
+slope_fast_speed_yaw: 1.0
+
+# Gait-conditioned 335-D policy. These values are the deployable FSM contract
+# from the training export: separate linear/angular hysteresis and signed-vector
+# stability filtering (no simulator contact truth).
+gait_mode_stop_request_lin: 0.10
+gait_mode_stop_request_ang: 0.10
+gait_mode_move_request_lin: 0.15
+gait_mode_move_request_ang: 0.15
+gait_mode_settle_gyro_norm: 0.25
+gait_mode_settle_joint_velocity_rms: 0.60
+gait_mode_settle_dwell_s: 1.50
+gait_mode_w2s_timeout_s: 5.00
+gait_mode_stability_filter_tau_s: 0.20
+# 09/17 STAND-recovery metadata. These values are checked against the ONNX
+# artifact before the control loop is allowed to run.
+gait_stand_entry_tilt_max_rad: 0.08727
+gait_push_exit_tilt_immediate_rad: 0.13963
+gait_push_exit_tilt_sustained_rad: 0.11345
+gait_push_exit_gyro_immediate: 0.75
+gait_push_exit_gyro_sustained: 0.50
+gait_push_exit_sustain_s: 0.30
+
+# Locomotion & Scene
+locomotion_policy_dir: ../policy/locomotion/
+locomotion_policy: flat_plus/policy_flat_plus_gait_0917_armfree.onnx
+rough_scene_path: auto
+
+# Gestures
+gesture_dir: ../../../HB/high_level_2/policies/gestures/
+gesture_slot_1: vaytay_2
+gesture_slot_2: battay
+gesture_slot_3: namtay_anmung
+gesture_slot_4: duaqua
+gesture_slot_5: noichuyen
+gesture_slot_6: traitim
+gesture_slot_7: cheotayngauloi_hold7s
+gesture_slot_8: damtaylentroi
+# H4/gait: mask q/dq tay trước history; chỉ kích khi đứng ổn định.
+gesture_history_enabled: true
+gesture_history_stand_dwell_s: 0.5
+gesture_history_move_threshold: 0.05
+
+gesture_balance_kg: 0.0
+gesture_balance_kv: 0.0
+
+# Dance
+dance_dir: ../../../HB/high_level_2/policies/dance/
+dance_1_npz: nhay2_neodat_20260904/nhay2_r1_neodat_20260904.npz
+dance_1_onnx: nhay2_neodat_20260904/policy.onnx
+dance_1_speed: 0.7
+dance_2_npz: doremon_v8/doremon_r1_hoanchinh20260827.npz
+dance_2_onnx: doremon_v8/policy.onnx
+dance_2_speed: 1.0
+dance_3_npz: pokemon_train_ready_smooth11_temp_10500_20260919/pokemon_r1_train_ready_smooth11.npz
+dance_3_onnx: pokemon_train_ready_smooth11_temp_10500_20260919/policy.onnx
+dance_3_speed: 1.0
+dance_4_npz: xexe_train_ready_temp_16500_20260919/xexe_r1_train_ready.npz
+dance_4_onnx: xexe_train_ready_temp_16500_20260919/policy.onnx
+dance_4_speed: 1.0
+# Handover giống HB/high_level_2: về default_q, dance warmup/cooldown bằng
+# motion reference, rồi mới bàn giao controller tiếp theo.
+mimic_warmup_s: 1.5
+mimic_cooldown_s: 1.8
+mimic_handover_tilt: 0.15
+mimic_handover_gyro: 0.5
+mimic_handover_min_s: 0.3
+mimic_handover_max_s: 3.0
+# Match HB: zero locomotion command must settle body/joint velocity before return.
+mimic_entry_settle_s: 0.4
+mimic_entry_gyro_max: 0.5
+mimic_entry_dq_max: 0.6
+# Keep simulator handover aligned with the known-good HB legacy route.
+# Transition v2 remains opt-in for isolated experiments.
+mimic_transition_v2: false
+mimic_transition_search_frames: 200
+mimic_transition_clip_ramp_s: 0.35
+mimic_transition_exit_pos_tol: 0.12
+mimic_transition_exit_dq_tol: 0.60
+mimic_transition_fallback_pos_tol: 0.25
+mimic_transition_fallback_dq_tol: 1.50
+dance_blend_time_s: 0.5
+dance_return_rate_limit: 1.5
+dance_return_pos_tol: 0.12
+dance_return_timeout_s: 6.0
+
+# Sit
+sit_hip_deg: 150.0
+sit_knee_deg: 100.0
+sit_lean_deg: 58.0
+sit_seated_lean_deg: 20.0
+sit_arm_forward: -1.5
+sit_arm_elbow: 0.3
+sit_spread: 0.08
+sit_ankle_gravity_gain: 0.4
+sit_gather_time_s: 1.5
+sit_descent_time_s: 4.0
+sit_settle_time_s: 1.5
+sit_kp_leg: 200.0
+sit_kd: 3.0
+sit_rate_limit: 3.0
+sit_hold_s: 0.5
+sit_release_after: false
+
+# Audio
+audio_dir: ../../../HB/high_level_2/src/audio/
+audio_sit: dangangngoixuong.mp3
+audio_dance_1:
+audio_dance_2:
+audio_dance_3: ../../policies/dance/pokemon_train_ready_smooth11_temp_10500_20260919/pokemon.mp3
+audio_dance_4: ../../policies/dance/xexe_train_ready_temp_16500_20260919/EM BÉ VIỆT NAM - Xệ Xệ Dance Kids dc_ MK (Mộc Kỷ) MK DANCE (mp3cut.net).mp3

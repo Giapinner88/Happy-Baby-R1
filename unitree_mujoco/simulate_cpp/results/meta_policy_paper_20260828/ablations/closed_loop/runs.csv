@@ -1,0 +1,11 @@
+variant,exit_code,summary
+baseline,1,results/meta_policy_paper_20260828/ablations/closed_loop/baseline/summary.csv
+target_one_layer,1,results/meta_policy_paper_20260828/ablations/closed_loop/target_one_layer/summary.csv
+raw_action,1,results/meta_policy_paper_20260828/ablations/closed_loop/raw_action/summary.csv
+hard_switch,1,results/meta_policy_paper_20260828/ablations/closed_loop/hard_switch/summary.csv
+history_1,1,results/meta_policy_paper_20260828/ablations/closed_loop/history_1/summary.csv
+history_10,1,results/meta_policy_paper_20260828/ablations/closed_loop/history_10/summary.csv
+history_25,1,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/summary.csv
+no_neutral,1,results/meta_policy_paper_20260828/ablations/closed_loop/no_neutral/summary.csv
+no_hysteresis,1,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/summary.csv
+no_dwell,1,results/meta_policy_paper_20260828/ablations/closed_loop/no_dwell/summary.csv

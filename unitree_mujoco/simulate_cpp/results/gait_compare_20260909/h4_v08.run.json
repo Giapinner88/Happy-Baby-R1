@@ -1,0 +1,22 @@
+{
+  "command": [
+    "bash",
+    "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/run_rough_stack.sh",
+    "0",
+    "--locomotion-policy",
+    "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/flat_plus/policy_flat_plus_h4_v1.onnx",
+    "--autotest",
+    "compare",
+    "gesture=0",
+    "vx=0.8",
+    "warmup=5",
+    "hold=18",
+    "stop_after=12",
+    "csv=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/gait_compare_20260909/h4_v08.csv"
+  ],
+  "returncode": 0,
+  "schedule": null,
+  "summary": [
+    "  RESULT=PASS"
+  ]
+}

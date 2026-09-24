@@ -1,0 +1,593 @@
+{
+  "cases": 64,
+  "expert_control_pass": {
+    "flat": 27,
+    "slope_up": 61,
+    "slope_down": 43
+  },
+  "posthoc_best_fixed_expert_upper_bound": {
+    "pass": 63,
+    "cases": 64,
+    "note": "Non-causal union: counts a case if any fixed expert passes."
+  },
+  "role_mapped_fixed_expert_oracle": {
+    "pass": 31,
+    "cases": 63,
+    "excluded": 1,
+    "note": "Flat for flat/stand/cross/turn; Up or Down for directional slope cases. Mixed traversal is excluded because it requires within-run switching."
+  },
+  "cases_with_expert_outcome_disagreement": 37,
+  "cases_failed_by_all_fixed_experts": [
+    {
+      "scene": "20",
+      "angle_deg": "20",
+      "category": "STAND",
+      "direction": "neutral",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "FAIL",
+        "slope_down": "FAIL"
+      }
+    }
+  ],
+  "disagreements": [
+    {
+      "scene": "flat",
+      "angle_deg": "0",
+      "category": "STAND",
+      "direction": "neutral",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "PASS",
+        "slope_up": "FAIL",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "10",
+      "angle_deg": "10",
+      "category": "STAND",
+      "direction": "neutral",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "10-platform",
+      "angle_deg": "10",
+      "category": "STRAIGHT",
+      "direction": "down",
+      "vx": "-0.3",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "10-platform",
+      "angle_deg": "10",
+      "category": "DIAGONAL",
+      "direction": "down",
+      "vx": "-0.25",
+      "vy": "0.20",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "10",
+      "angle_deg": "10",
+      "category": "CROSS",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "10",
+      "angle_deg": "10",
+      "category": "CROSS",
+      "direction": "right",
+      "vx": "0",
+      "vy": "-0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "10",
+      "angle_deg": "10",
+      "category": "TURN",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "10",
+      "angle_deg": "10",
+      "category": "TURN",
+      "direction": "right",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "-0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "15",
+      "angle_deg": "15",
+      "category": "STAND",
+      "direction": "neutral",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "15-platform",
+      "angle_deg": "15",
+      "category": "STRAIGHT",
+      "direction": "down",
+      "vx": "-0.3",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "15-platform",
+      "angle_deg": "15",
+      "category": "DIAGONAL",
+      "direction": "down",
+      "vx": "-0.25",
+      "vy": "0.20",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "15",
+      "angle_deg": "15",
+      "category": "CROSS",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "15",
+      "angle_deg": "15",
+      "category": "CROSS",
+      "direction": "right",
+      "vx": "0",
+      "vy": "-0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "15",
+      "angle_deg": "15",
+      "category": "TURN",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "15",
+      "angle_deg": "15",
+      "category": "TURN",
+      "direction": "right",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "-0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "20-platform",
+      "angle_deg": "20",
+      "category": "STRAIGHT",
+      "direction": "down",
+      "vx": "-0.3",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "20-platform",
+      "angle_deg": "20",
+      "category": "DIAGONAL",
+      "direction": "down",
+      "vx": "-0.25",
+      "vy": "0.20",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "20",
+      "angle_deg": "20",
+      "category": "CROSS",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "20",
+      "angle_deg": "20",
+      "category": "CROSS",
+      "direction": "right",
+      "vx": "0",
+      "vy": "-0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "20",
+      "angle_deg": "20",
+      "category": "TURN",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "20",
+      "angle_deg": "20",
+      "category": "TURN",
+      "direction": "right",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "-0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "25",
+      "angle_deg": "25",
+      "category": "STAND",
+      "direction": "neutral",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "25-platform",
+      "angle_deg": "25",
+      "category": "STRAIGHT",
+      "direction": "down",
+      "vx": "-0.3",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "25-platform",
+      "angle_deg": "25",
+      "category": "DIAGONAL",
+      "direction": "down",
+      "vx": "-0.25",
+      "vy": "0.20",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "25",
+      "angle_deg": "25",
+      "category": "CROSS",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "25",
+      "angle_deg": "25",
+      "category": "CROSS",
+      "direction": "right",
+      "vx": "0",
+      "vy": "-0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "25",
+      "angle_deg": "25",
+      "category": "TURN",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "25",
+      "angle_deg": "25",
+      "category": "TURN",
+      "direction": "right",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "-0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "30",
+      "angle_deg": "30",
+      "category": "STAND",
+      "direction": "neutral",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "30-platform",
+      "angle_deg": "30",
+      "category": "STRAIGHT",
+      "direction": "up",
+      "vx": "0.3",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "slope_up",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "PASS"
+      }
+    },
+    {
+      "scene": "30-platform",
+      "angle_deg": "30",
+      "category": "STRAIGHT",
+      "direction": "down",
+      "vx": "-0.3",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "30-platform",
+      "angle_deg": "30",
+      "category": "DIAGONAL",
+      "direction": "down",
+      "vx": "-0.25",
+      "vy": "0.20",
+      "yaw": "0",
+      "role_expert": "slope_down",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "30",
+      "angle_deg": "30",
+      "category": "CROSS",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "30",
+      "angle_deg": "30",
+      "category": "CROSS",
+      "direction": "right",
+      "vx": "0",
+      "vy": "-0.3",
+      "yaw": "0",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "30",
+      "angle_deg": "30",
+      "category": "TURN",
+      "direction": "left",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "30",
+      "angle_deg": "30",
+      "category": "TURN",
+      "direction": "right",
+      "vx": "0",
+      "vy": "0",
+      "yaw": "-0.5",
+      "role_expert": "flat",
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "PASS",
+        "slope_down": "FAIL"
+      }
+    },
+    {
+      "scene": "mixed",
+      "angle_deg": "mixed",
+      "category": "STRAIGHT",
+      "direction": "traverse",
+      "vx": "0.4",
+      "vy": "0",
+      "yaw": "0",
+      "role_expert": null,
+      "outcomes": {
+        "flat": "FAIL",
+        "slope_up": "FAIL",
+        "slope_down": "PASS"
+      }
+    }
+  ]
+}

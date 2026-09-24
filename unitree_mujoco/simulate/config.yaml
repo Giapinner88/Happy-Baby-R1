@@ -1,0 +1,23 @@
+robot: "r1"  # Robot name, "go2", "b2", "b2w", "h1", "go2w", "g1"
+robot_scene: "scene.xml" # Robot scene, /unitree_robots/[robot]/scene.xml 
+
+domain_id: 1  # Domain id
+interface: "lo" # Interface  Mạng nội bộ ảo 
+
+use_joystick: 0 # Simulate Unitree WirelessController using a gamepad0
+joystick_type: "xbox" # support "xbox" and "switch" gamepad layout
+joystick_device: "/dev/input/js0" # Device path
+joystick_bits: 16 # Some game controllers may only have 8-bit accuracy
+
+print_scene_information: 1 # Print link, joint and sensors information of robot
+
+enable_elastic_band: 0 # Virtual spring band, used for lifting h1
+
+# ─── Lệch có chủ đích so với model lúc train (nghiệm thu sim2real) ───
+# XML của sim này GIỐNG HỆT XML lúc train, nên "chạy ngon ở đây" không chứng minh được gì
+# về robot thật. Bật mấy tham số dưới để sim thực sự thử thách policy.
+# Xem HB/high_level_2/docs/PLAN_mimic_sim2real.md (mục 3 và F4).
+# Mặc định 0 / 1.0 / 1.0 = không lệch, hành vi y như trước.
+sim2real_delay_ms: 0      # trễ lệnh xuống motor (ms). Để nghiệm thu: 15
+sim2real_gain_scale: 1.0  # gains motor thật / gains gửi xuống. Để nghiệm thu: 0.8
+sim2real_mass_scale: 1.0  # khối lượng + quán tính thật / theo CAD. Để nghiệm thu: 1.1

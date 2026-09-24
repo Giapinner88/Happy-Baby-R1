@@ -1,0 +1,11 @@
+{
+  "bundle_contract": "flat_plus_arma_o83_k50_z8_v1",
+  "components": "adaptation,actor",
+  "adaptation_contract": "flat_plus_arma_adapter_k50_z8_v1",
+  "adaptation_sha256": "ec222ef72458dddb3733591fe12f76f37364e630596c2d05e2ea3e3d8f8be7ad",
+  "actor_contract": "flat_plus_arma_o83_k50_z8_v1",
+  "actor_sha256": "1e418934157e2392874fa8eec41dd4a2fb31aeb4c7a42800f3087ee8bc92ee7c",
+  "actor_expects_adaptation_sha256": "ec222ef72458dddb3733591fe12f76f37364e630596c2d05e2ea3e3d8f8be7ad",
+  "adaptation_expects_actor_sha256": "1e418934157e2392874fa8eec41dd4a2fb31aeb4c7a42800f3087ee8bc92ee7c",
+  "actor_trained_against_sha256": "f70f6d84c35d094e425fc76817fe15c2f2fb359368881dd2b7a5976651ce0962"
+}

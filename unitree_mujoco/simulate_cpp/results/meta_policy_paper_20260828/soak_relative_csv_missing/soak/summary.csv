@@ -1,0 +1,4 @@
+run,scene,sequence,hold_s,control_result,process_result,exit_code,log,csv
+1,mixed,mixed_shuttle,108,FAIL,OK,3,results/meta_policy_paper_20260828/soak/mixed_shuttle_1.log,results/meta_policy_paper_20260828/soak/mixed_shuttle_1.csv
+2,mixed,mixed_shuttle,108,PASS,OK,0,results/meta_policy_paper_20260828/soak/mixed_shuttle_2.log,results/meta_policy_paper_20260828/soak/mixed_shuttle_2.csv
+3,mixed,mixed_shuttle,108,FAIL,OK,3,results/meta_policy_paper_20260828/soak/mixed_shuttle_3.log,results/meta_policy_paper_20260828/soak/mixed_shuttle_3.csv

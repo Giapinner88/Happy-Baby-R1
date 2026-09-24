@@ -1,0 +1,145 @@
+1782237990.987838 [1]     python: config: Domain/General/MulticastRecvNetworkInterfaceAddresses/#text: preferred {}
+1782237990.987906 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@autodetermine]: false {}
+1782237990.987914 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@name]: lo {0}
+1782237990.987918 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@address]:  {}
+1782237990.987925 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@priority]: default {0}
+1782237990.987931 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@prefer_multicast]: false {}
+1782237990.987936 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@presence_required]: true {}
+1782237990.987943 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@multicast]: default {0}
+1782237990.987948 [1]     python: config: Domain/General/Interfaces/NetworkInterface[@allow_multicast]: default {}
+1782237990.987954 [1]     python: config: Domain/General/Interfaces/NetworkInterface/AddrsetCosts/uc/#text: default {}
+1782237990.987961 [1]     python: config: Domain/General/Interfaces/NetworkInterface/AddrsetCosts/mc/#text: default {}
+1782237990.987967 [1]     python: config: Domain/General/Interfaces/NetworkInterface/AddrsetCosts/ssm/#text: default {}
+1782237990.987972 [1]     python: config: Domain/General/Interfaces/NetworkInterface/AddrsetCosts/delivered/#text: default {}
+1782237990.987977 [1]     python: config: Domain/General/Interfaces/NetworkInterface/AddrsetCosts/discarded/#text: default {}
+1782237990.987983 [1]     python: config: Domain/General/Interfaces/NetworkInterface/AddrsetCosts/redundant_psmx/#text: default {}
+1782237990.987991 [1]     python: config: Domain/General/AddrsetCosts/uc/#text: 2 {}
+1782237990.987999 [1]     python: config: Domain/General/AddrsetCosts/mc/#text: 3 {}
+1782237990.988006 [1]     python: config: Domain/General/AddrsetCosts/ssm/#text: 2 {}
+1782237990.988013 [1]     python: config: Domain/General/AddrsetCosts/delivered/#text: -1 {}
+1782237990.988019 [1]     python: config: Domain/General/AddrsetCosts/discarded/#text: 1 {}
+1782237990.988024 [1]     python: config: Domain/General/AddrsetCosts/redundant_psmx/#text: 0 {}
+1782237990.988030 [1]     python: config: Domain/General/ExternalNetworkAddress/#text: auto {}
+1782237990.988034 [1]     python: config: Domain/General/ExternalNetworkMask/#text: 0.0.0.0 {}
+1782237990.988039 [1]     python: config: Domain/General/AllowMulticast/#text: default {}
+1782237990.988045 [1]     python: config: Domain/General/MulticastTimeToLive/#text: 32 {}
+1782237990.988051 [1]     python: config: Domain/General/DontRoute/#text: false {}
+1782237990.988057 [1]     python: config: Domain/General/Transport/#text: udp {}
+1782237990.988062 [1]     python: config: Domain/General/EnableMulticastLoopback/#text: true {}
+1782237990.988067 [1]     python: config: Domain/General/MaxMessageSize/#text: 14720 B {}
+1782237990.988073 [1]     python: config: Domain/General/MaxRexmitMessageSize/#text: 1456 B {}
+1782237990.988078 [1]     python: config: Domain/General/FragmentSize/#text: 1344 B {}
+1782237990.988083 [1]     python: config: Domain/General/RedundantNetworking/#text: false {}
+1782237990.988088 [1]     python: config: Domain/General/EntityAutoNaming/#text: empty {}
+1782237990.988095 [1]     python: config: Domain/General/EntityAutoNaming[@seed]: 3994758545 2560423160 1188001863 3799435034 2167422940 1635370336 1537535304 2595761172 {}
+1782237990.988106 [1]     python: config: Domain/Sizing/ReceiveBufferSize/#text: 1 MiB {}
+1782237990.988112 [1]     python: config: Domain/Sizing/ReceiveBufferChunkSize/#text: 128 KiB {}
+1782237990.988134 [1]     python: config: Domain/Compatibility/StandardsConformance/#text: lax {}
+1782237990.988152 [1]     python: config: Domain/Compatibility/ExplicitlyPublishQosSetToDefault/#text: false {}
+1782237990.988157 [1]     python: config: Domain/Compatibility/ManySocketsMode/#text: single {}
+1782237990.988162 [1]     python: config: Domain/Compatibility/AssumeRtiHasPmdEndpoints/#text: false {}
+1782237990.988178 [1]     python: config: Domain/Compatibility/ProtocolVersion/#text: 2.5 {}
+1782237990.988183 [1]     python: config: Domain/Compatibility/AllowInvalidTryConstruct/#text: false {}
+1782237990.988188 [1]     python: config: Domain/Compatibility/IgnoreTypeInformation/#text:  {}
+1782237990.988193 [1]     python: config: Domain/Discovery/Tag/#text:  {}
+1782237990.988198 [1]     python: config: Domain/Discovery/ExternalDomainId/#text: 1 {}
+1782237990.988204 [1]     python: config: Domain/Discovery/DSGracePeriod/#text: 30 s {}
+1782237990.988211 [1]     python: config: Domain/Discovery/Peers[@AddLocalhost]: default {}
+1782237990.988217 [1]     python: config: Domain/Discovery/ParticipantIndex/#text: -3 {}
+1782237990.988221 [1]     python: config: Domain/Discovery/MaxAutoParticipantIndex/#text: 99 {}
+1782237990.988226 [1]     python: config: Domain/Discovery/SPDPMulticastAddress/#text: 239.255.0.1 {}
+1782237990.988231 [1]     python: config: Domain/Discovery/SPDPInterval/#text: default {}
+1782237990.988236 [1]     python: config: Domain/Discovery/DefaultMulticastAddress/#text: auto {}
+1782237990.988242 [1]     python: config: Domain/Discovery/InitialLocatorPruneDelay/#text: 30 s {}
+1782237990.988247 [1]     python: config: Domain/Discovery/DiscoveredLocatorPruneDelay/#text: 1 min {}
+1782237990.988253 [1]     python: config: Domain/Discovery/Ports/Base/#text: 7400 {}
+1782237990.988258 [1]     python: config: Domain/Discovery/Ports/DomainGain/#text: 250 {}
+1782237990.988264 [1]     python: config: Domain/Discovery/Ports/ParticipantGain/#text: 2 {}
+1782237990.988269 [1]     python: config: Domain/Discovery/Ports/MulticastMetaOffset/#text: 0 {}
+1782237990.988315 [1]     python: config: Domain/Discovery/Ports/UnicastMetaOffset/#text: 10 {}
+1782237990.988320 [1]     python: config: Domain/Discovery/Ports/MulticastDataOffset/#text: 1 {}
+1782237990.988325 [1]     python: config: Domain/Discovery/Ports/UnicastDataOffset/#text: 11 {}
+1782237990.988330 [1]     python: config: Domain/Discovery/EnableTopicDiscoveryEndpoints/#text: false {}
+1782237990.988353 [1]     python: config: Domain/Discovery/LeaseDuration/#text: 10 s {}
+1782237990.988363 [1]     python: config: Domain/Tracing/Category/#text: fatal,error,warning,info,config {0}
+1782237990.988369 [1]     python: config: Domain/Tracing/OutputFile/#text: cdds_unitree.log {0}
+1782237990.988374 [1]     python: config: Domain/Tracing/AppendToFile/#text: false {}
+1782237990.988378 [1]     python: config: Domain/Tracing/PacketCaptureFile/#text:  {}
+1782237990.988384 [1]     python: config: Domain/Internal/DeliveryQueueMaxSamples/#text: 256 {}
+1782237990.988389 [1]     python: config: Domain/Internal/PrimaryReorderMaxSamples/#text: 128 {}
+1782237990.988394 [1]     python: config: Domain/Internal/SecondaryReorderMaxSamples/#text: 128 {}
+1782237990.988399 [1]     python: config: Domain/Internal/DefragUnreliableMaxSamples/#text: 4 {}
+1782237990.988404 [1]     python: config: Domain/Internal/DefragReliableMaxSamples/#text: 16 {}
+1782237990.988409 [1]     python: config: Domain/Internal/BuiltinEndpointSet/#text: writers {}
+1782237990.988414 [1]     python: config: Domain/Internal/MeasureHbToAckLatency/#text: false {}
+1782237990.988419 [1]     python: config: Domain/Internal/SynchronousDeliveryPriorityThreshold/#text: 0 {}
+1782237990.988424 [1]     python: config: Domain/Internal/SynchronousDeliveryLatencyBound/#text: inf {}
+1782237990.988429 [1]     python: config: Domain/Internal/MaxParticipants/#text: 0 {}
+1782237990.988434 [1]     python: config: Domain/Internal/AccelerateRexmitBlockSize/#text: 0 {}
+1782237990.988439 [1]     python: config: Domain/Internal/RetransmitMerging/#text: never {}
+1782237990.988445 [1]     python: config: Domain/Internal/RetransmitMergingPeriod/#text: 5 ms {}
+1782237990.988450 [1]     python: config: Domain/Internal/HeartbeatInterval/#text: 100 ms {}
+1782237990.988456 [1]     python: config: Domain/Internal/HeartbeatInterval[@min]: 5 ms {}
+1782237990.988461 [1]     python: config: Domain/Internal/HeartbeatInterval[@minsched]: 20 ms {}
+1782237990.988472 [1]     python: config: Domain/Internal/HeartbeatInterval[@max]: 8 s {}
+1782237990.988477 [1]     python: config: Domain/Internal/MaxQueuedRexmitBytes/#text: 512 KiB {}
+1782237990.988483 [1]     python: config: Domain/Internal/MaxQueuedRexmitMessages/#text: 200 {}
+1782237990.988488 [1]     python: config: Domain/Internal/WriterLingerDuration/#text: 1 s {}
+1782237990.988493 [1]     python: config: Domain/Internal/SocketReceiveBufferSize[@min]: default {}
+1782237990.988498 [1]     python: config: Domain/Internal/SocketReceiveBufferSize[@max]: default {}
+1782237990.988504 [1]     python: config: Domain/Internal/SocketSendBufferSize[@min]: 64 KiB {}
+1782237990.988509 [1]     python: config: Domain/Internal/SocketSendBufferSize[@max]: default {}
+1782237990.988514 [1]     python: config: Domain/Internal/NackDelay/#text: 100 ms {}
+1782237990.988519 [1]     python: config: Domain/Internal/AckDelay/#text: 10 ms {}
+1782237990.988524 [1]     python: config: Domain/Internal/AutoReschedNackDelay/#text: 3 s {}
+1782237990.988529 [1]     python: config: Domain/Internal/PreEmptiveAckDelay/#text: 10 ms {}
+1782237990.988534 [1]     python: config: Domain/Internal/SquashParticipants/#text: false {}
+1782237990.988538 [1]     python: config: Domain/Internal/SPDPResponseMaxDelay/#text: 0 s {}
+1782237990.988542 [1]     python: config: Domain/Internal/LateAckMode/#text: false {}
+1782237990.988547 [1]     python: config: Domain/Internal/RetryOnRejectBestEffort/#text: false {}
+1782237990.988551 [1]     python: config: Domain/Internal/GenerateKeyhash/#text: false {}
+1782237990.988555 [1]     python: config: Domain/Internal/MaxSampleSize/#text: 2147483647 B {}
+1782237990.988561 [1]     python: config: Domain/Internal/LivelinessMonitoring/#text: false {}
+1782237990.988568 [1]     python: config: Domain/Internal/LivelinessMonitoring[@StackTraces]: true {}
+1782237990.988576 [1]     python: config: Domain/Internal/LivelinessMonitoring[@Interval]: 1 s {}
+1782237990.988582 [1]     python: config: Domain/Internal/MonitorPort/#text: -1 {}
+1782237990.988586 [1]     python: config: Domain/Internal/PrioritizeRetransmit/#text: true {}
+1782237990.988591 [1]     python: config: Domain/Internal/UseMulticastIfMreqn/#text: 0 {}
+1782237990.988596 [1]     python: config: Domain/Internal/RediscoveryBlacklistDuration/#text: 0 s {}
+1782237990.988602 [1]     python: config: Domain/Internal/RediscoveryBlacklistDuration[@enforce]: false {}
+1782237990.988608 [1]     python: config: Domain/Internal/MultipleReceiveThreads/#text: default {}
+1782237990.988614 [1]     python: config: Domain/Internal/MultipleReceiveThreads[@maxretries]: 4294967295 {}
+1782237990.988619 [1]     python: config: Domain/Internal/Test/XmitLossiness/#text: 0 {}
+1782237990.988625 [1]     python: config: Domain/Internal/Watermarks/WhcLow/#text: 1 KiB {}
+1782237990.988631 [1]     python: config: Domain/Internal/Watermarks/WhcHigh/#text: 500 KiB {}
+1782237990.988636 [1]     python: config: Domain/Internal/Watermarks/WhcHighInit/#text: 30 KiB {}
+1782237990.988642 [1]     python: config: Domain/Internal/Watermarks/WhcAdaptive/#text: true {}
+1782237990.988647 [1]     python: config: Domain/Internal/BurstSize/MaxRexmit/#text: 1 MiB {}
+1782237990.988652 [1]     python: config: Domain/Internal/BurstSize/MaxInitTransmit/#text: 4294967295 {}
+1782237990.988658 [1]     python: config: Domain/Internal/BurstSize/MaxFragsRexmitSample/#text: 1 {}
+1782237990.988662 [1]     python: config: Domain/Internal/ExtendedPacketInfo/#text: default {}
+1782237990.988668 [1]     python: config: Domain/Internal/EnableExpensiveChecks/#text:  [ignored] {}
+1782237990.988674 [1]     python: config: Domain[@Id]: 1 {0}
+1782237990.988719 [1]     python: started at 1782237990.06988701 -- 2026-06-24 01:06:30+07:00
+1782237990.988725 [1]     python: Version: CycloneDDS 11.0.1 30d7a5f 
+1782237990.988731 [1]     python: udp initialized
+1782237990.989101 [1]     python: interfaces: lo udp/127.0.0.1(q1)
+1782237990.989136 [1]     python: lo: presumed robust multicast support, use for everything
+1782237990.989163 [1]     python: selected interfaces: lo (index 1 priority 2 mc {spdp,asm,ssm})
+1782237990.989187 [1]     python: addrset costs:
+1782237990.989192 [1]     python:   lo: uc 2 mc 3 ssm 2 delivered -1 discarded 1 redundant_psmx 0
+1782237990.989236 [1]     python: ownip: udp/127.0.0.1
+1782237990.989242 [1]     python: extmask: invalid/0 (not applicable)
+1782237990.989247 [1]     python: SPDP MC: udp/239.255.0.1
+1782237990.989251 [1]     python: default MC: udp/239.255.0.1
+1782237990.989255 [1]     python: SSM support included
+1782237990.989524 [1]     python: failed to increase socket receive buffer size to 1048576 bytes, continuing with 425984 bytes
+1782237990.989554 [1]     python: rtps_init: uc ports: disc 55606 data 55606
+1782237990.989561 [1]     python: rtps_init: domainid 1 participantid -2
+1782237990.989567 [1]     python: Unicast Ports: discovery 55606 data 55606
+1782237990.989584 [1]     python: failed to increase socket receive buffer size to 1048576 bytes, continuing with 425984 bytes
+1782237990.989608 [1]     python: failed to increase socket receive buffer size to 1048576 bytes, continuing with 425984 bytes
+1782237990.989619 [1]     python: Multicast Ports: discovery 7650 data 7651 
+1782237990.989632 [1]     python: failed to increase socket receive buffer size to 1048576 bytes, continuing with 425984 bytes
+1782237990.989653 [1]     python: interface lo: transmit port 52635
+1782237990.989677 [1]     python: interface lo has spdp multicast enabled, adding udp/239.255.0.1:7650@1 (never expiring)

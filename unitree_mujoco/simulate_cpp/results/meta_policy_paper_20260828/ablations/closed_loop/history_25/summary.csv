@@ -1,0 +1,6 @@
+variant,scene,case,vx,vy,yaw,hold_s,control_result,process_result,exit_code,log,csv
+history_25,flat,flat_stand,0,0,0,8,PASS,OK,0,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/flat_stand.log,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/flat_stand.csv
+history_25,15-platform,platform_up,0.3,0,0,10,PASS,OK,0,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/platform_up.log,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/platform_up.csv
+history_25,15-platform,platform_down,-0.3,0,0,10,FAIL,OK,2,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/platform_down.log,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/platform_down.csv
+history_25,15,direct_up,0.3,0,0,10,FAIL,OK,3,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/direct_up.log,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/direct_up.csv
+history_25,mixed,mixed_traverse,0.4,0,0,48,PASS,OK,0,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/mixed_traverse.log,results/meta_policy_paper_20260828/ablations/closed_loop/history_25/mixed_traverse.csv

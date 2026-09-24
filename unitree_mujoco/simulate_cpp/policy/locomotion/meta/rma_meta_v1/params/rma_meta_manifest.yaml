@@ -1,0 +1,115 @@
+bundle_version: 2
+enabled: false
+note: Staging only; enable after closed-loop acceptance.
+checkpoint: checkpoints/finetune_final.pt
+source_checkpoint: /home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/logs/rma_meta/finetune_v1/finetune_latest.pt
+checkpoint_sha256: ad2dec2755cf4c6026294710ab3d34321527897e8dc587cce7700a8ebaaccde6
+checkpoint_stage: deployment_finetune
+config:
+  config_version: 1
+  task_id: Unitree-R1-RMA-Meta
+  expert_registry: configs/rma_meta/r1_expert_registry_v1.yaml
+  deploy_template: deploy/robots/r1/config/policy/velocity/v0/params/deploy_with_flat.template.yaml
+  expert_names:
+  - slope_up
+  - slope_down
+  - flat
+  initial_expert: flat
+  factor_names:
+  - ground_normal_b_x
+  - ground_normal_b_y
+  - ground_normal_b_z
+  - uphill_direction_b_x
+  - uphill_direction_b_y
+  - uphill_direction_b_z
+  - foot_friction_delta
+  - body_mass_ratio_delta
+  - torso_com_delta_x_norm
+  - torso_com_delta_y_norm
+  - torso_com_delta_z_norm
+  - motor_strength_ratio_delta
+  model:
+    observation_dim: 83
+    factor_dim: 12
+    latent_dim: 8
+    history_steps: 50
+    adaptation_hidden_dim: 128
+    adaptation_num_layers: 1
+    factor_hidden_dims:
+    - 64
+    - 32
+    meta_hidden_dims:
+    - 256
+    - 128
+  ppo:
+    meta_decimation: 5
+    rollout_steps: 32
+    learning_epochs: 5
+    mini_batches: 4
+    learning_rate: 0.0003
+    finetune_learning_rate: 0.0001
+    clip_param: 0.2
+    value_loss_coef: 1.0
+    entropy_coef: 0.01
+    gamma: 0.99
+    gae_lambda: 0.95
+    max_grad_norm: 1.0
+    target_kl: 0.02
+    switch_penalty: 0.02
+    max_iterations: 3000
+    finetune_iterations: 1000
+    save_interval: 100
+  adaptation:
+    epochs: 100
+    batch_size: 512
+    learning_rate: 0.0003
+    weight_decay: 0.0001
+    validation_fraction: 0.1
+    observation_noise_std: 0.01
+  runtime:
+    low_level_hz: 50.0
+    meta_hz: 10.0
+    confidence_threshold: 0.55
+    crossfade_s: 0.2
+registry_sha256: b1583a05ee8af263b424cdf23b99fe60fa060b8da47d63c5547354a825698bdf
+evaluation:
+  path: reports/evaluation.json
+  sha256: f311ce961f84473f0f348ea7c8a7452c9d9aaa43df92e00f41257601d242ffa3
+  num_envs: 128
+  meta_steps: 2000
+train_config:
+  path: params/train_config.yaml
+  sha256: 6b9509386975ea9381675afbb4c452059131ad1855b20802c3fcdf37b1b8c92c
+expert_registry:
+  path: params/expert_registry.yaml
+  sha256: b1583a05ee8af263b424cdf23b99fe60fa060b8da47d63c5547354a825698bdf
+adapter:
+  path: exported/rma_meta_adapter.onnx
+  sha256: de6f996f062e37c2dbe3bcaaed9bae1397e87a710cb9f4f818841cd1e7e550c1
+selector:
+  path: exported/rma_meta_selector.onnx
+  sha256: 349c17b4781238847e4ec1aaeddebb6b2389dcf6186b629bea703e5049ac531b
+experts:
+- name: slope_up
+  role: slope_up
+  path: exported/slope_up.onnx
+  sha256: 082b30fbffd9508dff0abed82b6ac2a9516d83d3e005198a292a8ce9497e17c9
+  source: /home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/checkpoints/r1_slope/policy_up_v6.onnx
+- name: slope_down
+  role: slope_down
+  path: exported/slope_down.onnx
+  sha256: aabd356bb2e735a16ea2f77e2f8c2645f38a2a7dadd8e268b55da71e93d09a42
+  source: /home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/checkpoints/r1_slope/policy_down_v6.onnx
+- name: flat
+  role: flat
+  path: exported/flat.onnx
+  sha256: ee1cd73469ba0f16eff7542fc4758396a7301398ebdfb2e0926713b3c1954500
+  source: /home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/checkpoints/r1_flat/policy_flat_common_pd.onnx
+expert_checkpoint_sha256:
+- 705ff566a24d77ffeea3c8df19fb352220b9c028e95438e7b168c01be6c633ff
+- d767949debcad2a218214d219585bd978bf2f66d86348bed21b8fe8a91961973
+- b6090c47723a625859fb20f4d288b0149712ef537bb8c83025136bad3f40c1f7
+common_action_contract:
+  action_dim: 24
+  low_level_hz: 50.0
+  meta_hz: 10.0

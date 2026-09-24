@@ -1,0 +1,176 @@
+{
+  "trace": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/baseline/mixed_trace.csv",
+  "samples": 2400,
+  "duration_s": 48.001,
+  "ablations": [
+    {
+      "name": "baseline",
+      "switches": 3,
+      "direct_expert_switches": 3,
+      "neutral_fraction": 0.0,
+      "weight_total_variation": 6.0,
+      "class_agreement_with_cpp": 1.0,
+      "max_abs_weight_error_vs_cpp": 5.551115123125783e-17,
+      "transitions": [
+        {
+          "time_s": 10.7401,
+          "position_m": 2.92622,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 28.0005,
+          "position_m": 6.23712,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 30.5806,
+          "position_m": 7.43609,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    },
+    {
+      "name": "no_hysteresis",
+      "switches": 5,
+      "direct_expert_switches": 3,
+      "neutral_fraction": 0.004166666666666667,
+      "weight_total_variation": 6.0,
+      "class_agreement_with_cpp": 0.9958333333333333,
+      "max_abs_weight_error_vs_cpp": 5.551115123125783e-17,
+      "transitions": [
+        {
+          "time_s": 10.7401,
+          "position_m": 2.92622,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 13.2602,
+          "position_m": 3.33334,
+          "from": "slope_up",
+          "to": "NEUTRAL"
+        },
+        {
+          "time_s": 13.4602,
+          "position_m": 3.3264,
+          "from": "NEUTRAL",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 28.0005,
+          "position_m": 6.23712,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 30.5806,
+          "position_m": 7.43609,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    },
+    {
+      "name": "no_dwell",
+      "switches": 5,
+      "direct_expert_switches": 5,
+      "neutral_fraction": 0.0,
+      "weight_total_variation": 8.879999999999999,
+      "class_agreement_with_cpp": 0.99625,
+      "max_abs_weight_error_vs_cpp": 0.92,
+      "transitions": [
+        {
+          "time_s": 10.7401,
+          "position_m": 2.92622,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 28.0005,
+          "position_m": 6.23712,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 30.5806,
+          "position_m": 7.43609,
+          "from": "flat",
+          "to": "slope_down"
+        },
+        {
+          "time_s": 30.7406,
+          "position_m": 7.55301,
+          "from": "slope_down",
+          "to": "flat"
+        },
+        {
+          "time_s": 30.9206,
+          "position_m": 7.68264,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    },
+    {
+      "name": "no_neutral",
+      "switches": 3,
+      "direct_expert_switches": 3,
+      "neutral_fraction": 0.0,
+      "weight_total_variation": 6.0,
+      "class_agreement_with_cpp": 0.9979166666666667,
+      "max_abs_weight_error_vs_cpp": 0.30000000000000004,
+      "transitions": [
+        {
+          "time_s": 10.6801,
+          "position_m": 2.93995,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 28.0005,
+          "position_m": 6.23712,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 30.5406,
+          "position_m": 7.40685,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    },
+    {
+      "name": "hard_switch",
+      "switches": 3,
+      "direct_expert_switches": 3,
+      "neutral_fraction": 0.0,
+      "weight_total_variation": 6.0,
+      "class_agreement_with_cpp": 1.0,
+      "max_abs_weight_error_vs_cpp": 0.9,
+      "transitions": [
+        {
+          "time_s": 10.7401,
+          "position_m": 2.92622,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 28.0005,
+          "position_m": 6.23712,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 30.5806,
+          "position_m": 7.43609,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    }
+  ]
+}

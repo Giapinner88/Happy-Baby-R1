@@ -1,0 +1,11 @@
+[META_POLICY_ABLATION] variant=history_1 case=flat_stand scene=flat
+[META_POLICY_ABLATION] control=PASS process=OK exit=0
+[META_POLICY_ABLATION] variant=history_1 case=platform_up scene=15-platform
+[META_POLICY_ABLATION] control=PASS process=OK exit=0
+[META_POLICY_ABLATION] variant=history_1 case=platform_down scene=15-platform
+[META_POLICY_ABLATION] control=FAIL process=OK exit=2
+[META_POLICY_ABLATION] variant=history_1 case=direct_up scene=15
+[META_POLICY_ABLATION] control=FAIL process=OK exit=3
+[META_POLICY_ABLATION] variant=history_1 case=mixed_traverse scene=mixed
+[META_POLICY_ABLATION] control=FAIL process=OK exit=3
+[META_POLICY_ABLATION] variant=history_1 control_failures=3 process_errors=0 summary=results/meta_policy_paper_20260828/ablations/closed_loop/history_1/summary.csv

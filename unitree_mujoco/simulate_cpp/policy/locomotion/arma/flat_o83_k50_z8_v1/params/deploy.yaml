@@ -1,0 +1,43 @@
+# Opt-in A-RMA bundle from arma_o83_finetune_20260908.
+# This package is not selected by the active tuning.yaml.
+arma:
+  config_version: 1
+  metadata_schema: arma_export_v1
+  bundle_contract: flat_plus_arma_o83_k50_z8_v1
+  adapter_contract: flat_plus_arma_adapter_k50_z8_v1
+  base_policy_contract: flat_base83_v1
+  actor_view: base83
+  actor_base_dim: 83
+  actor_history_steps: 1
+  observation_dim: 83
+  action_dim: 24
+  history_steps: 50
+  latent_dim: 8
+  actor_input_dim: 91
+  adapter_decimation: 1
+  max_latent_age_steps: 1
+  adapter_model: models/adapter.onnx
+  actor_model: models/actor.onnx
+  bundle_manifest: exported/arma_bundle.json
+  # Exact train-time R1 common-PD contract from params/env.yaml. The ONNX
+  # component metadata does not carry these arrays.
+  default_joint_pos: [-0.1, 0.0349, -0.0477, 0.3, -0.2, -0.0349,
+                      -0.1, -0.0349, 0.0477, 0.3, -0.2, 0.0349,
+                      0.0, 0.0,
+                      0.35, 0.18, 0.0, 0.87, 0.0,
+                      0.35, -0.18, 0.0, 0.87, 0.0]
+  action_scale: [0.15, 0.15, 0.15, 0.1575, 0.328125, 0.328125,
+                 0.15, 0.15, 0.15, 0.1575, 0.328125, 0.328125,
+                 0.15, 0.15,
+                 0.375, 0.375, 0.4125, 0.4125, 0.4125,
+                 0.375, 0.375, 0.4125, 0.4125, 0.4125]
+  stiffness: [100.0, 100.0, 100.0, 100.0, 40.0, 40.0,
+              100.0, 100.0, 100.0, 100.0, 40.0, 40.0,
+              100.0, 100.0,
+              40.0, 40.0, 20.0, 20.0, 20.0,
+              40.0, 40.0, 20.0, 20.0, 20.0]
+  damping: [2.0, 2.0, 2.0, 2.5, 2.5, 2.5,
+            2.0, 2.0, 2.0, 2.5, 2.5, 2.5,
+            2.0, 2.0,
+            2.0, 2.0, 1.0, 1.0, 1.0,
+            2.0, 2.0, 1.0, 1.0, 1.0]

@@ -1,0 +1,9 @@
+{
+  "note": "NOT a release candidate. Packaged for internal comparison only.",
+  "source_run": "logs/rsl_rl/r1_flat_plus_gait_g/2026-09-17_10-40-58_gait_g_512env_seed42_10kiter_20260917",
+  "checkpoint_iteration": 5100,
+  "final_trained_iteration": 9999,
+  "why_this_checkpoint_not_final": "Train/mean_reward peaked at +24.2 around iter 1989-2000, then declined continuously. It briefly flattened (did not recover) around iter 5000-6000 before resuming its decline through iter 9250, ending at ~-15 to -16 at iter 9999. iter 5100 (reward ~-2.07) is the best point found *after* the C2 curriculum stage (full reward ramp + push/payload disturbance training) was fully active -- still well below both the peak (+24.2 at iter 2000, curriculum not yet complete) and Gait-B's stable final reward (~44.9 over 20000 iterations).",
+  "release_gate_status": "FAILS (mean_reward -2.07 << required >= 45.0; see scripts/package_gait_h4_to_hb.py enforce_release_gate)",
+  "known_open_investigation": "Root cause of the post-peak decline is not yet confirmed. Ablation ruled out gait_f_rewards.f_joint_target_smoothness (reverting it to Gait-B's original term did not fix or even improve the decline, at 512 envs). A second ablation (Gait-F reward overlay at 2048 envs, matching Gait-B's env count) is in progress to test whether the small 512-env batch size is a contributing factor."
+}

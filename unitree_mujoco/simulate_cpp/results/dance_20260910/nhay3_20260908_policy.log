@@ -1,0 +1,35 @@
+Loading tuning config...
+[Tuning] Đã load config từ ../config/tuning.yaml
+Khởi tạo DDS...
+1789045809.591819 [1] run_policy: selected interface "lo" is not multicast-capable: disabling multicast
+[Locomotion] profile=Flat gait_period=0.6 slow=(0.6, 0.6, 1) fast=(1.5, 1, 2)
+[FlatHistory] flat_plus_gait_h4_v1 (335-D, history=4) loaded: ../policy/locomotion/flat_plus/policy_flat_plus_gait_walkquality_v1.onnx
+[Locomotion] policy: ../policy/locomotion/flat_plus/policy_flat_plus_gait_walkquality_v1.onnx
+[Locomotion] input 335-D -> FlatPlusGaitController (335-D history + current gait one-hot)
+[Gesture] slot 1 = 'vaytay_2' <- vaytay_2.npz (fps=50 x1, loop=0)
+[Gesture] slot 2 = 'battay' <- battay.npz (fps=100 x1, loop=0)
+[Gesture] slot 3 = 'namtay_anmung' <- namtay_anmung.npz (fps=100 x1, loop=0)
+[Gesture] slot 4 = 'duaqua' <- duaqua.npz (fps=100 x1, loop=0)
+[Gesture] slot 5 = 'noichuyen' <- noichuyen.loop.npz (fps=50 x1, loop=1)
+[Gesture] slot 6 = 'traitim' <- traitim.npz (fps=100 x1, loop=0)
+[Gesture] slot 7 = 'cheotayngauloi_hold7s' <- cheotayngauloi_hold7s.npz (fps=50 x1, loop=0)
+[Gesture] slot 8 = 'damtaylentroi' <- damtaylentroi.npz (fps=50 x1, loop=0)
+[Gesture] San sang. Flat: G=chon gesture, V=choi/thu. Gesture dau: 'vaytay_2'.
+[Teleop] Lang nghe UDP 5560 (tay+dau) — uu tien hon gesture khi co goi.
+[MotionData] Đã nạp 2224 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/lacmong1/r1_lacmong1.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/lacmong1/r1_lacmong1.onnx (speed=1)
+[MotionData] Đã nạp 616 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/nhay2_20260908/nhay2_r1_20260908.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/nhay2_20260908/policy.onnx (speed=1)
+[MotionData] Đã nạp 1111 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/nhay3_20260908/nhay3_r1_20260908.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/nhay3_20260908/policy.onnx (speed=1)
+[MotionData] Đã nạp 4393 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/doremon/doremon_r1.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/doremon/policy.onnx (speed=1)
+
+>>> POLICY ĐÃ NẠP XONG. ĐANG CHỜ SIMULATOR/ROBOT STATE...
+[GUI] Đã mở cửa sổ điều khiển. Bấm vào 'R1 KEYBOARD CONTROL' để điều khiển.
+>>> ĐÃ KẾT NỐI! BẮT ĐẦU VÒNG LẶP ĐIỀU KHIỂN (50Hz)
+[INFO] Đã chuyển Mode/Khởi động. Đang chạy Policy...
+[INFO] Đã chuyển Mode/Khởi động. Đang chạy Policy...
+[INFO] Dance 3 kết thúc, tự động về Flat mode.
+[INFO] Đã chuyển Mode/Khởi động. Đang chạy Policy...
+X connection to :100 broken (explicit kill or server shutdown).

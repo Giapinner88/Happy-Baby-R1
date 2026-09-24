@@ -1,0 +1,138 @@
+{
+  "checkpoint": "/home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/checkpoints/slope_meta/meta_gate_with_flat.pt",
+  "checkpoint_sha256": "0e991886f1f8076225460881487afdd7360ef09a56b2968540a6afd2fa9000ef",
+  "dataset": "/home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/datasets/slope_meta/l2t_aggregated_history.npz",
+  "dataset_sha256": "167c573a75332dcabe73a4827f2de876d1910c6e8733baf1c4b72e50721bfd22",
+  "registry": "/home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/deploy/robots/r1/config/policy/velocity/v0/params/deploy_with_flat.template.yaml",
+  "registry_sha256": "c5a05da1fe1ca7457f420032ea724fcfd0a3228bb22cc8ee1af048dc16a27544",
+  "dataset_registry_sha256": "c5a05da1fe1ca7457f420032ea724fcfd0a3228bb22cc8ee1af048dc16a27544",
+  "dataset_schema_version": 2,
+  "history_steps": 50,
+  "sample_stride": 4,
+  "class_names": [
+    "slope_up",
+    "slope_down",
+    "flat",
+    "NEUTRAL"
+  ],
+  "accuracy": 0.9974655508995056,
+  "ece": 0.0005241878679953516,
+  "confusion": [
+    [
+      15248,
+      7,
+      2,
+      15
+    ],
+    [
+      4,
+      15179,
+      13,
+      18
+    ],
+    [
+      23,
+      0,
+      33633,
+      0
+    ],
+    [
+      130,
+      120,
+      79,
+      97693
+    ]
+  ],
+  "classes": {
+    "slope_up": {
+      "count": 15272,
+      "accuracy": 0.9984285235404968
+    },
+    "slope_down": {
+      "count": 15214,
+      "accuracy": 0.997699499130249
+    },
+    "flat": {
+      "count": 33656,
+      "accuracy": 0.9993166327476501
+    },
+    "NEUTRAL": {
+      "count": 98022,
+      "accuracy": 0.996643602848053
+    }
+  },
+  "sample_sources": {
+    "oracle_or_expert_rollout": {
+      "count": 147281,
+      "accuracy": 0.9976779222488403
+    },
+    "student_controlled_rollout": {
+      "count": 14883,
+      "accuracy": 0.9953638315200806
+    }
+  },
+  "student_control_fraction": 0.09177745878696442,
+  "angle_bins": {
+    "00-01": {
+      "count": 33532,
+      "accuracy": 0.9999403357505798
+    },
+    "01-05": {
+      "count": 18301,
+      "accuracy": 0.9833889007568359
+    },
+    "05-10": {
+      "count": 10701,
+      "accuracy": 0.9969161748886108
+    },
+    "10-15": {
+      "count": 8745,
+      "accuracy": 0.9990851879119873
+    },
+    "15-20": {
+      "count": 10590,
+      "accuracy": 0.9992445707321167
+    },
+    "20-25": {
+      "count": 26628,
+      "accuracy": 0.9990235567092896
+    },
+    "25-30": {
+      "count": 25182,
+      "accuracy": 0.9994043111801147
+    }
+  },
+  "categories": {
+    "STRAIGHT": {
+      "count": 27163,
+      "accuracy": 0.9985274076461792
+    },
+    "DIAGONAL": {
+      "count": 29487,
+      "accuracy": 0.9984738826751709
+    },
+    "CROSS": {
+      "count": 26690,
+      "accuracy": 0.9923192262649536
+    },
+    "TURN": {
+      "count": 28222,
+      "accuracy": 0.9973779320716858
+    },
+    "STAND": {
+      "count": 18602,
+      "accuracy": 0.9975271224975586
+    }
+  },
+  "selector": {
+    "effective_evaluation_hz": 12.5,
+    "evaluated_duration_s": 12973.12,
+    "switches": 948,
+    "switches_per_minute": 4.384450309563158,
+    "direct_expert_switches": 13,
+    "unsafe_direct_expert_switches": 1,
+    "neutral_rate": 0.6077489455119509,
+    "safety_hold_rate": 0.3702918033595619,
+    "expert_accuracy": 0.9863272114994855
+  }
+}

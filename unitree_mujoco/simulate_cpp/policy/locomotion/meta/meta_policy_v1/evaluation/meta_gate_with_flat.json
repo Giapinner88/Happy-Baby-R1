@@ -1,0 +1,44 @@
+{
+  "checkpoint": "checkpoints/slope_meta/meta_gate_with_flat.pt",
+  "best_validation_accuracy": 0.9916507601737976,
+  "validation_accuracy": 0.9916507601737976,
+  "validation_ece": 0.002742957789450884,
+  "validation_per_class_accuracy": {
+    "slope_up": 0.9835897088050842,
+    "slope_down": 0.9738118648529053,
+    "flat": 0.9997961521148682,
+    "NEUTRAL": 0.9900888800621033
+  },
+  "num_examples": 162164,
+  "history_steps": 50,
+  "sample_stride": 4,
+  "expert_names": [
+    "slope_up",
+    "slope_down",
+    "flat"
+  ],
+  "new_heads_only": false,
+  "provenance": {
+    "dataset_schema_version": 2,
+    "dataset_sha256": "167c573a75332dcabe73a4827f2de876d1910c6e8733baf1c4b72e50721bfd22",
+    "source_rollout_sha256": [
+      "5e3ee9c7804387cb814558dd773f550d603fdd265d6e399677c2d51e769e5757",
+      "eaacb4d897bd6666064698c34668b857a6b2254c586eec7ebb9a9df00cf41770",
+      "43e6b9c2a520874c7fca1a5b41e8b3a344ea86082f8624db90d6b6e9e5d1405e"
+    ],
+    "registry_sha256": "c5a05da1fe1ca7457f420032ea724fcfd0a3228bb22cc8ee1af048dc16a27544",
+    "checkpoint_sha256": [
+      "705ff566a24d77ffeea3c8df19fb352220b9c028e95438e7b168c01be6c633ff",
+      "d767949debcad2a218214d219585bd978bf2f66d86348bed21b8fe8a91961973",
+      "b6090c47723a625859fb20f4d288b0149712ef537bb8c83025136bad3f40c1f7"
+    ],
+    "contract_model_sha256": [
+      "082b30fbffd9508dff0abed82b6ac2a9516d83d3e005198a292a8ce9497e17c9",
+      "aabd356bb2e735a16ea2f77e2f8c2645f38a2a7dadd8e268b55da71e93d09a42",
+      "ee1cd73469ba0f16eff7542fc4758396a7301398ebdfb2e0926713b3c1954500"
+    ],
+    "sample_stride": 4,
+    "policy_hz": 50.0,
+    "student_control_fraction": 0.09177745878696442
+  }
+}

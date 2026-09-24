@@ -1,0 +1,11 @@
+[META_POLICY_ABLATIONS] variant=baseline package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1
+[META_POLICY_ABLATIONS] variant=target_one_layer package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/target_one_layer
+[META_POLICY_ABLATIONS] variant=raw_action package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/raw_action
+[META_POLICY_ABLATIONS] variant=hard_switch package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/hard_switch
+[META_POLICY_ABLATIONS] variant=history_1 package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/history_1
+[META_POLICY_ABLATIONS] variant=history_10 package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/history_10
+[META_POLICY_ABLATIONS] variant=history_25 package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/history_25
+[META_POLICY_ABLATIONS] variant=no_neutral package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/no_neutral
+[META_POLICY_ABLATIONS] variant=no_hysteresis package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/no_hysteresis
+[META_POLICY_ABLATIONS] variant=no_dwell package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/no_dwell
+[META_POLICY_ABLATIONS] variants=10 nonzero_suites=10

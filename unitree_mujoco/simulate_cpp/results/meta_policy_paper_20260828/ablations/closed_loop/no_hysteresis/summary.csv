@@ -1,0 +1,6 @@
+variant,scene,case,vx,vy,yaw,hold_s,control_result,process_result,exit_code,log,csv
+no_hysteresis,flat,flat_stand,0,0,0,8,PASS,OK,0,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/flat_stand.log,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/flat_stand.csv
+no_hysteresis,15-platform,platform_up,0.3,0,0,10,PASS,ERROR,134,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/platform_up.log,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/platform_up.csv
+no_hysteresis,15-platform,platform_down,-0.3,0,0,10,FAIL,OK,2,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/platform_down.log,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/platform_down.csv
+no_hysteresis,15,direct_up,0.3,0,0,10,FAIL,OK,3,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/direct_up.log,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/direct_up.csv
+no_hysteresis,mixed,mixed_traverse,0.4,0,0,48,PASS,OK,0,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/mixed_traverse.log,results/meta_policy_paper_20260828/ablations/closed_loop/no_hysteresis/mixed_traverse.csv

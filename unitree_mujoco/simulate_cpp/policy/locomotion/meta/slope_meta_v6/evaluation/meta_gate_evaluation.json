@@ -1,0 +1,113 @@
+{
+  "checkpoint": "/home/khanh248/Documents/HB/Mujoco/unitree_rl_mjlab_meta/checkpoints/slope_meta/meta_gate.pt",
+  "checkpoint_sha256": "4b1921bd37ba5e332f6cc1fea8699e5d755dd682a9a30575a929cfb5bc4fbcde",
+  "dataset": "/home/khanh248/Documents/HB/Mujoco/unitree_rl_mjlab_meta/datasets/slope_meta_history.npz",
+  "dataset_sha256": "704f83127857c338b2874d65e2ff93040f835886f908009376079ab0c66b014a",
+  "registry": "/home/khanh248/Documents/HB/Mujoco/unitree_rl_mjlab_meta/deploy/robots/r1/config/policy/velocity/v0/params/deploy.yaml",
+  "registry_sha256": "ce02ae16a54419268c624fdfa138e9274710caa3c57925c54961c7792094e6dd",
+  "dataset_registry_sha256": "ce02ae16a54419268c624fdfa138e9274710caa3c57925c54961c7792094e6dd",
+  "dataset_schema_version": 2,
+  "history_steps": 50,
+  "sample_stride": 4,
+  "class_names": [
+    "slope_up",
+    "slope_down",
+    "NEUTRAL"
+  ],
+  "accuracy": 0.9982114434242249,
+  "ece": 0.0015359701355919242,
+  "confusion": [
+    [
+      25561,
+      0,
+      29
+    ],
+    [
+      0,
+      25232,
+      168
+    ],
+    [
+      17,
+      15,
+      77014
+    ]
+  ],
+  "classes": {
+    "slope_up": {
+      "count": 25590,
+      "accuracy": 0.9988667368888855
+    },
+    "slope_down": {
+      "count": 25400,
+      "accuracy": 0.9933858513832092
+    },
+    "NEUTRAL": {
+      "count": 77046,
+      "accuracy": 0.9995846748352051
+    }
+  },
+  "angle_bins": {
+    "00-01": {
+      "count": 1486,
+      "accuracy": 1.0
+    },
+    "01-05": {
+      "count": 9616,
+      "accuracy": 0.9854409098625183
+    },
+    "05-10": {
+      "count": 11698,
+      "accuracy": 0.997520923614502
+    },
+    "10-15": {
+      "count": 9039,
+      "accuracy": 0.9998893737792969
+    },
+    "15-20": {
+      "count": 11057,
+      "accuracy": 0.9979198575019836
+    },
+    "20-25": {
+      "count": 26009,
+      "accuracy": 0.9996539950370789
+    },
+    "25-30": {
+      "count": 27213,
+      "accuracy": 0.999228298664093
+    }
+  },
+  "categories": {
+    "STRAIGHT": {
+      "count": 28357,
+      "accuracy": 0.998095691204071
+    },
+    "DIAGONAL": {
+      "count": 27616,
+      "accuracy": 0.9947131872177124
+    },
+    "CROSS": {
+      "count": 26620,
+      "accuracy": 0.999737024307251
+    },
+    "TURN": {
+      "count": 27930,
+      "accuracy": 0.9994629621505737
+    },
+    "STAND": {
+      "count": 17513,
+      "accuracy": 0.9996002912521362
+    }
+  },
+  "selector": {
+    "effective_evaluation_hz": 12.5,
+    "evaluated_duration_s": 10242.88,
+    "switches": 995,
+    "switches_per_minute": 5.828438876565967,
+    "direct_expert_switches": 0,
+    "unsafe_direct_expert_switches": 0,
+    "neutral_rate": 0.6047986503795807,
+    "safety_hold_rate": 0.056780905370364586,
+    "expert_accuracy": 0.9843890959011571
+  }
+}

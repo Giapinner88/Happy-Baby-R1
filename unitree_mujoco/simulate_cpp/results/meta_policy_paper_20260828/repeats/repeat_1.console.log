@@ -1,0 +1,129 @@
+[META_POLICY_ACCEPTANCE] 1: scene=flat angle=0  category=STAND direction=neutral cmd=(0,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_STAND_neutral.log
+[META_POLICY_ACCEPTANCE] 2: scene=flat angle=0  category=STRAIGHT direction=up cmd=(0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_STRAIGHT_up.log
+[META_POLICY_ACCEPTANCE] 3: scene=flat angle=0  category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_STRAIGHT_down.log
+[META_POLICY_ACCEPTANCE] 4: scene=flat angle=0  category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_DIAGONAL_up.log
+[META_POLICY_ACCEPTANCE] 5: scene=flat angle=0  category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_DIAGONAL_down.log
+[META_POLICY_ACCEPTANCE] 6: scene=flat angle=0  category=CROSS direction=left cmd=(0,0.3,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_CROSS_left.log
+[META_POLICY_ACCEPTANCE] 7: scene=flat angle=0  category=CROSS direction=right cmd=(0,-0.3,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_CROSS_right.log
+[META_POLICY_ACCEPTANCE] 8: scene=flat angle=0  category=TURN direction=left cmd=(0,0,0.5)
+[META_POLICY_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_TURN_left.log
+[META_POLICY_ACCEPTANCE] 9: scene=flat angle=0  category=TURN direction=right cmd=(0,0,-0.5)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/flat_TURN_right.log
+[META_POLICY_ACCEPTANCE] 10: scene=5 angle=5  category=STAND direction=neutral cmd=(0,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5_STAND_neutral.log
+[META_POLICY_ACCEPTANCE] 11: scene=5-platform angle=5  category=STRAIGHT direction=up cmd=(0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5-platform_STRAIGHT_up.log
+[META_POLICY_ACCEPTANCE] 12: scene=5-platform angle=5  category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5-platform_STRAIGHT_down.log
+[META_POLICY_ACCEPTANCE] 13: scene=5-platform angle=5  category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5-platform_DIAGONAL_up.log
+[META_POLICY_ACCEPTANCE] 14: scene=5-platform angle=5  category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5-platform_DIAGONAL_down.log
+[META_POLICY_ACCEPTANCE] 15: scene=5 angle=5  category=CROSS direction=left cmd=(0,0.3,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5_CROSS_left.log
+[META_POLICY_ACCEPTANCE] 16: scene=5 angle=5  category=CROSS direction=right cmd=(0,-0.3,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5_CROSS_right.log
+[META_POLICY_ACCEPTANCE] 17: scene=5 angle=5  category=TURN direction=left cmd=(0,0,0.5)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5_TURN_left.log
+[META_POLICY_ACCEPTANCE] 18: scene=5 angle=5  category=TURN direction=right cmd=(0,0,-0.5)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/5_TURN_right.log
+[META_POLICY_ACCEPTANCE] 19: scene=10 angle=10  category=STAND direction=neutral cmd=(0,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10_STAND_neutral.log
+[META_POLICY_ACCEPTANCE] 20: scene=10-platform angle=10  category=STRAIGHT direction=up cmd=(0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10-platform_STRAIGHT_up.log
+[META_POLICY_ACCEPTANCE] 21: scene=10-platform angle=10  category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10-platform_STRAIGHT_down.log
+[META_POLICY_ACCEPTANCE] 22: scene=10-platform angle=10  category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10-platform_DIAGONAL_up.log
+[META_POLICY_ACCEPTANCE] 23: scene=10-platform angle=10  category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10-platform_DIAGONAL_down.log
+[META_POLICY_ACCEPTANCE] 24: scene=10 angle=10  category=CROSS direction=left cmd=(0,0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10_CROSS_left.log
+[META_POLICY_ACCEPTANCE] 25: scene=10 angle=10  category=CROSS direction=right cmd=(0,-0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10_CROSS_right.log
+[META_POLICY_ACCEPTANCE] 26: scene=10 angle=10  category=TURN direction=left cmd=(0,0,0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10_TURN_left.log
+[META_POLICY_ACCEPTANCE] 27: scene=10 angle=10  category=TURN direction=right cmd=(0,0,-0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/10_TURN_right.log
+[META_POLICY_ACCEPTANCE] 28: scene=15 angle=15  category=STAND direction=neutral cmd=(0,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15_STAND_neutral.log
+[META_POLICY_ACCEPTANCE] 29: scene=15-platform angle=15  category=STRAIGHT direction=up cmd=(0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15-platform_STRAIGHT_up.log
+[META_POLICY_ACCEPTANCE] 30: scene=15-platform angle=15  category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15-platform_STRAIGHT_down.log
+[META_POLICY_ACCEPTANCE] 31: scene=15-platform angle=15  category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15-platform_DIAGONAL_up.log
+[META_POLICY_ACCEPTANCE] 32: scene=15-platform angle=15  category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15-platform_DIAGONAL_down.log
+[META_POLICY_ACCEPTANCE] 33: scene=15 angle=15  category=CROSS direction=left cmd=(0,0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15_CROSS_left.log
+[META_POLICY_ACCEPTANCE] 34: scene=15 angle=15  category=CROSS direction=right cmd=(0,-0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15_CROSS_right.log
+[META_POLICY_ACCEPTANCE] 35: scene=15 angle=15  category=TURN direction=left cmd=(0,0,0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15_TURN_left.log
+[META_POLICY_ACCEPTANCE] 36: scene=15 angle=15  category=TURN direction=right cmd=(0,0,-0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/15_TURN_right.log
+[META_POLICY_ACCEPTANCE] 37: scene=20 angle=20  category=STAND direction=neutral cmd=(0,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20_STAND_neutral.log
+[META_POLICY_ACCEPTANCE] 38: scene=20-platform angle=20  category=STRAIGHT direction=up cmd=(0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20-platform_STRAIGHT_up.log
+[META_POLICY_ACCEPTANCE] 39: scene=20-platform angle=20  category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20-platform_STRAIGHT_down.log
+[META_POLICY_ACCEPTANCE] 40: scene=20-platform angle=20  category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20-platform_DIAGONAL_up.log
+[META_POLICY_ACCEPTANCE] 41: scene=20-platform angle=20  category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20-platform_DIAGONAL_down.log
+[META_POLICY_ACCEPTANCE] 42: scene=20 angle=20  category=CROSS direction=left cmd=(0,0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20_CROSS_left.log
+[META_POLICY_ACCEPTANCE] 43: scene=20 angle=20  category=CROSS direction=right cmd=(0,-0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20_CROSS_right.log
+[META_POLICY_ACCEPTANCE] 44: scene=20 angle=20  category=TURN direction=left cmd=(0,0,0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20_TURN_left.log
+[META_POLICY_ACCEPTANCE] 45: scene=20 angle=20  category=TURN direction=right cmd=(0,0,-0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/20_TURN_right.log
+[META_POLICY_ACCEPTANCE] 46: scene=25 angle=25  category=STAND direction=neutral cmd=(0,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25_STAND_neutral.log
+[META_POLICY_ACCEPTANCE] 47: scene=25-platform angle=25  category=STRAIGHT direction=up cmd=(0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25-platform_STRAIGHT_up.log
+[META_POLICY_ACCEPTANCE] 48: scene=25-platform angle=25  category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25-platform_STRAIGHT_down.log
+[META_POLICY_ACCEPTANCE] 49: scene=25-platform angle=25  category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25-platform_DIAGONAL_up.log
+[META_POLICY_ACCEPTANCE] 50: scene=25-platform angle=25  category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=2 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25-platform_DIAGONAL_down.log
+[META_POLICY_ACCEPTANCE] 51: scene=25 angle=25  category=CROSS direction=left cmd=(0,0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25_CROSS_left.log
+[META_POLICY_ACCEPTANCE] 52: scene=25 angle=25  category=CROSS direction=right cmd=(0,-0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25_CROSS_right.log
+[META_POLICY_ACCEPTANCE] 53: scene=25 angle=25  category=TURN direction=left cmd=(0,0,0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25_TURN_left.log
+[META_POLICY_ACCEPTANCE] 54: scene=25 angle=25  category=TURN direction=right cmd=(0,0,-0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=ERROR exit=134 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/25_TURN_right.log
+[META_POLICY_ACCEPTANCE] 55: scene=30 angle=30  category=STAND direction=neutral cmd=(0,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30_STAND_neutral.log
+[META_POLICY_ACCEPTANCE] 56: scene=30-platform angle=30  category=STRAIGHT direction=up cmd=(0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30-platform_STRAIGHT_up.log
+[META_POLICY_ACCEPTANCE] 57: scene=30-platform angle=30  category=STRAIGHT direction=down cmd=(-0.3,0,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30-platform_STRAIGHT_down.log
+[META_POLICY_ACCEPTANCE] 58: scene=30-platform angle=30  category=DIAGONAL direction=up cmd=(0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30-platform_DIAGONAL_up.log
+[META_POLICY_ACCEPTANCE] 59: scene=30-platform angle=30  category=DIAGONAL direction=down cmd=(-0.25,0.20,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30-platform_DIAGONAL_down.log
+[META_POLICY_ACCEPTANCE] 60: scene=30 angle=30  category=CROSS direction=left cmd=(0,0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30_CROSS_left.log
+[META_POLICY_ACCEPTANCE] 61: scene=30 angle=30  category=CROSS direction=right cmd=(0,-0.3,0)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30_CROSS_right.log
+[META_POLICY_ACCEPTANCE] 62: scene=30 angle=30  category=TURN direction=left cmd=(0,0,0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30_TURN_left.log
+[META_POLICY_ACCEPTANCE] 63: scene=30 angle=30  category=TURN direction=right cmd=(0,0,-0.5)
+[META_POLICY_ACCEPTANCE] control=FAIL process=OK exit=3 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/30_TURN_right.log
+[META_POLICY_ACCEPTANCE] 64: scene=mixed angle=mixed  category=STRAIGHT direction=traverse cmd=(0.4,0,0)
+[META_POLICY_ACCEPTANCE] control=PASS process=OK exit=0 log=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/mixed_STRAIGHT_traverse.log
+[META_POLICY_ACCEPTANCE] cases=64 control_failures=34 process_errors=9 summary=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_1/summary.csv

@@ -1,0 +1,230 @@
+[ 10%] Built target r1_onnx
+[ 10%] Built target r1_runtime
+[ 14%] Built target r1_joint_mapping_test
+[ 18%] Built target run_r1_policy
+[ 22%] Built target expert_action_adapter_test
+[ 26%] Built target slope_meta_selector_test
+[ 30%] Built target slope_meta_command_governor_test
+[ 34%] Built target rough_policy_contract_test
+[ 38%] Built target flat_policy_contract_test
+[ 42%] Built target single_policy_smoke_test
+[ 46%] Built target scene_resolver_test
+[ 51%] Built target tuning_profile_test
+[ 55%] Built target slope_scene_contract_test
+[ 59%] Built target mixed_terrain_scene_contract_test
+[ 63%] Built target slope_meta_core
+[ 67%] Built target slope_meta_preflight
+[ 91%] Built target run_policy
+[ 95%] Built target slope_meta_runtime_test
+[100%] Built target meta_policy_runtime_test
+[1/2] Loading Rough policy before simulator...
+Loading tuning config...
+[Tuning] Đã load config từ ../config/tuning.yaml
+[Locomotion] CLI policy override: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1/exported/slope_up.onnx
+[AUTOTEST] gesture='locomotion' cmd=(0, 0, 0) kg=0 kv=0 warmup=2s hold=6s max_tilt=25deg max_drop=0.25m csv=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25_STAND_neutral.csv
+Khởi tạo DDS...
+1787916602.930621 [1] run_policy: selected interface "lo" is not multicast-capable: disabling multicast
+[Locomotion] profile=Slope gait_period=0.6 slow=(1, 0.5, 1) fast=(1.5, 0.5, 1)
+[FlatController] Đã nạp thành công mô hình: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1/exported/slope_up.onnx
+[Locomotion] policy: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1/exported/slope_up.onnx
+[Locomotion] input 83-D -> FlatController (83-D)
+[Gesture] slot 1 = 'vaytay_2' <- vaytay_2.npz (fps=50 x1, loop=0)
+[Gesture] slot 2 = 'battay' <- battay.npz (fps=100 x1, loop=0)
+[Gesture] slot 3 = 'namtay_anmung' <- namtay_anmung.npz (fps=100 x1, loop=0)
+[Gesture] slot 4 = 'duaqua' <- duaqua.npz (fps=100 x1, loop=0)
+[Gesture] slot 5 = 'noichuyen' <- noichuyen.loop.npz (fps=50 x1, loop=1)
+[Gesture] slot 6 = 'traitim' <- traitim.npz (fps=100 x1, loop=0)
+[Gesture] slot 7 = 'cheotayngauloi_hold7s' <- cheotayngauloi_hold7s.npz (fps=50 x1, loop=0)
+[Gesture] slot 8 = 'damtaylentroi' <- damtaylentroi.npz (fps=50 x1, loop=0)
+[Gesture] San sang. Flat: G=chon gesture, V=choi/thu. Gesture dau: 'vaytay_2'.
+[Teleop] Lang nghe UDP 5560 (tay+dau) — uu tien hon gesture khi co goi.
+[MotionData] Đã nạp 2224 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/lacmong1/r1_lacmong1.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/lacmong1/r1_lacmong1.onnx (speed=1)
+[MotionData] Đã nạp 3700 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/lacmong2/r1_lacmong2_trim.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/lacmong2/r1_lacmong2.onnx (speed=1)
+[MotionData] Đã nạp 858 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/lacmong3/r1_lacmong3.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/lacmong3/r1_lacmong3.onnx (speed=1)
+[MotionData] Đã nạp 4393 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/doremon/doremon_r1.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/doremon/policy.onnx (speed=1)
+
+>>> POLICY ĐÃ NẠP XONG. ĐANG CHỜ SIMULATOR/ROBOT STATE...
+[2/2] Policy ready; starting simulator with scene: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/../unitree_robots/r1/scene_slope_25.xml
+MuJoCo version 3.3.6
+Mujoco data is prepared
+1787916604.807009 [1] unitree_mu: selected interface "lo" is not multicast-capable: disabling multicast
+<<------------- Link ------------->> 
+Link_index: 0, name: world
+Link_index: 1, name: pelvis
+Link_index: 2, name: left_hip_pitch_link
+Link_index: 3, name: left_hip_roll_link
+Link_index: 4, name: left_hip_yaw_link
+Link_index: 5, name: left_knee_link
+Link_index: 6, name: left_ankle_pitch_link
+Link_index: 7, name: left_ankle_roll_link
+Link_index: 8, name: right_hip_pitch_link
+Link_index: 9, name: right_hip_roll_link
+Link_index: 10, name: right_hip_yaw_link
+Link_index: 11, name: right_knee_link
+Link_index: 12, name: right_ankle_pitch_link
+Link_index: 13, name: right_ankle_roll_link
+Link_index: 14, name: waist_roll_link
+Link_index: 15, name: torso_link
+Link_index: 16, name: left_shoulder_pitch_link
+Link_index: 17, name: left_shoulder_roll_link
+Link_index: 18, name: left_shoulder_yaw_link
+Link_index: 19, name: left_elbow_link
+Link_index: 20, name: left_wrist_roll_link
+Link_index: 21, name: right_shoulder_pitch_link
+Link_index: 22, name: right_shoulder_roll_link
+Link_index: 23, name: right_shoulder_yaw_link
+Link_index: 24, name: right_elbow_link
+Link_index: 25, name: right_wrist_roll_link
+
+<<------------- Joint ------------->> 
+Joint_index: 0, name: floating_base_joint
+Joint_index: 1, name: left_hip_pitch_joint
+Joint_index: 2, name: left_hip_roll_joint
+Joint_index: 3, name: left_hip_yaw_joint
+Joint_index: 4, name: left_knee_joint
+Joint_index: 5, name: left_ankle_pitch_joint
+Joint_index: 6, name: left_ankle_roll_joint
+Joint_index: 7, name: right_hip_pitch_joint
+Joint_index: 8, name: right_hip_roll_joint
+Joint_index: 9, name: right_hip_yaw_joint
+Joint_index: 10, name: right_knee_joint
+Joint_index: 11, name: right_ankle_pitch_joint
+Joint_index: 12, name: right_ankle_roll_joint
+Joint_index: 13, name: waist_roll_joint
+Joint_index: 14, name: waist_yaw_joint
+Joint_index: 15, name: left_shoulder_pitch_joint
+Joint_index: 16, name: left_shoulder_roll_joint
+Joint_index: 17, name: left_shoulder_yaw_joint
+Joint_index: 18, name: left_elbow_joint
+Joint_index: 19, name: left_wrist_roll_joint
+Joint_index: 20, name: right_shoulder_pitch_joint
+Joint_index: 21, name: right_shoulder_roll_joint
+Joint_index: 22, name: right_shoulder_yaw_joint
+Joint_index: 23, name: right_elbow_joint
+Joint_index: 24, name: right_wrist_roll_joint
+
+<<------------- Actuator ------------->> 
+Actuator_index: 0, name: left_hip_pitch
+Actuator_index: 1, name: left_hip_roll
+Actuator_index: 2, name: left_hip_yaw
+Actuator_index: 3, name: left_knee
+Actuator_index: 4, name: left_ankle_pitch
+Actuator_index: 5, name: left_ankle_roll
+Actuator_index: 6, name: right_hip_pitch
+Actuator_index: 7, name: right_hip_roll
+Actuator_index: 8, name: right_hip_yaw
+Actuator_index: 9, name: right_knee
+Actuator_index: 10, name: right_ankle_pitch
+Actuator_index: 11, name: right_ankle_roll
+Actuator_index: 12, name: waist_roll
+Actuator_index: 13, name: waist_yaw
+Actuator_index: 14, name: left_shoulder_pitch
+Actuator_index: 15, name: left_shoulder_roll
+Actuator_index: 16, name: left_shoulder_yaw
+Actuator_index: 17, name: left_elbow
+Actuator_index: 18, name: left_wrist_roll
+Actuator_index: 19, name: right_shoulder_pitch
+Actuator_index: 20, name: right_shoulder_roll
+Actuator_index: 21, name: right_shoulder_yaw
+Actuator_index: 22, name: right_elbow
+Actuator_index: 23, name: right_wrist_roll
+
+<<------------- Sensor ------------->> 
+Sensor_index: 0, name: left_hip_pitch_pos, dim: 1
+Sensor_index: 1, name: left_hip_roll_pos, dim: 1
+Sensor_index: 2, name: left_hip_yaw_pos, dim: 1
+Sensor_index: 3, name: left_knee_pos, dim: 1
+Sensor_index: 4, name: left_ankle_pitch_pos, dim: 1
+Sensor_index: 5, name: left_ankle_roll_pos, dim: 1
+Sensor_index: 6, name: right_hip_pitch_pos, dim: 1
+Sensor_index: 7, name: right_hip_roll_pos, dim: 1
+Sensor_index: 8, name: right_hip_yaw_pos, dim: 1
+Sensor_index: 9, name: right_knee_pos, dim: 1
+Sensor_index: 10, name: right_ankle_pitch_pos, dim: 1
+Sensor_index: 11, name: right_ankle_roll_pos, dim: 1
+Sensor_index: 12, name: waist_roll_pos, dim: 1
+Sensor_index: 13, name: waist_yaw_pos, dim: 1
+Sensor_index: 14, name: left_shoulder_pitch_pos, dim: 1
+Sensor_index: 15, name: left_shoulder_roll_pos, dim: 1
+Sensor_index: 16, name: left_shoulder_yaw_pos, dim: 1
+Sensor_index: 17, name: left_elbow_pos, dim: 1
+Sensor_index: 18, name: left_wrist_roll_pos, dim: 1
+Sensor_index: 19, name: right_shoulder_pitch_pos, dim: 1
+Sensor_index: 20, name: right_shoulder_roll_pos, dim: 1
+Sensor_index: 21, name: right_shoulder_yaw_pos, dim: 1
+Sensor_index: 22, name: right_elbow_pos, dim: 1
+Sensor_index: 23, name: right_wrist_roll_pos, dim: 1
+Sensor_index: 24, name: left_hip_pitch_vel, dim: 1
+Sensor_index: 25, name: left_hip_roll_vel, dim: 1
+Sensor_index: 26, name: left_hip_yaw_vel, dim: 1
+Sensor_index: 27, name: left_knee_vel, dim: 1
+Sensor_index: 28, name: left_ankle_pitch_vel, dim: 1
+Sensor_index: 29, name: left_ankle_roll_vel, dim: 1
+Sensor_index: 30, name: right_hip_pitch_vel, dim: 1
+Sensor_index: 31, name: right_hip_roll_vel, dim: 1
+Sensor_index: 32, name: right_hip_yaw_vel, dim: 1
+Sensor_index: 33, name: right_knee_vel, dim: 1
+Sensor_index: 34, name: right_ankle_pitch_vel, dim: 1
+Sensor_index: 35, name: right_ankle_roll_vel, dim: 1
+Sensor_index: 36, name: waist_roll_vel, dim: 1
+Sensor_index: 37, name: waist_yaw_vel, dim: 1
+Sensor_index: 38, name: left_shoulder_pitch_vel, dim: 1
+Sensor_index: 39, name: left_shoulder_roll_vel, dim: 1
+Sensor_index: 40, name: left_shoulder_yaw_vel, dim: 1
+Sensor_index: 41, name: left_elbow_vel, dim: 1
+Sensor_index: 42, name: left_wrist_roll_vel, dim: 1
+Sensor_index: 43, name: right_shoulder_pitch_vel, dim: 1
+Sensor_index: 44, name: right_shoulder_roll_vel, dim: 1
+Sensor_index: 45, name: right_shoulder_yaw_vel, dim: 1
+Sensor_index: 46, name: right_elbow_vel, dim: 1
+Sensor_index: 47, name: right_wrist_roll_vel, dim: 1
+Sensor_index: 48, name: left_hip_pitch_torque, dim: 1
+Sensor_index: 49, name: left_hip_roll_torque, dim: 1
+Sensor_index: 50, name: left_hip_yaw_torque, dim: 1
+Sensor_index: 51, name: left_knee_torque, dim: 1
+Sensor_index: 52, name: left_ankle_pitch_torque, dim: 1
+Sensor_index: 53, name: left_ankle_roll_torque, dim: 1
+Sensor_index: 54, name: right_hip_pitch_torque, dim: 1
+Sensor_index: 55, name: right_hip_roll_torque, dim: 1
+Sensor_index: 56, name: right_hip_yaw_torque, dim: 1
+Sensor_index: 57, name: right_knee_torque, dim: 1
+Sensor_index: 58, name: right_ankle_pitch_torque, dim: 1
+Sensor_index: 59, name: right_ankle_roll_torque, dim: 1
+Sensor_index: 60, name: waist_roll_torque, dim: 1
+Sensor_index: 61, name: waist_yaw_torque, dim: 1
+Sensor_index: 62, name: left_shoulder_pitch_torque, dim: 1
+Sensor_index: 63, name: left_shoulder_roll_torque, dim: 1
+Sensor_index: 64, name: left_shoulder_yaw_torque, dim: 1
+Sensor_index: 65, name: left_elbow_torque, dim: 1
+Sensor_index: 66, name: left_wrist_roll_torque, dim: 1
+Sensor_index: 67, name: right_shoulder_pitch_torque, dim: 1
+Sensor_index: 68, name: right_shoulder_roll_torque, dim: 1
+Sensor_index: 69, name: right_shoulder_yaw_torque, dim: 1
+Sensor_index: 70, name: right_elbow_torque, dim: 1
+Sensor_index: 71, name: right_wrist_roll_torque, dim: 1
+Sensor_index: 72, name: imu_quat, dim: 4
+Sensor_index: 76, name: imu_gyro, dim: 3
+Sensor_index: 79, name: imu_acc, dim: 3
+Sensor_index: 82, name: frame_pos, dim: 3
+Sensor_index: 85, name: frame_vel, dim: 3
+
+>>> ĐÃ KẾT NỐI! BẮT ĐẦU VÒNG LẶP ĐIỀU KHIỂN (50Hz)
+[INFO] Đã chuyển Mode/Khởi động. Đang chạy Policy...
+[AUTOTEST] Bat dau do tai t=2.02s (khong gesture), base0=(-0.0180912, 0.00499436) pitch0=0.125895
+
+===== KET QUA AUTOTEST: locomotion =====
+  kg=0 kv=0 cmd=(0, 0, 0)
+  [METRIC CHINH] dinh |lech pitch than| = 0.0118289 (trung binh 0.00492979)
+  tilt tuong doi lon nhat = 2.38966 deg
+  [CHIEU CAO] base luc kich = 0.714996 m, thap nhat = 0.711527 m  -> HA 0.00346941 m
+  troi cuoi (x,y) = (-0.000573302, 0.036661) m
+  troi ngang lon nhat = 0.0449489 m
+  bien do x: [-0.0080316, 0]  bien do y: [-0.0275665, 0.0448656] m
+  RESULT=PASS
+=====================================
+[AUTOTEST] Da ghi CSV: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/slope_up/25_STAND_neutral.csv (301 dong)
+Policy log: /tmp/r1_rough_policy.W589Jt.log

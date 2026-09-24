@@ -1,0 +1,38 @@
+# Opt-in examples for the new single-model contracts.
+# Do not copy this file over tuning.yaml automatically.
+
+# H4: 4 x canonical 83-D, term-major oldest -> newest (332-D).
+# locomotion_policy: flat_plus/policy_flat_plus_h4_v1.onnx
+
+# H5: 5 x canonical 83-D, term-major oldest -> newest (415-D).
+# locomotion_policy: flat_plus/policy_flat_plus_h5_v1.onnx
+
+# H4 + current-only gait one-hot stand,walk,w2s (335-D).
+# locomotion_policy: flat_plus/policy_flat_plus_gait_h4_v1.onnx
+# Gait walk-quality candidate; same 335-D runtime contract, separate artifact.
+# locomotion_policy: flat_plus/policy_flat_plus_gait_walkquality_v1.onnx
+# Newer gait walk-quality v2 export; same 335-D runtime contract.
+# locomotion_policy: flat_plus/policy_flat_plus_gait_walkquality_v2.onnx
+# B/F/G v3 exports use the same 335-D tensor but require the dedicated
+# tuning_gait_v3b.example.yaml or tuning_gait_v3f.example.yaml parameters.
+# Gait FSM contract (separate linear/angular hysteresis; signed-vector filter).
+# gait_mode_stop_request_lin: 0.10
+# gait_mode_stop_request_ang: 0.10
+# gait_mode_move_request_lin: 0.15
+# gait_mode_move_request_ang: 0.15
+# gait_mode_settle_gyro_norm: 0.25
+# gait_mode_settle_joint_velocity_rms: 0.60
+# gait_mode_settle_dwell_s: 1.50
+# gait_mode_w2s_timeout_s: 5.00
+# gait_mode_stability_filter_tau_s: 0.20
+
+# A-RMA is attached to the selected Flat base policy. Point the same
+# locomotion_policy field at a self-contained bundle; `single` auto-detects
+# params/deploy.yaml and keeps the old file-policy path unchanged.
+# O83 finetune, 83-D prefix + 8-D estimated latent = 91-D actor input.
+# locomotion_policy: arma/flat_o83_k50_z8_v1
+# locomotion_policy: arma/flat_plus_h4_rma_v1
+# locomotion_policy: arma/flat_plus_h5_rma_v1
+# locomotion_policy: arma/flat_plus_gait_h4_rma_v1
+# Bundle dimensions are H4+latent=340, H5+latent=423, gait-H4+latent=343.
+# Legacy compatibility remains available: ./run_sim.sh arma flat

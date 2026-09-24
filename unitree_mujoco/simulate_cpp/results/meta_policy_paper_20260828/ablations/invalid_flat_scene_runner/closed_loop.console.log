@@ -1,0 +1,3 @@
+[META_POLICY_ABLATIONS] variant=baseline package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1
+[META_POLICY_ABLATIONS] variant=target_one_layer package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/target_one_layer
+[META_POLICY_ABLATIONS] variant=raw_action package=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_ablations_20260828/raw_action

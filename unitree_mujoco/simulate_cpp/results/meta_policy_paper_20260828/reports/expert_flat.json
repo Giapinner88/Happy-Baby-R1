@@ -1,0 +1,91 @@
+{
+  "aggregate": {
+    "cases": 64,
+    "control": {
+      "FAIL": 37,
+      "PASS": 27
+    },
+    "failure_reason": {
+      "fall": 28,
+      "metric_violation": 9,
+      "pass": 27
+    },
+    "process": {
+      "ERROR": 8,
+      "OK": 56
+    },
+    "runs": 1
+  },
+  "runs": [
+    {
+      "by_angle": {
+        "0": {
+          "pass": 9
+        },
+        "10": {
+          "fail": 7,
+          "pass": 2
+        },
+        "15": {
+          "fail": 7,
+          "pass": 2
+        },
+        "20": {
+          "fail": 7,
+          "pass": 2
+        },
+        "25": {
+          "fail": 7,
+          "pass": 2
+        },
+        "30": {
+          "fail": 8,
+          "pass": 1
+        },
+        "5": {
+          "pass": 9
+        },
+        "mixed": {
+          "fail": 1
+        }
+      },
+      "by_category": {
+        "CROSS": {
+          "fail": 10,
+          "pass": 4
+        },
+        "DIAGONAL": {
+          "fail": 5,
+          "pass": 9
+        },
+        "STAND": {
+          "fail": 5,
+          "pass": 2
+        },
+        "STRAIGHT": {
+          "fail": 7,
+          "pass": 8
+        },
+        "TURN": {
+          "fail": 10,
+          "pass": 4
+        }
+      },
+      "cases": 64,
+      "control": {
+        "FAIL": 37,
+        "PASS": 27
+      },
+      "directory": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/experts/flat",
+      "failure_reason": {
+        "fall": 28,
+        "metric_violation": 9,
+        "pass": 27
+      },
+      "process": {
+        "ERROR": 8,
+        "OK": 56
+      }
+    }
+  ]
+}

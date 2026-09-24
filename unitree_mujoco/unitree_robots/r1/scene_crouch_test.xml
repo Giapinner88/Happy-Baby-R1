@@ -1,0 +1,13 @@
+<mujoco model="r1 crouch verification">
+  <compiler angle="radian" meshdir="assets"/>
+  <include file="unitree_r1/xmls/r1.xml"/>
+
+  <!-- Intentionally no stool/chair: every accepted frame must be supported by feet only. -->
+  <option timestep="0.005"/>
+  <default>
+    <geom friction="0.9 0.005 0.0001" solimp="0.9 0.95 0.001" solref="0.002 1"/>
+  </default>
+  <worldbody>
+    <geom name="floor" type="plane" size="0 0 0.05"/>
+  </worldbody>
+</mujoco>

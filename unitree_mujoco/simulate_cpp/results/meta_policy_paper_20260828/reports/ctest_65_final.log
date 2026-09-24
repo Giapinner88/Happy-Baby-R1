@@ -1,0 +1,136 @@
+Internal ctest changing into directory: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/build
+Test project /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/build
+      Start  1: r1_joint_mapping_test
+ 1/65 Test  #1: r1_joint_mapping_test ........................................   Passed    0.00 sec
+      Start  2: expert_action_adapter_test
+ 2/65 Test  #2: expert_action_adapter_test ...................................   Passed    0.00 sec
+      Start  3: slope_meta_selector_test
+ 3/65 Test  #3: slope_meta_selector_test .....................................   Passed    0.00 sec
+      Start  4: slope_meta_command_governor_test
+ 4/65 Test  #4: slope_meta_command_governor_test .............................   Passed    0.00 sec
+      Start  5: slope_meta_runtime_test
+ 5/65 Test  #5: slope_meta_runtime_test ......................................   Passed    0.12 sec
+      Start  6: meta_policy_runtime_test
+ 6/65 Test  #6: meta_policy_runtime_test .....................................   Passed    0.04 sec
+      Start  7: slope_meta_artifact_hash_test
+ 7/65 Test  #7: slope_meta_artifact_hash_test ................................   Passed    0.01 sec
+      Start  8: meta_policy_artifact_hash_test
+ 8/65 Test  #8: meta_policy_artifact_hash_test ...............................   Passed    0.02 sec
+      Start  9: rough_policy_contract_test_selected
+ 9/65 Test  #9: rough_policy_contract_test_selected ..........................   Passed    0.02 sec
+      Start 10: flat_policy_contract_test_policy_goc
+10/65 Test #10: flat_policy_contract_test_policy_goc .........................   Passed    0.02 sec
+      Start 11: single_policy_policy_locomotion_flat_policy_0_onnx
+11/65 Test #11: single_policy_policy_locomotion_flat_policy_0_onnx ...........   Passed    0.02 sec
+      Start 12: single_policy_policy_locomotion_flat_policy_1_onnx
+12/65 Test #12: single_policy_policy_locomotion_flat_policy_1_onnx ...........   Passed    0.02 sec
+      Start 13: single_policy_policy_locomotion_flat_policy_10_onnx
+13/65 Test #13: single_policy_policy_locomotion_flat_policy_10_onnx ..........   Passed    0.02 sec
+      Start 14: single_policy_policy_locomotion_flat_policy_10_07_onnx
+14/65 Test #14: single_policy_policy_locomotion_flat_policy_10_07_onnx .......   Passed    0.02 sec
+      Start 15: single_policy_policy_locomotion_flat_policy_11_onnx
+15/65 Test #15: single_policy_policy_locomotion_flat_policy_11_onnx ..........   Passed    0.02 sec
+      Start 16: single_policy_policy_locomotion_flat_policy_11_07_onnx
+16/65 Test #16: single_policy_policy_locomotion_flat_policy_11_07_onnx .......   Passed    0.02 sec
+      Start 17: single_policy_policy_locomotion_flat_policy_2_onnx
+17/65 Test #17: single_policy_policy_locomotion_flat_policy_2_onnx ...........   Passed    0.02 sec
+      Start 18: single_policy_policy_locomotion_flat_policy_3_onnx
+18/65 Test #18: single_policy_policy_locomotion_flat_policy_3_onnx ...........   Passed    0.02 sec
+      Start 19: single_policy_policy_locomotion_flat_policy_4_onnx
+19/65 Test #19: single_policy_policy_locomotion_flat_policy_4_onnx ...........   Passed    0.02 sec
+      Start 20: single_policy_policy_locomotion_flat_policy_5_onnx
+20/65 Test #20: single_policy_policy_locomotion_flat_policy_5_onnx ...........   Passed    0.02 sec
+      Start 21: single_policy_policy_locomotion_flat_policy_6_onnx
+21/65 Test #21: single_policy_policy_locomotion_flat_policy_6_onnx ...........   Passed    0.02 sec
+      Start 22: single_policy_policy_locomotion_flat_policy_7_onnx
+22/65 Test #22: single_policy_policy_locomotion_flat_policy_7_onnx ...........   Passed    0.02 sec
+      Start 23: single_policy_policy_locomotion_flat_policy_8_onnx
+23/65 Test #23: single_policy_policy_locomotion_flat_policy_8_onnx ...........   Passed    0.02 sec
+      Start 24: single_policy_policy_locomotion_flat_policy_goc_onnx
+24/65 Test #24: single_policy_policy_locomotion_flat_policy_goc_onnx .........   Passed    0.02 sec
+      Start 25: single_policy_policy_locomotion_flat_policy_r1_onnx
+25/65 Test #25: single_policy_policy_locomotion_flat_policy_r1_onnx ..........   Passed    0.02 sec
+      Start 26: single_policy_policy_locomotion_flat_policy_r1_1_onnx
+26/65 Test #26: single_policy_policy_locomotion_flat_policy_r1_1_onnx ........   Passed    0.02 sec
+      Start 27: single_policy_policy_locomotion_flat_policy_r1_flat_onnx
+27/65 Test #27: single_policy_policy_locomotion_flat_policy_r1_flat_onnx .....   Passed    0.02 sec
+      Start 28: single_policy_policy_locomotion_flat_policy_r1_flat_2_onnx
+28/65 Test #28: single_policy_policy_locomotion_flat_policy_r1_flat_2_onnx ...   Passed    0.02 sec
+      Start 29: single_policy_policy_locomotion_flat_policy_v2_onnx
+29/65 Test #29: single_policy_policy_locomotion_flat_policy_v2_onnx ..........   Passed    0.02 sec
+      Start 30: single_policy_policy_locomotion_flat_policy_v3_onnx
+30/65 Test #30: single_policy_policy_locomotion_flat_policy_v3_onnx ..........   Passed    0.02 sec
+      Start 31: single_policy_policy_locomotion_flat_policy_v4_onnx
+31/65 Test #31: single_policy_policy_locomotion_flat_policy_v4_onnx ..........   Passed    0.02 sec
+      Start 32: single_policy_policy_locomotion_flat_policy_v5_onnx
+32/65 Test #32: single_policy_policy_locomotion_flat_policy_v5_onnx ..........   Passed    0.02 sec
+      Start 33: single_policy_policy_locomotion_flat_policy_v6_onnx
+33/65 Test #33: single_policy_policy_locomotion_flat_policy_v6_onnx ..........   Passed    0.02 sec
+      Start 34: single_policy_policy_locomotion_flat_policy_v8_onnx
+34/65 Test #34: single_policy_policy_locomotion_flat_policy_v8_onnx ..........   Passed    0.02 sec
+      Start 35: single_policy_policy_locomotion_flat_policy_v9_onnx
+35/65 Test #35: single_policy_policy_locomotion_flat_policy_v9_onnx ..........   Passed    0.02 sec
+      Start 36: single_policy_policy_locomotion_legacy_policy_1_onnx
+36/65 Test #36: single_policy_policy_locomotion_legacy_policy_1_onnx .........   Passed    0.02 sec
+      Start 37: single_policy_policy_locomotion_legacy_policy_r1_onnx
+37/65 Test #37: single_policy_policy_locomotion_legacy_policy_r1_onnx ........   Passed    0.02 sec
+      Start 38: single_policy_policy_locomotion_legacy_policy_r1_l1_onnx
+38/65 Test #38: single_policy_policy_locomotion_legacy_policy_r1_l1_onnx .....   Passed    0.02 sec
+      Start 39: single_policy_policy_locomotion_rough_policy_r1_rough_onnx
+39/65 Test #39: single_policy_policy_locomotion_rough_policy_r1_rough_onnx ...   Passed    0.02 sec
+      Start 40: single_policy_policy_locomotion_slope_policy_down_v1_onnx
+40/65 Test #40: single_policy_policy_locomotion_slope_policy_down_v1_onnx ....   Passed    0.02 sec
+      Start 41: single_policy_policy_locomotion_slope_policy_down_v2_onnx
+41/65 Test #41: single_policy_policy_locomotion_slope_policy_down_v2_onnx ....   Passed    0.02 sec
+      Start 42: single_policy_policy_locomotion_slope_policy_down_v4_onnx
+42/65 Test #42: single_policy_policy_locomotion_slope_policy_down_v4_onnx ....   Passed    0.02 sec
+      Start 43: single_policy_policy_locomotion_slope_policy_down_v6_onnx
+43/65 Test #43: single_policy_policy_locomotion_slope_policy_down_v6_onnx ....   Passed    0.02 sec
+      Start 44: single_policy_policy_locomotion_slope_policy_up_v1_onnx
+44/65 Test #44: single_policy_policy_locomotion_slope_policy_up_v1_onnx ......   Passed    0.02 sec
+      Start 45: single_policy_policy_locomotion_slope_policy_up_v2_onnx
+45/65 Test #45: single_policy_policy_locomotion_slope_policy_up_v2_onnx ......   Passed    0.02 sec
+      Start 46: single_policy_policy_locomotion_slope_policy_up_v4_onnx
+46/65 Test #46: single_policy_policy_locomotion_slope_policy_up_v4_onnx ......   Passed    0.02 sec
+      Start 47: single_policy_policy_locomotion_slope_policy_up_v6_onnx
+47/65 Test #47: single_policy_policy_locomotion_slope_policy_up_v6_onnx ......   Passed    0.02 sec
+      Start 48: scene_resolver_test
+48/65 Test #48: scene_resolver_test ..........................................   Passed    0.00 sec
+      Start 49: tuning_profile_test
+49/65 Test #49: tuning_profile_test ..........................................   Passed    0.00 sec
+      Start 50: slope_scene_contract_5_direct
+50/65 Test #50: slope_scene_contract_5_direct ................................   Passed    1.11 sec
+      Start 51: slope_scene_contract_10_direct
+51/65 Test #51: slope_scene_contract_10_direct ...............................   Passed    1.21 sec
+      Start 52: slope_scene_contract_15_direct
+52/65 Test #52: slope_scene_contract_15_direct ...............................   Passed    1.13 sec
+      Start 53: slope_scene_contract_20_direct
+53/65 Test #53: slope_scene_contract_20_direct ...............................   Passed    1.17 sec
+      Start 54: slope_scene_contract_25_direct
+54/65 Test #54: slope_scene_contract_25_direct ...............................   Passed    1.08 sec
+      Start 55: slope_scene_contract_30_direct
+55/65 Test #55: slope_scene_contract_30_direct ...............................   Passed    1.11 sec
+      Start 56: slope_scene_contract_35_direct
+56/65 Test #56: slope_scene_contract_35_direct ...............................   Passed    1.12 sec
+      Start 57: slope_scene_contract_40_direct
+57/65 Test #57: slope_scene_contract_40_direct ...............................   Passed    1.09 sec
+      Start 58: slope_scene_contract_5_platform
+58/65 Test #58: slope_scene_contract_5_platform ..............................   Passed    1.10 sec
+      Start 59: slope_scene_contract_10_platform
+59/65 Test #59: slope_scene_contract_10_platform .............................   Passed    1.12 sec
+      Start 60: slope_scene_contract_15_platform
+60/65 Test #60: slope_scene_contract_15_platform .............................   Passed    1.21 sec
+      Start 61: slope_scene_contract_20_platform
+61/65 Test #61: slope_scene_contract_20_platform .............................   Passed    1.17 sec
+      Start 62: slope_scene_contract_25_platform
+62/65 Test #62: slope_scene_contract_25_platform .............................   Passed    1.13 sec
+      Start 63: slope_scene_contract_30_platform
+63/65 Test #63: slope_scene_contract_30_platform .............................   Passed    1.10 sec
+      Start 64: meta_policy_platform_scene_generation_test
+64/65 Test #64: meta_policy_platform_scene_generation_test ...................   Passed    0.08 sec
+      Start 65: mixed_terrain_scene_contract
+65/65 Test #65: mixed_terrain_scene_contract .................................   Passed    1.14 sec
+
+100% tests passed, 0 tests failed out of 65
+
+Total Test time (real) =  18.12 sec

@@ -1,0 +1,27 @@
+{
+  "command": [
+    "bash",
+    "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/run_rough_stack.sh",
+    "0",
+    "--locomotion-policy",
+    "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/flat_plus/policy_flat_plus_gait_h4_v1.onnx",
+    "--autotest",
+    "compare",
+    "gesture=0",
+    "vx=0",
+    "warmup=5",
+    "hold=17",
+    "stop_after=-1",
+    "csv=/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/gait_compare_20260909/old_stand_back.csv",
+    "max_tilt_deg=45",
+    "max_drop=0.2",
+    "max_drift=2"
+  ],
+  "returncode": 0,
+  "schedule": "9 0.2 pelvis -40 0 0\n15 0.2 pelvis -80 0 0\n",
+  "summary": [
+    "[PUSH] time=9.002 body=pelvis force=-40,0,0 duration=0.2",
+    "[PUSH] time=15 body=pelvis force=-80,0,0 duration=0.2",
+    "  RESULT=PASS"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "trace": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/baseline/mixed_parity_trace.csv",
+  "checkpoint": "/home/khanh248/Documents/HB/Mujoco/unitree_rl_mjlab_meta/checkpoints/slope_meta/meta_gate_with_flat.pt",
+  "evaluated_samples": 2351,
+  "controlled_by": "50-step C++ baseline; shorter histories are counterfactual replay",
+  "history_ablation": {
+    "1": {
+      "gate_oracle_accuracy": 0.0,
+      "selector_oracle_accuracy": 0.002126754572522331,
+      "selector_agreement_with_50_step_cpp": 0.007230965546575925,
+      "mean_entropy": 2.56520725088194e-05,
+      "switches": 1,
+      "weight_total_variation": 0.0,
+      "transitions": [
+        {
+          "time_s": 1.1,
+          "position_m": 0.132571,
+          "from": "flat",
+          "to": "NEUTRAL"
+        }
+      ]
+    },
+    "10": {
+      "gate_oracle_accuracy": 0.0,
+      "selector_oracle_accuracy": 0.002126754572522331,
+      "selector_agreement_with_50_step_cpp": 0.007230965546575925,
+      "mean_entropy": 5.62541390536353e-05,
+      "switches": 1,
+      "weight_total_variation": 0.0,
+      "transitions": [
+        {
+          "time_s": 1.1,
+          "position_m": 0.132571,
+          "from": "flat",
+          "to": "NEUTRAL"
+        }
+      ]
+    },
+    "25": {
+      "gate_oracle_accuracy": 0.0,
+      "selector_oracle_accuracy": 0.002126754572522331,
+      "selector_agreement_with_50_step_cpp": 0.007230965546575925,
+      "mean_entropy": 0.0004465086676646024,
+      "switches": 1,
+      "weight_total_variation": 0.0,
+      "transitions": [
+        {
+          "time_s": 1.1,
+          "position_m": 0.132571,
+          "from": "flat",
+          "to": "NEUTRAL"
+        }
+      ]
+    },
+    "50": {
+      "gate_oracle_accuracy": 0.7358570820927265,
+      "selector_oracle_accuracy": 0.7307528711186729,
+      "selector_agreement_with_50_step_cpp": 1.0,
+      "mean_entropy": 0.031498633325099945,
+      "switches": 5,
+      "weight_total_variation": 6.0,
+      "transitions": [
+        {
+          "time_s": 11.3001,
+          "position_m": 2.96178,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 12.7001,
+          "position_m": 3.24804,
+          "from": "slope_up",
+          "to": "NEUTRAL"
+        },
+        {
+          "time_s": 12.9402,
+          "position_m": 3.23638,
+          "from": "NEUTRAL",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 26.6205,
+          "position_m": 6.21895,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 29.3605,
+          "position_m": 7.34363,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    }
+  }
+}

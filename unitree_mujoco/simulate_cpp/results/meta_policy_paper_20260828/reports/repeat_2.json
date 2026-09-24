@@ -1,0 +1,95 @@
+{
+  "aggregate": {
+    "cases": 64,
+    "control": {
+      "FAIL": 38,
+      "PASS": 26
+    },
+    "failure_reason": {
+      "fall": 24,
+      "metric_violation": 13,
+      "missing_result": 1,
+      "pass": 26
+    },
+    "process": {
+      "ERROR": 5,
+      "OK": 59
+    },
+    "runs": 1
+  },
+  "runs": [
+    {
+      "by_angle": {
+        "0": {
+          "fail": 1,
+          "pass": 8
+        },
+        "10": {
+          "fail": 6,
+          "pass": 3
+        },
+        "15": {
+          "fail": 7,
+          "pass": 2
+        },
+        "20": {
+          "fail": 7,
+          "pass": 2
+        },
+        "25": {
+          "fail": 8,
+          "pass": 1
+        },
+        "30": {
+          "fail": 8,
+          "pass": 1
+        },
+        "5": {
+          "fail": 1,
+          "pass": 8
+        },
+        "mixed": {
+          "pass": 1
+        }
+      },
+      "by_category": {
+        "CROSS": {
+          "fail": 10,
+          "pass": 4
+        },
+        "DIAGONAL": {
+          "fail": 4,
+          "pass": 10
+        },
+        "STAND": {
+          "fail": 6,
+          "pass": 1
+        },
+        "STRAIGHT": {
+          "fail": 8,
+          "pass": 7
+        },
+        "TURN": {
+          "fail": 10,
+          "pass": 4
+        }
+      },
+      "cases": 64,
+      "control": {
+        "FAIL": 38,
+        "PASS": 26
+      },
+      "directory": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/repeats/repeat_2",
+      "failure_reason": {
+        "fall": 24,
+        "metric_violation": 13,
+        "missing_result": 1,
+        "pass": 26
+      },
+      "process": {
+        "ERROR": 5,
+        "OK": 59
+      }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+config_version: 1
+task_id: Unitree-R1-RMA-Meta
+expert_registry: configs/rma_meta/r1_expert_registry_v1.yaml
+deploy_template: deploy/robots/r1/config/policy/velocity/v0/params/deploy_with_flat.template.yaml
+expert_names: [slope_up, slope_down, flat]
+initial_expert: flat
+factor_names:
+  - ground_normal_b_x
+  - ground_normal_b_y
+  - ground_normal_b_z
+  - uphill_direction_b_x
+  - uphill_direction_b_y
+  - uphill_direction_b_z
+  - foot_friction_delta
+  - body_mass_ratio_delta
+  - torso_com_delta_x_norm
+  - torso_com_delta_y_norm
+  - torso_com_delta_z_norm
+  - motor_strength_ratio_delta
+
+model:
+  observation_dim: 83
+  factor_dim: 12
+  latent_dim: 8
+  history_steps: 50
+  adaptation_hidden_dim: 128
+  adaptation_num_layers: 1
+  factor_hidden_dims: [64, 32]
+  meta_hidden_dims: [256, 128]
+
+ppo:
+  meta_decimation: 5
+  rollout_steps: 32
+  learning_epochs: 5
+  mini_batches: 4
+  learning_rate: 0.0003
+  finetune_learning_rate: 0.0001
+  clip_param: 0.2
+  value_loss_coef: 1.0
+  entropy_coef: 0.01
+  gamma: 0.99
+  gae_lambda: 0.95
+  max_grad_norm: 1.0
+  target_kl: 0.02
+  switch_penalty: 0.02
+  max_iterations: 3000
+  finetune_iterations: 1000
+  save_interval: 100
+
+adaptation:
+  epochs: 100
+  batch_size: 512
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  validation_fraction: 0.1
+  observation_noise_std: 0.01
+
+runtime:
+  low_level_hz: 50.0
+  meta_hz: 10.0
+  confidence_threshold: 0.55
+  crossfade_s: 0.2

@@ -1,0 +1,20 @@
+cd /home/khanh248/Documents/HB/Mujoco
+source .venv/bin/activate
+cd unitree_mujoco/simulate/build
+./unitree_mujoco -r r1
+
+
+
+
+cd /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j4
+
+
+
+
+cd /home/khanh248/Documents/HB/Mujoco
+source .venv/bin/activate
+cd unitree_mujoco/simulate_cpp/build
+./run_policy

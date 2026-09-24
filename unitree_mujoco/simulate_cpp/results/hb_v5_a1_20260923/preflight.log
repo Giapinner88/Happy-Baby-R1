@@ -1,0 +1,10 @@
+Loading tuning config...
+[Tuning] Đã load config từ /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/hb_v5_a1_20260923/tuning.yaml
+[Locomotion] CLI policy override: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/candidates/hb_flat_plus_gait_0917_v5_a1_20260923/policy.onnx
+Khởi tạo DDS...
+1790166165.153475 [1] run_policy: selected interface "lo" is not multicast-capable: disabling multicast
+[Locomotion] profile=Flat gait_period=0.6 slow=(0.6, 0.6, 1) fast=(1.5, 1, 2)
+[FlatHistory] flat_plus_gait_h4_v1 (335-D, history=4) loaded: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/candidates/hb_flat_plus_gait_0917_v5_a1_20260923/policy.onnx
+[Locomotion] policy: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/candidates/hb_flat_plus_gait_0917_v5_a1_20260923/policy.onnx
+[Locomotion] input 335-D -> FlatPlusGaitController (335-D history + current gait one-hot)
+[GaitMode] fsm_contract=flat_plus_gait_fsm_v1_stand_recovery_v1 variant=0917V5A1 (legacy scheduler)

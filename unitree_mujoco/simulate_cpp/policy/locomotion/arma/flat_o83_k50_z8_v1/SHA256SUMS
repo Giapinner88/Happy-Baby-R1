@@ -1,0 +1,5 @@
+3c5c971f1cd3b8d627d40be1408d9790139cf396c4ab936d4a6b1d7c76bc690d  ./params/deploy.yaml
+ec222ef72458dddb3733591fe12f76f37364e630596c2d05e2ea3e3d8f8be7ad  ./models/adapter.onnx
+1e418934157e2392874fa8eec41dd4a2fb31aeb4c7a42800f3087ee8bc92ee7c  ./models/actor.onnx
+3e9c35f5c904b0c93771f97709d96429a840c13710ce2c4a48ad418654cc0a31  ./exported/arma_bundle.json
+db991ef8b73cae1f09132a2f6a1e6dcaebcf8cc6d7798f7431d0cc77846e6e21  ./README.md

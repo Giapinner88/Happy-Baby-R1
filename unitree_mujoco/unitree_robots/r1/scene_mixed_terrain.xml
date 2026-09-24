@@ -1,0 +1,214 @@
+<mujoco model="r1 mixed terrain course">
+  <compiler angle="radian" meshdir="assets"/>
+  <include file="unitree_r1/xmls/r1.xml"/>
+
+  <statistic center="1.5 0 0.8" extent="11"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-25"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0"
+             width="512" height="3072"/>
+    <texture type="2d" name="mixed_floor_checker" builtin="checker" mark="edge"
+             rgb1="0.20 0.28 0.36" rgb2="0.10 0.15 0.22"
+             markrgb="0.75 0.75 0.75" width="300" height="300"/>
+    <material name="mixed_floor" texture="mixed_floor_checker" texuniform="true"
+              texrepeat="24 18" reflectance="0.08"/>
+    <material name="slope_5_material" rgba="0.20 0.55 0.25 1"/>
+    <material name="slope_15_material" rgba="0.72 0.55 0.12 1"/>
+    <material name="slope_30_material" rgba="0.70 0.22 0.12 1"/>
+    <material name="stairs_5_material" rgba="0.20 0.50 0.75 1"/>
+    <material name="stairs_10_material" rgba="0.42 0.28 0.72 1"/>
+    <material name="rough_material" rgba="0.36 0.24 0.12 1"/>
+    <material name="obstacle_material" rgba="0.85 0.35 0.08 1"/>
+  </asset>
+
+  <default>
+    <geom friction="0.9 0.005 0.0001" solimp="0.9 0.95 0.001" solref="0.002 1"/>
+    <default class="mixed_terrain">
+      <!-- group 0 is visible to the RoughController 187-point height scan. -->
+      <geom priority="1" condim="3" group="0"
+            friction="1.0 0.005 0.0001"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 6" dir="0 0 -1" directional="true"/>
+
+    <!-- Wide flat reference floor. The central 4x4 m area is obstacle-free. -->
+    <geom name="mixed_floor" class="mixed_terrain" type="plane" size="12 9 0.05"
+          material="mixed_floor"/>
+
+    <!--
+      Three independent +X lanes. Each inclined surface is 3 m long, followed
+      by a 1 m plateau and a 3 m descent back to z=0.
+    -->
+    <geom name="slope_5_up" class="mixed_terrain" type="box"
+          pos="4.498649834 3 0.080923879" size="1.5 0.8 0.05"
+          quat="0.9990482216 0 -0.0436193874 0" material="slope_5_material"/>
+    <geom name="slope_5_plateau" class="mixed_terrain" type="box"
+          pos="6.488584094 3 0.130733614" size="0.5 0.8 0.130733614"
+          material="slope_5_material"/>
+    <geom name="slope_5_down" class="mixed_terrain" type="box"
+          pos="8.478518354 3 0.080923879" size="1.5 0.8 0.05"
+          quat="0.9990482216 0 0.0436193874 0" material="slope_5_material"/>
+
+    <geom name="slope_15_up" class="mixed_terrain" type="box"
+          pos="4.461829691 0 0.339932276" size="1.5 0.8 0.05"
+          quat="0.9914448614 0 -0.1305261922 0" material="slope_15_material"/>
+    <geom name="slope_15_plateau" class="mixed_terrain" type="box"
+          pos="6.397777479 0 0.388228568" size="0.5 0.8 0.388228568"
+          material="slope_15_material"/>
+    <geom name="slope_15_down" class="mixed_terrain" type="box"
+          pos="8.333725266 0 0.339932276" size="1.5 0.8 0.05"
+          quat="0.9914448614 0 0.1305261922 0" material="slope_15_material"/>
+
+    <geom name="slope_30_up" class="mixed_terrain" type="box"
+          pos="4.324038106 -3 0.706698730" size="1.5 0.8 0.05"
+          quat="0.9659258263 0 -0.2588190451 0" material="slope_30_material"/>
+    <geom name="slope_30_plateau" class="mixed_terrain" type="box"
+          pos="6.098076211 -3 0.75" size="0.5 0.8 0.75"
+          material="slope_30_material"/>
+    <geom name="slope_30_down" class="mixed_terrain" type="box"
+          pos="7.872114317 -3 0.706698730" size="1.5 0.8 0.05"
+          quat="0.9659258263 0 0.2588190451 0" material="slope_30_material"/>
+
+    <!-- 5 cm staircase lane: four rises, 1 m landing, four drops to floor. -->
+    <geom name="stairs_5_up_1" class="mixed_terrain" type="box"
+          pos="-1 3.175 0.025" size="0.7 0.175 0.025" material="stairs_5_material"/>
+    <geom name="stairs_5_up_2" class="mixed_terrain" type="box"
+          pos="-1 3.525 0.05" size="0.7 0.175 0.05" material="stairs_5_material"/>
+    <geom name="stairs_5_up_3" class="mixed_terrain" type="box"
+          pos="-1 3.875 0.075" size="0.7 0.175 0.075" material="stairs_5_material"/>
+    <geom name="stairs_5_up_4" class="mixed_terrain" type="box"
+          pos="-1 4.225 0.1" size="0.7 0.175 0.1" material="stairs_5_material"/>
+    <geom name="stairs_5_landing" class="mixed_terrain" type="box"
+          pos="-1 4.9 0.1" size="0.7 0.5 0.1" material="stairs_5_material"/>
+    <geom name="stairs_5_down_1" class="mixed_terrain" type="box"
+          pos="-1 5.575 0.075" size="0.7 0.175 0.075" material="stairs_5_material"/>
+    <geom name="stairs_5_down_2" class="mixed_terrain" type="box"
+          pos="-1 5.925 0.05" size="0.7 0.175 0.05" material="stairs_5_material"/>
+    <geom name="stairs_5_down_3" class="mixed_terrain" type="box"
+          pos="-1 6.275 0.025" size="0.7 0.175 0.025" material="stairs_5_material"/>
+
+    <!-- 10 cm staircase lane: four rises, 1 m landing, four drops to floor. -->
+    <geom name="stairs_10_up_1" class="mixed_terrain" type="box"
+          pos="1 3.175 0.05" size="0.7 0.175 0.05" material="stairs_10_material"/>
+    <geom name="stairs_10_up_2" class="mixed_terrain" type="box"
+          pos="1 3.525 0.1" size="0.7 0.175 0.1" material="stairs_10_material"/>
+    <geom name="stairs_10_up_3" class="mixed_terrain" type="box"
+          pos="1 3.875 0.15" size="0.7 0.175 0.15" material="stairs_10_material"/>
+    <geom name="stairs_10_up_4" class="mixed_terrain" type="box"
+          pos="1 4.225 0.2" size="0.7 0.175 0.2" material="stairs_10_material"/>
+    <geom name="stairs_10_landing" class="mixed_terrain" type="box"
+          pos="1 4.9 0.2" size="0.7 0.5 0.2" material="stairs_10_material"/>
+    <geom name="stairs_10_down_1" class="mixed_terrain" type="box"
+          pos="1 5.575 0.15" size="0.7 0.175 0.15" material="stairs_10_material"/>
+    <geom name="stairs_10_down_2" class="mixed_terrain" type="box"
+          pos="1 5.925 0.1" size="0.7 0.175 0.1" material="stairs_10_material"/>
+    <geom name="stairs_10_down_3" class="mixed_terrain" type="box"
+          pos="1 6.275 0.05" size="0.7 0.175 0.05" material="stairs_10_material"/>
+
+    <!-- Deterministic 4x4 m rough patch: 8x8 overlapping 0.5 m tiles. -->
+    <geom name="rough_tile_00" class="mixed_terrain" type="box" pos="-6.75 -1.75 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_01" class="mixed_terrain" type="box" pos="-6.25 -1.75 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_02" class="mixed_terrain" type="box" pos="-5.75 -1.75 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_03" class="mixed_terrain" type="box" pos="-5.25 -1.75 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+    <geom name="rough_tile_04" class="mixed_terrain" type="box" pos="-4.75 -1.75 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_05" class="mixed_terrain" type="box" pos="-4.25 -1.75 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_06" class="mixed_terrain" type="box" pos="-3.75 -1.75 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+    <geom name="rough_tile_07" class="mixed_terrain" type="box" pos="-3.25 -1.75 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+
+    <geom name="rough_tile_08" class="mixed_terrain" type="box" pos="-6.75 -1.25 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_09" class="mixed_terrain" type="box" pos="-6.25 -1.25 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_10" class="mixed_terrain" type="box" pos="-5.75 -1.25 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+    <geom name="rough_tile_11" class="mixed_terrain" type="box" pos="-5.25 -1.25 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_12" class="mixed_terrain" type="box" pos="-4.75 -1.25 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_13" class="mixed_terrain" type="box" pos="-4.25 -1.25 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+    <geom name="rough_tile_14" class="mixed_terrain" type="box" pos="-3.75 -1.25 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_15" class="mixed_terrain" type="box" pos="-3.25 -1.25 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+
+    <geom name="rough_tile_16" class="mixed_terrain" type="box" pos="-6.75 -0.75 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_17" class="mixed_terrain" type="box" pos="-6.25 -0.75 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+    <geom name="rough_tile_18" class="mixed_terrain" type="box" pos="-5.75 -0.75 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_19" class="mixed_terrain" type="box" pos="-5.25 -0.75 0.04"  size="0.251 0.251 0.04"  material="rough_material"/>
+    <geom name="rough_tile_20" class="mixed_terrain" type="box" pos="-4.75 -0.75 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_21" class="mixed_terrain" type="box" pos="-4.25 -0.75 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_22" class="mixed_terrain" type="box" pos="-3.75 -0.75 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+    <geom name="rough_tile_23" class="mixed_terrain" type="box" pos="-3.25 -0.75 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+
+    <geom name="rough_tile_24" class="mixed_terrain" type="box" pos="-6.75 -0.25 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+    <geom name="rough_tile_25" class="mixed_terrain" type="box" pos="-6.25 -0.25 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_26" class="mixed_terrain" type="box" pos="-5.75 -0.25 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_27" class="mixed_terrain" type="box" pos="-5.25 -0.25 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_28" class="mixed_terrain" type="box" pos="-4.75 -0.25 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+    <geom name="rough_tile_29" class="mixed_terrain" type="box" pos="-4.25 -0.25 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_30" class="mixed_terrain" type="box" pos="-3.75 -0.25 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_31" class="mixed_terrain" type="box" pos="-3.25 -0.25 0.04"  size="0.251 0.251 0.04"  material="rough_material"/>
+
+    <geom name="rough_tile_32" class="mixed_terrain" type="box" pos="-6.75 0.25 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_33" class="mixed_terrain" type="box" pos="-6.25 0.25 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_34" class="mixed_terrain" type="box" pos="-5.75 0.25 0.04"  size="0.251 0.251 0.04"  material="rough_material"/>
+    <geom name="rough_tile_35" class="mixed_terrain" type="box" pos="-5.25 0.25 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_36" class="mixed_terrain" type="box" pos="-4.75 0.25 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_37" class="mixed_terrain" type="box" pos="-4.25 0.25 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+    <geom name="rough_tile_38" class="mixed_terrain" type="box" pos="-3.75 0.25 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_39" class="mixed_terrain" type="box" pos="-3.25 0.25 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+
+    <geom name="rough_tile_40" class="mixed_terrain" type="box" pos="-6.75 0.75 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+    <geom name="rough_tile_41" class="mixed_terrain" type="box" pos="-6.25 0.75 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_42" class="mixed_terrain" type="box" pos="-5.75 0.75 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_43" class="mixed_terrain" type="box" pos="-5.25 0.75 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+    <geom name="rough_tile_44" class="mixed_terrain" type="box" pos="-4.75 0.75 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_45" class="mixed_terrain" type="box" pos="-4.25 0.75 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_46" class="mixed_terrain" type="box" pos="-3.75 0.75 0.04"  size="0.251 0.251 0.04"  material="rough_material"/>
+    <geom name="rough_tile_47" class="mixed_terrain" type="box" pos="-3.25 0.75 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+
+    <geom name="rough_tile_48" class="mixed_terrain" type="box" pos="-6.75 1.25 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_49" class="mixed_terrain" type="box" pos="-6.25 1.25 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+    <geom name="rough_tile_50" class="mixed_terrain" type="box" pos="-5.75 1.25 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_51" class="mixed_terrain" type="box" pos="-5.25 1.25 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_52" class="mixed_terrain" type="box" pos="-4.75 1.25 0.04"  size="0.251 0.251 0.04"  material="rough_material"/>
+    <geom name="rough_tile_53" class="mixed_terrain" type="box" pos="-4.25 1.25 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_54" class="mixed_terrain" type="box" pos="-3.75 1.25 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+    <geom name="rough_tile_55" class="mixed_terrain" type="box" pos="-3.25 1.25 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+
+    <geom name="rough_tile_56" class="mixed_terrain" type="box" pos="-6.75 1.75 0.025" size="0.251 0.251 0.025" material="rough_material"/>
+    <geom name="rough_tile_57" class="mixed_terrain" type="box" pos="-6.25 1.75 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_58" class="mixed_terrain" type="box" pos="-5.75 1.75 0.03"  size="0.251 0.251 0.03"  material="rough_material"/>
+    <geom name="rough_tile_59" class="mixed_terrain" type="box" pos="-5.25 1.75 0.01"  size="0.251 0.251 0.01"  material="rough_material"/>
+    <geom name="rough_tile_60" class="mixed_terrain" type="box" pos="-4.75 1.75 0.02"  size="0.251 0.251 0.02"  material="rough_material"/>
+    <geom name="rough_tile_61" class="mixed_terrain" type="box" pos="-4.25 1.75 0.04"  size="0.251 0.251 0.04"  material="rough_material"/>
+    <geom name="rough_tile_62" class="mixed_terrain" type="box" pos="-3.75 1.75 0.015" size="0.251 0.251 0.015" material="rough_material"/>
+    <geom name="rough_tile_63" class="mixed_terrain" type="box" pos="-3.25 1.75 0.035" size="0.251 0.251 0.035" material="rough_material"/>
+
+    <!-- Six low box obstacles on otherwise flat ground; every top is z=5 cm. -->
+    <geom name="low_obstacle_01" class="mixed_terrain" type="box"
+          pos="-2 -3.5 0.025" size="0.4 0.25 0.025" material="obstacle_material"/>
+    <geom name="low_obstacle_02" class="mixed_terrain" type="box"
+          pos="0 -3.5 0.025" size="0.6 0.125 0.025" material="obstacle_material"/>
+    <geom name="low_obstacle_03" class="mixed_terrain" type="box"
+          pos="2 -3.5 0.025" size="0.2 0.4 0.025" material="obstacle_material"/>
+    <geom name="low_obstacle_04" class="mixed_terrain" type="box"
+          pos="-1 -4.7 0.025" size="0.25 0.25 0.025" material="obstacle_material"/>
+    <geom name="low_obstacle_05" class="mixed_terrain" type="box"
+          pos="1 -4.8 0.025" size="0.4 0.2 0.025" material="obstacle_material"/>
+    <geom name="low_obstacle_06" class="mixed_terrain" type="box"
+          pos="0 -5.8 0.025" size="0.75 0.1 0.025" material="obstacle_material"/>
+  </worldbody>
+
+  <!-- Upright standing reset in the clear central flat zone. -->
+  <keyframe>
+    <key name="stand_on_mixed_terrain"
+         qpos="0 0 0.734 1 0 0 0
+               -0.1 0 0 0.3 -0.2 0
+               -0.1 0 0 0.3 -0.2 0
+               0 0
+               0.35 0.18 0 0.87 0
+               0.35 -0.18 0 0.87 0"/>
+  </keyframe>
+</mujoco>

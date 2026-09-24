@@ -1,0 +1,53 @@
+[  6%] Built target r1_onnx
+[ 10%] Built target r1_runtime
+[ 14%] Built target r1_joint_mapping_test
+[ 18%] Built target run_r1_policy
+[ 22%] Built target expert_action_adapter_test
+[ 26%] Built target slope_meta_selector_test
+[ 30%] Built target slope_meta_command_governor_test
+[ 34%] Built target rough_policy_contract_test
+[ 38%] Built target flat_policy_contract_test
+[ 42%] Built target single_policy_smoke_test
+[ 46%] Built target scene_resolver_test
+[ 51%] Built target tuning_profile_test
+[ 55%] Built target slope_scene_contract_test
+[ 59%] Built target mixed_terrain_scene_contract_test
+[ 63%] Built target slope_meta_core
+[ 67%] Built target slope_meta_preflight
+[ 91%] Built target run_policy
+[ 95%] Built target slope_meta_runtime_test
+[100%] Built target meta_policy_runtime_test
+[1/2] Loading Rough policy before simulator...
+Loading tuning config...
+[Tuning] Đã load config từ ../config/tuning.yaml
+[Locomotion] CLI policy override: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1/exported/flat_common_pd.onnx
+[AUTOTEST] gesture='locomotion' cmd=(0.4, 0, 0) kg=0 kv=0 warmup=2s hold=48s max_tilt=25deg max_drop=0.25m csv=results/meta_policy_paper_20260831/experts/flat_repeat_2/mixed_STRAIGHT_traverse.csv
+Khởi tạo DDS...
+1788192407.286341 [1] run_policy: selected interface "lo" is not multicast-capable: disabling multicast
+[Locomotion] profile=Flat gait_period=0.8 slow=(1, 0.5, 1) fast=(2, 1, 2)
+[FlatController] Đã nạp thành công mô hình: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1/exported/flat_common_pd.onnx
+[Locomotion] policy: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1/exported/flat_common_pd.onnx
+[Locomotion] input 83-D -> FlatController (83-D)
+[Gesture] slot 1 = 'vaytay_2' <- vaytay_2.npz (fps=50 x1, loop=0)
+[Gesture] slot 2 = 'battay' <- battay.npz (fps=100 x1, loop=0)
+[Gesture] slot 3 = 'namtay_anmung' <- namtay_anmung.npz (fps=100 x1, loop=0)
+[Gesture] slot 4 = 'duaqua' <- duaqua.npz (fps=100 x1, loop=0)
+[Gesture] slot 5 = 'noichuyen' <- noichuyen.loop.npz (fps=50 x1, loop=1)
+[Gesture] slot 6 = 'traitim' <- traitim.npz (fps=100 x1, loop=0)
+[Gesture] slot 7 = 'cheotayngauloi_hold7s' <- cheotayngauloi_hold7s.npz (fps=50 x1, loop=0)
+[Gesture] slot 8 = 'damtaylentroi' <- damtaylentroi.npz (fps=50 x1, loop=0)
+[Gesture] San sang. Flat: G=chon gesture, V=choi/thu. Gesture dau: 'vaytay_2'.
+[Teleop] Lang nghe UDP 5560 (tay+dau) — uu tien hon gesture khi co goi.
+[MotionData] Đã nạp 2224 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/lacmong1/r1_lacmong1.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/lacmong1/r1_lacmong1.onnx (speed=1)
+[MotionData] Đã nạp 3700 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/lacmong2/r1_lacmong2_trim.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/lacmong2/r1_lacmong2.onnx (speed=1)
+[MotionData] Đã nạp 858 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/lacmong3/r1_lacmong3.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/lacmong3/r1_lacmong3.onnx (speed=1)
+[MotionData] Đã nạp 4393 frames @ 50fps từ ../../../HB/high_level_2/policies/dance/doremon/doremon_r1.npz
+[DanceController] Đã nạp thành công mô hình: ../../../HB/high_level_2/policies/dance/doremon/policy.onnx (speed=1)
+
+>>> POLICY ĐÃ NẠP XONG. ĐANG CHỜ SIMULATOR/ROBOT STATE...
+[2/2] Policy ready; starting simulator with scene: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/../unitree_robots/r1/scene_mixed_terrain.xml
+/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/run_rough_stack.sh: line 123: 1032120 Segmentation fault      (core dumped) "${simulator}" "${simulator_args[@]}"
+Policy log: /tmp/r1_rough_policy.TNdH0k.log

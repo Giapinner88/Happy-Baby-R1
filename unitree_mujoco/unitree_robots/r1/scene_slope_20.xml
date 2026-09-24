@@ -1,0 +1,47 @@
+<mujoco model="r1 direct slope 20 degrees">
+  <compiler angle="radian" meshdir="assets"/>
+  <include file="unitree_r1/xmls/r1.xml"/>
+
+  <statistic center="0 0 0.8" extent="2"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0"
+             width="512" height="3072"/>
+    <texture type="2d" name="slope_checker" builtin="checker" mark="edge"
+             rgb1="0.18 0.38 0.18" rgb2="0.08 0.20 0.08"
+             markrgb="0.85 0.85 0.85" width="300" height="300"/>
+    <material name="slope_material" texture="slope_checker" texuniform="true"
+              texrepeat="12 8" reflectance="0.1"/>
+  </asset>
+
+  <default>
+    <geom friction="0.9 0.005 0.0001" solimp="0.9 0.95 0.001" solref="0.002 1"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+
+    <!-- Infinite direct slope: +X uphill, -X downhill. No flat spawn patch. -->
+    <geom name="slope_20deg_direct" type="plane" size="12 8 0.05"
+          quat="0.9848077530 0 -0.1736481777 0"
+          priority="1" friction="1.0 0.005 0.0001"
+          material="slope_material"/>
+  </worldbody>
+
+  <!-- Upright world-frame reset, matching the direct 15/30-degree scenes. -->
+  <keyframe>
+    <key name="stand_on_direct_slope_20"
+         qpos="0 0 0.76 1 0 0 0
+               -0.1 0 0 0.3 -0.2 0
+               -0.1 0 0 0.3 -0.2 0
+               0 0
+               0.35 0.18 0 0.87 0
+               0.35 -0.18 0 0.87 0"/>
+  </keyframe>
+</mujoco>

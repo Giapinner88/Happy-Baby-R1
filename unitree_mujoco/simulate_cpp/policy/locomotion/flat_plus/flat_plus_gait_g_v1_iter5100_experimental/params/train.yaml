@@ -1,0 +1,8 @@
+task_id: Unitree-R1-Flat-Plus-Gait-G
+warm_start_checkpoint: null
+resume_checkpoint: null
+gait_stage: auto
+gait_previous_stage: null
+gait_reward_ramp_start_step: 48000
+gait_c2_event_start_step: 120000
+resume_common_step_counter: null

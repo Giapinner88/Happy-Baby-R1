@@ -1,0 +1,124 @@
+joint_ids_map: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,22,23,24,25,26]
+step_dt: 0.02
+
+# Extensible expert registry.  Add a new expert entry and a matching modular
+# gate head; C++ derives expert count and class order from this list.  A
+# confident NEUTRAL preserves the command and last expert. Runtime SAFETY_HOLD
+# caused by low confidence or invalid data keeps the last joint target and does
+# not run either locomotion expert. During cold start, commands stay at zero and
+# the deterministic bootstrap expert actively balances the robot. Keep disabled
+# until simulator and real-robot acceptance tests pass.
+meta_policy:
+  enabled: false
+  label_semantics_version: 3
+  class_names: [slope_up, slope_down, NEUTRAL]
+  experts:
+    - name: slope_up
+      role: slope_up
+      task_id: Unitree-R1-Slope-Up
+      checkpoint: checkpoints/r1_slope/model_up_v6.pt
+      contract_model: checkpoints/r1_slope/policy_up_v6.onnx
+      model: exported/slope_up.onnx
+    - name: slope_down
+      role: slope_down
+      task_id: Unitree-R1-Slope-Down
+      checkpoint: checkpoints/r1_slope/model_down_v6.pt
+      contract_model: checkpoints/r1_slope/policy_down_v6.onnx
+      model: exported/slope_down.onnx
+  gate_model: exported/slope_meta.onnx
+  observation_key: obs
+  joint_position_offset: 11
+  previous_action_offset: 59
+  action_size: 24
+  # Gate was trained on zero-padded 50-frame windows.  C++ recomputes exactly
+  # this fixed window every step instead of carrying hidden state indefinitely.
+  history_steps: 50
+  allow_pd_mismatch: false
+  # A post-startup continuous hold crossing 2.0 s latches locomotion in target
+  # hold until controller reset; it does not auto-enter Passive.
+  safety_hold_warning_s: 2.0
+  # Do not accumulate a full-speed command during recurrent cold start. Values
+  # are per-second slew limits for vx, vy and yaw after SAFETY_HOLD releases.
+  command_guard:
+    slew_rates: [0.5, 0.5, 1.0]
+  selector:
+    # SAFETY_HOLD ignores these weights. They are used only after hold exits and
+    # before the first expert is selected. The unbiased blend prevents either
+    # expert from writing its own signature into history and self-selecting.
+    initial_weights: [0.5, 0.5]
+    policy_hz: 50.0
+    cold_start_s: 1.0
+    enter_confidence: 0.75
+    exit_confidence: 0.55
+    # Ambiguity is normal on flat/transition terrain. Preserve the command and
+    # run the last expert/initial blend under NEUTRAL instead of freezing mid-step.
+    # Invalid observation/ONNX output still enters fail-closed SAFETY_HOLD.
+    hold_on_low_confidence: false
+    agreement_frames: 5
+    minimum_dwell_s: 0.5
+    crossfade_s: 0.2
+stiffness: [100, 100, 100, 100, 40, 40,  100, 100, 100, 100, 40, 40,  100, 100,
+            40, 40, 20, 20, 20,  40, 40, 20, 20, 20]
+# Matches joint_damping metadata in both current slope expert ONNX files.
+damping:   [2, 2, 2, 2.5, 2.5, 2.5,  2, 2, 2, 2.5, 2.5, 2.5,  2, 2,
+            2, 2, 1, 1, 1,  2, 2, 1, 1, 1]
+default_joint_pos: [-0.1,0,0,0.3,-0.2,0, -0.1,0,0,0.3,-0.2,0,  0,0,  0.35,0.18,0,0.87,0, 0.35,-0.18,0,0.87,0]
+
+commands:
+  base_velocity:
+    ranges:
+      lin_vel_x: [-0.5, 1.0]
+      lin_vel_y: [-0.5, 0.5]
+      ang_vel_z: [-1.0, 1.0]
+      heading: null
+actions:
+  JointPositionAction:
+    clip: null
+    joint_names: [.*]
+    # Must match R1_ACTION_SCALE = 0.25 * effort_limit / stiffness in training.
+    scale: [0.15, 0.15, 0.15, 0.15, 0.3125, 0.3125,
+            0.15, 0.15, 0.15, 0.15, 0.3125, 0.3125,
+            0.15, 0.15,
+            0.375, 0.375, 0.4125, 0.4125, 0.4125,
+            0.375, 0.375, 0.4125, 0.4125, 0.4125]
+    offset: [-0.1,0,0,0.3,-0.2,0, -0.1,0,0,0.3,-0.2,0,  0,0,  0.35,0.18,0,0.87,0, 0.35,-0.18,0,0.87,0]
+    joint_ids: null
+observations:
+  base_ang_vel:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0]
+    history_length: 1
+  projected_gravity:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0]
+    history_length: 1
+  velocity_commands:
+    params: {command_name: base_velocity}
+    clip: null
+    scale: [1.0, 1.0, 1.0]
+    history_length: 1
+  gait_phase:
+    params: {period: 0.6}
+    clip: null
+    scale: [1.0, 1.0]
+    history_length: 1
+  joint_pos_rel:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    history_length: 1
+  joint_vel_rel:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    history_length: 1
+  last_action:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    history_length: 1

@@ -1,0 +1,26 @@
+[
+  {
+    "run": "flat02",
+    "rows": 900,
+    "steady_vx": 0.17735851189855542,
+    "relative_tilt_max_deg": 1.0642232678318937,
+    "walk_z_peak_to_peak": 0.002899000000000096,
+    "final_stop_displacement": 0.000794251849226672
+  },
+  {
+    "run": "flat04",
+    "rows": 900,
+    "steady_vx": 0.3570373143422096,
+    "relative_tilt_max_deg": 1.8977508090323125,
+    "walk_z_peak_to_peak": 0.002758999999999956,
+    "final_stop_displacement": 0.0012709838708654044
+  },
+  {
+    "run": "flat06",
+    "rows": 900,
+    "steady_vx": 0.5733077393686851,
+    "relative_tilt_max_deg": 2.3001849051763004,
+    "walk_z_peak_to_peak": 0.0025420000000000442,
+    "final_stop_displacement": 0.0013073442545863702
+  }
+]

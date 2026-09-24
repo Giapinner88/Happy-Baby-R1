@@ -1,0 +1,20 @@
+{
+  "trace": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/baseline/mixed_parity_trace.csv",
+  "package": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1",
+  "evaluated_samples": 2351,
+  "history_steps": 50,
+  "python_onnx_vs_cpp_probabilities": {
+    "max_abs_error": 4.708766937255859e-06,
+    "mean_abs_error": 7.463692242026809e-08,
+    "argmax_agreement": 1.0
+  },
+  "python_onnx_target_blend_vs_cpp": {
+    "max_abs_action_error": 1.4066696166992188e-05,
+    "mean_abs_action_error": 7.167671469687775e-07,
+    "max_abs_joint_target_error_rad": 4.76837158203125e-06,
+    "mean_abs_joint_target_error_rad": 2.049963399031185e-07
+  },
+  "cpp_action_to_target_csv_consistency": {
+    "max_abs_error_rad": 5.364418029785156e-06
+  }
+}

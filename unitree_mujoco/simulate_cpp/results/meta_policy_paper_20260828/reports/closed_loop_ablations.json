@@ -1,0 +1,219 @@
+{
+  "protocol": "Five-case transition-focused closed-loop screen; not a replacement for the 64-case matrix.",
+  "variants": [
+    {
+      "variant": "baseline",
+      "suite_exit_code": 1,
+      "control_pass": 2,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "FAIL"
+      },
+      "failure_reason": {
+        "pass": 2,
+        "metric_violation": 1,
+        "fall": 2
+      },
+      "process": {
+        "OK": 4,
+        "ERROR": 1
+      }
+    },
+    {
+      "variant": "target_one_layer",
+      "suite_exit_code": 1,
+      "control_pass": 3,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "PASS"
+      },
+      "failure_reason": {
+        "pass": 3,
+        "metric_violation": 1,
+        "fall": 1
+      },
+      "process": {
+        "OK": 5
+      }
+    },
+    {
+      "variant": "raw_action",
+      "suite_exit_code": 1,
+      "control_pass": 2,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "FAIL"
+      },
+      "failure_reason": {
+        "pass": 2,
+        "metric_violation": 1,
+        "fall": 2
+      },
+      "process": {
+        "OK": 5
+      }
+    },
+    {
+      "variant": "hard_switch",
+      "suite_exit_code": 1,
+      "control_pass": 2,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "FAIL"
+      },
+      "failure_reason": {
+        "pass": 2,
+        "metric_violation": 1,
+        "fall": 2
+      },
+      "process": {
+        "OK": 5
+      }
+    },
+    {
+      "variant": "history_1",
+      "suite_exit_code": 1,
+      "control_pass": 2,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "FAIL"
+      },
+      "failure_reason": {
+        "pass": 2,
+        "metric_violation": 1,
+        "fall": 2
+      },
+      "process": {
+        "OK": 5
+      }
+    },
+    {
+      "variant": "history_10",
+      "suite_exit_code": 1,
+      "control_pass": 2,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "FAIL"
+      },
+      "failure_reason": {
+        "pass": 2,
+        "metric_violation": 1,
+        "fall": 2
+      },
+      "process": {
+        "ERROR": 1,
+        "OK": 4
+      }
+    },
+    {
+      "variant": "history_25",
+      "suite_exit_code": 1,
+      "control_pass": 3,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "PASS"
+      },
+      "failure_reason": {
+        "pass": 3,
+        "metric_violation": 1,
+        "fall": 1
+      },
+      "process": {
+        "OK": 5
+      }
+    },
+    {
+      "variant": "no_neutral",
+      "suite_exit_code": 1,
+      "control_pass": 3,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "PASS"
+      },
+      "failure_reason": {
+        "pass": 3,
+        "metric_violation": 1,
+        "fall": 1
+      },
+      "process": {
+        "OK": 5
+      }
+    },
+    {
+      "variant": "no_hysteresis",
+      "suite_exit_code": 1,
+      "control_pass": 3,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "PASS"
+      },
+      "failure_reason": {
+        "pass": 3,
+        "metric_violation": 1,
+        "fall": 1
+      },
+      "process": {
+        "OK": 4,
+        "ERROR": 1
+      }
+    },
+    {
+      "variant": "no_dwell",
+      "suite_exit_code": 1,
+      "control_pass": 3,
+      "cases": 5,
+      "outcomes": {
+        "flat_stand": "PASS",
+        "platform_up": "PASS",
+        "platform_down": "FAIL",
+        "direct_up": "FAIL",
+        "mixed_traverse": "PASS"
+      },
+      "failure_reason": {
+        "pass": 3,
+        "metric_violation": 1,
+        "fall": 1
+      },
+      "process": {
+        "OK": 4,
+        "ERROR": 1
+      }
+    }
+  ]
+}

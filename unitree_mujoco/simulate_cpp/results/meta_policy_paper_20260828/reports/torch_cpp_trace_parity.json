@@ -1,0 +1,11 @@
+{
+  "trace": "/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/results/meta_policy_paper_20260828/baseline/mixed_parity_trace.csv",
+  "checkpoint": "/home/khanh248/Documents/HB/Mujoco/unitree_rl_mjlab_meta/checkpoints/slope_meta/meta_gate_with_flat.pt",
+  "evaluated_samples": 2351,
+  "history_steps": 50,
+  "torch_vs_cpp_probabilities": {
+    "max_abs_error": 4.26173210144043e-06,
+    "mean_abs_error": 7.402505985965036e-08,
+    "argmax_agreement": 1.0
+  }
+}

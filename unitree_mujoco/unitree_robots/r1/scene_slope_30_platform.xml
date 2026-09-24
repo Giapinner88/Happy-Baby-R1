@@ -1,0 +1,56 @@
+<mujoco model="r1 slope 30 degrees with spawn platform">
+  <compiler angle="radian" meshdir="assets"/>
+  <include file="unitree_r1/xmls/r1.xml"/>
+
+  <statistic center="0 0 0.8" extent="2"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0"
+             width="512" height="3072"/>
+    <texture type="2d" name="slope_checker" builtin="checker" mark="edge"
+             rgb1="0.45 0.20 0.12" rgb2="0.22 0.08 0.05"
+             markrgb="0.9 0.9 0.9" width="300" height="300"/>
+    <material name="slope_material" texture="slope_checker" texuniform="true"
+              texrepeat="12 8" reflectance="0.1"/>
+  </asset>
+
+  <default>
+    <geom friction="0.9 0.005 0.0001" solimp="0.9 0.95 0.001" solref="0.002 1"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" directional="true"/>
+
+    <!-- 2 m flat spawn platform, +X uphill ramp and -X downhill ramp. -->
+    <geom name="spawn_platform_30deg" type="box" pos="0 0 -0.05"
+          size="1 8 0.05" priority="1" friction="1.0 0.005 0.0001"
+          material="slope_material"/>
+    <geom name="slope_30deg_uphill" type="box"
+          pos="6.22115242 0 2.95669873" size="6 8 0.05"
+          quat="0.9659258263 0 -0.2588190451 0"
+          priority="1" friction="1.0 0.005 0.0001"
+          material="slope_material"/>
+    <geom name="slope_30deg_downhill" type="box"
+          pos="-6.17115242 0 -3.04330127" size="6 8 0.05"
+          quat="0.9659258263 0 -0.2588190451 0"
+          priority="1" friction="1.0 0.005 0.0001"
+          material="slope_material"/>
+  </worldbody>
+
+  <!-- Training-compatible upright reset on the center platform. -->
+  <keyframe>
+    <key name="stand_on_platform_30"
+         qpos="0 0 0.76 1 0 0 0
+               -0.1 0 0 0.3 -0.2 0
+               -0.1 0 0 0.3 -0.2 0
+               0 0
+               0.35 0.18 0 0.87 0
+               0.35 -0.18 0 0.87 0"/>
+  </keyframe>
+</mujoco>

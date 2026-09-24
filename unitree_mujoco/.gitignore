@@ -1,0 +1,7 @@
+**/build/
+**/.vscode/
+**/__pycache__/
+**/log/
+**/install/
+simulate/mujoco
+simulate_python/sim_state_logs/*.csv

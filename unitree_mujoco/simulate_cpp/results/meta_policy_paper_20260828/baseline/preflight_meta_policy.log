@@ -1,0 +1,61 @@
+[  8%] Built target r1_runtime
+[ 10%] Built target r1_onnx
+[ 14%] Built target r1_joint_mapping_test
+[ 18%] Built target run_r1_policy
+[ 22%] Built target expert_action_adapter_test
+[ 26%] Built target slope_meta_selector_test
+[ 30%] Built target slope_meta_command_governor_test
+[ 34%] Built target rough_policy_contract_test
+[ 38%] Built target flat_policy_contract_test
+[ 42%] Built target single_policy_smoke_test
+[ 46%] Built target scene_resolver_test
+[ 51%] Built target tuning_profile_test
+[ 55%] Built target slope_scene_contract_test
+[ 59%] Built target mixed_terrain_scene_contract_test
+[ 63%] Built target slope_meta_core
+[ 67%] Built target slope_meta_preflight
+Consolidate compiler generated dependencies of target run_policy
+[ 71%] Built target slope_meta_runtime_test
+[ 95%] Built target run_policy
+[100%] Built target meta_policy_runtime_test
+Internal ctest changing into directory: /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/build
+Test project /home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/build
+    Start  2: expert_action_adapter_test
+1/6 Test  #2: expert_action_adapter_test ...................   Passed    0.00 sec
+    Start  3: slope_meta_selector_test
+2/6 Test  #3: slope_meta_selector_test .....................   Passed    0.00 sec
+    Start  4: slope_meta_command_governor_test
+3/6 Test  #4: slope_meta_command_governor_test .............   Passed    0.00 sec
+    Start  6: meta_policy_runtime_test
+4/6 Test  #6: meta_policy_runtime_test .....................   Passed    0.05 sec
+    Start  8: meta_policy_artifact_hash_test
+5/6 Test  #8: meta_policy_artifact_hash_test ...............   Passed    0.03 sec
+    Start 64: meta_policy_platform_scene_generation_test
+6/6 Test #64: meta_policy_platform_scene_generation_test ...   Passed    0.09 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =   0.18 sec
+README.md: OK
+evaluation/meta_gate_with_flat.json: OK
+evaluation/meta_gate_with_flat_evaluation.json: OK
+evaluation/meta_gate_with_flat_locomotion_pre_runtime_fix.json: OK
+exported/flat_common_pd.onnx: OK
+exported/slope_down.onnx: OK
+exported/slope_meta_with_flat.onnx: OK
+exported/slope_up.onnx: OK
+params/deploy.yaml: OK
+slope_meta_preflight=PASS
+package="/home/khanh248/Documents/HB/Mujoco/unitree_mujoco/simulate_cpp/policy/locomotion/meta/meta_policy_v1"
+actor_observation=83
+experts=3
+history_steps=50
+upright_release_step=1
+upright_selected_class=flat
+upright_probabilities=1.07423e-14,3.13803e-15,1,1.15128e-09
+upright_max_abs_raw_action=0.688011
+upright_max_abs_leg_target_delta_rad=0.225754
+upright_max_step_leg_target_delta_rad=0.0225754
+mean_ms=2.312036
+p99_ms=3.605608
+budget_ms=20.000000

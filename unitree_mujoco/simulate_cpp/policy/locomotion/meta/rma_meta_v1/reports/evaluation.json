@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "checkpoint": "/home/ubuntu22/mujoco_mjlab/unitree_rl_mjlab_meta/logs/rma_meta/finetune_v1/finetune_latest.pt",
+  "checkpoint_sha256": "ad2dec2755cf4c6026294710ab3d34321527897e8dc587cce7700a8ebaaccde6",
+  "checkpoint_stage": "deployment_finetune",
+  "registry_sha256": "b1583a05ee8af263b424cdf23b99fe60fa060b8da47d63c5547354a825698bdf",
+  "num_envs": 128,
+  "meta_steps": 2000,
+  "mean_meta_reward": 0.1854133800023701,
+  "latent_mse": 0.015530701722542289,
+  "switch_rate_per_meta_decision": 0.0122265625,
+  "terminated_episodes": 1834,
+  "timeout_episodes": 1148,
+  "fall_episodes": 686,
+  "fall_fraction_of_completed_episodes": 0.37404580152671757,
+  "class_fractions": {
+    "slope_up": 0.23578515625,
+    "slope_down": 0.01328125,
+    "flat": 0.000421875,
+    "HOLD": 0.75051171875
+  },
+  "angle_bins": {
+    "0_10": {
+      "samples": 63680,
+      "mean_linear_tracking_error": 0.21185878412657647,
+      "mean_yaw_tracking_error": 0.2777287995882669
+    },
+    "11_20": {
+      "samples": 58628,
+      "mean_linear_tracking_error": 0.24977879794418076,
+      "mean_yaw_tracking_error": 0.3145768667557331
+    },
+    "21_30": {
+      "samples": 133692,
+      "mean_linear_tracking_error": 0.281245507975118,
+      "mean_yaw_tracking_error": 0.3667597652954669
+    }
+  }
+}

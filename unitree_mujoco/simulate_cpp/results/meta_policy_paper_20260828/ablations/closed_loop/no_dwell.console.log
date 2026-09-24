@@ -1,0 +1,11 @@
+[META_POLICY_ABLATION] variant=no_dwell case=flat_stand scene=flat
+[META_POLICY_ABLATION] control=PASS process=OK exit=0
+[META_POLICY_ABLATION] variant=no_dwell case=platform_up scene=15-platform
+[META_POLICY_ABLATION] control=PASS process=OK exit=0
+[META_POLICY_ABLATION] variant=no_dwell case=platform_down scene=15-platform
+[META_POLICY_ABLATION] control=FAIL process=OK exit=2
+[META_POLICY_ABLATION] variant=no_dwell case=direct_up scene=15
+[META_POLICY_ABLATION] control=FAIL process=ERROR exit=134
+[META_POLICY_ABLATION] variant=no_dwell case=mixed_traverse scene=mixed
+[META_POLICY_ABLATION] control=PASS process=OK exit=0
+[META_POLICY_ABLATION] variant=no_dwell control_failures=2 process_errors=1 summary=results/meta_policy_paper_20260828/ablations/closed_loop/no_dwell/summary.csv

@@ -1,0 +1,120 @@
+# Simulation-candidate registry for Flat + Slope-Up + Slope-Down.
+# Keep meta_policy.enabled=false until the corrected gate/expert package passes
+# full Flat, uphill and downhill closed-loop acceptance. The separately
+# versioned two-expert slope_meta_v6 package remains unchanged.
+joint_ids_map: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,22,23,24,25,26]
+step_dt: 0.02
+
+meta_policy:
+  enabled: false
+  label_semantics_version: 3
+  class_names: [slope_up, slope_down, flat, NEUTRAL]
+  experts:
+    - name: slope_up
+      role: slope_up
+      task_id: Unitree-R1-Slope-Up
+      checkpoint: checkpoints/r1_slope/model_up_v6.pt
+      contract_model: checkpoints/r1_slope/policy_up_v6.onnx
+      model: exported/slope_up.onnx
+    - name: slope_down
+      role: slope_down
+      task_id: Unitree-R1-Slope-Down
+      checkpoint: checkpoints/r1_slope/model_down_v6.pt
+      contract_model: checkpoints/r1_slope/policy_down_v6.onnx
+      model: exported/slope_down.onnx
+    - name: flat
+      role: flat
+      task_id: Unitree-R1-Flat-Meta
+      checkpoint: checkpoints/r1_flat/model_flat_common_pd.pt
+      contract_model: checkpoints/r1_flat/policy_flat_common_pd.onnx
+      model: exported/flat_common_pd.onnx
+  gate_model: exported/slope_meta_with_flat.onnx
+  observation_key: obs
+  joint_position_offset: 11
+  previous_action_offset: 59
+  action_size: 24
+  history_steps: 50
+  allow_pd_mismatch: false
+  safety_hold_warning_s: 2.0
+  # Clamp to the shared training ranges and ramp commands from zero.  Unlike
+  # slope_meta_v6, meta_policy starts its Flat fallback immediately instead of
+  # presenting cold-start as SAFETY_HOLD.
+  command_guard:
+    slew_rates: [0.5, 0.5, 1.0]
+  selector:
+    # Active cold-start fallback: Flat controls from step 0 while the 50-frame
+    # history fills. SAFETY_HOLD ignores weights and is invalid-signal-only.
+    initial_weights: [0.0, 0.0, 1.0]
+    startup_safety_hold: false
+    hold_on_low_confidence: false
+    policy_hz: 50.0
+    cold_start_s: 1.0
+    enter_confidence: 0.75
+    exit_confidence: 0.75
+    agreement_frames: 5
+    minimum_dwell_s: 0.5
+    crossfade_s: 0.2
+
+stiffness: [100, 100, 100, 100, 40, 40,  100, 100, 100, 100, 40, 40,  100, 100,
+            40, 40, 20, 20, 20,  40, 40, 20, 20, 20]
+damping:   [2, 2, 2, 2.5, 2.5, 2.5,  2, 2, 2, 2.5, 2.5, 2.5,  2, 2,
+            2, 2, 1, 1, 1,  2, 2, 1, 1, 1]
+default_joint_pos: [-0.1,0.0349,-0.0477,0.3,-0.2,-0.0349, -0.1,-0.0349,0.0477,0.3,-0.2,0.0349,  0,0,  0.35,0.18,0,0.87,0, 0.35,-0.18,0,0.87,0]
+
+commands:
+  base_velocity:
+    ranges:
+      lin_vel_x: [-0.6, 0.6]
+      lin_vel_y: [-0.6, 0.6]
+      ang_vel_z: [-1.0, 1.0]
+      heading: null
+actions:
+  JointPositionAction:
+    clip: null
+    joint_names: [.*]
+    scale: [0.15, 0.15, 0.15, 0.1575, 0.328125, 0.328125,
+            0.15, 0.15, 0.15, 0.1575, 0.328125, 0.328125,
+            0.15, 0.15,
+            0.375, 0.375, 0.4125, 0.4125, 0.4125,
+            0.375, 0.375, 0.4125, 0.4125, 0.4125]
+    offset: [-0.1,0.0349,-0.0477,0.3,-0.2,-0.0349, -0.1,-0.0349,0.0477,0.3,-0.2,0.0349,  0,0,  0.35,0.18,0,0.87,0, 0.35,-0.18,0,0.87,0]
+    joint_ids: null
+observations:
+  base_ang_vel:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0]
+    history_length: 1
+  projected_gravity:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0]
+    history_length: 1
+  velocity_commands:
+    params: {command_name: base_velocity}
+    clip: null
+    scale: [1.0, 1.0, 1.0]
+    history_length: 1
+  gait_phase:
+    params: {period: 0.6}
+    clip: null
+    scale: [1.0, 1.0]
+    history_length: 1
+  joint_pos_rel:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    history_length: 1
+  joint_vel_rel:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    history_length: 1
+  last_action:
+    params: {}
+    clip: null
+    scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    history_length: 1

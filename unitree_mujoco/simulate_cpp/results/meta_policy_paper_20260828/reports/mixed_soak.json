@@ -1,0 +1,108 @@
+{
+  "protocol": "108 s OUTBOUND (48 s), STOP (6 s), INBOUND (48 s), FINAL_STOP (6 s)",
+  "control_pass": 0,
+  "runs": [
+    {
+      "run": 1,
+      "control_result": "FAIL",
+      "process_result": "OK",
+      "samples": 1581,
+      "duration_s": 31.6206,
+      "phase_reached": "OUTBOUND",
+      "end_position_x_m": 8.24472,
+      "end_position_y_m": 1.1176,
+      "end_tilt_deg": 65.74518811787658,
+      "selected_at_end": "slope_down",
+      "safety_hold_samples": 0,
+      "class_switches": 3,
+      "transitions": [
+        {
+          "time_s": 10.7401,
+          "position_x_m": 2.9542,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 27.2005,
+          "position_x_m": 6.28558,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 29.8005,
+          "position_x_m": 7.40639,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "control_result": "FAIL",
+      "process_result": "OK",
+      "samples": 1607,
+      "duration_s": 32.1406,
+      "phase_reached": "OUTBOUND",
+      "end_position_x_m": 8.59692,
+      "end_position_y_m": 1.16674,
+      "end_tilt_deg": 63.45392989514842,
+      "selected_at_end": "slope_down",
+      "safety_hold_samples": 0,
+      "class_switches": 5,
+      "transitions": [
+        {
+          "time_s": 11.3601,
+          "position_x_m": 2.95571,
+          "from": "flat",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 12.0401,
+          "position_x_m": 3.13813,
+          "from": "slope_up",
+          "to": "NEUTRAL"
+        },
+        {
+          "time_s": 12.4601,
+          "position_x_m": 3.20652,
+          "from": "NEUTRAL",
+          "to": "slope_up"
+        },
+        {
+          "time_s": 27.6205,
+          "position_x_m": 6.28756,
+          "from": "slope_up",
+          "to": "flat"
+        },
+        {
+          "time_s": 30.3405,
+          "position_x_m": 7.50106,
+          "from": "flat",
+          "to": "slope_down"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "control_result": "FAIL",
+      "process_result": "OK",
+      "samples": 1149,
+      "duration_s": 22.9804,
+      "phase_reached": "OUTBOUND",
+      "end_position_x_m": 5.28222,
+      "end_position_y_m": 0.982226,
+      "end_tilt_deg": 65.62372106530884,
+      "selected_at_end": "slope_up",
+      "safety_hold_samples": 0,
+      "class_switches": 1,
+      "transitions": [
+        {
+          "time_s": 10.8401,
+          "position_x_m": 2.93844,
+          "from": "flat",
+          "to": "slope_up"
+        }
+      ]
+    }
+  ]
+}

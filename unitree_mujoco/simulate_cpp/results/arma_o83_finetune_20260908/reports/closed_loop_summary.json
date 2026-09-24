@@ -1,0 +1,31 @@
+{
+  "bundle": "flat_plus_arma_o83_k50_z8_v1",
+  "package": "../../policy/locomotion/arma/flat_o83_k50_z8_v1",
+  "date": "2026-09-08",
+  "preflight": "PASS",
+  "runtime_contract_test": "PASS",
+  "ctest": "74/74 PASS",
+  "hardware_acceptance": "NOT_RUN",
+  "tests": [
+    {
+      "name": "flat_vx035",
+      "command": "MUJOCO_HEADLESS=1 ./run_sim.sh arma flat --autotest arma_o83_flat gesture=0 hold=8 warmup=2 vx=0.35 csv=...",
+      "status": "PASS",
+      "samples": 400,
+      "tilt_peak_deg": 2.6754,
+      "height_drop_m": 0.00477833,
+      "max_horizontal_displacement_m": 2.11727,
+      "fall": false
+    },
+    {
+      "name": "flat_demo",
+      "command": "MUJOCO_HEADLESS=1 ./run_sim.sh arma flat --autotest arma_o83_flat_demo gesture=0 sequence=flat_demo hold=10 warmup=2 csv=...",
+      "status": "PASS",
+      "samples": 500,
+      "tilt_peak_deg": 2.73122,
+      "height_drop_m": 0.00458485,
+      "max_horizontal_displacement_m": 1.14677,
+      "fall": false
+    }
+  ]
+}
