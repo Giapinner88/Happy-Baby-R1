@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/unitreerobotics/xr_teleoperate.git",
+  "commit": "845b25a32f7febedf220e830952a7134897adb9d",
+  "method": "R1_A5_ArmIK",
+  "hb_urdf_sha256": "604bbd0c4e815b52ea2db822d45f552c0c53e15bb7e4b1790f806bd4edfe6b79",
+  "mesh_count": 14,
+  "mesh_tree_sha256": "4e7fd9ab64bd9b5d3a802bfe4686982821ed3ebf3a4231cc9c3d02c7e73d0afd",
+  "artifacts": {
+    "ik_source": {
+      "path": "teleop/robot_control/robot_arm_ik.py",
+      "sha256": "f395b3ef868ed3c854654b08b33f74ee73f57dbb7c0e8f20440a7f788115a085"
+    },
+    "urdf": {
+      "path": "assets/r1/r1_a5.urdf",
+      "sha256": "886405d88699b3436eef8034f60a8379e8357ac6cfb74fb306ca8d15e9d75d89"
+    },
+    "filter": {
+      "path": "teleop/utils/weighted_moving_filter.py",
+      "sha256": "48d914f37de405351d327b9712a36c013f8375d550258fecbdd37997e526308b"
+    }
+  }
+}

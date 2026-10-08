@@ -1,0 +1,25 @@
+folder    : doremon_v3_neodat_20260831
+run       : doremon_v3neodat_20260831  (20000 iter, 4096 env)
+npz (ref) : doremon_r1_v3_neodat_20260831.npz
+onnx      : policy.onnx
+ket qua   : mean reward 38.76, episode length 500.0
+            termination anchor_pos / anchor_ori / ee_body_pos = 0.0000 / 0.0000 / 0.0000
+
+repo      : ~/train_mujoco/unitree_rl_mjlab
+task      : Unitree-R1-Tracking-No-State-Estimation (Flat)
+config IK : da sua toan bo (xem GMR/R1_IK_CONFIG_FIX.md) + 2 thay doi 2026-08-28:
+            - pos_offset ngang ban chan 0.048 (be ngang 2 co chan neo theo tam hong R1 0.1777 m)
+            - he so tam voi chan k = 0.93 (--leg_reach_factor): truoc do 70.8%% frame doremon /
+              54.2%% pokemon co moc ban chan NGOAI tam voi -> chan ghim thang, mat chi tiet nhun goi
+duong ong : retarget
+            -> NEO DAT PER-FRAME (ground_reference.py, ap delta nguoc lai CSV)
+            -> loc Butterworth bac 4 zero-phase 5Hz + lam phang ban chan + clamp margin 5deg
+            -> stand-bridge 1.5s vao/ra HOME (standing_root_z 0.7339)
+            -> csv_to_npz 50fps
+            KHONG bounded_xy, KHONG forward-lean
+
+SO SANH voi ban doremon_v2_20260828 (CUNG moi thu, chi khac KHONG neo dat):
+            reward   34.5  ->  38.76   (+4.26)
+            de chan  0.094 m  ->  0.008 m
+            Neo dat chi tinh tien z tung frame, KHONG doi goc khop: be ngang, do nhun
+            goi va gia toc dinh giong het ban v2 den tung so.

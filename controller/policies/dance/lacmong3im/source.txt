@@ -1,0 +1,42 @@
+folder    : lacmong3
+derived   : đoạn "lắc hông" (tay đung đưa) cắt từ lacmong1, LẶP LẠI 6 lần thành 1 chuỗi >15s
+            (r1_lacmong1.npz / r1_lacmong1.onnx / hoihantronganh.mp3)
+tool      : tools/merge_motion_segments.py --segment 6.72 9.56 --repeat 6
+            --start-pad-s 0.1 --end-pad-s 0.1 --blend-s 0.5 --anchor-mode first
+segment   : gốc: source frame 336-478 (t=6.72s-9.56s, 143 frame, 2.86s @ 50fps)
+            — đã bỏ đoạn giơ tay lúc ~9.9-10.0s (xem lịch sử: end ban đầu 11.0s/10.70s
+            dính đúng lúc tay giơ, đã rút về 9.56s).
+            Lặp 6x -> 858 frame (17.16s). Không cần khớp đúng 15.00s (theo yêu cầu),
+            chọn số vòng NGUYÊN để mỗi vòng lặp là 1 chu kỳ trọn vẹn (2.86s), tránh cắt
+            dở giữa chu kỳ (dễ dính lại vùng giơ tay nếu cắt lệch pha).
+anchor-mode: "first" — CHỈ áp dụng cho HƯỚNG (yaw): mỗi vòng lặp yaw-align VỀ ĐÚNG
+            hướng bắt đầu của vòng đầu tiên (yaw=81.52°), KHÔNG nối tiếp hướng vòng
+            trước. Lý do: bản thân 1 chu kỳ lệch hướng +33.1° từ đầu đến cuối
+            (81.52°->114.63°); nếu nối tiếp kiểu chain, robot sẽ xoay dồn 33° x N vòng
+            (6 vòng ~198°, gần như quay ngược hướng ban đầu). Với anchor "first", robot
+            dao động hướng trong dải 81.52°-114.63° suốt chuỗi, không trôi dạt.
+            VỊ TRÍ (root world pos) KHÔNG dùng anchor "first" -- luôn nối tiếp
+            (chain) từ vị trí thực tế cuối vòng trước. Bug đã sửa: bản đầu lỡ anchor
+            luôn cả vị trí về đúng toạ độ vòng 0 -> robot bị "dịch chuyển tức thời"
+            (teleport ~5-6cm) mỗi lần sang vòng mới, gây giật rõ khi xem video preview.
+            Đã verify lại: root pos delta tại cả 5 điểm nối = 0.000cm (liên tục tuyệt
+            đối). Lưu ý: bug này CHỈ ảnh hưởng video preview (dựng lại world pos để
+            vẽ) -- deploy thật trên robot KHÔNG bị ảnh hưởng vì MotionData.cpp chỉ đọc
+            joint_pos/joint_vel/body_quat_w[torso], không hề dùng body_pos_w.
+blend     : mỗi điểm nối giữa 2 vòng lặp: offset-decay 0.5s (25 frame) — pose bắt đầu
+            đúng bằng pose cuối vòng trước rồi hoà về quỹ đạo vòng mới (yaw đã align).
+            Verify: quat norm ~1.0, không NaN, max|Δjoint_pos| giữa 2 frame liên tiếp
+            trong TOÀN chuỗi chỉ 0.052 rad (so với 0.26 rad lúc còn dính đoạn giơ tay
+            trước khi sửa) — không có giật tại điểm nối.
+npz (ref) : r1_lacmong3.npz
+onnx      : r1_lacmong3.onnx (copy nguyên, cùng policy với lacmong1)
+mp3       : hoihantronganh_lacmong3.mp3 — cùng đoạn nhạc 6.72-9.56s, ghép lặp 6x bằng
+            ffmpeg acrossfade 0.5s. LƯU Ý: acrossfade rút ngắn mỗi lần nối 0.5s nên
+            audio dài 14.58s, NGẮN HƠN motion (17.16s). Hệ thống deploy không seek/
+            sync audio theo frame (music_.Play chỉ phát từ đầu file, dance tự chạy hết
+            rồi Stop() nhạc khi chuyển state) nên lệch vài giây không ảnh hưởng chức
+            năng, chỉ là nhạc sẽ hết trước khi múa xong ở lần chạy dài — chấp nhận được,
+            báo lại nếu cần nhạc dài đúng bằng motion.
+note      : Mép đầu/cuối TOÀN chuỗi (frame 0 và frame cuối) vẫn là điểm êm nhất đã
+            verify trước đó (score thấp nhất trong pad ±0.1s quanh 6.72s/9.56s) để
+            mimic_warmup_s/mimic_cooldown_s vào/ra mượt với locomotion.

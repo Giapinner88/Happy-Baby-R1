@@ -1,0 +1,49 @@
+name: pokemonplus_v4_phuma_collision-grounded_goc_damp2_muF0p3-1p2_2048env_20k_20260929
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_04-56-54_phuma_pokemon_collision_grounded_damping2_2048env_20k_20260929
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_04-56-54_phuma_pokemon_collision_grounded_damping2_2048env_20k_20260929/2026-09-29_04-56-54_phuma_pokemon_collision_grounded_damping2_2048env_20k_20260929.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: V4 PHUMA collision-grounded GVHMR root-upright NPZ trained in GOC; friction
+    0.3-1.2; default damping 2.0; 2048 env; 20000 iterations; fresh from scratch.
+motion:
+  file: phuma_pokemon_gvhmr_70pct_root_upright_collision_grounded_50fps.npz
+  frames: 3426
+  fps: 50.0
+audio: pokemon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  slot: dance_4
+  speed: 1.0
+  volume: 1.0
+  trim_deg: 0.0
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: phuma_pokemon_gvhmr_70pct_root_upright_collision_grounded_50fps.npz
+  audio: pokemon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 3eeaa013420ae0e8dc074206b8db7d8d52f2697e43e3c9c9e469b9e5ff3ac29e
+  env.yaml: fa2f0c0377dcda5af77e4e7f96503f958a51ceb05c8f216d907c07af75b58c19
+  model_19999.pt: ed50f432965d7f7195f13b7d6da915fedae5fd2c83923a67edb0c245e0e7e044
+  onnx_metadata.yaml: 40d2370fbcc7757b33eca6c8745a7a6256b0df5d761b5a4d76284a68d89635c0
+  phuma_pokemon_gvhmr_70pct_root_upright_collision_grounded_50fps.npz: 2167d3a6e1f0a1b325793c59849b5809859e5768474941acbe708fb27f78d2ba
+  pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
+  policy.onnx: c4fd5dc7ce0b62c58c13cc7a4bd214632d8e6e19d32d4c6b8b9abb0f658627cd
+  source.txt: 2c328e78cc531636b1384a8d0648fbb0d5ac0bc3135c97dfd863efa1ece72cd1
+version: v4
+variant: V4 PHUMA collision-grounded GVHMR root-upright NPZ trained in GOC; friction
+  0.3-1.2; default damping 2.0; 2048 env; 20000 iterations; fresh from scratch.

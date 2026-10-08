@@ -1,0 +1,20 @@
+folder    : doremon_hoanchinh20260827
+repo      : ~/train_mujoco/unitree_rl_mjlab
+run       : 2026-08-27_21-36-05_doremon_hoanchinh20260827  (train tu dau 20000 iter, 4096 env, GPU0)
+task      : Unitree-R1-Tracking-No-State-Estimation (Flat)
+npz (ref) : doremon_r1_hoanchinh20260827.npz
+onnx      : policy.onnx   <- logs/.../2026-08-27_21-36-05_doremon_hoanchinh20260827/policy.onnx
+mp3       : doremon.mp3
+ket qua   : mean reward 38.14, episode length 500.00 (kich tran),
+            termination anchor_pos/anchor_ori/ee_body_pos = 0.0000 (chi time_out).
+note      : Reference dung config IK R1 DA SUA TOAN BO (xem GMR/R1_IK_CONFIG_FIX.md):
+            - target ban chan doi tu uc ban chan (SMPL-X left_foot) sang CO CHAN (left_ankle),
+              ground_height 0, pos_offset ngang +-0.022 bu be ngang -> COM tu -16% ve 43% chan de
+            - go rot_offset pelvis +10.7 va rot_offset hong -15.75 (ke thua tu G1/H1) -> het chung goi
+            - vai pos_weight bang2 50->10 (het bi nhac bong)
+            - them target co tay (wrist_roll truoc day chet cung o 0.0)
+            - chuan hoa chieu cao theo khung xuong do duoc (gvhmr_to_robot_hh.py --auto)
+            Duong ong npz: neo dat per-frame -> loc Butterworth chong jitter/chatter
+            -> stand-bridge 1.5s vao/ra HOME -> csv_to_npz 50fps.
+            KHONG dung bounded_xy, KHONG dung forward-lean (het can sau khi sua COM).
+            Gia toc khop dinh giam ~7 lan, jerk giam ~6 lan so voi ban tho.

@@ -1,0 +1,51 @@
+name: xexe_v3_goc_leg-ankle-waist_damp2p5_muF0p3-1p2_2048env_17k_20260928
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 17000
+  iterations_target: 17000
+  checkpoint: model_16999.pt
+  notes: V3 GOC damping variant; R1_ACTUATOR_LEG (hips and knees), ANKLE, and WAIST
+    damping 2.5; arm 2.0, wrist 1.0; friction 0.3-1.2; 2048 env; 17000 iterations;
+    fresh from scratch.
+motion:
+  file: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  slot: dance_2
+  speed: 1.0
+  volume: 1.0
+  trim_deg: 0.0
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_16999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 215c926c345025c6292d4d43e4e3387f6ed139833ebe539cacb920bf82c1f530
+  env.yaml: 02d9d30524fae13d370b7e193a4c969817b26c2909428ab17f2c85ead04e9a75
+  model_16999.pt: ccc2536d3ee422e75815ff3ba1fe9121dbd120187b0ec5570225dc763fa92f9e
+  onnx_metadata.yaml: b59b21e2df9d377693518cb25d86f1b124728e881c6163a9669fd908055478f1
+  policy.onnx: ec091a57b38887a9ce4360bfcd616f7dd241855ff27637177966193dea85e0d6
+  source.txt: 83f173e1bc354f3dcd1f5ac2204c2573de22574bab73ee1c8d4620a50c6ad3a5
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz: 229d99c61057e7e1ce345c26fcc7b6f416f78c0ccaf8c61010d83525e23a55a4
+version: v3
+variant: V3 GOC damping variant; R1_ACTUATOR_LEG (hips and knees), ANKLE, and WAIST
+  damping 2.5; arm 2.0, wrist 1.0; friction 0.3-1.2; 2048 env; 17000 iterations; fresh
+  from scratch.

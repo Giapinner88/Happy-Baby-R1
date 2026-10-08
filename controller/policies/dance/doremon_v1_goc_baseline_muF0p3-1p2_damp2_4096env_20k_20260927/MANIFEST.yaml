@@ -1,0 +1,49 @@
+name: doremon_v1_goc_baseline_muF0p3-1p2_damp2_4096env_20k_20260927
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_3_doremon_retrain_resume_to_20k
+training:
+  task: Unitree-R1-Tracking-No-State-Estimation
+  gpu: 1
+  num_envs: 4096
+  iterations: 20000
+  seed: 42
+  kind: meta_existing_feasible_npz
+  repo: unitree_rl_mjlab_goc
+  run: 2026-09-27_17-31-11_dance_3_doremon_retrain_resume_to_20k
+  motion: doremon_r1_robot_feasible.npz
+  checkpoint: model_19999.pt
+  iterations_completed: 20000
+  iterations_target: 20000
+  initialization: continued from 2026-09-27_11-30-53_dance_3_doremon_research_full_retrain_20260924_20k/model_9500.pt
+  notes: V1 GOC baseline/default; foot friction 0.3-1.2; leg/ankle/waist damping 2.0,
+    arm 2.0, wrist 1.0; 4096 env; 20000 iterations; resumed to 20k from checkpoints
+    for xexe/doremon; fresh for pokemonplus.
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+artifacts:
+  policy: policy.onnx
+  motion: doremon_r1_robot_feasible.npz
+  audio: doremon.mp3
+  checkpoint: model_19999.pt
+  onnx_metadata: onnx_metadata.yaml
+hb:
+  slot: dance_3
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+sha256:
+  agent.yaml: 19508d93395a7d146d2d54083632433a1338bda7af2f9967fb50bfb68ac8a8e8
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon_r1_robot_feasible.npz: 604efe678ba17941c99dca2a5f1fe1f2458d2b538a2e58923f9105d8454fa803
+  env.yaml: e4adbadaffc88ca5f343cb68ee2da19ff2ab555539a269330357b19b94d5c0af
+  model_19999.pt: 239250393956c97443376b5ce1f312634bd249ee18aca2447a305439f3aa4c66
+  onnx_metadata.yaml: e3a05a07204228103bd254862f159355fed1b83f2287da89e8e1ef883faaf9eb
+  policy.onnx: 61764dbd9410dd47045430a611c519dc93d99d4b6022e586f847cb558206630a
+  source.txt: ee253639b347dac06b6f82a9101f0f1b6f07b574c110634b2630eab2d9068136
+version: v1
+variant: V1 GOC baseline/default; foot friction 0.3-1.2; leg/ankle/waist damping 2.0,
+  arm 2.0, wrist 1.0; 4096 env; 20000 iterations; resumed to 20k from checkpoints
+  for xexe/doremon; fresh for pokemonplus.
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_3_doremon_retrain_resume_to_20k/2026-09-27_17-31-11_dance_3_doremon_retrain_resume_to_20k.onnx

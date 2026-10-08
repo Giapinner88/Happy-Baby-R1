@@ -1,0 +1,12 @@
+folder    : pokemonplus_research_full_fixed_meta_20260924
+repo      : /home/ubuntu22/train_mujoco
+run       : 2026-09-24_04-14-14_pokemonplus_research_full_fixed_meta_20k_2048_gpu0_20260924
+task      : Unitree-R1-Tracking-No-State-Estimation
+kind      : meta_full_pipeline
+checkpoint: model_19999.pt
+motion    : pokemonplus_r1_robot_feasible.npz (3466 frames, 50.0 Hz)
+edit      : target [2050,2408) replaced by donor [645,1005), blend 75 frames
+onnx      : policy.onnx (obs 129 -> action 24; HB metadata validated)
+audio     : pokemon.mp3
+positive lean max (pelvis/torso): 11.332 / 11.531 deg
+status    : packaged; hardware acceptance pending

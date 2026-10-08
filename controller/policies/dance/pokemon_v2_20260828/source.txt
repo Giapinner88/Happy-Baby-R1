@@ -1,0 +1,23 @@
+folder    : pokemon_v2_20260828
+run       : pokemon_v2_20260828  (20000 iter, 4096 env)
+npz (ref) : pokemon_r1_v2_20260828.npz
+onnx      : policy.onnx
+ket qua   : mean reward 28.27, episode length 466.91
+            termination anchor_pos 0.3333 / ee_body_pos 0.3750
+
+repo      : ~/train_mujoco/unitree_rl_mjlab
+task      : Unitree-R1-Tracking-No-State-Estimation (Flat)
+config IK : da sua toan bo (xem GMR/R1_IK_CONFIG_FIX.md) + 2 thay doi ngay 2026-08-28:
+            - pos_offset ngang ban chan 0.022 -> 0.048 (be ngang 2 co chan rong them ~3.6cm,
+              neo theo tam hong R1 0.1777 m)
+            - he so tam voi chan k = 0.93 (--leg_reach_factor): truoc do 70.8%% frame doremon
+              / 54.2%% pokemon co moc ban chan NGOAI tam voi -> chan bi ghim thang, mat chi
+              tiet nhun goi. k=0.93 dua ve 0.0%%.
+duong ong : retarget -> loc Butterworth bac 4 zero-phase 5Hz + lam phang ban chan + clamp 5deg
+            -> stand-bridge 1.5s vao/ra HOME -> csv_to_npz 50fps
+            KHONG neo dat per-frame (theo yeu cau), KHONG bounded_xy, KHONG forward-lean
+
+CANH BAO  : reference nay BAY 0.123 m so voi san (khong chay ground_reference.py).
+            Do la ly do reward chi 28.27 - doi chieu 3 bai nhaydongian cung cau hinh
+            nhung gan nhu khong bay (0.011-0.020 m) dat reward 45.0-45.3 voi ZERO
+            termination. Ban co neo dat cua bai nay nam o thu muc *_v3_neodat_*.

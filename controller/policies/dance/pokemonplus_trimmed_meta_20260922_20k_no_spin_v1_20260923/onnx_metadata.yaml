@@ -1,0 +1,24 @@
+required_for_hb:
+- action_scale
+- default_joint_pos
+- joint_damping
+- joint_stiffness
+metadata:
+  run_path: 2026-09-22_09-01-54_pokemonplus_trimmed_meta_resume_10k_to_20k_gpu0_20260922
+  joint_names: left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,right_hip_pitch_joint,right_hip_roll_joint,right_hip_yaw_joint,right_knee_joint,right_ankle_pitch_joint,right_ankle_roll_joint,waist_roll_joint,waist_yaw_joint,left_shoulder_pitch_joint,left_shoulder_roll_joint,left_shoulder_yaw_joint,left_elbow_joint,left_wrist_roll_joint,right_shoulder_pitch_joint,right_shoulder_roll_joint,right_shoulder_yaw_joint,right_elbow_joint,right_wrist_roll_joint
+  joint_stiffness: 100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,40.000,40.000,20.000,20.000,20.000,40.000,40.000,20.000,20.000,20.000
+  joint_damping: 2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.500,2.000,2.000,1.000,1.000,1.000,2.000,2.000,1.000,1.000,1.000
+  default_joint_pos: -0.100,0.000,0.000,0.300,-0.200,0.000,-0.100,0.000,0.000,0.300,-0.200,0.000,0.000,0.000,0.350,0.180,0.000,0.870,0.000,0.350,-0.180,0.000,0.870,0.000
+  command_names: motion
+  observation_names: command,motion_anchor_ori_b,base_ang_vel,joint_pos,joint_vel,actions
+  action_scale: 0.150,0.150,0.150,0.150,0.312,0.312,0.150,0.150,0.150,0.150,0.312,0.312,0.150,0.150,0.375,0.375,0.412,0.412,0.412,0.375,0.375,0.412,0.412,0.412
+  anchor_body_name: torso_link
+  body_names: pelvis,left_hip_roll_link,left_knee_link,right_hip_roll_link,right_knee_link,torso_link,left_shoulder_roll_link,left_elbow_link,left_wrist_roll_link,right_shoulder_roll_link,right_elbow_link,right_wrist_roll_link
+  observation_dim: '129'
+  action_dim: '24'
+  policy_dt_s: '0.02'
+  policy_hz: '50.0'
+  task: Unitree-R1-Tracking-No-State-Estimation
+  motion_file: pokemonplus_r1_robot_feasible_no_spin_v1.npz
+  source_checkpoint: model_19999.pt
+  metadata_note: actor weights unchanged; runtime reference motion is a derived splice and is not the training clip

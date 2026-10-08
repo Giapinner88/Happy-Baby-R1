@@ -1,0 +1,13 @@
+[Unit]
+Description=HB R1 refresh robot-local WebXR certificate
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/hb/teleop/runtime.env
+ExecStart=/bin/bash @HB_ROOT@/teleop/scripts/refresh_robot_cert.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

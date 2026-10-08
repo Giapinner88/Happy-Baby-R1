@@ -1,0 +1,45 @@
+name: nhay2_research_full_trim_no_lean_meta_20260924
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-24_18-30-42_nhay2_research_full_trim_no_lean_meta_20k_2048_gpu0_20260924
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  gpu: 0
+  num_envs: 2048
+  iterations: 20000
+  seed: 42
+  save_interval: 500
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+coordinate_contract:
+  position: world_xyz
+  quaternion: mujoco_wxyz
+  joints: R1_24dof_rad
+artifacts:
+  policy: policy.onnx
+  checkpoint: model_19999.pt
+  motion: nhay2_r1_robot_feasible_trimmed.npz
+  onnx_metadata: onnx_metadata.yaml
+  reference_report: artifacts/reference_report.md
+  train_log: artifacts/train.log
+hb:
+  slot: dance_8
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+qa:
+  motion_frames: 785
+  motion_fps: 50.0
+  quaternion_norm_error: 4.256368146826617e-08
+sha256:
+  agent.yaml: 34f18b38b00c14ef6dee89e868d07098e4b8abfeb5d880089fd32b4538844a1b
+  artifacts/reference_report.md: e3f96dda8c668322fd2cfe12c7b16ffc53e7d4336d3da6301037db88e6feab3a
+  artifacts/train.log: 16453fd921b6cc7468f0e9f90904315ead1478f18e924f914774c60e756114d2
+  env.yaml: 05f2300dbef72c1dff50526f43bd6a983725fd3bcb3b0ec42c47f550cc997872
+  model_19999.pt: 3ee9cd60e24542ccde0fca2b3bff93438b6dec14ed0f10a684b62a7b432dc6be
+  nhay2_r1_robot_feasible_trimmed.npz: 616a4425e0c2f9063fb517b1272c217607c65e4b7e7d86f8d2ff907382599eaf
+  onnx_metadata.yaml: f31f99b248fbd9d9f2bca5ec5583e7a69a48d4d3cf5806fe53c353287386d3e2
+  policy.onnx: 4f54b278da632978814e306072093805d5da9349f2b8150ef6179d7d319e36b3
+  source.txt: 1849bacd8d9bf0378053dd255ccbc53aa4c23d2986d8f1d543e9e34751eb5263

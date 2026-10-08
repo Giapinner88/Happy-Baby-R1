@@ -3,82 +3,56 @@
 
 ## Project Context
 
-**Project:** Happy Baby R1
+**Project:** Happy Baby R1 — `develop` branch.
 
-**Primary objective:** Train and operate the Unitree R1 safely and
-reproducibly for basic capabilities: stable walking, dance/motion imitation
-from GMR-generated motions, remote and teleoperation control, and real-time
-interaction with children. Simulation, evaluation, and integration are the
-evidence path before each hardware-facing capability is enabled.
+**Branch role:** the single canonical runtime for the Unitree R1. It holds only
+what runs on the robot; cloning it to the robot and running `make build` yields
+the runnable stack. Capability branches (`loco`, `teleop`, `vla`, dance/GMR
+training) deliver **results** here — ONNX/NPZ policies, configuration, and the
+robot-side teleop runtime. Training, simulation, and experiment code stay in
+those branches; do not add them here.
 
-**Research question:** Which R1 models, training data and configurations,
-GMR motion pipeline, exported ONNX policies, teleoperation interfaces, and
-runtime safeguards yield measurable and repeatable walking, dance tracking,
-human control, and real-time child interaction—and what evidence is required
-before each capability advances from simulation to the real robot?
+**Primary objective:** Stable walking, dance/motion imitation, remote and
+teleoperation control, and real-time child interaction on the R1, each gated by
+evidence before hardware use.
 
-**System or systems:** Two runtime tiers: an Ubuntu 22.04 workstation for
-simulation, training, evaluation, and export; and the Ubuntu 20.04 embedded
-computer on the Unitree R1 for ROS 2/DDS hardware integration. The workspace
-also contains local Python state/control simulators, R1 MuJoCo scenes and ONNX
-policy runtime, MJLab and Isaac Lab/Unitree RL Lab training overlays, GMR
-motion processing, remote/teleoperation interfaces, and vision/voice modules
-for human interaction.
+**System:** Ubuntu 20.04 aarch64 computer on the R1, Unitree SDK2/CycloneDDS
+on `eth10`; the repo root is `HB_ROOT` (cloned to `~/HB`). `controller/`
+(`run_r1`, service `hb_high_level`) is the sole writer of `rt/lowcmd`;
+`integration/`, `voice/`, `voice_presets/` and `teleop/` never publish motor
+commands. Service names (`hb_*`), `/etc/hb`, `/run/hb` and `HB_*` variables are
+the on-robot contract and are kept stable on purpose: renaming units on a
+running robot risks two `run_r1` instances.
 
-**Current stage:** Baseline integration and verification. ROS 2/DDS, assets,
-local simulators, MuJoCo policy runtime, and train/export workflow exist;
-policy and bridge behavior require direct evaluation and traceable evidence
-before hardware-facing operation.
-
-**Main tools:** Ubuntu 22.04 workstation stack; Ubuntu 20.04 embedded robot
-stack with ROS 2 Foxy and CycloneDDS; colcon/ament_cmake, Python and Conda
-environments, MuJoCo, MJLab, Isaac Lab/Unitree RL Lab, ONNX, rosbag2, and
-Unitree SDK/DDS tooling.
+**Current stage:** Baseline integration. Teleop is the robot-local H4 runtime;
+the `teleop` branch's sidecar/bridge lack the H4 contract the controller requires,
+so they are not merged (a static test pins the runtime's CLI contract). No locomotion policy from `loco` has been
+accepted. Dance slots 4–8 in `controller/config/dance.yaml` reference artifacts
+that are not in the repo. No evidence authorizes teleop on the floor.
 
 **Authoritative files:**
 
-- `README.md` — workspace scope, supported stack, layout, safety baseline, and
-  quick-start commands.
-- `docs/README.md` and `docs/operations/` — operational, setup, and runtime
-  procedures; `docs/safety/` — safety constraints.
-- `training/README.md`, `training/mjlab/`, and `training/isaaclab/` —
-  project-owned R1 training overlays and configurations.
-- `scripts/README.md` plus its `training/`, `simulation/`, `bridge/`, and
-  `assets/` subdirectories — maintained workspace entry points.
-- `sim/unitree_mujoco_policy/` — local R1 ONNX/MuJoCo runtime implementation.
-- `assets/mujoco/unitree_robots/r1/` — canonical R1 MuJoCo asset and scene
-  tree; `data/`, `reports/`, and per-run metadata — generated evidence.
+- `README.md` — scope, layout, build/run commands; `Makefile` — every entry point.
+- `docs/safety.md`, `docs/controls.md`, `docs/operation.md`, `docs/teleop.md`,
+  `docs/policies.md`, `docs/deploy.md`, `docs/voice.md` — operation and rules.
+- `controller/config/` (`tuning.yaml` entry), `controller/policies/`,
+  `teleop/config/teleop.yaml`, `voice/config/`, `integration/config/` — runtime
+  configuration; `controller/policies/locomotion/flat_plus/SHA256SUMS` and
+  `integration/config/model_manifest.conf` — policy integrity.
 
 **Primary commands:**
 
 ```bash
-# Build and source the ROS 2 workspace
-source /opt/ros/foxy/setup.bash
-colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-source install/setup.bash
-
-# Inspect, train, export, or collect project-owned R1 policies
-python3 scripts/training/r1_policy_workspace.py status
-python3 scripts/training/r1_policy_workspace.py train --help
-python3 scripts/training/r1_policy_workspace.py export --help
-
-# Exercise simulation and policy-runtime workflows before bridge/hardware work
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/simulation/run_r1_mujoco_model.py --help
-PYTHONNOUSERSITE=1 conda run -n r1_env python scripts/bridge/run_unitree_mujoco_policy.py --help
-
-# Smoke-test the ROS 2/DDS environment
-python3 test/test_dds_node.py
+make build && make preflight        # on the robot; no motor output
+make install                        # services; controller restarts only when DISARMED
+make test                           # ctest + pytest (teleop, voice, voice_presets, integration)
+make deploy | make deploy-policy    # from the dev machine
 ```
 
-**Known limitations:** The two OS tiers are not interchangeable: validate
-workstation-built artifacts and dependencies against the Ubuntu 20.04 embedded
-target before deployment. ROS 2 Foxy is end-of-life but retained for the robot
-baseline. MuJoCo/MJLab workflows require the project `r1_env` Conda
-environment, not the system Python. `third_party/` is upstream/vendor code and
-must remain unmodified. MuJoCo bridge runs establish simulation parity only,
-not hardware readiness; hardware operation requires the repository safety
-procedure, dry-run/simulation evidence, an E-stop operator, and recorded test
-results.
+**Known limitations:** `teleop/third_party/` is pinned vendor code and must
+remain unmodified. Software tests verify contracts, not balance or hardware
+safety. Hardware operation requires `docs/safety.md`, a preflight pass, an E-stop
+operator, and a test log.
 
 Keep this section compact. Do not duplicate information that is already clear from `README.md`, configuration files, generated run metadata, or authoritative technical documents.
 

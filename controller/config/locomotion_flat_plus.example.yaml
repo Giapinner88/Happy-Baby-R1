@@ -1,0 +1,27 @@
+# ============================================================================
+# MẪU OPT-IN cho policy history `flat_plus_h4_v1`. KHÔNG phải config đang chạy.
+#
+# Cách dùng: chỉ sau khi model đã qua Gate 7 (closed-loop simulator) và
+# preflight, chép hai dòng CHỌN POLICY dưới đây đè lên `config/locomotion.yaml`.
+# Rollback = khôi phục lại legacy_83 / policy_goc_2.onnx, không đổi symlink,
+# không ghi đè file model (mất hash/provenance).
+# ============================================================================
+
+# Bằng period của phase obs lúc train — H4 không đổi điều này.
+gait_period_s: 0.6
+
+flat_policy_contract: flat_plus_h4_v1
+flat_model: policy_flat_plus_h4_v1.onnx
+
+# ROLLBACK:
+# flat_policy_contract: legacy_83
+# flat_model: policy_goc_2.onnx
+
+# LƯU Ý — khác biệt vận hành so với legacy_83:
+#   * KHÔNG có overlay động tác tay. FlatPlusController khai
+#     SupportsArmOverlay()=false, nên gesture bị bỏ qua ở cả observation lẫn
+#     motor target. Cần cử động tay khi đi thì phải train contract riêng.
+#   * History reset ở MỌI lần kích hoạt policy (stand-lock -> đi, hết dance,
+#     đứng dậy sau ngã). Cửa sổ không bao giờ vắt qua hai lần chạy.
+#   * Các trần tốc độ bên dưới thừa hưởng từ policy cha; đo lại bằng autotest
+#     trước khi nới.

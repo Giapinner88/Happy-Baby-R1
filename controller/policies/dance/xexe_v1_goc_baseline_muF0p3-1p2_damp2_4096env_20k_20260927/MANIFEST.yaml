@@ -1,0 +1,44 @@
+name: xexe_v1_goc_baseline_muF0p3-1p2_damp2_4096env_20k_20260927
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  run: 2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k
+  motion: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  checkpoint: model_19999.pt
+  iterations_completed: 20000
+  iterations_target: 20000
+  initialization: continued from 2026-09-27_11-30-52_dance_2_xexe_trimmed_20260921_meta_19999/model_11000.pt
+  notes: V1 GOC baseline/default; foot friction 0.3-1.2; leg/ankle/waist damping 2.0,
+    arm 2.0, wrist 1.0; 4096 env; 20000 iterations; resumed to 20k from checkpoints
+    for xexe/doremon; fresh for pokemonplus.
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  audio: xexe.mp3
+  checkpoint: model_19999.pt
+  onnx_metadata: onnx_metadata.yaml
+hb:
+  slot: dance_2
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+sha256:
+  agent.yaml: c576b743217713c432f09ac50c0b1df195681af53758699e877e5cd5293942c1
+  env.yaml: 0b8a3165cb810bcf83417fd21eb2aa056a41f321438fde7e9acec53f2eb0f547
+  model_19999.pt: 7c548c18cb65a89a65a066085a89d31fb8fce9e2e78d374ffa14beea1706143d
+  onnx_metadata.yaml: 493acf9061a56829f5c462ca3566f9baa1cee39714ea19949e09cb7cf0fc2f85
+  policy.onnx: 2685015a0087d9ac5d833605fa04f589aaffa000ed70776885ec93524193eee9
+  source.txt: cc74f0605c38cc08765aa4b4884d1cea5b4f7a24609cd757dc0a21572b817d3b
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz: 229d99c61057e7e1ce345c26fcc7b6f416f78c0ccaf8c61010d83525e23a55a4
+version: v1
+variant: V1 GOC baseline/default; foot friction 0.3-1.2; leg/ankle/waist damping 2.0,
+  arm 2.0, wrist 1.0; 4096 env; 20000 iterations; resumed to 20k from checkpoints
+  for xexe/doremon; fresh for pokemonplus.
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k.onnx

@@ -1,0 +1,12 @@
+folder      : pokemonplus_trimmed_meta_20260922_20k
+repo        : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta
+task        : Unitree-R1-Tracking-No-State-Estimation
+run         : 2026-09-22_09-01-54_pokemonplus_trimmed_meta_resume_10k_to_20k_gpu0_20260922
+checkpoint  : model_19999.pt (resume 10k -> 20k, GPU0)
+onnx        : policy.onnx (actor-only 129 -> 24; metadata backfilled from the
+              matching bundled full-motion export; weights unchanged)
+motion      : pokemonplus_r1_robot_feasible_trimmed.npz (3614 frames, 50 Hz)
+motion_src  : /home/ubuntu22/train_mujoco/GMR/output/research_full/pokemonplus/pokemonplus_r1_robot_feasible_trimmed.npz
+audio       : none (the policy remains usable; HB will simply not play a track)
+HB slot     : dance_3
+status      : packaged; hardware acceptance pending

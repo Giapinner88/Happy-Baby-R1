@@ -1,0 +1,45 @@
+# ============================================================================
+# SAFETY — An toàn robot (chỉ điều chỉnh khi có thiết bị hoặc người bảo vệ robot).
+# ============================================================================
+stand_kp_leg: 200.0
+stand_kp_waist: 200.0
+stand_kp_arm: 40.0
+stand_kd: 3.0
+
+# Chỉ áp đường vào dance, không áp stand-up/stand-lock. ĐỪNG hạ dưới 84 (2*kp < m*g*h=
+# 168 Nm/rad -> mất điểm cân bằng, đổ). App từ chối khởi động nếu đặt dưới 100.
+return_kp_ankle: 100.0
+
+# Nên giữ 1.0 — thay đổi sai có thể gây mất thăng bằng.
+policy_kp_scale: 1.0
+policy_kd_scale: 1.0
+
+fall_enabled: true
+fall_tilt_deg: 50.0
+fall_flip_tilt_deg: 30.0
+fall_flip_gyro: 4.0
+fall_debounce_ms: 30.0
+joint_speed_guard_enabled: true
+joint_speed_limit: 25.0
+joint_speed_debounce_ms: 30.0
+
+safe_stop_enabled: true
+safe_stop_debounce_ms: 300.0
+arm_gate_enabled: true
+arm_require_button: true
+arm_hold_s: 1.0
+arm_silence_ms: 3000.0
+arm_require_seen_builtin: true
+arm_min_foreign_seen: 5
+arm_conflict_min: 3
+arm_conflict_window_ms: 150.0
+arm_conflict_release: true
+arm_no_builtin_timeout_s: 0
+
+battery_monitor_enabled: true
+battery_topic: "rt/lf/bmsstate"
+battery_warn_pct: 20
+battery_critical_pct: 5
+battery_critical_action: sit
+battery_announce_period_s: 60.0
+battery_stale_s: 30.0

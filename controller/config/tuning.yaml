@@ -1,0 +1,9 @@
+# File gốc nạp lần lượt các cấu hình của controller.
+# Chỉnh sửa thông số trực tiếp trong các file chuyên đề bên dưới.
+include: runtime.yaml
+include: safety.yaml
+include: locomotion.yaml
+include: postures.yaml
+include: gestures.yaml
+include: dance.yaml
+include: audio.yaml

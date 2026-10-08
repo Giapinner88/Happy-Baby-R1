@@ -1,0 +1,43 @@
+# Hold L1 alone for three seconds to toggle voice preset mode. While enabled,
+# hold L1 and press a direction to play its slot. This works while DISARMED or
+# armed; high-level BUSY and remote loss still cancel playback.
+mode:
+  default_enabled: false
+  toggle_hold_s: 3.0
+  enabled_cue_hz: 1046.5
+  disabled_cue_hz: 392.0
+
+# Repeating the active chord is the normal cancel gesture; B is retained as an
+# emergency fallback. Do not set Select/F1/F2 here: those remain dedicated to
+# the existing conversation/microphone controls.
+cancel:
+  key: B
+
+playback:
+  retry_interval_s: 1.0
+  # Keep the bridge open after the last PCM chunk so PlayStop cannot cut the
+  # tail still buffered by the robot speaker. Increase only if needed.
+  end_tail_s: 0.4
+  # A quick repeat of the same L1+direction chord does not cancel playback.
+  repeat_cancel_delay_s: 1.5
+
+# Add recordings to ../assets then set `file`. Empty file means that slot is
+# visibly disabled but does not prevent the service from starting.
+# Supported formats: wav, mp3, ogg, flac, m4a. Volume is 0..100.
+bindings:
+  UP:
+    name: up
+    file: "assets/gioithieu.mp3"
+    volume_percent: 90
+  RIGHT:
+    name: right
+    file: "assets/hoat_nao_san_khau.mp3"
+    volume_percent: 90
+  DOWN:
+    name: down
+    file: "assets/hpbd_vi.mp3"
+    volume_percent: 90
+  LEFT:
+    name: left
+    file: "assets/hpbd_en.mp3"
+    volume_percent: 90

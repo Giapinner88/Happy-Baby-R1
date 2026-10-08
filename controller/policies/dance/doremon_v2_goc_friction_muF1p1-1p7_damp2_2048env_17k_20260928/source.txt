@@ -1,0 +1,15 @@
+folder       : doremon_v2_goc_friction_muF1p1-1p7_damp2_2048env_17k_20260928
+variant      : v2 — V2 GOC friction variant; foot friction range 1.1-1.7; default actuator damping 2.0; 2048 env; 17000 iterations; fresh from scratch.
+repo         : unitree_rl_mjlab_goc
+run          : 2026-09-28_12-07-39_dance_3_doremon_friction117_fresh_2048env_17k
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_12-07-39_dance_3_doremon_friction117_fresh_2048env_17k
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_12-07-39_dance_3_doremon_friction117_fresh_2048env_17k/2026-09-28_12-07-39_dance_3_doremon_friction117_fresh_2048env_17k.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 17000/17000
+checkpoint   : model_16999.pt
+motion       : doremon_r1_robot_feasible.npz (4560 frames @ 50 Hz)
+audio        : doremon.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB slot      : dance_3
+status       : packaged; hardware_acceptance_pending
+notes        : GOC friction variant; foot friction range 1.1-1.7; default damping 2.0; 2048 env; 17000 iterations; fresh from scratch.

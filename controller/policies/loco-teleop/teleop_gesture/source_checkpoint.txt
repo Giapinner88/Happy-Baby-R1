@@ -1,0 +1,1 @@
+/home/ubuntu22/train_mujoco/runs/r1_v2_20260921_125538/curriculum_after_locomotion_20260922/teleop_gesture/model_24997.pt

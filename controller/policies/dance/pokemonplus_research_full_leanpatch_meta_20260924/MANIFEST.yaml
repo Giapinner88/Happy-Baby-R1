@@ -1,0 +1,41 @@
+name: pokemonplus_research_full_leanpatch_meta_20260924
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-24_00-57-43_pokemonplus_research_full_leanpatch_meta_resume_to20k_2048_gpu0_20260924
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  motion: pokemonplus_r1_robot_feasible_spliced.npz
+  checkpoint: model_19999.pt
+  motion_frames: 3466
+  motion_fps: 50.0
+  motion_edit: target [2050, 2408) replaced by donor [645, 1005), blend 75 frames
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+artifacts:
+  policy: policy.onnx
+  motion: pokemonplus_r1_robot_feasible_spliced.npz
+  audio: pokemon.mp3
+  checkpoint: model_19999.pt
+  onnx_metadata: onnx_metadata.yaml
+qa:
+  positive_lean_pelvis_deg: 16.91377597188509
+  positive_lean_torso_deg: 17.01300407205311
+  positive_lean_over_15:
+  - true
+  - true
+hb:
+  slot: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+sha256:
+  agent.yaml: b9a62ecff3c19fc02db2647004cac736453cfc43e3c1ea9e0b91308efa2ec4c5
+  env.yaml: 8dd21a717b267b1455c6366d02b2ba45ce12052fd85138a2b77e4015913e1736
+  model_19999.pt: 70e9d971dce241a8cf28fdfac0110b3c38e1a4ac0996a7d2de85b65631d6bf75
+  onnx_metadata.yaml: 5682e63988b7f5d86479f38cb730dfe832a1280ddb8863c77e58bb2c72a61b1d
+  pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
+  pokemonplus_r1_robot_feasible_spliced.npz: 647a2354dc253128d5600077b430532f8422315bfaf7cdc08092ec3119585623
+  policy.onnx: dc7cd8fea2e0cd10914218c42b19c9a38822cc3783cf9de6f8041625e74fc7a9
+  source.txt: c128db70eb8a96394a294449e4182c21252376fee80836481b75146574a86558

@@ -1,0 +1,29 @@
+[Unit]
+Description=HB R1 offline button voice presets (no motor API)
+After=network-online.target hb_integration.service
+Wants=network-online.target hb_integration.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+WorkingDirectory=@HB_ROOT@/voice_presets
+Environment=HB_ROOT=@HB_ROOT@
+EnvironmentFile=-/etc/hb/stack.env
+RuntimeDirectory=hb
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+ExecStartPre=/bin/bash @HB_ROOT@/integration/scripts/preflight.sh presets
+ExecStart=/bin/bash @HB_ROOT@/integration/scripts/run_voice_presets.sh
+Restart=on-failure
+RestartSec=3
+# Playback cancellation and service stop must not leave a stale speaker stream.
+TimeoutStopSec=3
+KillMode=control-group
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/hb
+
+[Install]
+WantedBy=hb-stack.target

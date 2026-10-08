@@ -1,0 +1,42 @@
+name: loco-teleop
+kind: r1_almi_stage_policies
+status: packaged; hardware_adapter_pending
+source_run: /home/ubuntu22/train_mujoco/runs/r1_v2_20260921_125538
+source_repo: /home/ubuntu22/train_mujoco/ALMI-Open
+usd: /home/ubuntu22/Projects/Happy-Baby-R1-vla/assets/R1/R1.usd
+seed: 42
+export:
+  format: onnx
+  opset: 18
+  observation: 105
+  action: 24
+  policy_contract: r1_almi_v2
+  input: obs
+  output: actions
+  policy_hz: 50.0
+runtime:
+  current_controller_contract: flat_plus_gait_h4_v1
+  current_controller_observation: 335
+  direct_deployable: false
+  reason: ALMI requires a 105-D observation adapter and separate hardware validation
+stages:
+  locomotion:
+    task: ALMI-R1-Locomotion-v1
+    checkpoint: model_9999.pt
+    directory: locomotion
+  squat:
+    task: ALMI-R1-Squat-v1
+    checkpoint: model_14998.pt
+    directory: squat
+  teleop_gesture:
+    task: ALMI-R1-TeleopGesture-v1
+    checkpoint: model_24997.pt
+    directory: teleop_gesture
+  walk_teleop:
+    task: ALMI-R1-WalkTeleop-v1
+    checkpoint: model_34996.pt
+    directory: walk_teleop
+  unified:
+    task: ALMI-R1-Unified-v1
+    checkpoint: model_41000.pt
+    directory: unified

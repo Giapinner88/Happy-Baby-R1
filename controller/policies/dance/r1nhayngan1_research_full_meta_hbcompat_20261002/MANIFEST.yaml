@@ -1,0 +1,48 @@
+name: r1nhayngan1_research_full_meta_hbcompat_20261002
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-02_00-59-52_r1nhayngan1_research_full_meta_hbcompat_20k_2048_gpu0_jerkfix_20261002
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-02_00-59-52_r1nhayngan1_research_full_meta_hbcompat_20k_2048_gpu0_jerkfix_20261002/2026-10-02_00-59-52_r1nhayngan1_research_full_meta_hbcompat_20k_2048_gpu0_jerkfix_20261002.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: research_full; jerk-interpolated; HB-compatible Meta No-State training on
+    GPU0
+motion:
+  file: r1nhayngan1_r1_robot_feasible_jerk_interpolated.npz
+  frames: 555
+  fps: 50.0
+audio: r1nhayngan1_source.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: r1nhayngan1_r1_robot_feasible_jerk_interpolated.npz
+  audio: r1nhayngan1_source.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: b931675c79f6723164076a845777dc4d6ab9be24d617bc4a318c4f67a33f1db1
+  env.yaml: 4c0a44c18e4b32e3c2956a7496a0957fba12960f2104ac5fe5a15bb8219516b5
+  model_19999.pt: 962af98c69de46366ffb7b7bd0131f4a645a1b8d4baf1f9784246c4e42711083
+  onnx_metadata.yaml: 48735ac2a1cddf00262cfbd1d7cf990163834e418832cb9d1aa6d8273e21fcf4
+  policy.onnx: a993e5df30c7084f842c81f5eddd0f740d0f66f10120dc0c3c99d1865e1e0d8e
+  r1nhayngan1_r1_robot_feasible_jerk_interpolated.npz: 498001e141113432bcba83b7e89784ca3d98d9976f19dca6041ec050e5ce854f
+  r1nhayngan1_source.mp3: 03aa91cafa1d99c740376eca60d2f1bbe87ff43ed0209283c2138ca511696680
+  source.txt: a2424fc8aa8020ec6e724f41b0676d3bab9f85dbb6cb1343f66b1a92ad2950ad

@@ -1,0 +1,14 @@
+folder    : doremon_smooth11_20260919_base_4096
+repo      : /home/ubuntu22/train_mujoco/unitree_rl_mjlab (base)
+run       : doremon_smooth11_20k_4096_base_correct (20000 iterations, 4096 envs, GPU0, seed 42)
+task      : Unitree-R1-Tracking-No-State-Estimation
+checkpoint: model_19999.pt
+motion    : doremon_r1_segment_scale_precise_smooth11.npz (4394 frames, 50.0 Hz)
+onnx      : policy.onnx (obs 129 -> action 24; HB metadata validated)
+audio     : doremon.mp3 (same Doremon track used by existing HB dance packages)
+PD        : copied from this run's ONNX metadata; do not replace with another run
+wandb     : https://wandb.ai/hapbaby2105-hanoi-university-of-science-and-technology/mjlab/runs/bxlknm0z
+HB slot   : dance_7 (updated only if it still points to doremon_smooth11_20260918_base)
+artifacts : artifacts/ contains the motion-embedded ONNX export and training params
+status    : package created after successful training; hardware acceptance pending
+metadata  : onnx_metadata.yaml + params/agent.yaml + params/env.yaml + MANIFEST.yaml

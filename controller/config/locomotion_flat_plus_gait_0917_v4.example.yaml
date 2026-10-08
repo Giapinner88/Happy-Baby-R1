@@ -1,0 +1,13 @@
+# OPT-IN example: shared 335-D gait contract, 0917 v4 artifact.
+gait_period_s: 0.6
+flat_policy_contract: flat_plus_gait_h4_v1
+flat_model: policy_flat_plus_gait_0917_v4.onnx
+gait_stop_request_lin: 0.10
+gait_stop_request_ang: 0.10
+gait_move_request_lin: 0.15
+gait_move_request_ang: 0.15
+gait_stability_gyro_norm: 0.25
+gait_stability_joint_velocity_rms: 0.60
+gait_settle_dwell_s: 1.50
+gait_w2s_timeout_s: 5.00
+gait_stability_filter_tau_s: 0.20

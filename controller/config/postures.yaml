@@ -1,0 +1,49 @@
+# ============================================================================
+# POSTURES — Cấu hình tư thế (Ngồi ghế L2+Trái, Đứng lên/Nằm xuống L2+X).
+# Chế độ DESC (hạ trọng tâm, tự thăng bằng) và REST (ngồi vững khi có ghế đỡ).
+# ============================================================================
+# [DESC] Thông số gập hông/gối lúc bắt đầu hạ.
+sit_hip_deg: 130.0
+sit_knee_deg: 82.0
+sit_spread: 0.08
+# [REST] Thông số tư thế cuối sau khi ngồi vững trên ghế.
+sit_rest_hip_deg: 87.0
+sit_rest_knee_deg: 82.0
+sit_rest_spread: 0.45
+sit_rest_hip_yaw: 0.45
+sit_lean_deg: 58.0
+sit_seated_lean_deg: 20.0
+sit_arm_forward: -1.5
+sit_arm_elbow: 0.3
+sit_seated_arm_pitch: 0.0
+sit_seated_arm_elbow: 0.42
+# Hệ số bù góc cổ chân theo IMU để bám sát mặt đất (0 = tắt, 1 = tối đa).
+sit_ankle_gravity_gain: 0.4
+sit_descent_time_s: 4.0
+sit_settle_time_s: 1.5
+sit_hold_s: 0.5
+sit_release_after: false
+sit_kp_leg: 200.0
+sit_kd: 3.0
+sit_rate_limit: 3.0
+sit_gather_time_s: 1.5
+
+# Đứng lên / Nằm xuống dùng L2+X.
+getup_motion_file: motions/getup.npz
+liedown_motion_file: motions/liedown.npz
+getup_kp_leg: 220.0
+getup_kp_waist: 200.0
+getup_kp_arm: 60.0
+getup_kd: 4.0
+getup_rate_limit: 6.0
+liedown_rate_limit: 4.0
+# speed = 1.0 là tiêu chuẩn.
+getup_blend_time_s: 0.6
+liedown_blend_time_s: 0.6
+getup_speed: 1.0
+liedown_speed: 1.0
+getup_liedown_block_s: 1.0
+# Bù góc cổ chân nếu dữ liệu .npz có thông tin hướng thân (torso_quat).
+getup_ankle_gravity_gain: 0.5
+lying_tilt_deg: 60.0
+hold_to_trigger_s: 3.0

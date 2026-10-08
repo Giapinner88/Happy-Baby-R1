@@ -1,0 +1,30 @@
+folder    : nhay3_20260908
+run       : nhay3_20260908  (14999/15000 iter, 2048 env)
+npz (ref) : nhay3_r1_20260908.npz
+onnx      : policy.onnx (metadata san co)
+ket qua   : mean reward 43.76, episode length 500.00
+            termination anchor_pos / anchor_ori / ee_body_pos = 0.0000 / 0.0000 / 0.0000
+log train : logs/train_nhay3_20260908_gpu1_20260909_024740.log
+reference : npz 1111 frame / 22.22s, pelvis lean -1.12 deg, chan thap nhat 0.059 m, 0 frame giat, joint vel max 8.27 rad/s -> PASS
+
+repo      : ~/train_mujoco/unitree_rl_mjlab
+task      : Unitree-R1-Tracking-No-State-Estimation (Flat)
+train     : 2048 env, 15000 iteration, GPU1 (chay tuan tu tung bai)
+video goc : GMR/GVHMR/inputs/demo/nhay3.mp4 (720x1280, 30fps)
+config IK : ban DA SUA GOC RE 2026-09-05 (xem memory r1-ik-straight-leg-singularity-fix):
+            - go ghim hong+goi: pos_w=0, rot_w=0.001 o CA hai bang
+            - use_ik_match_table2 = false (luot IK 2 lam noi pelvis 39mm)
+            - tay (vai/khuyu/co tay) pos_w=10 o bang 1 de bu lai
+            - ik_joint_limits_deg: goi [2, 139] chan nhanh nghiem uon nguoc
+            - retarget bang gvhmr_to_robot_hh.py --leg_reach_factor 0.96
+            - chieu cao khung xuong do duoc: 1.733 -> 1.709
+duong ong : mp4 -> GVHMR (-s, static cam)
+            -> retarget gvhmr_to_robot_hh (k=0.96)
+            -> NEO DAT PER-FRAME (ground_reference.py, ap delta nguoc lai CSV)
+            -> loc Butterworth bac 4 zero-phase 5Hz + lam phang ban chan + clamp margin 5deg
+            -> csv_to_npz 50fps
+            *** KHONG stand-bridge (khong noi suy vao/ra HOME) - theo yeu cau ***
+            KHONG bounded_xy, KHONG forward-lean
+trung gian: GMR/motion_data/v6_20260908/
+mp3       : bai nay KHONG co mp3
+

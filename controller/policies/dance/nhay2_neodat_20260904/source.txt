@@ -1,0 +1,25 @@
+folder    : nhay2_neodat_20260904
+run       : nhay2_neodat_20260904  (19999/20000 iter, 4096 env)
+npz (ref) : nhay2_r1_neodat_20260904.npz
+onnx      : policy.onnx (metadata san co)
+ket qua   : mean reward 44.60, episode length 500.00
+            termination anchor_pos / anchor_ori / ee_body_pos = 0.0000 / 0.0000 / 0.0000
+log train : logs/train_nhay2_neodat_gpu0_20260904_222837.log
+reference : npz  766 frame / 15.32s, pelvis lean -1.56 deg, chan thap nhat 0.056 m, 0 frame giat -> PASS
+
+repo      : ~/train_mujoco/unitree_rl_mjlab
+task      : Unitree-R1-Tracking-No-State-Estimation (Flat)
+video goc : GMR/GVHMR/inputs/demo/nhay2.mp4 (720x1280, 30fps, up 2026-09-04)
+config IK : da sua toan bo (xem GMR/R1_IK_CONFIG_FIX.md) + pos_offset ngang ban chan 0.048
+            + he so tam voi chan k = 0.93 (--leg_reach_factor), retarget bang
+            scripts/gvhmr_to_robot_hh.py (chieu cao khung xuong do duoc: 1.749 -> 1.634)
+duong ong : GVHMR (-s, static cam)
+            -> retarget gvhmr_to_robot_hh
+            -> NEO DAT PER-FRAME (ground_reference.py, ap delta nguoc lai CSV)
+            -> loc Butterworth bac 4 zero-phase 5Hz + lam phang ban chan + clamp margin 5deg
+            -> stand-bridge 1.5s vao/ra HOME (standing_root_z 0.7339)
+            -> csv_to_npz 50fps
+            KHONG bounded_xy, KHONG forward-lean
+trung gian: GMR/motion_data/v4_20260904/
+mp3       : bai nay KHONG co mp3
+

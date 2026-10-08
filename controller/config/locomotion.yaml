@@ -1,0 +1,61 @@
+# ============================================================================
+# LOCOMOTION — Giới hạn tốc độ lệnh điều khiển của người lái.
+# ============================================================================
+
+# PHẢI khớp period lúc train flat_model. Đổi thì đo lại bằng autotest sim trước khi
+# chạy robot thật (xem docs/operation.md §1).
+gait_period_s: 0.6
+# Thời gian FSM chờ ổn định từ W2S sang STAND; lấy trực tiếp từ config này,
+# không cần khớp metadata gait_t_settle_s trong ONNX.
+gait_settle_dwell_s: 0.5
+
+# Active 335-D gait policy train: vx±0.6, vy±0.6, yaw±1.0.
+# Slow is the in-distribution operator envelope. Fast vx remains 1.5 m/s by
+# operator choice and therefore requires separate simulation/hardware evidence.
+slow_vx: 0.6
+slow_vy: 0.6
+slow_yaw: 1.0
+slow_vx_back: 0.6
+fast_vx: 1.5
+fast_vy: 0.8
+fast_yaw: 1.5
+fast_vx_back: 0.8
+
+# decel nên nhỏ hơn accel (hãm buông phím mượt hơn).
+cmd_accel_vx: 2.5
+cmd_accel_vy: 2.0
+cmd_accel_yaw: 3.0
+cmd_decel_vx: 1.2
+cmd_decel_vy: 1.2
+cmd_decel_yaw: 1.5
+
+heading_hold_enabled: true
+heading_hold_kp: 0.9
+heading_hold_max_yaw: 0.5
+heading_hold_move_min: 0.15
+heading_hold_relatch_gyro: 0.3
+
+# ============================================================================
+# CHỌN POLICY ĐI BỘ — flat_policy_contract và flat_model PHẢI khớp nhau. Đổi model thì
+# xem checklist ở docs/policies.md §3. Đổi xong: make preflight (robot) / make deploy-policy (máy dev).
+# ============================================================================
+flat_policy_contract: flat_plus_gait_h4_v1
+flat_model: policy_flat_plus_gait_0917_armfree.onnx
+
+# policy_rate_limit: không hạ quá thấp, sẽ gây trễ phase.
+stand_up_time_s: 2.5
+blend_time_s: 0.5
+stand_rate_limit: 5.0
+lock_rate_limit: 0.2
+return_rate_limit: 1.5
+# 0.0 = không dạng chân khi stand-lock (giữ đúng default_joint_pos của policy).
+stand_lock_spread: 0.0
+return_pos_tol: 0.12
+# Hết giờ mà chưa về được default (khớp kẹt/lệch calib) thì huỷ dance về STAND LOCK.
+return_timeout_s: 6.0
+settle_time_s: 1.0
+settle_gyro_max: 0.5
+stand_lock_warn_s: 1.5
+dance_abort_lock_block_s: 2.0
+stand_lock_sit_block_s: 1.0
+policy_rate_limit: 30.0

@@ -1,0 +1,9 @@
+folder    : doremon_smooth11_20260918_base
+repo      : /home/ubuntu22/train_mujoco/unitree_rl_mjlab
+run       : 2026-09-18_17-13-07_doremon_smooth11_20k_gpu0 (19999/20000 iter, 2048 env, GPU0)
+task      : Unitree-R1-Tracking-No-State-Estimation
+checkpoint: model_19999.pt
+motion    : doremon_r1_segment_scale_precise_smooth11.npz (50 Hz)
+onnx      : policy.onnx (129 -> 24, metadata san co)
+PD        : hip 100/3, knee 100/4.5, ankle 40/3, waist 100/3, arm 40/2
+HB slot   : dance_7

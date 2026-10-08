@@ -1,0 +1,200 @@
+# Đồng bộ từ máy dev; không đặt API key tại đây. Sửa xong restart hb_voice.
+
+openai:
+  # Đang chạy ổn định; chỉ đổi model trong đợt kiểm thử riêng.
+  model: "gpt-realtime-2.1"
+
+  # Gợi ý: marin/cedar. Khác: alloy, ash, ballad, coral, echo, sage, shimmer, verse.
+  voice: "sage"
+
+  # 0.25-1.5; gợi ý sự kiện: 0.95-1.05.
+  speed: 1.05
+  language: "vi"
+
+  # 1-4096; 512 phù hợp câu trả lời tối đa 3 câu.
+  max_response_tokens: 512
+
+tts:
+  # elevenlabs: OpenAI Realtime sinh text, ElevenLabs phát giọng clone.
+  # openai: rollback về audio trực tiếp bằng openai.voice ở trên.
+  provider: "elevenlabs"
+
+  # Model streaming độ trễ thấp, hỗ trợ language_code=vi.
+  model: "eleven_flash_v2_5"
+  language: "vi"
+
+  # Tuning giọng clone. Voice ID và API key nằm trong /etc/hb/stack.env.
+  # stability CÀNG CAO thì giọng CÀNG GIỐNG NHAU giữa các lượt nói; càng thấp
+  # thì biểu cảm hơn nhưng mỗi lần sinh lại lệch chất giọng một chút, nghe như
+  # đổi người nói. Đã nâng 0.55 -> 0.75 ngày 2026-08-05 vì nghe rõ giọng đổi
+  # giữa các câu. Muốn biểu cảm hơn thì hạ dần 0.05 một, đừng xuống dưới 0.5.
+  stability: 0.75
+  similarity_boost: 0.85
+  speed: 1.05
+  use_speaker_boost: true
+
+input:
+  # Mic ngoài cắm trực tiếp vào PC2. Runtime tự tìm card USB có capture, không
+  # cần khai báo gì; chỉ đặt ALSA_DEVICE trong /etc/hb/stack.env khi có nhiều
+  # hơn một mic USB và cần ghim đúng một cái.
+  # Chỉ dùng r1_multicast khi cần rollback về mic tích hợp trên bo PC1.
+  source: "alsa_usb"
+
+  # Mic TTGK cũ có mức output lớn; giữ 0 dB để không làm tín hiệu clipping nặng hơn.
+  # Có thể giảm tới -12 dB nếu sau khi hạ ALSA Capture mà peak vẫn chạm 0 dB.
+  gain_db: 0.0
+
+  # NGHE KHÔNG RA TIẾNG THÌ TUYỆT ĐỐI KHÔNG TRẢ LỜI. Áp dụng cho CẢ HAI chế độ:
+  #   - giữ nút: lượt chỉ được gửi khi đỉnh cả lượt vượt mức này;
+  #   - auto (F1): chỉ những đoạn vượt mức này mới chảy tới VAD của OpenAI, giữ
+  #     mở thêm 1.5s sau tiếng cuối để không cắt vụn câu, và có đệm ~0.3s phía
+  #     trước để không mất âm đầu.
+  # Đây là thứ chặn tiếng servo/đuôi tiếng loa kích VAD làm robot tự trả lời
+  # mình (2026-08-05: 5 lượt trả lời mà không ai nói).
+  # Đỉnh tín hiệu tính theo thang 0-32767. Gửi lượt im lặng KHÔNG làm
+  # robot im: OpenAI vẫn đáp lại lượt rỗng bằng câu chào xã giao, nghe như robot
+  # tự nói một mình (đã xảy ra 01:25 ngày 2026-08-05 khi mic đeo chết).
+  # Nói bình thường vào mic đeo cho đỉnh vài nghìn, nên 500 (~-36 dBFS) là rộng rãi.
+  # Khách nói nhỏ mà robot làm ngơ -> hạ xuống 300. Robot đáp cả tiếng ồn -> nâng lên.
+  # Đặt 0 để tắt (quay lại hành vi cũ: im lặng cũng gửi đi).
+  min_speech_peak: 500
+
+  # auto: mic ngoài PC2=near_field, mic tích hợp PC1=far_field.
+  # Có thể đặt rõ near_field/far_field/off khi cần tuning.
+  noise_reduction: "auto"
+
+  # ============================================================================
+  # CÓ DÙNG MIC ROBOT LÀM DỰ PHÒNG HAY KHÔNG — công tắc chính, chỉ true/false.
+  #
+  #   true  = mic ngoài chết thì tự tụt xuống mic tích hợp PC1 (vẫn nói chuyện
+  #           được), cắm/bật mic ngoài lại thì tự nhảy về. Đổi lại: mic PC1 nằm
+  #           trên thân robot nên hút cả tiếng servo, chất lượng kém hơn hẳn.
+  #   false = CHỈ dùng mic ngoài. Mic ngoài chết thì robot điếc cho tới khi người
+  #           vận hành xử lý — nhưng không bao giờ bị nghe bằng mic thân robot.
+  #
+  # Dù đặt false, mic câm vẫn được CẢNH BÁO to trong log (xem mic_silence_s),
+  # nên không bao giờ điếc âm thầm như sự cố 2026-08-05.
+  # Nguồn mic đang chạy luôn xem được ở mic_source trong /run/hb/voice_status.env.
+  # ============================================================================
+  fallback_to_robot_mic: true
+
+  # ============================================================================
+  # AI ĐƯỢC ĐỔI NGUỒN MIC — manual | auto
+  #
+  #   manual = CHỈ người vận hành đổi, bằng cách NHẤN F2 (1 lần, không phải
+  #            double-click như F1). Mic ngoài chết thì robot đứng im ở mic ngoài
+  #            và LA TO trong log; nó KHÔNG tự tụt xuống mic thân robot nữa.
+  #            Đây là mặc định vì nguồn mic tự nhảy giữa sự kiện (2026-08-06:
+  #            nhảy qua lại 3 lần trong 3 phút) khó chịu hơn hẳn một mic chết
+  #            mà biết chắc nó đang chết.
+  #   auto   = hành vi cũ: tự tụt xuống mic thân robot sau
+  #            fallback_after_failures lần hỏng hoặc mic_silence_s giây câm, rồi
+  #            tự nhảy về khi card hiện lại (có backoff 20→40→…→300s).
+  #            F2 vẫn đổi được, nhưng bộ dò có thể đổi lại sau lưng bạn.
+  #
+  # Cả hai chế độ đều CẦN fallback_to_robot_mic: true — đó là thứ khai báo mic
+  # thân robot, tức là cái đích thứ hai để F2 nhảy sang. Đặt manual mà không bật
+  # nó thì app từ chối khởi động.
+  # Nguồn đang chạy: xem mic_source trong /run/hb/voice_status.env, hoặc
+  # mic_external trong /run/hb/status.env (nút F2 đang chọn cái nào).
+  # ============================================================================
+  mic_switch: manual
+
+  # Âm báo ngắn mỗi khi đổi nguồn mic, để biết F2 đã ăn mà không cần nhìn log:
+  #   nốt CAO  = mic ngoài PC2      nốt THẤP = mic thân robot
+  # Khác hẳn cặp hai-nốt của F1 (lên = auto, xuống = giữ nút) nên không lẫn.
+  mic_source_cue: true
+
+  # Mic ngoài CÂM bao lâu thì coi như chết. Có dự phòng -> chuyển nguồn; không có
+  # dự phòng -> chỉ ghi cảnh báo. Ngưỡng "câm" = đỉnh <= 32/32767 (~-60 dBFS).
+  # ĐO THẬT trên robot 2026-08-05: mic chết vẫn dao động 1-2 LSB chứ KHÔNG phải 0
+  # tuyệt đối, nên bắt đúng số 0 sẽ không bao giờ kích. Mic sống dù trong phòng
+  # yên tĩnh vẫn cao hơn ngưỡng này nhiều lần. Đặt 0 để tắt hẳn.
+  mic_silence_s: 20
+
+  # --- Ba núm dưới chỉ có tác dụng khi fallback_to_robot_mic: true ---
+
+  # Gain riêng cho mic PC1 (mic đó xa người nói hơn hẳn mic ngoài).
+  # Dùng ở CẢ hai chế độ mic_switch, vì nó tả mic thân robot chứ không tả cách đổi.
+  fallback_gain_db: 6.0
+
+  # HAI núm dưới CHỈ dùng khi mic_switch: auto. Ở chế độ manual không có gì tự
+  # đổi nên chúng bị bỏ qua (số lần hỏng vẫn được đếm để ghi log nhắc bấm F2).
+
+  # Số lần khởi động mic ngoài hỏng liên tiếp trước khi tụt xuống mic PC1.
+  # Backoff sẵn có là 0.5s -> 5s nên 3 lần ~ 15 giây.
+  fallback_after_failures: 3
+
+  # Đang chạy mic PC1 thì cứ chừng này giây dò /proc/asound/cards xem mic ngoài về chưa.
+  # Đây là nhịp BAN ĐẦU. Card có mặt KHÔNG chứng minh mic nghe được (cắm cục thu
+  # mà mic đeo chưa bật thì card vẫn hiện), nên mỗi lần nhảy về rồi vẫn câm thì
+  # nhịp tự nhân đôi: 20 -> 40 -> 80 -> 160 -> trần 300 giây. Mic ngoài có tiếng
+  # thật là nhịp về lại ngay giá trị này. Không có backoff thì bộ dò câm và bộ dò
+  # card đá qua đá lại mỗi ~20 giây (đã xảy ra 2026-08-05 lúc 09:38-09:40).
+  fallback_recover_check_s: 20
+
+audio:
+  # 0-100; hiện tối đa. Nếu quá lớn/rè, giảm về 75-85.
+  response_volume_percent: 100
+
+  # 0.0-1.0; chỉ giảm PCM, không khuếch đại để tránh vỡ tiếng.
+  response_gain: 1.0
+
+  # Sau khi đẩy xong PCM cuối, đợi thêm bao nhiêu giây mới mở lại mic. Bù phần
+  # voice KHÔNG nhìn thấy được: chặng DDS sang PC1, bộ đệm của loa, và tiếng
+  # dội trong phòng. Quá ngắn thì mic mở lúc robot còn đang kêu -> ở chế độ auto
+  # robot nghe chính mình rồi tự trả lời tiếp (đã xảy ra 2026-08-05).
+  # Robot hay tự nói nối đuôi -> nâng lên 0.9-1.2. Phản hồi chậm -> hạ về 0.4.
+  # Hạ 0.6 -> 0.3 ngày 2026-08-05 khi tắt fallback: mic đeo ở gần miệng người nói
+  # chứ không nằm cạnh loa như mic thân, nên gần như không bị vọng. Nếu bật lại
+  # fallback_to_robot_mic thì PHẢI nâng lại 0.6+.
+  echo_tail_s: 0.6
+
+activation:
+  # both | high_disarmed | high_armed
+  mode: "both"
+
+  # Cho voice hoạt động trong lúc high-level đang khởi động.
+  allow_during_startup: true
+  startup_grace_s: 100
+
+conversation:
+  # Hands-free F1 phải KHỞI ĐỘNG bằng mic TTGK/ALSA trên PC2; fail startup nếu ai
+  # đổi input.source về mic multicast PC1. Mất mic ngoài lúc đang chạy là việc của
+  # input.fallback_to_robot_mic, không phải của núm này.
+  require_external_mic: true
+
+  # Âm báo ngắn phát ra loa mỗi khi đổi chế độ, để người vận hành biết robot đang
+  # ở chế độ nào mà không cần nhìn log:
+  #   hai nốt ĐI LÊN  = vào CHẾ ĐỘ AUTO   (robot tự nghe liên tục, không bấm gì)
+  #   hai nốt ĐI XUỐNG = về CHẾ ĐỘ GIỮ NÚT (chỉ mở mic khi đang giữ Select)
+  # Cả hai chế độ đều CHỈ đổi bằng double-click F1. Select không đổi chế độ: nó là
+  # cách nói khi đang ở chế độ giữ nút, còn double-tap Select là cắt lời robot.
+  # Âm báo bám trạng thái THẬT: bấm F1 mà OpenAI từ chối thì vẫn kêu đi xuống.
+  # Tự tắt khi high-level đang chiếm loa (không tranh loa).
+  mode_cue: true
+
+  # Chỉ bật Semantic VAD ở chế độ auto; chế độ giữ nút vẫn commit thủ công lúc nhả.
+  vad_eagerness: "medium"
+
+  # Khi đang chạy mic dự phòng PC1, chế độ auto vẫn hoạt động nhưng hạ độ nhạy để
+  # tiếng servo/loa trên thân robot không tự kích hoạt lượt nói.
+  fallback_vad_eagerness: "low"
+
+resilience:
+  # Hết thời gian này mà OpenAI chưa sẵn sàng thì tạo session mới.
+  connect_timeout_s: 12
+  reconnect_initial_s: 2
+  reconnect_max_s: 30
+  watchdog_interval_s: 1
+
+logging:
+  # Chỉ bật khi chẩn đoán audio.
+  audio_debug: false
+
+# Voice remains conversational by default. Runtime enables gesture tools only
+# after integration reports run_r1 armed in LOCOMOTION; this startup value stays off.
+gesture_control:
+  mode: "off"
+  socket: "/run/hb/gesture_owner.sock"
+  timeout_s: 1.0

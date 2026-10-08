@@ -1,0 +1,25 @@
+required_for_hb:
+- default_joint_pos
+- action_scale
+- joint_stiffness
+- joint_damping
+metadata:
+  action_dim: '24'
+  action_scale: 0.150,0.150,0.150,0.150,0.312,0.312,0.150,0.150,0.150,0.150,0.312,0.312,0.150,0.150,0.375,0.375,0.412,0.412,0.412,0.375,0.375,0.412,0.412,0.412
+  anchor_body_name: torso_link
+  body_names: pelvis,left_hip_roll_link,left_knee_link,left_ankle_roll_link,right_hip_roll_link,right_knee_link,right_ankle_roll_link,torso_link,left_shoulder_roll_link,left_elbow_link,left_wrist_roll_link,right_shoulder_roll_link,right_elbow_link,right_wrist_roll_link
+  command_names: motion
+  default_joint_pos: -0.100,0.000,0.000,0.300,-0.200,0.000,-0.100,0.000,0.000,0.300,-0.200,0.000,0.000,0.000,0.350,0.180,0.000,0.870,0.000,0.350,-0.180,0.000,0.870,0.000
+  joint_damping: 2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,1.000,1.000,1.000,2.000,2.000,1.000,1.000,1.000
+  joint_names: left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,right_hip_pitch_joint,right_hip_roll_joint,right_hip_yaw_joint,right_knee_joint,right_ankle_pitch_joint,right_ankle_roll_joint,waist_roll_joint,waist_yaw_joint,left_shoulder_pitch_joint,left_shoulder_roll_joint,left_shoulder_yaw_joint,left_elbow_joint,left_wrist_roll_joint,right_shoulder_pitch_joint,right_shoulder_roll_joint,right_shoulder_yaw_joint,right_elbow_joint,right_wrist_roll_joint
+  joint_stiffness: 100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,40.000,40.000,20.000,20.000,20.000,40.000,40.000,20.000,20.000,20.000
+  metadata_note: HB deployment fields copied from this same-run GOC motion export;
+    actor graph unchanged.
+  motion_file: doremon_r1_robot_feasible.npz
+  observation_dim: '129'
+  observation_names: command,motion_anchor_ori_b,base_ang_vel,joint_pos,joint_vel,actions
+  policy_dt_s: '0.02'
+  policy_hz: '50.0'
+  run_path: 2026-09-27_17-31-11_dance_3_doremon_retrain_resume_to_20k
+  task: Unitree-R1-Tracking-No-State-Estimation
+  training_iterations: 20000/20000

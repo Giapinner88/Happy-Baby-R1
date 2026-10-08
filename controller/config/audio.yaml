@@ -1,0 +1,34 @@
+# Voice/audio runtime config. Empty values disable an optional cue.
+voice_enabled: true
+voice_volume: 0.95
+voice_speaker_id: 0
+voice_startup: "src/audio/start2.mp3"
+startup_voice_delay_s: 0
+voice_stand_lock: "src/audio/khoacung2.mp3"
+voice_locomotion: "src/audio/batchedodichuyen2.mp3"
+voice_sit_down: "src/audio/dangangngoixuong.mp3"
+voice_safe_stop: "src/audio/kichhoatchedoantoan2.mp3"
+voice_mimic_2: "src/audio/lamtynhac.mp3"
+voice_mimic_3: "src/audio/voice_doremon.mp3"
+voice_mimic_4: ""
+voice_mimic_5: ""
+voice_mimic_6: ""
+voice_mimic_7: ""
+voice_mimic_8: ""
+voice_fast_speed: "src/audio/tangtoc2.mp3"
+voice_slow_speed: "src/audio/giamtoc2.mp3"
+voice_conflict: "src/audio/xungdot.mp3"
+voice_battery_low: "src/audio/pinthap.mp3"
+voice_battery_critical: "src/audio/pincan.mp3"
+voice_zero_torque: "src/audio/zero2.mp3"
+voice_teleop_on: "src/audio/teleop_on.wav"
+voice_teleop_off: "src/audio/teleop_off.wav"
+voice_get_up: ""
+voice_lie_down: ""
+
+# Gains follow the physical motors: IDL 30 (yaw) uses the lower gain;
+# IDL 29 (pitch) uses the higher gain.
+head_yaw_kp: 10.0
+head_yaw_kd: 1.0
+head_pitch_kp: 20.0
+head_pitch_kd: 10.0

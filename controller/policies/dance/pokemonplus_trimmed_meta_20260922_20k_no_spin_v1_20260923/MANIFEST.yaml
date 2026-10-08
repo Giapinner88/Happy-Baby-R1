@@ -1,0 +1,37 @@
+name: pokemonplus_trimmed_meta_20260922_20k_no_spin_v1_20260923
+kind: r1_mimic_dance
+status: derived_motion_variant; hardware_acceptance_pending
+derived_from:
+  package: pokemonplus_trimmed_meta_20260922_20k
+  motion: pokemonplus_r1_robot_feasible_trimmed.npz
+motion_edit:
+  removed_interval_frames: [2213, 2324]
+  replacement_interval_frames: [1485, 1596]
+  fade_each_side_frames: 20
+  original_frame_count_preserved: true
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-22_09-01-54_pokemonplus_trimmed_meta_resume_10k_to_20k_gpu0_20260922
+training:
+  repo: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  motion: pokemonplus_r1_robot_feasible_trimmed.npz
+  gpu: 0
+  num_envs: 2048
+  iterations: 20000
+  resume_from: model_10000.pt
+  final_checkpoint: model_19999.pt
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+artifacts:
+  policy: policy.onnx
+  checkpoint: model_19999.pt (source run; not copied into deploy folder)
+  motion: pokemonplus_r1_robot_feasible_no_spin_v1.npz
+  onnx_metadata: onnx_metadata.yaml
+hb:
+  slot: dance_6
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+sha256:
+  policy.onnx: 66ea964450c107cb345cb3a1fcd3160342bbb40822480e207257067baeefb1c3
+  pokemonplus_r1_robot_feasible_no_spin_v1.npz: 3a6c6d01112ceb6417cdf65602b1f23807d7135598c4f410d6dbf0a23affa83c

@@ -1,0 +1,15 @@
+folder       : pokemonplus_v3_goc_leg-ankle-waist_damp2p5_muF0p3-1p2_2048env_17k_20260928
+variant      : v3 — V3 GOC damping variant; R1_ACTUATOR_LEG (hips and knees), ANKLE, and WAIST damping 2.5; arm 2.0, wrist 1.0; friction 0.3-1.2; 2048 env; 17000 iterations; fresh from scratch.
+repo         : unitree_rl_mjlab_goc
+run          : 2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 17000/17000
+checkpoint   : model_16999.pt
+motion       : pokemonplus_r1_robot_feasible.npz (3466 frames @ 50 Hz)
+audio        : pokemon.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB slot      : dance_4
+status       : packaged; hardware_acceptance_pending
+notes        : Fresh from scratch; 2048 environments; 17000 iterations; friction range 0.3-1.2; leg, ankle, waist damping 2.5; arm 2.0; wrist 1.0.

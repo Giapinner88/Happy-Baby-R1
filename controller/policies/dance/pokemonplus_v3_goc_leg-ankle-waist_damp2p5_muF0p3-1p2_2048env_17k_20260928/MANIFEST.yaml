@@ -1,0 +1,51 @@
+name: pokemonplus_v3_goc_leg-ankle-waist_damp2p5_muF0p3-1p2_2048env_17k_20260928
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 17000
+  iterations_target: 17000
+  checkpoint: model_16999.pt
+  notes: V3 GOC damping variant; R1_ACTUATOR_LEG (hips and knees), ANKLE, and WAIST
+    damping 2.5; arm 2.0, wrist 1.0; friction 0.3-1.2; 2048 env; 17000 iterations;
+    fresh from scratch.
+motion:
+  file: pokemonplus_r1_robot_feasible.npz
+  frames: 3466
+  fps: 50.0
+audio: pokemon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  slot: dance_4
+  speed: 1.0
+  volume: 1.0
+  trim_deg: 0.0
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: pokemonplus_r1_robot_feasible.npz
+  audio: pokemon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_16999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 77e32f8c32ccec89d62a97abdee216831d8cbb3d18bc524058bef049fa79194b
+  env.yaml: 6a983e2eb772734d93f0d1120b3b7c4228b5b93619defc2516785cd4b4e8dd8a
+  model_16999.pt: d4f29c77d3218a24e2febb2200aac4699c3f2d9d3cc872a567c28a4f6890ab88
+  onnx_metadata.yaml: 6fc5b3707403f55a537dee381ab6fa1117fe9070c7599df5566f1d0a96d4f9b2
+  pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
+  pokemonplus_r1_robot_feasible.npz: b70e21bc807037c28c02cf79285d243da5b208121f3efa6e1194ef77b6940bb3
+  policy.onnx: a1f7099772b65f8322be7f77e30e1244fe2333fd9d6c96ebb46c9fc324b558b3
+  source.txt: 0c8af567e47b0723f6fd54df4c0eb20c1157668e7d244da58320fe0127f9de15
+version: v3
+variant: V3 GOC damping variant; R1_ACTUATOR_LEG (hips and knees), ANKLE, and WAIST
+  damping 2.5; arm 2.0, wrist 1.0; friction 0.3-1.2; 2048 env; 17000 iterations; fresh
+  from scratch.

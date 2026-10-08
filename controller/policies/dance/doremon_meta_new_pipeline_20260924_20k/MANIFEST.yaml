@@ -1,0 +1,33 @@
+name: doremon_meta_new_pipeline_20260924_20k
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-24_11-23-05_doremon_meta_new_pipeline_npz_20k_2048_gpu0_20260924
+training:
+  task: Unitree-R1-Tracking-No-State-Estimation
+  gpu: 0
+  num_envs: 2048
+  iterations: 20000
+  seed: 42
+  kind: meta_new_pipeline_npz
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+artifacts:
+  policy: policy.onnx
+  checkpoint: model_19999.pt
+  motion: video1.npz
+  audio: doremon.mp3
+hb:
+  slot: dance_6
+  scanner_contract: one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+sha256:
+  agent.yaml: 762a468f84225c0537e2c616eacf47b5caacf071738f80fda7b0391817b21014
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  env.yaml: 08a874e2bae2e61eafbedf809b9a265fa5fe976f72a727a4a40dba710acbb2e2
+  model_19999.pt: 1e7ebbacc385b83bfcd5a1d912a005c5c662ec232e6c5c0cb4d2e39e8d7fb4d3
+  onnx_metadata.yaml: c05437defd865754ce5308b0dcbbfdf1d32b93a9335f68a07239fdcc5cc9d03d
+  policy.onnx: 14cfe34959e32c1e9372c6b0b0a10c362e85227631d612f14bc00a01fdffdf0e
+  source.txt: 4e8f672d5138915d90d82e735c5679b9651d5f0fa1cd48083e7e6fd439fb1b8b
+  video1.npz: 4d98823edfc75af91d7ebed3b58dedb3e52610b63ee3914bba9f7796b521bc34

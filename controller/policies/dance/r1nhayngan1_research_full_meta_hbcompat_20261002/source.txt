@@ -1,0 +1,14 @@
+folder       : r1nhayngan1_research_full_meta_hbcompat_20261002
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-02_00-59-52_r1nhayngan1_research_full_meta_hbcompat_20k_2048_gpu0_jerkfix_20261002
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-02_00-59-52_r1nhayngan1_research_full_meta_hbcompat_20k_2048_gpu0_jerkfix_20261002
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-02_00-59-52_r1nhayngan1_research_full_meta_hbcompat_20k_2048_gpu0_jerkfix_20261002/2026-10-02_00-59-52_r1nhayngan1_research_full_meta_hbcompat_20k_2048_gpu0_jerkfix_20261002.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : r1nhayngan1_r1_robot_feasible_jerk_interpolated.npz (555 frames @ 50 Hz)
+audio        : r1nhayngan1_source.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : research_full; jerk-interpolated; HB-compatible Meta No-State training on GPU0

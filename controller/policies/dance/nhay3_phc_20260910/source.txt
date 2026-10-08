@@ -1,0 +1,7 @@
+folder    : nhay3_phc_20260910
+run       : 2026-09-11_00-44-41_nhay3_phc_20260910 (14999/15000 iter, 1000 env)
+npz (ref) : nhay3_r1_20260910.npz
+onnx      : policy.onnx
+checkpoint: model_14999.pt
+reference : 1161 frame / 23.22s, entry/exit stand-bridge 0.5s, 0 frame giat -> PASS
+pipeline  : PHC moi cap nhat -> train Unitree-R1-PHC-Mimic-No-State-Estimation

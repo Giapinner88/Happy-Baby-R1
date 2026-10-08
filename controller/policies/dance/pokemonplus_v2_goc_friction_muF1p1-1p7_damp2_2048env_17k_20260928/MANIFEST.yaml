@@ -1,0 +1,49 @@
+name: pokemonplus_v2_goc_friction_muF1p1-1p7_damp2_2048env_17k_20260928
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 17000
+  iterations_target: 17000
+  checkpoint: model_16999.pt
+  notes: V2 GOC friction variant; foot friction range 1.1-1.7; default actuator damping
+    2.0; 2048 env; 17000 iterations; fresh from scratch.
+motion:
+  file: pokemonplus_r1_robot_feasible.npz
+  frames: 3466
+  fps: 50.0
+audio: pokemon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  slot: dance_4
+  speed: 1.0
+  volume: 1.0
+  trim_deg: 0.0
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: pokemonplus_r1_robot_feasible.npz
+  audio: pokemon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_16999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 14e9b8df4bf2a259de7f14387ec18f1bec785c124a32199585974f30306eebff
+  env.yaml: 786f869967009d7be44d43a37191d49f3fcc001d016109ea2767a4a69be22723
+  model_16999.pt: 559d36932d6acb03b33601519ec8cfa4239cb038988fc061fae7d6c7c0c22a4e
+  onnx_metadata.yaml: ae261799a911ae2b1967c0f0990b88c7dc63c9fed905086460e877fceac792ca
+  pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
+  pokemonplus_r1_robot_feasible.npz: b70e21bc807037c28c02cf79285d243da5b208121f3efa6e1194ef77b6940bb3
+  policy.onnx: 60bc441aa6311ba1e37586f0632058090ba9d347b36dee4810905c1bfd244759
+  source.txt: 9b4e9750e445a9f541df8812502be625a530db3f10a35d3c9558004a4cd6b5aa
+version: v2
+variant: V2 GOC friction variant; foot friction range 1.1-1.7; default actuator damping
+  2.0; 2048 env; 17000 iterations; fresh from scratch.

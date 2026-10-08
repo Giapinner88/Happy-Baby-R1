@@ -1,0 +1,13 @@
+folder    : nhay1_research_full_trim_no_lean_meta_20260924
+repo      : /home/ubuntu22/train_mujoco
+run       : 2026-09-24_18-28-20_nhay1_research_full_trim_no_lean_meta_20k_2048_gpu1_20260924
+task      : Unitree-R1-Tracking-No-State-Estimation
+kind      : research_full_trim_no_lean_meta
+checkpoint: model_19999.pt
+motion    : nhay1_r1_robot_feasible_trimmed.npz (1244 frames, 50.0 Hz)
+onnx      : policy.onnx (obs 129 -> action 24; HB metadata validated)
+audio     : none bundled; existing HB dance audio mapping unchanged
+HB slot   : dance_7
+training  : 20000 iterations, 2048 environments, seed 42
+coordinate: body_pos_w world XYZ; body_quat_w MuJoCo/mjlab WXYZ
+status    : packaged; hardware acceptance pending

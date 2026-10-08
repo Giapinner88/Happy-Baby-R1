@@ -1,0 +1,12 @@
+folder    : doremon_research_full_retrain_20260924_20k
+repo      : /home/ubuntu22/train_mujoco
+run       : 2026-09-24_11-23-05_doremon_meta_existing_retrain_npz_20k_2048_gpu1_20260924
+task      : Unitree-R1-Tracking-No-State-Estimation
+kind      : meta_existing_feasible_npz
+checkpoint: model_19999.pt
+motion    : doremon_r1_robot_feasible.npz (4560 frames, 50.0 Hz)
+onnx      : policy.onnx (obs 129 -> action 24; HB metadata validated)
+audio     : doremon.mp3
+HB slot   : dance_3
+training  : 20000 iterations, 2048 environments, seed 42
+status    : packaged; hardware acceptance pending

@@ -1,0 +1,15 @@
+folder       : doremon_v4_phuma_collision-grounded_goc_damp2_muF0p3-1p2_2048env_20k_20260929
+variant      : v4 — V4 PHUMA collision-grounded GVHMR root-upright NPZ trained in GOC; friction 0.3-1.2; default damping 2.0; 2048 env; 20000 iterations; fresh from scratch.
+repo         : unitree_rl_mjlab_goc
+run          : 2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : phuma_doremon_gvhmr_70pct_root_upright_collision_grounded_50fps.npz (4396 frames @ 50 Hz)
+audio        : doremon.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB slot      : dance_3
+status       : packaged; hardware_acceptance_pending
+notes        : Fresh GOC training from scratch; 2048 environments; 20000 iterations; PHUMA-generated GVHMR 70% root-upright collision-grounded NPZ; lower-body damping 2.0; arm 2.0; wrist 1.0.

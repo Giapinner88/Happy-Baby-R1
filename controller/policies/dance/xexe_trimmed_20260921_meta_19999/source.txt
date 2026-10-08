@@ -1,0 +1,11 @@
+folder      : xexe_trimmed_20260921_meta_19999
+repo        : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta
+task        : Unitree-R1-Tracking-No-State-Estimation
+run         : 2026-09-21_02-03-25_xexe_trimmed_meta_20k_4096_gpu1_20260921
+checkpoint  : model_19999.pt (meta policy, final checkpoint at packaging time)
+onnx        : policy.onnx (obs 129 -> action 24; metadata copied from matching meta composite export)
+motion      : xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+audio       : xexe.mp3
+npz_cut     : source frame 102/50 Hz = 2.04 s removed; final exit bridge preserved
+motion_src  : /home/ubuntu22/train_mujoco/GMR/output/research_full/xexe/xexe_r1_robot_feasible_trimmed.npz
+status      : packaged; hardware acceptance pending

@@ -1,0 +1,63 @@
+{
+  "algorithm": {
+    "class_name": "PPO",
+    "clip_param": 0.2,
+    "desired_kl": 0.01,
+    "entropy_coef": 0.005,
+    "gamma": 0.99,
+    "lam": 0.95,
+    "learning_rate": 0.0003,
+    "max_grad_norm": 1.0,
+    "normalize_advantage_per_mini_batch": false,
+    "num_learning_epochs": 5,
+    "num_mini_batches": 4,
+    "rnd_cfg": null,
+    "schedule": "adaptive",
+    "symmetry_cfg": null,
+    "use_clipped_value_loss": true,
+    "value_loss_coef": 1.0
+  },
+  "class_name": "OnPolicyRunner",
+  "clip_actions": null,
+  "device": "cuda:1",
+  "empirical_normalization": null,
+  "experiment_name": "r1_isaaclab",
+  "load_checkpoint": "model_.*.pt",
+  "load_run": ".*",
+  "logger": "tensorboard",
+  "max_iterations": 10000,
+  "neptune_project": "isaaclab",
+  "num_steps_per_env": 24,
+  "obs_groups": {
+    "actor": [
+      "policy"
+    ],
+    "critic": [
+      "policy"
+    ]
+  },
+  "policy": {
+    "activation": "elu",
+    "actor_hidden_dims": [
+      256,
+      128,
+      64
+    ],
+    "actor_obs_normalization": false,
+    "class_name": "ActorCritic",
+    "critic_hidden_dims": [
+      256,
+      128,
+      64
+    ],
+    "critic_obs_normalization": false,
+    "init_noise_std": 0.65,
+    "noise_std_type": "scalar",
+    "state_dependent_std": false
+  },
+  "resume": false,
+  "run_name": "walk_teleop",
+  "save_interval": 500,
+  "seed": 42,
+  "wandb_project": "isaaclab"
+}

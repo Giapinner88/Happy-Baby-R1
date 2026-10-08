@@ -1,0 +1,1 @@
+source: video GMR/GVHMR/inputs/demo/nhaydongian3.mp4 -> training run 2026-08-05_14-17-11 (in progress, mid-training checkpoint)

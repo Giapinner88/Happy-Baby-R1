@@ -1,0 +1,19 @@
+folder    : pokemon_hoanchinh20260827
+repo      : ~/train_mujoco/unitree_rl_mjlab
+run       : 2026-08-28_12-29-02_pokemon_hoanchinh20260827  (train tu dau 20000 iter, 4096 env, GPU0)
+task      : Unitree-R1-Tracking-No-State-Estimation (Flat)
+npz (ref) : pokemon_r1_hoanchinh20260827.npz
+onnx      : policy.onnx   <- logs/.../2026-08-28_12-29-02_pokemon_hoanchinh20260827/policy.onnx
+mp3       : pokemon.mp3
+ket qua   : mean reward 38.43, episode length 500.00 (kich tran),
+            termination anchor_pos/anchor_ori/ee_body_pos = 0.0000 (chi time_out).
+note      : Cung quy trinh voi doremon_hoanchinh20260827 - xem source.txt cua thu muc do
+            va GMR/R1_IK_CONFIG_FIX.md. Tom tat:
+            - config IK R1 da sua toan bo (target ban chan = CO CHAN + pos_offset ngang
+              +-0.022, go rot_offset pelvis/hong, vai pos_weight 50->10, them target co tay,
+              chuan hoa chieu cao theo khung xuong do duoc)
+            - npz: neo dat per-frame (delta trung vi 0.1576 m) -> lam phang ban chan
+              -> Butterworth bac 4 zero-phase cutoff 5Hz -> clamp 5deg -> loc lai
+              -> stand-bridge 1.5s vao/ra HOME -> csv_to_npz 50fps
+            - KHONG bounded_xy, KHONG forward-lean
+            - gia toc khop dinh giam 10.4 lan, jerk giam 8.3 lan so voi ban tho

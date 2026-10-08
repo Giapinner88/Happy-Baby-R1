@@ -1,0 +1,65 @@
+dance_2: xexe_trimmed_20260921_meta_19999
+dance_speed_2: 1.0
+dance_volume_2: 1.0
+dance_trim_deg_2: 0.0
+dance_3: r1nhayngan1_research_full_meta_hbcompat_20261002
+dance_speed_3: 1.0
+dance_volume_3: 1.0
+dance_trim_deg_3: 0.0
+dance_4: xexe_goc_friction15_p1_canonical31_20k_20261005
+dance_speed_4: 1.0
+dance_volume_4: 1.0
+dance_trim_deg_4: 0.0
+
+dance_5: xexe_goc_friction15_p2_doremon21_20k_20261005
+dance_speed_5: 1.0
+dance_volume_5: 1.0
+dance_trim_deg_5: 0.0
+
+dance_6: xexe_goc_friction15_p3_trim21_20k_20261005
+dance_speed_6: 1.0
+dance_volume_6: 1.0
+dance_trim_deg_6: 0.0
+
+dance_7: xexe_goc_friction15_p4_canonical21_20k_20261005
+dance_speed_7: 1.0
+dance_volume_7: 1.0
+dance_trim_deg_7: 0.0
+
+dance_8: r1nhayngan1_2_goc_matched_friction_20k_20261005
+dance_speed_8: 1.0
+dance_volume_8: 1.0
+dance_trim_deg_8: 0.0
+
+
+# start_frame=-1: tự tìm frame mở đầu mượt. Handover diễn ra khi robot đủ tĩnh hoặc hết max_s.
+dance_start_frame: -1
+dance_start_search_frames: 200
+mimic_announce_delay_s: 2.0
+mimic_announce_min_s: 0.3
+mimic_announce_timeout_s: 20.0
+# Do not leave locomotion while the body/joints are still moving. If the gate
+# is not met, the robot remains in locomotion with zero command.
+mimic_entry_settle_s: 0.4
+mimic_entry_gyro_max: 0.5
+mimic_entry_dq_max: 0.6
+mimic_warmup_s: 1.5
+mimic_cooldown_s: 1.8
+mimic_handover_tilt: 0.15
+mimic_handover_gyro: 0.5
+mimic_handover_min_s: 0.3
+mimic_handover_max_s: 3.0
+# Keep the established legacy handover active for the current hardware route.
+# Transition v2 is opt-in and remains available for isolated validation only;
+# the current dance assets showed target transients with v2 enabled.
+mimic_transition_v2: false
+mimic_transition_search_frames: 200
+mimic_transition_clip_ramp_s: 0.35
+mimic_transition_exit_pos_tol: 0.12
+mimic_transition_exit_dq_tol: 0.60
+mimic_transition_fallback_pos_tol: 0.25
+mimic_transition_fallback_dq_tol: 1.50
+mimic_telemetry_enabled: true
+mimic_telemetry_hz: 100
+mimic_telemetry_post_s: 5.0
+mimic_telemetry_dir: logs/telemetry

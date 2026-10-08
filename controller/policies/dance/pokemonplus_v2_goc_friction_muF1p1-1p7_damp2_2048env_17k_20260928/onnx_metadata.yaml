@@ -1,0 +1,18 @@
+source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k.onnx
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k
+required_for_hb:
+- default_joint_pos
+- action_scale
+- joint_stiffness
+- joint_damping
+framework_metadata:
+  run_path: 2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k
+  joint_names: left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,right_hip_pitch_joint,right_hip_roll_joint,right_hip_yaw_joint,right_knee_joint,right_ankle_pitch_joint,right_ankle_roll_joint,waist_roll_joint,waist_yaw_joint,left_shoulder_pitch_joint,left_shoulder_roll_joint,left_shoulder_yaw_joint,left_elbow_joint,left_wrist_roll_joint,right_shoulder_pitch_joint,right_shoulder_roll_joint,right_shoulder_yaw_joint,right_elbow_joint,right_wrist_roll_joint
+  joint_stiffness: 100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,40.000,40.000,20.000,20.000,20.000,40.000,40.000,20.000,20.000,20.000
+  joint_damping: 2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,2.000,1.000,1.000,1.000,2.000,2.000,1.000,1.000,1.000
+  default_joint_pos: -0.100,0.000,0.000,0.300,-0.200,0.000,-0.100,0.000,0.000,0.300,-0.200,0.000,0.000,0.000,0.350,0.180,0.000,0.870,0.000,0.350,-0.180,0.000,0.870,0.000
+  command_names: motion
+  observation_names: command,motion_anchor_ori_b,base_ang_vel,joint_pos,joint_vel,actions
+  action_scale: 0.150,0.150,0.150,0.150,0.312,0.312,0.150,0.150,0.150,0.150,0.312,0.312,0.150,0.150,0.375,0.375,0.412,0.412,0.412,0.375,0.375,0.412,0.412,0.412
+  anchor_body_name: torso_link
+  body_names: pelvis,left_hip_roll_link,left_knee_link,left_ankle_roll_link,right_hip_roll_link,right_knee_link,right_ankle_roll_link,torso_link,left_shoulder_roll_link,left_elbow_link,left_wrist_roll_link,right_shoulder_roll_link,right_elbow_link,right_wrist_roll_link

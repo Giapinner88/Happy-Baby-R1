@@ -1,0 +1,29 @@
+[Unit]
+Description=HB R1 robot-local Quest WebXR H4 teleop
+After=network-online.target hb_high_level.service hb_teleop_cert.service
+Wants=network-online.target hb_high_level.service hb_teleop_cert.service
+Requires=hb_high_level.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+WorkingDirectory=@HB_ROOT@
+Environment=HB_ROOT=@HB_ROOT@
+EnvironmentFile=/etc/hb/teleop/runtime.env
+RuntimeDirectory=hb
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+ExecStartPre=/bin/bash @HB_ROOT@/teleop/scripts/robot_runtime_preflight.sh
+ExecStart=/bin/bash @HB_ROOT@/teleop/scripts/run_robot_teleop.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillMode=control-group
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/hb @HB_ROOT@/teleop/logs @HB_ROOT@/teleop/third_party/xr_teleoperate_r1_a5_845b25b/teleop/robot_control /etc/hb/teleop
+
+[Install]
+WantedBy=multi-user.target
