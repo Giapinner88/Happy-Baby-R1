@@ -1,0 +1,48 @@
+name: doremon_ab_w21_final11_goc_friction11to17_20k_8192_20261012
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-12_06-03-45_doremon_ab_w21_final11_goc_friction11to17_20k_8192_gpu1_20261012
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-12_06-03-45_doremon_ab_w21_final11_goc_friction11to17_20k_8192_gpu1_20261012/2026-10-12_06-03-45_doremon_ab_w21_final11_goc_friction11to17_20k_8192_gpu1_20261012.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Doremon A/B W21/final11 GOC run; friction randomised in [1.1,1.7]; completed
+    20k iterations.
+motion:
+  file: doremon_w21_final11.npz
+  frames: 4560
+  fps: 50.0
+audio: doremon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon_w21_final11.npz
+  audio: doremon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 7a1e66c05081ae23ff5bed71884dbcf06be2e258b04426f883562b74cbc643d6
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon_w21_final11.npz: b081c094fe2203dc8da5fbca3ea9c26a328a57e5edfbbe5bb99bd508aec09351
+  env.yaml: 239fb210f5c53dd0e55ca0107a8d997cf73ba2e8393fe7caadb78a2f34471f25
+  model_19999.pt: 4753798d917ecf3675e75e17ba027aa362557dc5d4c9cf06ca7ef9e1496bb36a
+  onnx_metadata.yaml: d10d9c9d2ca8ac4f9b8b56f94da5a64cd89e6de741e50d3910b3d8d9b639aaa8
+  policy.onnx: 52c4ca5a5930e9a5a4ae0ad59c2e54e0e23decee03a850e7a70320bc97a380a9
+  source.txt: 4a19ebcb6e5362bb46e9a0bac2b12a498e9857d8333ca2ccd0e1a3876e93f2c0

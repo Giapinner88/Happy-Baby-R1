@@ -1,0 +1,63 @@
+name: xexe_r1motion_goc_fric0p3to0p6_8192env_20k_20261011
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: '# Xexe R1MotionLab — GOC friction 0.3–0.6
+
+
+  Fresh GOC training completed 20,000 iterations with 8,192 environments, seed 42,
+  actor 129 observations and 24 actions, ankle tracking, and foot-friction randomisation
+  from 0.3 to 0.6.
+
+
+  The training motion is the Xexe NPZ processed by R1MotionLab: 5,007 frames at 50
+  Hz with preserved timing. The source package records the paired Xexe MP3; no additional
+  trim or retiming was applied here.
+
+
+  This policy is packaged inactive and has no assigned HB dance slot. The actor graph
+  and deployment metadata are exported from this same GOC training run. Hardware acceptance
+  is pending.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: null
+motion:
+  file: xexe_r1motion_candidate.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1motion_candidate.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 0181309ed81ed797eb8ff943b000527d4d0d167eeacb121a818a0a5f86da2a10
+  agent.yaml: 6b967296e13a5edce8334024843efb533c32c67f25c1919b9bd5ec1696ace959
+  env.yaml: dfb79d0ad65fe107d2bec06ead04704151cd44391fd82f8ae44e0a71008847c0
+  model_19999.pt: 943f80dff76b8c23d25b5381aa84fba06decb93d15675e7262b7324e2d822e03
+  onnx_metadata.yaml: ad986ed3763d8c4ee4e532107d230c669657b5a7c92bdea310551ea0bfdd1fbd
+  policy.onnx: b5a58fbe6bfe680fe63ac2caeca6788cb670f0beda74368b435aa1722112e972
+  source.txt: d215bfea337e357d51de116ed6b44d5949a8d56ea622d6d631646d0f314b40f3
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1motion_candidate.npz: d399f35124e4a956193e14e01fbb75b5af7f43db469fd0a683e6e53887257298

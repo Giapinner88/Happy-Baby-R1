@@ -1,0 +1,47 @@
+name: doremon_raw_w21w11_goc_20k_8192_20261011
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_raw_w21w11_goc_20k_8192_gpu0_20261011
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_raw_w21w11_goc_20k_8192_gpu0_20261011/2026-10-11_11-12-28_doremon_raw_w21w11_goc_20k_8192_gpu0_20261011.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Doremon GOC tracking policy; packaged inactive after completed 20k run.
+motion:
+  file: doremon_gmr_raw_jerk_only_w21w11_softlimits.npz
+  frames: 4395
+  fps: 50.0
+audio: doremon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon_gmr_raw_jerk_only_w21w11_softlimits.npz
+  audio: doremon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 429a5de64996df491dbfadb7a02bd17a166eb696d2202a68c13fc7970ff9ac02
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon_gmr_raw_jerk_only_w21w11_softlimits.npz: 21c728f4c498872ab49b94abada2d89ff1dcd9ec4748cbeca4be07e0713a8d3c
+  env.yaml: 423434518355628a7d09f6392ff477659c0e0a0a2344a3d56162cc2e2f4e1823
+  model_19999.pt: 6cc9039cf82261318f9f7c9f50d6f72c0dbe3f2b5bccc086ab0487d542e492e1
+  onnx_metadata.yaml: ee735fbd18c374b781846b53d08621891135e8eeca47f27d1e5b977501a81b25
+  policy.onnx: d4a16da83d70a137d05a0bfde426d43761c4033ea81c5f08c8bcc936320f8ae1
+  source.txt: 5fe9cac07db3a4ec0e840353d731fc4268ec31764eb9b055a19a1b82bba3d8fc

@@ -1,0 +1,48 @@
+name: doremon_raw_w21w11_goc_friction11to17_20k_8192_20261013
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Doremon raw W21/W11 GOC resume; friction randomised in [1.1,1.7]; completed
+    20k iterations.
+motion:
+  file: doremon_gmr_raw_jerk_only_w21w11_softlimits.npz
+  frames: 4395
+  fps: 50.0
+audio: doremon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon_gmr_raw_jerk_only_w21w11_softlimits.npz
+  audio: doremon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 5af94c8d8af9426eb438bed0ea47bffc6284847e18622f06e8cb84b7b9198df2
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon_gmr_raw_jerk_only_w21w11_softlimits.npz: 21c728f4c498872ab49b94abada2d89ff1dcd9ec4748cbeca4be07e0713a8d3c
+  env.yaml: 80340bfeb9b785dd4c90519504514e344d487c06641d721e7bcdd0803d381d9f
+  model_19999.pt: c56bb6da1f8ea435758caf7cd7c8153b547f8541ffd34a656c2040758ea2dcef
+  onnx_metadata.yaml: ccc346fd397d5b9311f4450075c81061a99a409a37b327d20ff2d394217f5425
+  policy.onnx: edcf3dc15585bff6bc747f975015500e809e244c6f14c9bcf51ec8feba1acadd
+  source.txt: fe3f074ad3af9b14b4b18388f69718c625bcbcfb6007bd4857324c9eda2d50d4

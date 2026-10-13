@@ -1,0 +1,6 @@
+folder    : doremon_v4
+run       : 2026-07-29_19-23-21_doremon_final_nobound_flat  (top model_30000)
+task      : Flat
+npz (ref) : doremon_r1_final.npz
+onnx      : policy.onnx
+mp3       : doremon.mp3

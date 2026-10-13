@@ -1,0 +1,69 @@
+name: xexe_r1motion_goc_fric11to17_8192env_30k_20261010
+kind: r1_mimic_dance
+status: training_in_progress_or_iteration_count_unverified
+description: '# Xexe GOC R1MotionLab — [1.1, 1.7]
+
+
+  Temporary test snapshot; training continues; checkpoint model_18500.pt (18501 updates,
+  zero-based index).
+
+
+  Original training run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708
+
+  Immutable same-run export snapshot: /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric11to17_8192env_30k_20261010/checkpoint_18500/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708
+
+
+  Fresh training, 8192 envs, target 30000 iterations, seed 42, actor 129 obs / 24
+  actions, ankle tracking. Foot friction [1.1, 1.7]. NPZ after R1MotionLab, 5007 frames
+  / 50 Hz, timing preserved. Local dynamics solution only covers 240/5007 reference
+  frames; other poses retained.
+
+
+  Audio preserves the original Xexe motion/audio pairing. Package stored without selecting
+  a dance slot. Exact deployment metadata is copied from this run, not from another
+  policy.'
+source_run: /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric11to17_8192env_30k_20261010/checkpoint_18500/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708
+metadata_source: /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric11to17_8192env_30k_20261010/checkpoint_18500/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 18501
+  iterations_target: 30000
+  checkpoint: model_18500.pt
+  notes: 'Original same-run source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708;
+    immutable export copy for packaging'
+motion:
+  file: xexe_r1motion_candidate.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1motion_candidate.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_18500.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: b21be2cfed08ce334f7b1f3a6f22dd775c3871bf7d4ed7b8dd818af03f30118f
+  agent.yaml: bfdfdc21972ba74cc10eafb33fb02ea9a0a05ff8874c99f252cde03b89a2e455
+  env.yaml: 555d2b1b64f649b6371c1b57e21f221499d1e7c574dc0e1cc1a43659dddd8ed3
+  model_18500.pt: 360c426fbe2ed4b87144357d24e9dc95985095beffa68264b37bf39d0b1f497b
+  onnx_metadata.yaml: 091582d8e2a7d5c85cc39679f59c9d33229c9c48ae87dfdcdcfcb86955d37d56
+  policy.onnx: f3c3b695366754fbde14487bcd7ffab71e05ebba39593dea4457565afc08c0f7
+  source.txt: 8a0f761b78c1c6c5bfcfb909cbef96b91490c5311bb25ad53fd4ef05c6c6823b
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1motion_candidate.npz: d399f35124e4a956193e14e01fbb75b5af7f43db469fd0a683e6e53887257298

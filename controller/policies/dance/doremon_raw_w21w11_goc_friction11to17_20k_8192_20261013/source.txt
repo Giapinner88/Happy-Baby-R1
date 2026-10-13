@@ -1,0 +1,14 @@
+folder       : doremon_raw_w21w11_goc_friction11to17_20k_8192_20261013
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : doremon_gmr_raw_jerk_only_w21w11_softlimits.npz (4395 frames @ 50 Hz)
+audio        : doremon.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Doremon raw W21/W11 GOC resume; friction randomised in [1.1,1.7]; completed 20k iterations.

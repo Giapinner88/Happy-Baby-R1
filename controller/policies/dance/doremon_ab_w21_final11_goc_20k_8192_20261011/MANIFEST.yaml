@@ -1,0 +1,47 @@
+name: doremon_ab_w21_final11_goc_20k_8192_20261011
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Doremon GOC tracking policy; packaged inactive after completed 20k run.
+motion:
+  file: doremon_w21_final11.npz
+  frames: 4560
+  fps: 50.0
+audio: doremon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon_w21_final11.npz
+  audio: doremon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 0cb343bd61330d6a3f5990d7ba48e35f56352ffc2833dfdf1d86fe72c7cd6fac
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon_w21_final11.npz: b081c094fe2203dc8da5fbca3ea9c26a328a57e5edfbbe5bb99bd508aec09351
+  env.yaml: 7a95327a20d7224b513444fa8a3600e90f475edd77c137cc6c9fd07dc1daa9f4
+  model_19999.pt: 64c335359247fe576eb5d345c77d5e0c05edd20af92813d10c2daf3cd842a7c9
+  onnx_metadata.yaml: f4e0c8b80ae13c5820d19117c7d3eb8e2477315db4e2e4ab542fb92f1c529b27
+  policy.onnx: 0bca930741a2250b030406a302aa541a2303bf918467552dc9fb55086944f953
+  source.txt: e80a46ec94307bbdbea1930a5e0419fa2aaec27505d7a40798bf15d47097fa28

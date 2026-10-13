@@ -1,0 +1,9 @@
+folder    : doremon_20260823
+run       : 2026-08-24_00-01-13  (fine-tune 20000 iter, top model_56500)
+task      : Unitree-R1-Tracking-No-State-Estimation (Flat)
+npz (ref) : doremon_r1_20260823.npz
+onnx      : policy.onnx   <- logs/.../2026-08-24_00-01-13/policy.onnx
+mp3       : doremon.mp3
+note      : nguon doremon_r1_leaned.csv (COM lean 8) + stand-bridge 1.5s vao/ra ve HOME locomotion.
+            Fine-tune tu BASE 50p (vidtonghop_merged, model_36500). Config: giam bam chan
+            (bo ankle khoi ee_body_pos + 4 term chinh) + DR mo rong (mass/PD/torque/damping/friction).
