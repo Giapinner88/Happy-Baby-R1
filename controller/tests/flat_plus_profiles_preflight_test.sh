@@ -29,7 +29,8 @@ for profile in "${profiles[@]}"; do
     cp "$root/config/$example" "$tmp/$profile/config/tuning.yaml"
     if [[ "$profile" == gait_0917_armfree_settle_override ]]; then
         sed -i \
-            -e 's/^flat_model:.*/flat_model: policy_flat_plus_gait_0917_armfree.onnx/' \
+            -e '/^flat_policy_contract:/d' \
+            -e 's/^flat_model:.*/walk_policy: flat_plus_gait_0917_armfree/' \
             -e 's/^gait_settle_dwell_s:.*/gait_settle_dwell_s: 0.50/' \
             "$tmp/$profile/config/tuning.yaml"
     fi

@@ -2,60 +2,92 @@
 
 > **Nội bộ AiRA-Laboratory.** Không chia sẻ mã nguồn, tài liệu, log vận hành, hình ảnh robot hoặc dữ liệu test ra bên ngoài khi chưa được phép.
 
-Nhánh `develop` là **bản tích hợp chuẩn để chạy trên robot Unitree R1**. Kết quả từ các nhánh năng lực (đi bộ, nhảy, teleop, giọng nói) được gom vào đây; mã huấn luyện, mô phỏng và thí nghiệm ở lại nhánh gốc. Clone repo này lên robot, build một lần là chạy.
+Nhánh `develop` là **bản tích hợp chuẩn để chạy trên robot Unitree R1**. Kết quả từ các nhánh năng lực (đi bộ, nhảy, teleop, giọng nói) được gom vào đây; mã huấn luyện, mô phỏng và thí nghiệm ở lại nhánh gốc.
 
-## Chạy trên robot
+## Mô hình triển khai
 
-Robot: Ubuntu 20.04 aarch64, DDS nội bộ `eth10`.
-
-```bash
-git clone <repo> ~/HB && cd ~/HB
-make build        # controller + voice bridge + integration + môi trường voice
-make preflight    # kiểm tra model/config/asset, không xuất lệnh động cơ
-make install      # cài và bật service (sudo); controller chỉ restart khi robot DISARMED
-make status
+```text
+máy trạm (repo git, sửa code, test)  ──./hb field / ./hb deploy (SSH qua Tailscale)──►  robot: /home/unitree/HB
 ```
 
-Cần có sẵn trên robot: `cmake`, `g++`, zlib, Unitree SDK2 C++ cài vào hệ thống (`find_package(unitree_sdk2)`), mã nguồn SDK2 có audio R1 ở `~/unitree_sdk2` hoặc `~/unitree_sdk2-main` (cho voice bridge), `uv` ở `~/.local/bin/uv`. ONNX Runtime đã có sẵn trong `controller/thirdparty/`. Secret (API key) đặt trong `/etc/hb/stack.env`, không bao giờ vào repo.
+- **Máy trạm là nguồn sự thật duy nhất.** Repo chỉ được clone và sửa trên máy trạm; robot không có git, không clone, không sửa tại chỗ.
+- `./hb field` đồng bộ toàn bộ thư mục hiện tại sang robot qua SSH (Tailscale), build ARM64 **trên robot**, chạy preflight, cài/refresh service rồi restart an toàn (controller chỉ restart khi robot `DISARMED`). Dùng được ở mọi mạng — phòng lab hay hiện trường.
+- Robot giữ bản sao chạy được và backup mỗi lần deploy (`./hb rollback` để quay lại). Lỡ sửa config trên robot thì kéo về bằng `./hb pull` trước khi deploy, nếu không lần deploy sau sẽ ghi đè.
 
-Teleop Quest (chỉ khi robot treo trên giá): `make teleop-runtime` — xem [docs/teleop.md](docs/teleop.md).
+## Buổi chạy
 
-Từ máy dev: `make deploy` (toàn bộ) hoặc `make deploy-policy` (chỉ policy); robot được tự dò, hoặc `ROBOT=unitree@<ip>`. `make help` liệt kê mọi lệnh.
+```bash
+# 1. Treo robot lên giá, bật nguồn. Chưa bấm L2+R2 / R1+R2 (robot phải DISARMED để controller được restart).
+./hb field          # chờ robot online trên Tailscale -> đồng bộ + build + preflight + restart an toàn -> status
+# 2. Bật tay cầm R3; thao tác theo docs/controls.md (bàn giao L2+R2 rồi giữ R1+R2, ...)
+./hb logs high      # theo dõi controller (hoặc ./hb ssh để vào shell robot)
+```
+
+Không đổi gì từ lần trước thì không cần `./hb field`; robot tự chạy stack khi bật nguồn. Chỉ đổi một phần thì deploy riêng phần đó (bảng dưới). `./hb field` hỏi mật khẩu sudo của `unitree` một lần ở đầu, và có thể in một link xác thực Tailscale SSH — mở link, xác nhận, lệnh tự chạy tiếp.
+
+| Đổi gì                                   | Lệnh từ máy trạm                                    | Restart                                                      |
+| ------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| Bất kỳ / không chắc                     | `./hb field`                                          | controller khi`DISARMED`; voice, integration, teleop luôn |
+| Policy đi bộ (bundle,`locomotion.yaml`) | `./hb deploy policy`                                  | controller khi`DISARMED`                                   |
+| Điệu nhảy                                | `./hb deploy dance`                                   | controller khi`DISARMED`                                   |
+| Teleop Quest                                | `./hb deploy teleop`                                  | chỉ runtime teleop (được cả khi ARMED)                  |
+| Voice / preset / integration                | `./hb deploy voice` · `presets` · `integration` | không đụng controller                                     |
+
+Chi tiết lệnh, xác thực, rollback, sự cố: [docs/deploy.md](docs/deploy.md). Thao tác nút: [docs/controls.md](docs/controls.md).
+
+## Chuẩn bị (một lần)
+
+**Máy trạm** (Ubuntu x86_64):
+
+- Clone repo này; `cmake`, `g++`, `rsync`, `python3`; ≥ 2 GB trống trong `/tmp` (preflight model local).
+- Tailscale đăng nhập cùng tailnet với robot (`tailscale status` thấy `robot-r1`). Robot có IP Tailscale cố định `100.82.165.36`; đổi bằng `HB_ROBOT_TAILSCALE=<ip>`.
+- `./hb build` một lần để có `run_r1` local (deploy policy dùng nó để preflight trước khi gửi).
+- Khuyến nghị: `~/.config/hb/robot.env` chứa `ROBOT=unitree@100.82.165.36`, để mọi lệnh `./hb` (không chỉ `field`/`ssh`) đi thẳng Tailscale thay vì thử IP LAN cũ trước.
+
+**Robot** (Ubuntu 20.04 aarch64, DDS nội bộ `eth10`), chỉ cần có sẵn — không clone repo:
+
+- Tailscale đã đăng nhập tailnet; user `unitree` có sudo.
+- Unitree SDK2 C++ cài vào hệ thống (`find_package(unitree_sdk2)`), mã nguồn SDK2 có audio R1 ở `~/unitree_sdk2` hoặc `~/unitree_sdk2-main` (voice bridge), `uv` ở `~/.local/bin/uv`, `cmake`, `g++`, zlib. ONNX Runtime đã có trong `controller/thirdparty/`.
+- Secret (API key) trong `/etc/hb/stack.env` (deploy tạo từ mẫu nếu chưa có, không bao giờ ghi đè hay đồng bộ file này).
+
+Lần deploy đầu tiên lên một robot mới cũng chỉ là `./hb field`: nó tạo `/home/unitree/HB`, cài service systemd, env Python voice và runtime teleop.
 
 ## Cấu trúc
 
 ```text
 controller/       run_r1 (C++): policy ONNX/NPZ, trạng thái, an toàn — tiến trình DUY NHẤT ghi rt/lowcmd
-  config/         cấu hình chạy (tuning.yaml là entry point)
-  policies/       policy đi bộ, nhảy, gesture đang dùng
-integration/      service coordinator, systemd, script build/preflight/cài đặt/deploy
+  config/         cấu hình chạy (tuning.yaml là entry point; locomotion.yaml chọn walk_policy / teleop_policy)
+  policies/       locomotion/<bundle>, dance, gestures, flat (legacy)
+integration/      service coordinator, systemd, script build/preflight/cài đặt/deploy/dò robot
 voice/            trò chuyện giọng nói (Python + bridge loa C++), không chạm động cơ
 voice_presets/    phát câu thu sẵn offline (L1 + phím hướng)
 teleop/           Quest 3 → IK → sidecar (chạy trên robot), không chạm động cơ trực tiếp
 docs/             tài liệu vận hành
-Makefile          mọi lệnh build/vận hành/test
+test/             thí nghiệm/mô phỏng gộp từ HB, KHÔNG deploy lên robot (xem test/README.md)
+hb                lệnh duy nhất: field / deploy / ssh / start-stop-restart / status / logs / build / test (./hb help)
+Makefile          bí danh `make <tên>` cho ./hb
 ```
 
 Service trên robot: `hb_high_level` (controller), `hb_integration`, `hb_voice`, `hb_voice_presets`, `hb_teleop_cert` + `hb_teleop_runtime` (teleop), gom bởi `hb-stack.target`.
 
 ## Tài liệu
 
-| Tài liệu | Nội dung |
-| --- | --- |
-| [docs/safety.md](docs/safety.md) | Quy tắc an toàn, DISARMED trước khi dừng/restart, giới hạn đầu — **đọc trước tiên** |
-| [docs/controls.md](docs/controls.md) | Nút R3, phím, cổng/giao diện, lệnh `make` |
-| [docs/operation.md](docs/operation.md) | Hướng dẫn vận hành chi tiết: bàn giao, đi bộ, nhảy, ngồi, nằm/đứng, chức năng an toàn tự động, xử lý sự cố |
-| [docs/teleop.md](docs/teleop.md) | Teleop Quest 3 trên robot và các cổng phần cứng còn mở |
-| [docs/voice.md](docs/voice.md) | Vận hành OpenAI + ElevenLabs |
-| [docs/deploy.md](docs/deploy.md) | Deploy, rollback, calibration từ máy dev |
-| [docs/policies.md](docs/policies.md) | Chọn/đổi policy, đưa kết quả từ nhánh khác vào |
-| [docs/test_log_template.md](docs/test_log_template.md) | Mẫu log mỗi buổi chạy |
-| [docs/user-manual.pdf](docs/user-manual.pdf) | Sách hướng dẫn Unitree R1 |
+| Tài liệu                                            | Nội dung                                                                                               |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| [docs/safety.md](docs/safety.md)                       | Quy tắc an toàn, DISARMED trước khi dừng/restart, giới hạn đầu —**đọc trước tiên** |
+| [docs/controls.md](docs/controls.md)                   | Nút R3 (nhóm theo modifier), phím, cổng/giao diện, lệnh`./hb`                                   |
+| [docs/operation.md](docs/operation.md)                 | Vận hành chi tiết: bàn giao, đi bộ, nhảy, ngồi, nằm/đứng, an toàn tự động, sự cố       |
+| [docs/deploy.md](docs/deploy.md)                       | Đồng bộ từ máy trạm, xác thực, rollback, calibration                                            |
+| [docs/policies.md](docs/policies.md)                   | Bundle policy đi bộ, contract, đưa kết quả từ nhánh khác vào                                  |
+| [docs/teleop.md](docs/teleop.md)                       | Teleop Quest 3 trên robot và các cổng phần cứng còn mở                                          |
+| [docs/voice.md](docs/voice.md)                         | Vận hành OpenAI + ElevenLabs                                                                          |
+| [docs/test_log_template.md](docs/test_log_template.md) | Mẫu log mỗi buổi chạy                                                                               |
+| [docs/user-manual.pdf](docs/user-manual.pdf)           | Sách hướng dẫn Unitree R1                                                                           |
 
 ## Kiểm thử
 
 ```bash
-make test          # ctest của controller + pytest của teleop, voice, voice_presets, integration
+./hb test          # trên máy trạm: ctest của controller + pytest của teleop, voice, voice_presets, integration
 ```
 
 Kiểm thử phần mềm chỉ chứng minh hợp đồng phần mềm, không phải thăng bằng hay an toàn vật lý. Mỗi buổi chạy robot ghi log theo mẫu và tuân thủ [docs/safety.md](docs/safety.md).

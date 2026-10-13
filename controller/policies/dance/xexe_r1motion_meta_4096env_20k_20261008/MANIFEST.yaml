@@ -1,0 +1,61 @@
+name: xexe_r1motion_meta_4096env_20k_20261008
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: '# Xexe R1MotionLab — META 20k
+
+
+  NPZ Xexe được xử lý bằng R1MotionLab; 5007 frame, 50 Hz, giữ timing. Chỉ 240/5007
+  frame có nghiệm dynamics local; các vùng chưa giải giữ pose gốc. Reference chưa
+  được chứng nhận cân bằng toàn clip. Actor 129 obs → 24 actions, tracking ankle.
+  Package inactive, chưa gán dance slot. MP3 giữ đúng cặp motion/audio từ package
+  nguồn xexe_trimmed_20260921_meta_19999; không thêm cắt/retime.
+
+
+  Framework unitree_rl_mjlab_meta, 4096 envs, seed 42, checkpoint cuối model_19999.pt;
+  hoàn tất 20000 iterations. Friction trong training: 1.1–1.5. Model dùng snapshot
+  sửa hai tên body collision exclusions, chỉ trong process job. Metadata ONNX lấy
+  từ đúng training run. Chất lượng đang được kiểm tra riêng bằng rollout không reset.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: null
+motion:
+  file: xexe_r1motion_meta_candidate.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1motion_meta_candidate.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 7d0422fafd01f0090c44bd3e9b042479bd3a3bc8ca1cf8372d88823ad941b143
+  agent.yaml: 5bb803da8485375e81bde1e000fa184e19b5f0b4b991d8591a0ff47ec3457b9b
+  env.yaml: 61aee7b33f0179638e697f54e33ee53dba8c73704d131492c3619c068e497f04
+  model_19999.pt: db70643f5f840f985970d5feff7793cc96c5e2eb4a9bf4269da34c7e9eaee9b1
+  onnx_metadata.yaml: 17bd8a161c3f291257b68d66379ce7648df7d74b5cae0e83fc03a70f349a5bb3
+  policy.onnx: aa3fb0a4a0bcac517c33c3bb0775ede603cbfee0ee1d5660be0e57a4caaf753f
+  source.txt: 5cfd0dfc1b6c4744e42e7b78671fc72f9d153d9feed4d37114a71747f480d6b4
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1motion_meta_candidate.npz: d399f35124e4a956193e14e01fbb75b5af7f43db469fd0a683e6e53887257298

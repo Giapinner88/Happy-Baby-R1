@@ -1,0 +1,14 @@
+folder       : xexe_meta_129obs_fresh_20k_2048_20261006
+repo         : unitree_rl_mjlab_meta
+run          : 2026-10-06_13-02-33_xexe_trimmed_129obs_meta_fresh_20k_2048_gpu1_20261006
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-06_13-02-33_xexe_trimmed_129obs_meta_fresh_20k_2048_gpu1_20261006
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-06_13-02-33_xexe_trimmed_129obs_meta_fresh_20k_2048_gpu1_20261006/2026-10-06_13-02-33_xexe_trimmed_129obs_meta_fresh_20k_2048_gpu1_20261006.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz (5007 frames @ 50 Hz)
+audio        : xexe.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Fresh 20k Xexe motion tracking run; policy exported from unitree_rl_mjlab_meta.

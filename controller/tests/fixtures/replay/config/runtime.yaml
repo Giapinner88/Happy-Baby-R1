@@ -1,0 +1,28 @@
+# ============================================================================
+# RUNTIME / DDS / INPUT (chọn đúng card mạng để kết nối DDS thành công)
+# ============================================================================
+# Card mạng DDS của R1 (thường là eth10).
+network_interface: eth10
+# true = chế độ headless (không mở keyboard X11) cho service chạy trên robot.
+dev_no_keyboard: true
+
+# Lọc thông thấp (Hz; 0.0 = tắt). Lưu ý: bật lọc cần kiểm tra lại phase/gait trước khi deploy.
+imu_gyro_lpf_hz: 0.0
+joint_vel_lpf_hz: 0.0
+
+# Bù pitch IMU (độ). Lưu ý: trim locomotion sẽ dời mốc nghiêng của fall detector tương ứng.
+imu_pitch_trim_deg: 0.0
+imu_pitch_trim_affects_locomotion: false
+imu_pitch_trim_affects_dance: true
+
+# Trim riêng cho locomotion (để trống = dùng imu_pitch_trim_deg ở trên).
+# Chỉ có tác dụng khi imu_pitch_trim_affects_locomotion = true.
+# locomotion_trim_deg: 0.0
+
+# Thời gian chờ watchdog cho input/state (ms). Khi kết nối lại, cần nhả phím về neutral trước.
+state_timeout_ms: 1000.0 # PD watchdog: retain baseline until PC2 jitter is measured
+remote_state_timeout_ms: 1000.0 # remote expiry; independent of PD deadline
+remote_timeout_ms: 3000.0
+remote_recover_ms: 200.0
+remote_require_neutral: true
+x11_release_ms: 2500.0

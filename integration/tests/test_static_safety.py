@@ -145,9 +145,11 @@ class StaticSafetyTest(unittest.TestCase):
         owner = (
             HB_ROOT / "controller" / "src" / "input" / "VoiceGestureOwner.hpp"
         ).read_text()
-        app = (
-            HB_ROOT / "controller" / "src" / "app" / "Application.cpp"
-        ).read_text()
+        # Application is split across src/app/Application*.cpp.
+        app = "\n".join(
+            path.read_text()
+            for path in sorted((HB_ROOT / "controller" / "src" / "app").glob("Application*.cpp"))
+        )
         high_level_config = (
             HB_ROOT / "controller" / "config" / "gestures.yaml"
         ).read_text()
@@ -203,9 +205,9 @@ class StaticSafetyTest(unittest.TestCase):
 
     def test_deploy_discovers_robot_and_can_restart_only_voice(self):
         deploy = (HB_ROOT / "integration" / "scripts" / "deploy_stack.sh").read_text()
-        finder = (HB_ROOT / "controller" / "scripts" / "_find_robot.sh").read_text()
+        finder = (HB_ROOT / "integration" / "scripts" / "find_robot.sh").read_text()
         activate = (HB_ROOT / "integration" / "scripts" / "activate_services.sh").read_text()
-        self.assertIn('source "$HB_ROOT/controller/scripts/_find_robot.sh"', deploy)
+        self.assertIn('source "$SCRIPT_DIR/find_robot.sh"', deploy)
         self.assertIn("find_robot", deploy)
         self.assertIn("192.168.145.209", finder)
         self.assertIn("--restart-voice", deploy)
@@ -244,7 +246,7 @@ class StaticSafetyTest(unittest.TestCase):
         with "No route to host" while the robot was reachable the whole time,
         both on the LAN and over Tailscale.
         """
-        finder = (HB_ROOT / "controller" / "scripts" / "_find_robot.sh").read_text()
+        finder = (HB_ROOT / "integration" / "scripts" / "find_robot.sh").read_text()
         # Reachability decides, for the pinned address as much as for probes.
         self.assertIn("if _robot_ssh_ok \"$preferred_robot\"; then", finder)
         self.assertIn("không SSH được; vòng $scan_round sẽ quét toàn bộ danh sách", finder)

@@ -42,6 +42,8 @@ class QuestTransportSample:
     right_wrist_pose_matrix: Matrix4x4
     deadman_pressed: bool
     reset_requested: bool = False
+    tracking_received_monotonic_s: float | None = None
+    tracking_valid: bool = True
 
 
 def _validate_matrix(matrix: Matrix4x4, name: str) -> list[list[float]]:
@@ -151,21 +153,10 @@ class BridgeConfig:
     no reviewed configuration supplies R1 velocity limits, and inventing one
     would put an unaudited number into the command stream.
 
-    `max_pose_stale_s` is what actually detects a lost headset. The vendor's
-    `motion_data_ready` flag latches: it is set true on the first controller or
-    hand event and is never cleared, so it reports "has ever delivered motion",
-    not "is delivering motion now". A removed headset therefore keeps producing
-    samples that look ready while carrying the last observed pose. Treating
-    bit-identical repeated poses as a disconnect is the only observable that
-    distinguishes the two.
-
-    The 0.5 s default is bounded by measurement rather than taste. In run
-    `t001_b_20260802T111348Z` the longest frozen stretch during genuine
-    operation was 0.2 s, because real head tracking never repeats a pose
-    bit-for-bit, while removing the headset froze the pose for 5.9 s. Any
-    threshold between those is safe; 0.5 s also matches the mapper's
-    `command_timeout_s`, so the two fail-closed layers agree on what "stale"
-    means.
+    `max_pose_stale_s` bounds the age of a complete WebXR frame received by
+    the robot. Fresh stationary observations remain valid. Legacy event-only
+    producers without receipt metadata retain the conservative frozen-pose
+    check, since their latched motion_data_ready flag cannot prove liveness.
     """
 
     source_frame: str = "quest_headset"
@@ -178,15 +169,9 @@ class BridgeConfig:
 class QuestCommandBridge:
     """Turns Quest transport samples into a strictly increasing command stream.
 
-    The bridge is fail-closed at its own boundary: a sample that is not
-    motion-ready, whose pose matrices are unusable, or whose pose has stopped
-    changing produces no command at all. Downstream `R1TeleopMapper` then
-    observes a receipt gap and applies its own `command_timeout` hold, so a
-    dropped Quest session cannot leave a stale command driving the simulator.
-
-    Emitting a command for a frozen pose is the failure this guards against: it
-    refreshes the timestamp, so the mapper's timeout never fires either and the
-    simulator keeps tracking a pose the operator is no longer producing.
+    New XR transport emits disabled commands on lost/invalid tracking so the
+    long-lived pipeline remains available. Legacy samples and malformed poses
+    retain fail-closed rejection. The bridge never invents an enabled IK target.
     """
 
     def __init__(self, config: BridgeConfig | None = None) -> None:
@@ -213,8 +198,12 @@ class QuestCommandBridge:
         )
 
     def _pose_is_stale(self, sample: QuestTransportSample, timestamp_monotonic_s: float) -> bool:
-        """True when the pose has not changed for longer than the declared limit."""
+        """Use fresh XR receipt age, or frozen-pose detection for legacy inputs."""
 
+        if sample.tracking_received_monotonic_s is not None:
+            age = timestamp_monotonic_s - sample.tracking_received_monotonic_s
+            return (not sample.tracking_valid or not isfinite(age)
+                    or age < 0 or age > self.config.max_pose_stale_s)
         key = self._pose_key(sample)
         if key != self._last_pose_key:
             self._last_pose_key = key
@@ -290,9 +279,9 @@ class QuestCommandBridge:
         self._last_deadman = sample.deadman_pressed
         if trigger_edge:
             self._last_pose_change_s = timestamp_monotonic_s
-        pose_stale = not sample.reset_requested and self._pose_is_stale(
-            sample, timestamp_monotonic_s
-        )
+        pose_stale = self._pose_is_stale(sample, timestamp_monotonic_s)
+        if sample.tracking_received_monotonic_s is None and sample.reset_requested:
+            pose_stale = False
         stale_stop = pose_stale and sample.deadman_pressed and not trigger_edge
         if pose_stale:
             self.state.dropped_sample_count += 1
@@ -303,27 +292,27 @@ class QuestCommandBridge:
                     "disconnected",
                     timestamp_monotonic_s,
                     self._next_sequence_id,
-                    f"pose unchanged for more than {self.config.max_pose_stale_s:g} s",
+                    f"tracking stale/invalid after {self.config.max_pose_stale_s:g} s",
                 )
 
         if not self.state.connected and not pose_stale:
             self.state.connected = True
             self.state.connect_count += 1
-            detail = "first motion-ready sample" if self.state.connect_count == 1 else "pose changed again"
+            detail = "first motion-ready sample" if self.state.connect_count == 1 else "tracking resumed"
             self.state._record("connected", timestamp_monotonic_s, self._next_sequence_id, detail)
 
         command = R1TeleopCommand(
             sequence_id=self._next_sequence_id,
             timestamp_monotonic_s=timestamp_monotonic_s,
-            deadman_enabled=bool(sample.deadman_pressed),
+            deadman_enabled=bool(sample.deadman_pressed and not pose_stale),
             head_pose=pose_from_matrix(sample.head_pose_matrix),
             left_wrist_pose=pose_from_matrix(sample.left_wrist_pose_matrix),
             right_wrist_pose=pose_from_matrix(sample.right_wrist_pose_matrix),
             base_velocity=BaseVelocity.zero(),
             source_frame=self.config.source_frame,
-            reset_requested=bool(sample.reset_requested),
+            reset_requested=bool(sample.reset_requested and not pose_stale),
         )
-        if stale_stop:
+        if stale_stop and sample.tracking_received_monotonic_s is None:
             return None
         self._next_sequence_id += 1
         return command

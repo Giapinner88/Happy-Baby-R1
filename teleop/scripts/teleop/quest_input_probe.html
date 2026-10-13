@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đo nút tay cầm Quest</title>
+<style>body{background:#181818;color:#eee;font:20px sans-serif;max-width:760px;margin:24px auto;padding:16px}button,select{font:inherit;padding:18px}pre{white-space:pre-wrap;font:16px monospace}canvas{position:absolute;left:-10000px;width:128px;height:128px}</style></head>
+<body>
+<h1>Đo nút tay cầm trên Quest</h1>
+<p>Đóng tab teleop trước khi đo. Trang này chỉ đọc WebXR và ghi kết quả đo, không gửi lệnh điều khiển robot.</p>
+<p>Chọn tay cần đo và giữ cò trước bằng ngón trỏ khoảng 2 phút. Trong VR: xanh = cò nhấn ≥ 0,5; vàng = 0,15–0,5; đỏ = cò nhả ≤ 0,15; xám = thiếu nguồn/pose tay cầm hoặc mất focus.</p>
+<p><label>Tay cần đo: <select id="side"><option value="right">Phải</option><option value="left">Trái</option></select></label></p>
+<button id="start" disabled>Bắt đầu đo trong VR</button><pre id="status">Đang kiểm tra khả năng WebXR.</pre>
+<script>
+(() => {
+  const client = `probe-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const status = document.getElementById('status'), start = document.getElementById('start');
+  const events = [], ids = new WeakMap();
+  const capabilities = {secure_context: globalThis.isSecureContext === true,
+    webxr_available: !!navigator.xr, immersive_vr_supported: null};
+  let nextId = 0, eventId = 0, session = null, starting = false;
+  let frameState = {init_stage: 'page_loaded'}, lastState = '', lastPost = -Infinity;
+  const now = () => Math.round(performance.now());
+  const button = value => value ? {value: value.value, pressed: value.pressed, touched: value.touched} : null;
+  const source = value => {
+    if (!ids.has(value)) ids.set(value, ++nextId);
+    return {id: ids.get(value), side: value.handedness, hand: !!value.hand,
+      connected: value.gamepad?.connected, mapping: value.gamepad?.mapping,
+      profiles: Array.from(value.profiles || []).slice(0, 3),
+      trigger: button(value.gamepad?.buttons?.[0]), grip: button(value.gamepad?.buttons?.[1])};
+  };
+  const event = (type, detail = {}) => {
+    events.push({id: ++eventId, ms: now(), type, ...detail});
+    while (events.length > 12 || JSON.stringify(events).length > 1800) events.shift();
+    lastPost = -Infinity;
+  };
+  const post = () => {
+    if (now() - lastPost < 1000) return;
+    lastPost = now();
+    const value = {client, version: 'xr-input-probe-v3', audit_revision: 'input-probe-v3',
+      stage: frameState.error ? 'input_probe_error' : 'input_probe', browser_ms: now(),
+      user_agent: String(navigator.userAgent || '').slice(0, 220),
+      capabilities: {...capabilities},
+      frame: frameState, events: events.slice()};
+    while (value.events.length && JSON.stringify(value).length > 3500) value.events.shift();
+    if (JSON.stringify(value).length > 3900) value.frame.sources = [];
+    fetch('/tracking/diagnostic', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(value), keepalive: true}).catch(() => {});
+    status.textContent = JSON.stringify(frameState, null, 2);
+  };
+  event('boot'); post();
+  (async () => {
+    try {
+      capabilities.immersive_vr_supported = capabilities.secure_context &&
+        !!navigator.xr && await navigator.xr.isSessionSupported('immersive-vr');
+      event('capability_check'); post();
+      if (capabilities.immersive_vr_supported) {
+        start.disabled = false;
+        status.textContent = 'WebXR VR sẵn sàng. Chọn tay rồi bấm bắt đầu.';
+      } else {
+        status.textContent = 'Trình duyệt này không có WebXR VR sẵn sàng. Mở link trực tiếp trong Quest Browser trên kính Meta Quest; trang này trên máy tính chỉ kiểm tra được HTTPS.';
+      }
+    } catch (error) {
+      frameState = {init_stage: 'capability_check', error: {name: error.name, message: String(error.message).slice(0, 300)}};
+      event('init_error', {step: 'capability_check', ...frameState.error}); post();
+      status.textContent = `Không kiểm tra được WebXR: ${String(error)}. Mở link trong Quest Browser trên kính.`;
+    }
+  })();
+  start.onclick = async () => {
+    if (starting || session || capabilities.immersive_vr_supported !== true) return;
+    starting = true;
+    start.disabled = true;
+    let owner = null, canvas = null, initStage = 'request_session';
+    try {
+      const selectedSide = document.getElementById('side').value;
+      frameState = {init_stage: initStage, probe_hand: selectedSide};
+      lastState = ''; lastPost = -Infinity;
+      // Deliberately request only the floor reference: no renderer/library,
+      // hand tracking, scene detection, camera or control WebSocket.
+      // Call requestSession synchronously from the click, before any await.
+      // Select the XR device first; only then create its compatible GL context.
+      owner = await navigator.xr.requestSession('immersive-vr', {requiredFeatures: ['local-floor']});
+      session = owner;
+      owner.addEventListener('end', () => {
+        event('session_end'); post(); canvas?.remove();
+        if (session === owner) { session = null; start.disabled = false; }
+      });
+      initStage = 'create_webgl';
+      // Each retry gets a new context, never one lost during a failed startup.
+      canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+      document.body.appendChild(canvas);
+      const gl = canvas.getContext('webgl', {xrCompatible: true, alpha: false, antialias: false});
+      if (!gl) throw new Error('WebGL không sẵn sàng');
+      initStage = 'make_xr_compatible';
+      await gl.makeXRCompatible();
+      if (gl.isContextLost()) throw new Error('WebGL context đã mất');
+      initStage = 'create_layer';
+      const layer = new XRWebGLLayer(owner, gl);
+      initStage = 'update_render_state';
+      owner.updateRenderState({baseLayer: layer});
+      initStage = 'reference_space';
+      const reference = await owner.requestReferenceSpace('local-floor');
+      initStage = 'running';
+      event('session_started', {features: Array.from(owner.enabledFeatures || [])});
+      for (const name of ['selectstart','selectend','squeezestart','squeezeend','inputsourceschange']) {
+        owner.addEventListener(name, value => event(name, {trusted: value.isTrusted === true,
+          source: value.inputSource ? source(value.inputSource) : null,
+          added: Array.from(value.added || []).map(source), removed: Array.from(value.removed || []).map(source)}));
+      }
+      owner.addEventListener('visibilitychange', () => {
+        frameState.visibility = owner.visibilityState;
+        event('session_visibility', {state: owner.visibilityState}); post();
+      });
+      let lastFrame = null, maxGap = 0;
+      const frame = (at, xrFrame) => {
+        if (session !== owner) return;
+        owner.requestAnimationFrame(frame);
+        const gap = lastFrame === null ? 0 : at - lastFrame; lastFrame = at;
+        maxGap = Math.max(maxGap, gap);
+        const viewer = xrFrame.getViewerPose(reference);
+        const sources = Array.from(owner.inputSources).map(source);
+        const controller = Array.from(owner.inputSources).find(value => value.handedness === selectedSide &&
+          value.targetRayMode === 'tracked-pointer' && !value.hand);
+        const pose = controller && xrFrame.getPose(controller.targetRaySpace, reference);
+        const trigger = button(controller?.gamepad?.buttons?.[0]);
+        const fresh = owner.visibilityState === 'visible' && viewer && !viewer.emulatedPosition && pose && !pose.emulatedPosition;
+        const state = !fresh || !trigger ? 'missing' : trigger.value <= .15 ? 'released' : trigger.value < .5 ? 'partial' : 'held';
+        frameState = {init_stage: 'running', probe_hand: selectedSide, visibility: owner.visibilityState, sources, controller_pose: !!pose,
+          pose_emulated: !!pose?.emulatedPosition, gap_ms: Math.round(gap), max_gap_ms: Math.round(maxGap), state};
+        if (state !== lastState) { event('button_state', {state, trigger}); lastState = state; }
+        post();
+        if (!viewer) return;
+        const color = state === 'held' ? [.05,.4,.1] : state === 'partial' ? [.5,.4,.02] : state === 'released' ? [.5,.03,.03] : [.18,.18,.18];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer); gl.enable(gl.SCISSOR_TEST);
+        for (const view of viewer.views) {
+          const viewport = layer.getViewport(view);
+          gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+          gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
+          gl.clearColor(...color, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+      };
+      owner.requestAnimationFrame(frame);
+    } catch (error) {
+      frameState = {init_stage: initStage, error: {name: error.name || 'Error', message: String(error.message || error).slice(0, 300)}};
+      event('init_error', {step: initStage, ...frameState.error}); post();
+      if (owner) {
+        try { await owner.end(); } catch (_) {}
+        if (session === owner) session = null;
+      }
+      canvas?.remove(); start.disabled = false;
+      status.textContent = `Lỗi ở bước ${initStage}: ${String(error)}\n` +
+        (initStage === 'request_session' && error.name === 'InvalidStateError' ? 'Thoát phiên VR đang mở ở tab khác rồi thử lại.' :
+          initStage === 'request_session' && error.name === 'NotSupportedError' ? 'Trình duyệt từ chối phiên VR hoặc quyền WebXR. Kiểm tra trên Quest Browser và quyền của trang; báo lại dòng lỗi này.' :
+          'Báo lại dòng lỗi này để kiểm tra đúng bước.');
+    } finally { starting = false; }
+  };
+})();
+</script></body></html>

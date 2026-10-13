@@ -1,0 +1,132 @@
+# ============================================================================
+# GESTURE — Cử chỉ (Double-click: 1=Up 2=Down 3=Left 4=Right 5=A 6=B 7=X 8=Y).
+# ============================================================================
+gesture_enabled: true
+# H4/gait: mask q/dq tay trên từng frame 83-D trước khi xếp history. Chỉ phát
+# khi robot đã đứng ổn định trong 0.5 s; teleop H4 có gate riêng, mặc định tắt.
+gesture_history_enabled: true
+gesture_history_stand_dwell_s: 0.5
+gesture_history_move_threshold: 0.05
+gesture_folder: policies/gestures
+
+gesture_slot_1: vaytay_2
+gesture_slot_2: battay
+gesture_slot_speed_2: 0.6
+gesture_slot_retract_2: 3.5
+gesture_slot_3: namtay_anmung
+gesture_slot_speed_3: 0.7
+gesture_slot_retract_3: 2.5
+
+gesture_slot_4: duaqua
+gesture_slot_speed_4: 0.7
+gesture_slot_retract_4: 2.5
+gesture_slot_vx_bias_4: -0.05   
+gesture_slot_trim_deg_4: 0.35
+# vx_bias/trim_deg chống trôi khi đưa tay ra trước.
+
+# Slot 5 (A): dành cho bật/tắt voice-auto (xem gesture_voice_* bên dưới), không gán gesture.
+gesture_slot_6: traitim
+gesture_slot_speed_6: 0.6
+gesture_slot_retract_6: 2.2
+gesture_slot_trim_deg_6: 0.15
+
+gesture_slot_7: cheotayngauloi_hold7s
+gesture_slot_speed_7: 0.8
+gesture_slot_blend_7: 0.4
+gesture_slot_retract_7: 3.5
+gesture_slot_trim_deg_7: 0.15
+
+gesture_slot_8: damtaylentroi
+gesture_slot_speed_8: 1.3
+gesture_slot_retract_8: 2.5
+gesture_slot_vx_bias_8: -0.05
+gesture_slot_trim_deg_8: 0.15
+gesture_double_click_s: 0.4
+gesture_blend_in_s: 0.4
+gesture_retract_s: 2.5
+# Chỉ áp dụng cho gesture legacy; H4 dùng các gesture_return_* bên dưới.
+gesture_safety_retract_s: 0.4
+# Giới hạn tốc độ thu legacy (0 = tắt).
+gesture_safety_max_vel_rad_s: 4.0
+
+# Pha thu/handover của H4. Đây là contract runtime độc lập policy metadata:
+# target tay đi theo quỹ đạo có bound v/a, rồi chỉ nhả lại policy khi tay thật
+# và IMU ổn định liên tục trong dwell. Không ép chân STAND hay gửi leg target.
+# Thu tay H4 nhanh hơn khoảng 2x: giảm nửa thời lượng tối thiểu, tăng gấp đôi
+# trần vận tốc và 4x gia tốc để giữ dạng quỹ đạo quintic khi thời gian giảm nửa.
+gesture_return_min_duration_s: 1.25
+gesture_return_max_velocity_rad_s: 1.20
+gesture_return_max_acceleration_rad_s2: 8.0
+# Static lean alone must not freeze the arm return; pause only for fast body rotation.
+gesture_return_pause_gyro_norm: 0.60
+gesture_handover_position_tol_rad: 0.015
+gesture_handover_measured_position_tol_rad: 0.06
+gesture_handover_arm_dq_rms: 0.15
+gesture_handover_tilt_rad: 0.08
+gesture_handover_gyro_norm: 0.25
+gesture_handover_dwell_s: 0.5
+
+gesture_guard_tilt: 0.35
+gesture_guard_gyro: 3.0
+# Producer magnitude limits; final sender also applies asymmetric RobotSpec limits.
+gesture_head_yaw_max: 0.65
+gesture_head_pitch_max: 0.64
+gesture_head_rate_limit_rad_s: 1.5
+# Chỉ áp dụng cho legacy_83; FlatPlus tắt overlay tay.
+gesture_balance_kg: 0.0
+gesture_balance_kv: 0.0
+
+# ============================================================================
+# BÙ RIÊNG TỪNG SLOT (chỉ có tác dụng với legacy_83)
+# - gesture_slot_vx_bias_N (m/s): chống trôi tiến/lùi.
+# - gesture_slot_trim_deg_N (độ): bù góc nghiêng thân chúi/ngửa.
+# ============================================================================
+gesture_demo_wave: false
+
+gesture_voice_name: noichuyen
+gesture_voice_marker: /run/hb/voice_speaking
+gesture_voice_stale_s: 1.0
+gesture_voice_auto_start: false
+gesture_voice_speed: 1.15
+gesture_voice_move_threshold: 0.05
+gesture_voice_resume_threshold: 0.02
+gesture_voice_resume_delay_s: 0.3
+
+# Lệnh gesture qua giọng nói. ID hành động ổn định, còn slot có thể đổi theo
+# bộ clip đang dùng. Slot 0 tắt riêng hành động; lệnh vẫn bị high-level safety gate.
+gesture_voice_command_socket: /run/hb/gesture_owner.sock
+gesture_voice_wave_slot: 1
+gesture_voice_heart_slot: 6
+gesture_voice_handshake_slot: 2
+gesture_voice_cool_pose_slot: 7
+gesture_voice_determined_slot: 8
+gesture_voice_give_gift_slot: 4
+
+# START là toggle cạnh nhấn cho teleop H4/legacy; Quest có thể vào trước hoặc sau.
+# teleop_enabled: false = không mở socket teleop.
+teleop_enabled: true
+# H4 overlay cho policy flat_plus_gait_h4_v1.  Model/hash phải đổi cùng nhau.
+teleop_h4_enabled: true
+teleop_h4_model_sha256: "7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ecad815ccb"
+teleop_udp_port: 5560
+teleop_timeout_ms: 300
+teleop_blend_in_s: 0.4
+teleop_retract_s: 0.5
+teleop_smooth_hz: 8.0
+teleop_head_yaw_max: 0.65
+teleop_head_pitch_max: 0.64
+# Mode Z (robot treo/được đỡ) — chỉ tay nhận PD.
+teleop_arm_kp: 40.0
+teleop_arm_kd: 2.0
+# Trần cứng validator [0.05, 2.0] — vượt là run_r1 từ chối khởi động. kp vẫn 40 nên
+# tăng chỉ làm tay ĐUỔI nhanh hơn, không khoẻ hơn -> giữ khoảng trống/E-stop.
+teleop_max_rate_rad_s: 2.0
+# Siết chặt hơn policy_rate_limit — nguồn ngoài mạng phải an toàn ít nhất bằng gesture.
+teleop_head_rate_limit_rad_s: 1.5
+teleop_lock_base: true
+
+# Chỉ bật khi robot đã treo + có người giữ E-stop (cấp dòng chân+eo, không đỡ trên sàn).
+teleop_lock_others_enabled: false
+teleop_lock_kp: 20.0
+teleop_lock_kd: 3.0
+teleop_lock_max_rate_rad_s: 0.20

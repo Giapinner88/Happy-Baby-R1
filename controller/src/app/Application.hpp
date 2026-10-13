@@ -34,6 +34,8 @@
 #include "../policy/FlatPlusController.hpp"
 #include "../policy/FlatPlusH5Controller.hpp"
 #include "../policy/FlatPlusGaitController.hpp"
+#include "../policy/WholeBodyLegsController.hpp"
+#include "../policy/PolicyBundle.hpp"
 #include "../policy/TeleopH4PolicyGate.hpp"
 #include "../robot/LowCmdSender.hpp"
 #include "../safety/BatteryMonitor.hpp"
@@ -58,6 +60,13 @@ enum class AppState {
     kLieDown,   // L2+X từ STAND LOCK: phát lại liedown.npz, giữ vô hạn ở frame cuối
 };
 
+// Chế độ đi bộ = policy locomotion đang chạy. kWalk: walk_policy (R2+A).
+// kTeleop: teleop_policy (R2+X), chỉ chế độ này mới nhận START/teleop H4.
+enum class LocoMode {
+    kWalk,
+    kTeleop,
+};
+
 // Hành động chờ sau khi robot dừng hẳn dưới chính sách
 enum class PendingAction {
     kNone,
@@ -67,6 +76,17 @@ enum class PendingAction {
 };
 
 // Ứng dụng điều khiển trung tâm (vòng lặp 500Hz)
+//
+// Định nghĩa chia theo nhóm chức năng:
+//   Application.cpp             vòng lặp, Tick, callback DDS, EnterIdle/ZeroTorque, HUD
+//   ApplicationArming.cpp       DISARMED/CONFLICT, bàn giao với built-in
+//   ApplicationInit.cpp         nạp policy, dance, clip getup/liedown, Preflight
+//   ApplicationTransitions.cpp  HandleTransitions + các hàm Begin*
+//   ApplicationPostures.cpp     state kịch bản: stand up/lock, returning, sit, getup, liedown
+//   ApplicationPolicy.cpp       LOCOMOTION/MIMIC: overlay thân trên, inference, handover dance
+//   ApplicationUpperBody.cpp    gesture, voice gesture, teleop UDP (cả Mode Z)
+//   ApplicationTelemetry.cpp    telemetry mimic
+// Hành vi được khoá bởi tests/application_replay_test.cpp (golden).
 class Application {
 public:
     Application(std::string proj_dir, std::string interface_override);
@@ -83,12 +103,27 @@ private:
     void OnLowState(const void* msg);
     void OnLowCmdSeen(const void* msg);   // P0-1: nghe rt/lowcmd để phát hiện built-in
     bool Tick();
+    // Các bước phụ của Tick (Application.cpp); phần đọc state/watchdog/disarm nằm ngay trong Tick.
+    void ServiceVoiceGestureOwner();
+    void HandleStopCommands(const InputCommand& cmd);
+    void HandleTeleopToggle(const InputCommand& cmd);
+    void AnnounceSpeedMode();
+    void SyncUpperBodyOwnership();
+    void RunActiveState(const InputCommand& cmd);
+    void CheckOutputFaults();
     bool TickDisarmed(const InputCommand& cmd);   // P0-1: chờ arm, KHÔNG publish
     void EnterConflict();                          // P0-1: built-in quay lại -> nhả quyền
     bool TryDisarm(const InputCommand& cmd, const unitree_hg::msg::dds_::LowState_& low);
     void EnterDisarmed();
 
     void HandleTransitions(const InputCommand& cmd);
+    // Các nhánh của HandleTransitions; bool = true khi đã chuyển state (dừng xử lý tick này).
+    bool HandleStandLockRequest(const RobotState& rs);
+    bool HandleSitRequest(const RobotState& rs);
+    bool HandleGetUpDownRequest(const RobotState& rs);
+    void AdvancePendingAction(const RobotState& rs);
+    void StartDanceAnnounce(const InputCommand& cmd);
+    void AdvanceDanceAnnounce(const RobotState& rs);
     // has_chair (chỉ dùng khi act==kToSit): true = L2+Trái (có ghế, nới sang tư thế CUỐI
     // sau khi ghế đỡ). false = tự động/pin cạn (không ghế/không ai đỡ) -> giữ tư thế hạ
     // tự cân bằng, không relax.
@@ -112,6 +147,36 @@ private:
     void RunStandLock();
     void RunReturning();
     void RunPolicy(const InputCommand& cmd);
+    // Các bước của RunPolicy (ApplicationPolicy.cpp), theo đúng thứ tự gọi.
+    struct PolicyOverlayCaps {      // policy hiện tại hỗ trợ nguồn thân trên nào
+        bool legacy_arm = false;    // legacy 83-D arm overlay
+        bool h4 = false;            // H4 teleop đã qua artifact gate
+        bool history_gesture = false;
+        bool gesture = false;       // legacy_arm || history_gesture
+    };
+    struct UpperBodyCommand {       // kết quả overlay thân trên cho tick này
+        bool  active = false;       // có override tay cho ctx/obs
+        bool  use_teleop = false;   // nguồn active là teleop (ngược lại: gesture)
+        float mask_keep = 1.0f, lean = 0.0f;
+        float slot_grav = 0.0f, slot_vx = 0.0f;
+        HeadTarget head{};
+    };
+    PolicyOverlayCaps PolicyCaps() const;
+    bool UpdateHistoryGestureDwell(const RobotState& rs, bool history_gesture_contract,
+                                   bool history_gesture_move_requested);
+    void UpdateBaseCommand(const InputCommand& cmd, const PolicyOverlayCaps& caps, bool holding);
+    UpperBodyCommand UpdateUpperBody(const InputCommand& cmd, const RobotState& rs,
+                                     const PolicyOverlayCaps& caps, bool holding,
+                                     float move_intent, bool history_gesture_ready,
+                                     bool history_gesture_move_requested);
+    bool StepPolicy(const RobotState& rs, const PolicyOverlayCaps& caps,
+                    const UpperBodyCommand& ub);
+    void ShapeMimicTarget(MimicController* mimic,
+                          std::array<float, spec::kNumJoints>& kp_eff,
+                          std::array<float, spec::kNumJoints>& kd_eff);
+    void UpdateGestureHandover(const RobotState& rs, bool gesture_overlay_supported,
+                               bool use_teleop);
+    void UpdateMimicLifecycle(MimicController* mimic, const RobotState& rs);
     // Giữ hướng khi đi thẳng (heading-hold): sửa cmd_yaw_ để kéo mặt về hướng đã chốt.
     // Không làm gì nếu tắt / đang đứng / người lái đang bẻ yaw. Xem tuning heading_hold_*.
     void ApplyHeadingHold(const RobotState& rs);
@@ -129,6 +194,19 @@ private:
     void EnterIdle(const std::string& reason);
     void EnterZeroTorque(const std::string& reason);  // L2+Y: mode=1, kp=kd=0, chỉ từ kIdle
     void ActivatePolicy(PolicyController* ctrl);
+    // Nạp một controller locomotion theo contract (route bundle hoặc flat_model cũ).
+    std::unique_ptr<PolicyController> MakeLocomotionController(const std::string& contract,
+                                                               const std::string& path);
+    PolicyController* LocomotionFor(LocoMode mode) const;
+    static const char* LocoModeName(LocoMode mode);
+    // STAND LOCK -> LOCOMOTION ở chế độ chỉ định (R2+A / R2+X).
+    void EnterLocomotion(LocoMode mode);
+    // R2+A / R2+X khi đang LOCOMOTION: xin đổi chế độ; đổi thật ở AdvanceLocoModeSwap.
+    void RequestLocoMode(LocoMode mode);
+    void AdvanceLocoModeSwap(const RobotState& rs);
+    void CancelLocoModeSwap(const char* why);
+    void SyncSenderToLatestState();     // sender_.SyncToState(gói DDS mới nhất) dưới state_mutex_
+    void ClearVoiceCommandGesture();    // bỏ quyền gesture do voice yêu cầu (không đụng player)
     void UpdateHud();
     void PrintStatus();
     void StartMimicTelemetry(int dance_key);
@@ -169,8 +247,20 @@ private:
     InputManager input_;
     LowCmdSender sender_;
 
-    // The selected flat controller is fixed at startup; no hot swap while armed.
-    std::unique_ptr<PolicyController> locomotion_;
+    // Hai policy locomotion nạp sẵn lúc khởi động. teleop_ctrl_ rỗng khi
+    // teleop_policy trùng walk_policy (khi đó hai chế độ dùng chung một controller).
+    // locomotion_ trỏ tới controller của loco_mode_ hiện tại; chỉ đổi ở
+    // AdvanceLocoModeSwap (robot đứng yên) hoặc lúc vào LOCOMOTION từ STAND LOCK.
+    std::unique_ptr<PolicyController> walk_ctrl_;
+    std::unique_ptr<PolicyController> teleop_ctrl_;
+    PolicyController* locomotion_ = nullptr;
+    LocoMode loco_mode_ = LocoMode::kWalk;
+    std::string walk_policy_label_;
+    std::string teleop_policy_label_;
+    bool loco_swap_pending_ = false;
+    LocoMode loco_swap_target_ = LocoMode::kWalk;
+    float loco_swap_timer_s_ = 0.0f;
+    float loco_swap_still_s_ = 0.0f;
 
     // Gesture source cho legacy 83-D và H4/gait opt-in. H4/gait chỉ cho
     // gesture khi đứng ổn định; teleop H4 có grant và artifact gate riêng.
@@ -201,6 +291,8 @@ private:
 
     // Teleop thân trên (tay + đầu) qua UDP — nguồn override ưu tiên hơn gesture.
     TeleopReceiver teleop_;
+    // Artifact gate của teleop policy đã qua lúc khởi động (dùng cho cả Mode Z).
+    // Trong LOCOMOTION, overlay H4 còn cần loco_mode_ == kTeleop (PolicyCaps).
     bool h4_teleop_approved_ = false;
     bool h4_session_in_locomotion_ = false;
     float h4_history_release_s_ = 0.0f;

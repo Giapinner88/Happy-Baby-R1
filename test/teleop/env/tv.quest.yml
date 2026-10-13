@@ -1,0 +1,19 @@
+name: tv
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.26
+  - pip:
+      # Quest bridge chỉ dùng wrapper vendored + Vuer; không cần CUDA/Isaac Sim.
+      - logging-mp==0.2.1
+      - opencv-python-headless==4.11.0.86
+      # Vuer 0.0.60 import Flag/Proto API cũ; params-proto 3.x đã bỏ API này.
+      - params-proto==2.13.2
+      # Không dựa vào ~/.local; aiohttp/multidict cần package này.
+      - typing-extensions==4.15.0
+      - vuer[all]==0.0.60
+variables:
+  # Ngăn package từ ~/.local rò vào env vận hành.
+  PYTHONNOUSERSITE: "1"

@@ -1,0 +1,33 @@
+# KHÔNG được enable cho tới khi docs/hardware_gate.md đóng đủ các cổng.
+# install_service.sh cố tình KHÔNG chạy `systemctl enable`.
+[Unit]
+Description=HB R1 Quest teleop (chưa được duyệt cho phần cứng)
+After=network-online.target
+Wants=network-online.target
+# Teleop ghi vào cùng nhóm khớp mà high-level điều khiển. Chạy song song hai bên
+# là tranh chấp quyền ghi, nên đây là quan hệ loại trừ chứ không phải thứ tự.
+Conflicts=hb_high_level.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+WorkingDirectory=@HB_ROOT@/teleop
+Environment=HB_ROOT=@HB_ROOT@
+Environment=PYTHONPATH=@HB_ROOT@/teleop/src
+EnvironmentFile=-/etc/hb/teleop.env
+RuntimeDirectory=hb
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do ip -4 addr show @INTERFACE@ 2>/dev/null | grep -q "inet " && { sleep 2; exit 0; }; sleep 0.5; done; exit 1'
+ExecStartPre=/bin/bash @HB_ROOT@/teleop/scripts/preflight.sh
+ExecStart=/usr/bin/python3 -m teleop.hardware.run_teleop --interface @INTERFACE@
+Restart=no
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/hb
+
+[Install]
+# Cố ý KHÔNG thuộc hb-stack.target: teleop không được tự bật khi boot.
+WantedBy=

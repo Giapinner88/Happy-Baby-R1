@@ -1,4 +1,10 @@
-# HB Flat-Plus locomotion artifacts
+# HB Flat-Plus locomotion artifacts (archive)
+
+Archived pool, selectable only through the legacy `flat_model` +
+`flat_policy_contract` route (the runtime loads it from
+`policies/locomotion/_archive/flat_plus/`). The active model
+`policy_flat_plus_gait_0917_armfree.onnx` moved to the bundle
+`policies/locomotion/flat_plus_gait_0917_armfree/policy.onnx`.
 
 These are selectable single-model policies. The v1 artifacts were imported from
 the verified `unitree_mujoco/simulate_cpp/policy/locomotion/flat_plus` bundle.

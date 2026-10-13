@@ -45,6 +45,7 @@ private:
 
     // Sự kiện phím chức năng
     std::atomic<bool> want_stand_lock_{false}, want_locomotion_{false};
+    std::atomic<bool> want_teleop_locomotion_{false};
     std::atomic<int> want_mimic_key_{0};
     std::atomic<bool> want_reset_{false};
     std::atomic<bool> want_speed_toggle_{false}, want_exit_{false};

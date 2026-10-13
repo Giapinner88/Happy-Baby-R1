@@ -3,7 +3,7 @@
 Vận hành và giới hạn: [../docs/teleop.md](../docs/teleop.md). **Chỉ dùng khi robot treo trên giá, có người giữ E-stop.**
 
 ```text
-config/teleop.yaml          cấu hình duy nhất (robot_runtime.*); đổi xong: make teleop-runtime
+config/teleop.yaml          cấu hình duy nhất (robot_runtime.*); đổi xong (máy trạm): ./hb deploy teleop
 config/*.json               hợp đồng vendor R1-A5 (hash solver, URDF, bộ lọc) — test kiểm tra
 scripts/run_robot_teleop.sh pipeline của service hb_teleop_runtime
 scripts/teleop/             quest_bridge.py -> run_r1_vendor_ik_stream.py -> run_r1_vendor_targets.py
@@ -22,6 +22,6 @@ và thí nghiệm ở nhánh `teleop`; sidecar/bridge của nhánh đó chưa h�
 `tests/test_static_safety.py` kiểm tra mọi tham số mà `run_robot_teleop.sh` truyền đều được từng tầng nhận.
 
 ```bash
-make test-python      # gồm tests/ của teleop
-make teleop-check     # trên robot: đọc rt/lowstate, không ghi gì
+./hb test py      # gồm tests/ của teleop
+./hb teleop-check     # trên robot: đọc rt/lowstate, không ghi gì
 ```

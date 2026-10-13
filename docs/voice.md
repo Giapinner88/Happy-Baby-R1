@@ -73,14 +73,14 @@ Không ghi `voice_id` vào YAML. Runtime luôn đọc nó từ
 
 ## 5. Deploy từ laptop
 
-Chạy từ **thư mục gốc repo trên máy dev** (script tự suy ra đường dẫn, không cần
-sửa gì khi copy folder giữa máy dev và máy trạm):
+Chạy từ **thư mục gốc repo trên máy trạm** (script tự suy ra đường dẫn; lệnh
+đồng bộ sang robot qua SSH):
 
 ```bash
 cd <thư-mục-repo>
-./integration/scripts/deploy_stack.sh diff
-./integration/scripts/deploy_stack.sh deploy --restart-voice
-./integration/scripts/deploy_stack.sh status
+./hb diff
+./hb deploy voice
+./hb status
 ```
 
 Địa chỉ robot được giải theo thứ tự: biến `ROBOT` -> file riêng của máy
@@ -93,7 +93,7 @@ cp integration/config/robot.env.example ~/.config/hb/robot.env
 ```
 
 File nằm NGOÀI repo nên copy folder qua lại không đụng tới nó. Muốn ép
-nhanh một lần: `ROBOT=unitree@<ip> ./integration/scripts/deploy_stack.sh ...`.
+nhanh một lần: `ROBOT=unitree@<ip> ./hb ...`.
 Deploy tạo môi trường Python và cài dependency ngay trên ARM64; không copy `.venv` từ
 laptop.
 

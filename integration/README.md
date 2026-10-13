@@ -20,13 +20,13 @@ Lớp điều phối an toàn giữa `controller` và `voice`.
 Quy trình đầy đủ, gồm policy acceptance, kiểm tra sau deploy và rollback: [docs/deploy.md](../docs/deploy.md).
 
 ```bash
-make deploy        # từ gốc repo trên máy dev
+./hb field         # từ gốc repo trên máy trạm, qua Tailscale (./hb deploy: tự dò địa chỉ)
 ```
 
-`make deploy` (`scripts/deploy.sh`) tự chấp nhận model đang chọn, backup, sync, build ARM64, preflight
+`./hb deploy` (→ `scripts/deploy_stack.sh deploy --accept-policy`) tự chấp nhận model đang chọn, backup, sync, build ARM64, preflight
 và restart-safe. Deploy không restart high-level nếu không chứng minh được trạng
 thái `DISARMED`; khi đó trả về `PENDING_RESTART`. Script không lưu mật khẩu SSH/API.
-Dừng/bật service: `make status|stop-*|start-*|restart-all` (trên robot, qua `scripts/stack_ctl.sh`; lệnh dừng/restart controller từ chối khi chưa `DISARMED`).
+Dừng/bật service: `./hb status | ./hb start|stop|restart <all|high|integration|voice|presets|teleop>` (từ máy trạm qua SSH, hoặc tại chỗ trên robot khi debug; cả hai đều qua `scripts/stack_ctl.sh`; lệnh dừng/restart controller từ chối khi chưa `DISARMED`).
 
 ## Sau khi bật robot
 
@@ -50,7 +50,7 @@ Runtime config/secret: `/etc/hb/stack.env`. Trạng thái không secret:
 
 Nguồn mic, model, voice, tốc độ, volume câu trả lời và noise reduction nằm tại
 `voice/config/tuning.yaml`; prompt sự kiện nằm tại
-`voice/config/prompt.txt`. Hai file này được đồng bộ từ máy dev. API key và
+`voice/config/prompt.txt`. Hai file này được đồng bộ từ máy trạm. API key và
 cấu hình phần cứng vẫn chỉ nằm trong `/etc/hb/stack.env` trên robot.
 Script deploy chỉ tạo file này khi chưa tồn tại và chỉnh quyền `root:600`; nội
 dung file hiện có không bị đồng bộ hoặc ghi lại khi cài/restart service.
@@ -71,7 +71,7 @@ decoder/bridge thì retry clip từ đầu. Sau PCM cuối, preset giữ bridge 
 `playback.end_tail_s` (mặc định 0,4 giây) để không cắt đuôi audio còn nằm trong
 bộ đệm loa.
 
-Deploy phần này bằng `./integration/scripts/deploy_stack.sh deploy-presets`;
+Deploy phần này bằng `./hb deploy presets`;
 lệnh chỉ sync/build coordinator + preset/bridge và không restart high-level.
 Chi tiết cấu hình: [voice_presets/README.md](../voice_presets/README.md).
 
@@ -80,7 +80,7 @@ Chi tiết cấu hình: [voice_presets/README.md](../voice_presets/README.md).
 Đổi Wi-Fi thường chỉ làm đổi IP SSH. Có thể bỏ qua cơ chế dò bằng:
 
 ```bash
-ROBOT=unitree@<IP_MOI> ./scripts/deploy_stack.sh status
+ROBOT=unitree@<IP_MOI> ./hb status   # từ gốc repo
 ```
 
 Không đổi `UNITREE_NETWORK_INTERFACE=eth10` sang card Wi-Fi: `eth10` là mạng

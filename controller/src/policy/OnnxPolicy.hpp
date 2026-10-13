@@ -13,12 +13,15 @@
 class OnnxPolicy {
 public:
     void Load(const std::string& model_path, Ort::Env& env,
-              const Ort::SessionOptions& options, int expected_obs_size);
+              const Ort::SessionOptions& options, int expected_obs_size,
+              int expected_action_size = spec::kNumJoints);
 
     std::vector<float> Infer(std::vector<float>& obs);
 
     // Đọc một mảng metadata từ model (ví dụ: action scale, default position)
     bool ReadMetadataArray(const char* key, std::array<float, spec::kNumJoints>& out);
+    // Như trên nhưng đúng `count` giá trị vào out[0..count) (vd. action_scale 12 chân).
+    bool ReadMetadataFloats(const char* key, float* out, int count);
     // Đọc metadata scalar/string. Dùng để khóa deployment contract, không suy đoán
     // model chỉ bằng tên file hoặc kích thước tensor.
     bool ReadMetadataString(const char* key, std::string& out);
@@ -33,5 +36,6 @@ private:
     std::string input_name_, output_name_;
     std::string path_;
     int obs_size_ = 0;
+    int action_size_ = spec::kNumJoints;
     bool has_metadata_ = false;
 };

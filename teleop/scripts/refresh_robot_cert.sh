@@ -9,8 +9,26 @@ KEY_FILE="${HB_TELEOP_RUNTIME_KEY_FILE:-/etc/hb/teleop/key.pem}"
 HOSTNAME_ALIAS="${HB_TELEOP_RUNTIME_HOSTNAME:-hb-r1.local}"
 RUN_USER="${HB_RUN_USER:-unitree}"
 CERT_DIR="$(dirname "$CERT_FILE")"
-IP="$(ip -4 -o addr show dev "$HOST_INTERFACE" scope global | awk 'NR == 1 {split($4,a,"/"); print a[1]}')"
-[[ -n "$IP" ]] || { echo "[CERT] no IPv4 on $HOST_INTERFACE" >&2; exit 1; }
+# network-online.target may finish before the Wi-Fi driver/interface appears.
+wait_for_host_ipv4() {
+    local address deadline waiting=0
+    deadline=$((SECONDS + ${HB_TELEOP_RUNTIME_NETWORK_WAIT_S:-60}))
+    while true; do
+        address="$(ip -4 -o addr show dev "$HOST_INTERFACE" scope global 2>/dev/null \
+            | awk 'NR == 1 {split($4,a,"/"); print a[1]}' || true)"
+        if [[ -n "$address" ]]; then printf '%s\n' "$address"; return 0; fi
+        if (( SECONDS >= deadline )); then
+            echo "[CERT] no IPv4 on $HOST_INTERFACE after waiting; service will retry" >&2
+            return 1
+        fi
+        if (( waiting == 0 )); then
+            echo "[CERT] waiting for IPv4 on $HOST_INTERFACE" >&2
+            waiting=1
+        fi
+        sleep 1
+    done
+}
+IP="$(wait_for_host_ipv4)"
 install -d -m 0755 "$CERT_DIR"
 
 if [[ -r "$CERT_FILE" && -r "$KEY_FILE" ]] && \

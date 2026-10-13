@@ -3,7 +3,8 @@
 // Cấu trúc chứa lệnh điều khiển chuẩn hóa từ gamepad / bàn phím
 struct InputCommand {
     bool want_stand_lock = false;
-    bool want_locomotion = false;
+    bool want_locomotion = false;         // R2+A: đi bộ thường (walk_policy)
+    bool want_teleop_locomotion = false;  // R2+X: đi bộ + teleop (teleop_policy)
     int  want_mimic_key = 0; // 0 = none; dance keys 2-8: R1+Up/Right/Down/Left/Y/B/A
     bool want_reset = false;
     bool want_safe_shutdown = false;  // giữ L2+Trái (hoặc phím 9): ngồi ghế

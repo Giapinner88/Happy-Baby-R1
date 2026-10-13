@@ -1,0 +1,13 @@
+folder       : xexe_r1motion_goc_fric11to17_4096env_ckpt15500_20261008
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 15501/20000
+checkpoint   : model_15500.pt
+motion       : xexe_r1motion_candidate.npz (5007 frames @ 50 Hz)
+audio        : xexe.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : training_in_progress_or_iteration_count_unverified

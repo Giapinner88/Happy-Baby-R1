@@ -34,9 +34,11 @@ the first sustained deadman press supplies both the wrist anchor and the head
 angular neutral. Requiring a few consecutive samples avoids calibrating against
 a one-frame startup pulse.
 
-While the deadman is released no solve is performed and the last solved target
-is repeated, so a released trigger holds position instead of drifting toward
-whatever the loose controllers report.
+The robot-local launcher selects body_relative: head translation follows the
+operator while the calibrated yaw defines forward. Its responsive filter uses
+two samples. The default replay route retains the initial fixed head anchor
+and vendor filter. Neither route solves while the deadman is released; the H4
+passthrough emits explicit disabled frames, not an active hold target.
 
 Emits joint targets only. Whether those reach a simulator or hardware is the
 caller's decision, and this process opens no robot transport itself.
@@ -45,6 +47,8 @@ caller's decision, and this process opens no robot transport itself.
 from __future__ import annotations
 
 import argparse
+import atexit
+import signal
 import hashlib
 import json
 import os
@@ -54,6 +58,7 @@ import sys
 import threading
 import time
 import types
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -72,6 +77,21 @@ HEAD_JOINT_NAMES = ("head_pitch_joint", "head_yaw_joint")
 DEFAULT_URDF = REPO_ROOT / "src" / "assets" / "R1.urdf"
 HEAD_NEUTRAL_CONFIRM_SAMPLES = 3
 VENDOR_HEAD_TO_WAIST_OFFSET_M = np.array([0.15, 0.0, 0.45])
+
+
+class SolveTimingStats:
+    """Exact lifetime count/mean/max with bounded recent quantile samples."""
+    def __init__(self):
+        self.samples = deque(maxlen=4096)
+        self.count = 0
+        self.total_ms = 0.0
+        self.max_ms = 0.0
+
+    def append(self, value):
+        self.samples.append(value)
+        self.count += 1
+        self.total_ms += value
+        self.max_ms = max(self.max_ms, value)
 
 
 def head_limits_rad(urdf_path: Path) -> tuple[tuple[float, float], ...]:
@@ -120,53 +140,42 @@ def pose_to_matrix(pose: dict) -> np.ndarray:
     return transform
 
 
-def _head_angles_unbounded(pose: dict) -> tuple[float, float]:
-    """Extract pitch and yaw before applying robot limits."""
+def neck_angles_from_rotation(rotation: np.ndarray, previous_pitch: float | None = None) -> tuple[float, float]:
+    """Aim the forward axis using R1's Ry(pitch) @ Rz(yaw) joint order.
 
-    forward = pose_to_matrix(pose)[:3, 0]
-    norm = float(np.linalg.norm(forward))
-    if norm <= 0.0:
-        raise ValueError("head pose carries a degenerate forward axis")
-    forward = forward / norm
-    yaw = float(np.arcsin(float(np.clip(forward[1], -1.0, 1.0))))
-    pitch = float(np.arctan2(-forward[2], forward[0]))
+    Pitch stays within +/-90 degrees; the sign of forward X selects the yaw
+    branch beyond 90 degrees. At the singular side-facing pose use the full
+    rotation for pitch. Head roll does not change the forward direction.
+    """
+    forward = np.asarray(rotation, dtype=float)[:, 0]
+    forward = forward / np.linalg.norm(forward)
+    horizontal = float(np.hypot(forward[0], forward[2]))
+    if horizontal < 1e-7:
+        pitch = (float(previous_pitch) if previous_pitch is not None else
+                 float(np.arctan2(rotation[0, 2], rotation[2, 2])))
+        yaw = float(np.copysign(np.pi / 2, forward[1]))
+    else:
+        branch = -1.0 if forward[0] < 0 else 1.0
+        yaw = float(np.arctan2(forward[1], branch * horizontal))
+        pitch = float(np.arctan2(-branch * forward[2], branch * forward[0]))
     return pitch, yaw
 
 
+def _head_angles_unbounded(pose: dict) -> tuple[float, float]:
+    return neck_angles_from_rotation(pose_to_matrix(pose)[:3, :3])
+
+
 def head_angles(pose: dict, limits: tuple[tuple[float, float], ...]) -> tuple[float, float]:
-    """Head joint angles that aim the R1 head down the headset's forward axis.
-
-    R1 mounts pitch outside yaw -- `head_pitch_joint` hangs off `waist_yaw_link`
-    and `head_yaw_joint` off `head_pitch_link` -- so the head rotation is
-    Ry(pitch) @ Rz(yaw) and its forward axis is
-
-        (cos pitch cos yaw, sin yaw, -sin pitch cos yaw).
-
-    Inverting that is not the textbook ZYX extraction, which assumes yaw is the
-    outer joint. Reading the angles the ZYX way costs nothing on a pure yaw or a
-    pure pitch and goes wrong exactly when the two combine, which is why it
-    looks like an off-axis head rather than a bad number.
-
-    `arcsin` bounds yaw at +-90 deg while the joint reaches +-115 deg. The last
-    25 deg are unreachable through this inverse; giving them up is preferable to
-    a branch that flips the head around when the operator turns far enough.
-    """
-
     pitch, yaw = _head_angles_unbounded(pose)
     return float(np.clip(pitch, *limits[0])), float(np.clip(yaw, *limits[1]))
 
 
-def relative_head_angles(
-    pose: dict,
-    neutral_pitch_yaw: tuple[float, float],
-    limits: tuple[tuple[float, float], ...],
-) -> tuple[float, float]:
-    """Return bounded head angles relative to the session's initial pose."""
-
-    pitch, yaw = _head_angles_unbounded(pose)
-    neutral_pitch, neutral_yaw = neutral_pitch_yaw
-    pitch = float(np.arctan2(np.sin(pitch - neutral_pitch), np.cos(pitch - neutral_pitch)))
-    yaw = float(np.arctan2(np.sin(yaw - neutral_yaw), np.cos(yaw - neutral_yaw)))
+def relative_head_angles(pose: dict, neutral_matrix: np.ndarray,
+                         limits: tuple[tuple[float, float], ...],
+                         previous_pitch: float | None = None) -> tuple[float, float]:
+    """Remove the neutral rotation before extracting both neck joint angles."""
+    rotation = np.asarray(neutral_matrix)[:3, :3].T @ pose_to_matrix(pose)[:3, :3]
+    pitch, yaw = neck_angles_from_rotation(rotation, previous_pitch)
     return float(np.clip(pitch, *limits[0])), float(np.clip(yaw, *limits[1]))
 
 
@@ -219,6 +228,18 @@ def reanchor_wrist_matrix(
     return anchored
 
 
+def body_relative_wrist_matrix(wrist: np.ndarray, head: np.ndarray,
+                               anchor: np.ndarray) -> np.ndarray:
+    """Follow head translation while retaining the calibrated forward direction.
+
+    Head yaw is removed by reanchor_wrist_matrix; moving the operator through
+    the room must not become an extra robot hand displacement.
+    """
+    moving_anchor = anchor.copy()
+    moving_anchor[:3, 3] = head[:3, 3]
+    return reanchor_wrist_matrix(wrist, head, moving_anchor)
+
+
 class HeadNeutralCalibrator:
     """Capture one stable session neutral and hold the head with deadman off."""
 
@@ -254,7 +275,7 @@ class HeadNeutralCalibrator:
                 self.anchor_pose_matrix = pose_to_matrix(pose)
             return self.last
 
-        self.last = relative_head_angles(pose, self.neutral, self.limits)
+        self.last = relative_head_angles(pose, self.anchor_pose_matrix, self.limits, self.last[0])
         return self.last
 
 
@@ -298,6 +319,34 @@ def load_solver():
     return R1_A5_ArmIK(Unit_Test=True, Visualization=False)
 
 
+def compact_live_commands(lines):
+    """Keep the latest pose plus the latest reset and release, in source order."""
+    keep = {len(lines) - 1}
+    if lines and lines[-1] is None and len(lines) > 1:
+        keep.add(len(lines) - 2)
+    last_reset = last_release = None
+    first_invalid = None
+    for index, line in enumerate(lines):
+        if line is None:
+            continue
+        try:
+            command = json.loads(line)
+            if not isinstance(command, dict):
+                raise ValueError('command must be an object')
+        except (ValueError, TypeError):
+            # Keep the first fault for the consumer, without accumulating
+            # every malformed line while the solver is busy.
+            if first_invalid is None:
+                first_invalid = index
+            continue
+        if command.get("reset_requested"):
+            last_reset = index
+        if command.get("deadman_enabled") is False:
+            last_release = index
+    keep.update(i for i in (last_reset, last_release, first_invalid) if i is not None)
+    return [lines[i] for i in sorted(keep)]
+
+
 def latest_live_lines(source):
     """Yield only the newest live command after each IK solve.
 
@@ -309,16 +358,17 @@ def latest_live_lines(source):
     remains on the ordinary iterator path so evidence tools stay deterministic.
     """
 
-    mailbox: "queue.Queue[str | None]" = queue.Queue(maxsize=1)
+    mailbox = queue.Queue(maxsize=1)
 
     def offer(value: str | None) -> None:
+        batch = [value]
         while True:
             try:
-                mailbox.put_nowait(value)
+                mailbox.put_nowait(batch)
                 return
             except queue.Full:
                 try:
-                    mailbox.get_nowait()
+                    batch = compact_live_commands(mailbox.get_nowait() + batch)
                 except queue.Empty:
                     pass
 
@@ -330,20 +380,57 @@ def latest_live_lines(source):
 
     threading.Thread(target=reader, name="ik-live-reader", daemon=True).start()
     while True:
-        line = mailbox.get()
-        if line is None:
-            return
-        # Drain any lines accumulated while the previous solve was running.
-        # Keep the newest one; it carries the freshest pose and trigger state.
-        while True:
-            try:
-                newer = mailbox.get_nowait()
-            except queue.Empty:
-                break
-            if newer is None:
+        for line in mailbox.get():
+            if line is None:
                 return
-            line = newer
-        yield line
+            yield line
+
+
+def solve_tracked_arms(solver, left_wrist, right_wrist, tracking):
+    """Fresh vendor solve for the active hand; inactive arm uses a FK hold target.
+
+    The sidecar independently holds inactive motors at fresh encoder positions.
+    The FK target here only keeps the two-effector vendor optimization well posed;
+    it is not an observation from a missing Quest controller.
+    """
+    if (not isinstance(tracking, dict) or
+            any(type(tracking.get(side)) is not bool for side in ('left', 'right')) or
+            not tracking['right']):
+        raise ValueError('enabled command requires fresh right-arm tracking')
+    if not tracking['left']:
+        import pinocchio as pin
+        model = solver.reduced_robot.model
+        data = model.createData()
+        seed = np.asarray(solver.init_data, dtype=float).copy()
+        if seed.shape != (10,) or not np.all(np.isfinite(seed)):
+            raise ValueError('invalid vendor seed for inactive arm')
+        pin.framesForwardKinematics(model, data, seed)
+        left_wrist = np.asarray(data.oMf[solver.L_hand_id].homogeneous).copy()
+    solution, torque = solver.solve_ik(left_wrist, right_wrist)
+    return solution, torque, left_wrist, right_wrist
+
+
+def shutdown_logging_listener():
+    """The pinned logging-mp listener ignores SIGTERM: close its queue first."""
+    module = sys.modules.get("logging_mp")
+    manager = getattr(module, "_internal_manager", None)
+    child = getattr(manager, "_listener_process", None)
+    if child is None:
+        return
+    try:
+        manager._log_queue.put_nowait(None)
+        child.join(timeout=2)
+    finally:
+        if child.is_alive():
+            child.kill()
+            child.join(timeout=1)
+        manager._listener_process = None
+        manager._is_started = False
+
+
+def terminate_ik(signum, frame):
+    # SystemExit reaches finally and atexit, including while stdin is idle.
+    raise SystemExit(0)
 
 
 def main() -> int:
@@ -374,6 +461,10 @@ def main() -> int:
     parser.add_argument("--urdf-path", type=Path, default=DEFAULT_URDF)
     parser.add_argument("--preflight", action="store_true", help="Validate pinned local artifacts and exit.")
     parser.add_argument("--max-command-age-s", type=float, default=0.3)
+    parser.add_argument("--wrist-reference", choices=("initial_head", "body_relative"),
+                        default="initial_head")
+    parser.add_argument("--arm-filter", choices=("vendor", "responsive"), default="vendor",
+                        help="responsive uses two samples (0.7/0.3) instead of four.")
     args = parser.parse_args()
     if not np.isfinite(args.max_command_age_s) or args.max_command_age_s <= 0:
         raise SystemExit("--max-command-age-s must be finite and positive")
@@ -390,13 +481,17 @@ def main() -> int:
             setattr(args, name, value.expanduser().resolve())
 
     head_bounds = head_limits_rad(args.urdf_path)
+    signal.signal(signal.SIGTERM, terminate_ik)
+    atexit.register(shutdown_logging_listener)
     solver = load_solver()
+    if args.arm_filter == "responsive":
+        solver.smooth_filter = type(solver.smooth_filter)(np.array([0.7, 0.3]), 10)
     print("[VENDOR IK READY] pinned R1_A5_ArmIK loaded", file=sys.stderr, flush=True)
     joint_names = list(ARM_JOINT_NAMES) + list(HEAD_JOINT_NAMES)
 
     source = args.input.open("r", encoding="utf-8") if args.input else sys.stdin
     sink = args.output.open("w", encoding="utf-8") if args.output else sys.stdout
-    solve_ms: list[float] = []
+    solve_ms = SolveTimingStats()
     held = 0
     calibration_samples_skipped = 0
     input_line_count = 0
@@ -405,6 +500,7 @@ def main() -> int:
     last_arms: np.ndarray | None = None
     last_wrist_targets: tuple[np.ndarray, np.ndarray] | None = None
     head_calibrator = HeadNeutralCalibrator(head_bounds)
+    reset_requires_release = True
 
     downstream_closed = False
     failure: str | None = None
@@ -419,31 +515,53 @@ def main() -> int:
             source_at = float(command["timestamp_monotonic_s"])
             if not np.isfinite(source_at):
                 raise ValueError("Quest source timestamp is not finite")
-            if args.input is None and time.monotonic() - source_at > args.max_command_age_s:
+            if (args.input is None and time.monotonic() - source_at > args.max_command_age_s
+                    and command.get("deadman_enabled") and not command.get("reset_requested")):
                 stale_samples_skipped += 1
                 continue
             sequence_value = command.get("sequence_id")
             last_sequence_id = int(sequence_value) if sequence_value is not None else None
             enabled = bool(command.get("deadman_enabled", False))
+            if command.get("reset_requested"):
+                head_calibrator = HeadNeutralCalibrator(head_bounds)
+                reset_requires_release = True
+            elif not enabled:
+                reset_requires_release = False
+            enabled = enabled and not reset_requires_release
             pitch, yaw = head_calibrator.update(command["head_pose"], enabled)
             if enabled and not head_calibrator.ready:
                 calibration_samples_skipped += 1
+                enabled = False
+            # Carry STOP even before the first solve and throughout reset and
+            # calibration. No fabricated zero joint target is needed.
+            if not enabled and args.passthrough:
+                record = dict(command)
+                record["deadman_enabled"] = False
+                record["upstream_solved_this_sample"] = False
+                sink.write(json.dumps(record) + "\n")
+                sink.flush()
+                held += 1
                 continue
             if enabled:
                 assert head_calibrator.anchor_pose_matrix is not None
                 current_head = pose_to_matrix(command["head_pose"])
-                left_wrist = reanchor_wrist_matrix(
+                transform_wrist = (body_relative_wrist_matrix
+                                   if args.wrist_reference == "body_relative"
+                                   else reanchor_wrist_matrix)
+                left_wrist = transform_wrist(
                     pose_to_matrix(command["left_wrist_pose"]),
                     current_head,
                     head_calibrator.anchor_pose_matrix,
                 )
-                right_wrist = reanchor_wrist_matrix(
+                right_wrist = transform_wrist(
                     pose_to_matrix(command["right_wrist_pose"]),
                     current_head,
                     head_calibrator.anchor_pose_matrix,
                 )
                 started = time.perf_counter()
-                solution, _torque = solver.solve_ik(left_wrist, right_wrist)
+                arm_tracking = command.get("arm_tracking", {"left": True, "right": True})
+                solution, _torque, left_wrist, right_wrist = solve_tracked_arms(
+                    solver, left_wrist, right_wrist, arm_tracking)
                 solve_ms.append(1000.0 * (time.perf_counter() - started))
                 last_arms = np.asarray(solution, dtype=float)
                 if last_arms.shape != (10,) or not np.all(np.isfinite(last_arms)):
@@ -461,6 +579,7 @@ def main() -> int:
                 # own evidence stays exactly what it would have been, and the
                 # solved vector rides along under its own keys.
                 record = dict(command)
+                record["upstream_arm_tracking"] = command.get("arm_tracking", {"left": True, "right": True})
                 record["upstream_solver"] = "upstream_xr_teleoperate_R1_A5_ArmIK"
                 record["upstream_joint_names"] = joint_names
                 record["upstream_joint_position_rad"] = solved
@@ -472,7 +591,7 @@ def main() -> int:
                     # take close to the 300 ms source lease even after stale
                     # input has already been dropped above.
                     record["upstream_solved_timestamp_monotonic_s"] = time.monotonic()
-                record["upstream_wrist_reference_mode"] = "initial_head_position_yaw_anchor"
+                record["upstream_wrist_reference_mode"] = args.wrist_reference
                 assert last_wrist_targets is not None
                 record["upstream_left_wrist_target_matrix"] = last_wrist_targets[0].tolist()
                 record["upstream_right_wrist_target_matrix"] = last_wrist_targets[1].tolist()
@@ -498,26 +617,31 @@ def main() -> int:
                 sys.stdout = open(os.devnull, "w", encoding="utf-8")
                 downstream_closed = True
                 break
+    except SystemExit:
+        raise
     except BaseException as exc:
         failure = f"{type(exc).__name__}: {exc}"
         raise
     finally:
+        shutdown_logging_listener()
         if args.input:
             source.close()
         if args.output:
             sink.close()
         if args.stats_path:
-            values = np.asarray(solve_ms, dtype=float)
+            values = np.asarray(solve_ms.samples, dtype=float)
             solve_summary = None
             implied_rate = None
             if len(values):
                 solve_summary = {
-                    "mean": float(np.mean(values)),
+                    "mean": solve_ms.total_ms / solve_ms.count,
                     "median": float(np.median(values)),
                     "p95": float(np.quantile(values, 0.95)),
-                    "max": float(np.max(values)),
+                    "max": solve_ms.max_ms,
+                    "quantile_window_sample_count": len(values),
+                    "quantile_scope": "most_recent_4096_solves",
                 }
-                implied_rate = float(1000.0 / float(np.mean(values)))
+                implied_rate = float(1000.0 / solve_summary['mean'])
             args.stats_path.write_text(
                 json.dumps(
                     {
@@ -525,11 +649,12 @@ def main() -> int:
                         "failure": failure,
                         "input_line_count": input_line_count,
                         "last_sequence_id": last_sequence_id,
-                        "solved_sample_count": int(len(values)),
+                        "solved_sample_count": solve_ms.count,
                         "held_sample_count": int(held),
                         "calibration_samples_skipped": int(calibration_samples_skipped),
                         "stale_samples_skipped": int(stale_samples_skipped),
-                        "wrist_reference_mode": "initial_head_position_yaw_anchor",
+                        "wrist_reference_mode": args.wrist_reference,
+                        "arm_filter": args.arm_filter,
                         "solve_ms": solve_summary,
                         "implied_rate_ceiling_hz": implied_rate,
                         "head_neutral_pitch_yaw_rad": (

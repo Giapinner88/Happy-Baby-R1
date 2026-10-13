@@ -337,7 +337,7 @@ ls -l /run/hb/gesture_owner.sock
 Deploy riêng voice từ gốc repo trên máy dev:
 
 ```bash
-./integration/scripts/deploy_stack.sh deploy-voice
+./hb deploy voice
 ```
 
 Lệnh tự dò robot, cập nhật voice và restart `hb_voice.service`, không restart
@@ -350,7 +350,7 @@ Wi-Fi chỉ cung cấp đường Internet và SSH/deploy. Khi robot sang Wi-Fi k
 thông thường chỉ cần dùng IP mới:
 
 ```bash
-ROBOT=unitree@<IP_MOI> ./integration/scripts/deploy_stack.sh status
+ROBOT=unitree@<IP_MOI> ./hb status
 ```
 
 Kết nối OpenAI dùng default route/DNS nên không lưu IP Wi-Fi trong source.
@@ -367,9 +367,9 @@ thực sự thay đổi mới sửa đồng thời:
 Chỉ thay đổi voice/tuning:
 
 ```bash
-./integration/scripts/deploy_stack.sh diff
-./integration/scripts/deploy_stack.sh deploy --restart-voice
-./integration/scripts/deploy_stack.sh status
+./hb diff
+./hb deploy voice
+./hb status
 ```
 
 Sau deploy, kiểm tra trên robot:
@@ -389,17 +389,17 @@ Có thay đổi policy hoặc code high-level: đưa robot về `DISARMED`, tư 
 toàn, rồi deploy toàn stack:
 
 ```bash
-./integration/scripts/deploy_stack.sh diff
-./integration/scripts/deploy_stack.sh deploy --accept-policy  # nếu đổi policy
-# Hoặc: ./integration/scripts/deploy_stack.sh deploy           # chỉ đổi code
-./integration/scripts/deploy_stack.sh status
+./hb diff
+./hb deploy                # nếu đổi policy (chấp nhận policy đang chọn)
+# Chỉ đổi code voice: ./hb deploy voice
+./hb status
 ```
 
 Deploy tự dò các địa chỉ quen thuộc; có thể đặt `ROBOT=unitree@<IP>` để dùng IP
 mới. Binary và `.venv` luôn được tạo trên robot ARM64; không copy build x86 từ
 máy dev.
 
-`deploy_stack.sh status` đọc thêm `/run/hb/voice_status.env`. Voice chỉ thực sự
+`./hb status` đọc thêm `/run/hb/voice_status.env`. Voice chỉ thực sự
 sẵn sàng khi cả `openai_ready=1` và `mic_ready=1`; `systemctl active` một mình
 không còn được coi là đủ.
 

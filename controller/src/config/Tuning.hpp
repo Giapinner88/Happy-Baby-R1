@@ -240,6 +240,7 @@ struct Tuning {
     float startup_voice_delay_s  = 0.0f;
     std::string voice_stand_lock = "Đã khóa đứng";
     std::string voice_locomotion = "Bật chế độ đi bộ";
+    std::string voice_locomotion_teleop = "";   // vào chế độ đi bộ + teleop (rỗng = dùng voice_locomotion)
     std::string voice_sit_down   = "Đang ngồi xuống";
     std::string voice_safe_stop  = "Kích hoạt chế độ an toàn";
     std::string voice_mimic[7];
@@ -470,6 +471,19 @@ struct Tuning {
     // Flat-Plus contract mới chỉ được bật bằng cách đổi rõ key này.
     std::string flat_policy_contract = "legacy_83";
     std::string flat_model  = "policy_r1_1.onnx";
+    bool flat_model_configured = false;   // config khai flat_model/flat_policy_contract (route cũ)
+
+    // Route bundle (khuyến nghị): tên thư mục dưới policies/locomotion/<tên>/ chứa
+    // policy.onnx + policy.yaml. walk_policy = đi bộ thường (R2+A), teleop_policy =
+    // đi bộ kèm teleop tay (R2+X); trống = dùng chung walk_policy. Khi walk_policy
+    // được khai, flat_model/flat_policy_contract KHÔNG được khai (tránh hai nguồn sự thật).
+    std::string walk_policy;
+    std::string teleop_policy;
+    // Đổi nóng walk <-> teleop trong LOCOMOTION: chỉ thực hiện khi robot đứng yên
+    // (lệnh 0, gait STAND ổn định, tay đã thu) liên tục swap_dwell_s; quá
+    // swap_timeout_s mà chưa đủ điều kiện thì huỷ, giữ policy cũ.
+    float policy_swap_dwell_s = 0.5f;
+    float policy_swap_timeout_s = 6.0f;
 
     // FSM gait-conditioned cho flat_plus_gait_h4_v1. Các giá trị này phải khớp
     // metadata của model; mặc định chính là contract đã export từ simulator.

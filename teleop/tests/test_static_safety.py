@@ -49,7 +49,10 @@ def test_runtime_uses_the_h4_contract_required_by_the_controller() -> None:
     script = RUNTIME.read_text(encoding="utf-8")
     assert script.count("--stream-contract h4") == 2  # targets producer + sidecar
     assert '"h4"' in SIDECAR.read_text(encoding="utf-8")
-    application = (REPO_DIR / "controller/src/app/Application.cpp").read_text(encoding="utf-8")
+    application = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((REPO_DIR / "controller/src/app").glob("Application*.cpp"))
+    )
     assert "h4_teleop_approved_" in application
 
 

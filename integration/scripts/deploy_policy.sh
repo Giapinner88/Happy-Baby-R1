@@ -2,8 +2,9 @@
 # Fast policy-only deploy for controller.
 #
 # This deliberately does not build or mirror the whole HB stack. It reads the
-# effective flat_model/flat_policy_contract, runs the already-built local
-# run_r1 preflight, syncs the selected ONNX + locomotion config + manifest, and
+# effective walk_policy/teleop_policy bundles (or legacy flat_model), runs the
+# already-built local run_r1 preflight, syncs the selected bundles + locomotion
+# config + gestures config + manifest, and
 # restarts hb_high_level only after DISARMED has been confirmed on the robot.
 # Policy selection remains explicit in config/tuning.yaml; this script does not
 # infer a compatible config from a newly copied policy.
@@ -22,10 +23,10 @@ source "$HB_ROOT/integration/scripts/dance_preflight_summary.sh"
 usage() {
     cat <<'USAGE'
 Usage:
-  make deploy-policy                                    locomotion policy + restart high-level
-  make deploy-policy ARGS=--with-dance                  locomotion + dance assets + one restart
-  make deploy-policy ARGS=--dry-run                     preview locomotion sync, no writes/restart
-  make deploy-policy ARGS="--with-dance --dry-run"      preview locomotion + dance sync
+  ./hb deploy policy               locomotion policy + restart high-level
+  ./hb deploy dance                locomotion + dance assets + one restart
+  ./hb deploy policy --dry-run     preview locomotion sync, no writes/restart
+  ./hb deploy dance --dry-run      preview locomotion + dance sync
 
 Optional environment:
   ROBOT=unitree@<ip-or-hostname>  override robot discovery
@@ -48,28 +49,17 @@ fail() {
     exit 1
 }
 
-[[ -x "$HIGH_BIN" ]] || fail "missing local preflight binary: $HIGH_BIN (use make deploy for a full deploy/build)"
+[[ -x "$HIGH_BIN" ]] || fail "missing local preflight binary: $HIGH_BIN (run ./hb build, or ./hb deploy for a full deploy/build)"
 [[ -r "$HIGH_DIR/config/tuning.yaml" ]] || fail "missing config: $HIGH_DIR/config/tuning.yaml"
 
 # shellcheck disable=SC1091
 source "$HB_ROOT/integration/scripts/config_reader.sh"
-SELECTED="$(hb_config_get "$HIGH_DIR/config/tuning.yaml" flat_model)"
-SELECTED_CONTRACT="$(hb_config_get "$HIGH_DIR/config/tuning.yaml" flat_policy_contract)"
-[[ -n "$SELECTED" && "$SELECTED" != */* && "$SELECTED" != "." && "$SELECTED" != ".." ]] || \
-    fail "flat_model must name a file: '$SELECTED'"
-[[ -n "$SELECTED_CONTRACT" ]] || fail "flat_policy_contract is empty"
-
-case "$SELECTED_CONTRACT" in
-    legacy_83)
-        EXPECTED_PREFIX="policies/flat/"
-        ;;
-    flat_plus_h4_v1|flat_plus_h5_v1|flat_plus_gait_h4_v1)
-        EXPECTED_PREFIX="policies/locomotion/flat_plus/"
-        ;;
-    *)
-        fail "unsupported flat_policy_contract '$SELECTED_CONTRACT'"
-        ;;
-esac
+SELECTED_POLICY="$(hb_selected_policy "$HIGH_DIR/config/tuning.yaml" walk_policy)" || \
+    fail "cannot resolve walk_policy/flat_model"
+read -r SELECTED_REL SELECTED_CONTRACT <<<"$SELECTED_POLICY"
+SELECTED_TELEOP="$(hb_selected_policy "$HIGH_DIR/config/tuning.yaml" teleop_policy)" || \
+    fail "cannot resolve teleop_policy"
+read -r SELECTED_TELEOP_REL _ <<<"$SELECTED_TELEOP"
 
 ORT_LIB="$HIGH_DIR/thirdparty/onnxruntime/lib"
 if [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
@@ -82,6 +72,9 @@ MANIFEST_TMP=""
 cleanup() {
     (( KEEP_PREFLIGHT_LOG )) || rm -f -- "$PREFLIGHT_LOG"
     [[ -z "$MANIFEST_TMP" ]] || rm -f -- "$MANIFEST_TMP"
+    if declare -F hb_deploy_auth_cleanup >/dev/null; then
+        hb_deploy_auth_cleanup "${SSH_CONTROL_PATH:-}" "${ROBOT:-}"
+    fi
 }
 trap cleanup EXIT
 
@@ -99,8 +92,22 @@ MODEL_OUTPUT="$(sed -n 's/.* output=\([^ ]*\).*/\1/p' <<<"$MODEL_LINE")"
 
 [[ "$RUNTIME_CONTRACT" == "$SELECTED_CONTRACT" ]] || \
     fail "runtime contract=$RUNTIME_CONTRACT but config selects $SELECTED_CONTRACT"
-[[ "$MODEL_REL" == "$EXPECTED_PREFIX$SELECTED" ]] || \
-    fail "runtime loads '$MODEL_REL', expected '${EXPECTED_PREFIX}${SELECTED}'"
+[[ "$MODEL_REL" == "$SELECTED_REL" ]] || \
+    fail "runtime loads '$MODEL_REL', expected '$SELECTED_REL'"
+TELEOP_LINE="$(grep -m1 '^\[Preflight\] TELEOP_MODEL ' "$PREFLIGHT_LOG" || true)"
+TELEOP_REL="$(sed -n 's/.* rel=\([^ ]*\).*/\1/p' <<<"$TELEOP_LINE")"
+[[ "$TELEOP_REL" == "$SELECTED_TELEOP_REL" ]] || \
+    fail "runtime loads teleop '$TELEOP_REL', expected '$SELECTED_TELEOP_REL'"
+
+# Bundle route: đồng bộ cả thư mục (policy.onnx + policy.yaml) của walk và teleop.
+# Route cũ: chỉ file model. Phải sync cả gestures.yaml vì teleop_* nằm ở đó.
+SYNC_PATHS=("$MODEL_REL")
+if [[ "$MODEL_REL" == policies/locomotion/*/policy.onnx && "$MODEL_REL" != */_archive/* ]]; then
+    SYNC_PATHS=("$(dirname "$MODEL_REL")/policy.onnx" "$(dirname "$MODEL_REL")/policy.yaml")
+    if [[ "$TELEOP_REL" != "$MODEL_REL" ]]; then
+        SYNC_PATHS+=("$(dirname "$TELEOP_REL")/policy.onnx" "$(dirname "$TELEOP_REL")/policy.yaml")
+    fi
+fi
 
 MODEL="$HIGH_DIR/$MODEL_REL"
 [[ -s "$MODEL" ]] || fail "selected model is missing or empty: $MODEL"
@@ -126,30 +133,27 @@ MODEL_INPUT=$MODEL_INPUT
 MODEL_OUTPUT=$MODEL_OUTPUT
 EOF
 
-hb_ok "locomotion policy: $SELECTED ($SELECTED_CONTRACT)"
+hb_ok "locomotion policy: walk=$MODEL_REL ($SELECTED_CONTRACT), teleop=$TELEOP_REL"
 if (( WITH_DANCE )); then
     hb_summarize_dance_preflight "$DANCE_CONFIG" "$PREFLIGHT_LOG"
 fi
 
 # Dò robot sau preflight để không mất thời gian nếu artifact local đã hỏng.
 # shellcheck disable=SC1091
-source "$HIGH_DIR/scripts/_find_robot.sh"
+source "$HB_ROOT/integration/scripts/find_robot.sh"
 find_robot
 hb_info "Deploying to $ROBOT"
 
-if [[ -n "${HB_SSH_CONTROL_PATH:-}" ]]; then
-    SSH_CONTROL_PATH="$HB_SSH_CONTROL_PATH"
-    SSH=(ssh -o ControlMaster=auto -o ControlPersist=300 -o "ControlPath=$SSH_CONTROL_PATH")
-    RSYNC_SSH="ssh -o ControlMaster=auto -o ControlPersist=300 -o ControlPath=$SSH_CONTROL_PATH"
-else
-    # Avoid stale ControlMaster sockets causing "mux_client... Broken pipe".
-    # The policy-only transfer is still fast without multiplexing.
-    SSH=(ssh -o ControlMaster=no -o ControlPath=none)
-    RSYNC_SSH="ssh -o ControlMaster=no -o ControlPath=none"
+# shellcheck disable=SC1091
+source "$HB_ROOT/integration/scripts/deploy_auth.sh"
+hb_ssh_setup 900
+hb_deploy_auth_open_ssh "$ROBOT" "$SSH_CONTROL_PATH" "$SSH_CONNECT_TIMEOUT"
+if (( ! DRY_RUN )); then
+    hb_deploy_auth_enable_sudo "$ROBOT" "$SSH_CONTROL_PATH" "$SSH_CONNECT_TIMEOUT"
 fi
-RSYNC_BASE=(-az --no-perms --omit-dir-times -e "$RSYNC_SSH")
 REMOTE_MODEL="$DEST/controller/$MODEL_REL"
 REMOTE_CONFIG="$DEST/controller/config/locomotion.yaml"
+REMOTE_GESTURES="$DEST/controller/config/gestures.yaml"
 REMOTE_MANIFEST="$DEST/integration/config/model_manifest.conf"
 REMOTE_DANCE_CONFIG="$DEST/controller/config/dance.yaml"
 REMOTE_DANCE_DIR="$DEST/controller/policies/dance/"
@@ -167,8 +171,11 @@ DANCE_RSYNC_EXCLUDES=(
 )
 
 if (( DRY_RUN )); then
-    rsync "${RSYNC_BASE[@]}" --dry-run "$MODEL" "$ROBOT:$REMOTE_MODEL"
+    for rel in "${SYNC_PATHS[@]}"; do
+        rsync "${RSYNC_BASE[@]}" --dry-run "$HIGH_DIR/$rel" "$ROBOT:$DEST/controller/$rel"
+    done
     rsync "${RSYNC_BASE[@]}" --dry-run "$HIGH_DIR/config/locomotion.yaml" "$ROBOT:$REMOTE_CONFIG"
+    rsync "${RSYNC_BASE[@]}" --dry-run "$HIGH_DIR/config/gestures.yaml" "$ROBOT:$REMOTE_GESTURES"
     rsync "${RSYNC_BASE[@]}" --dry-run "$MANIFEST_TMP" "$ROBOT:$REMOTE_MANIFEST"
     if (( WITH_DANCE )); then
         rsync "${RSYNC_BASE[@]}" --dry-run "$DANCE_CONFIG" "$ROBOT:$REMOTE_DANCE_CONFIG"
@@ -179,11 +186,16 @@ if (( DRY_RUN )); then
     exit 0
 fi
 
+REMOTE_DIRS=""
+for rel in "${SYNC_PATHS[@]}"; do REMOTE_DIRS+=" '$DEST/controller/$(dirname "$rel")'"; done
 "${SSH[@]}" "$ROBOT" \
-    "mkdir -p '$DEST/controller/$(dirname "$MODEL_REL")' '$DEST/controller/config' '$DEST/integration/config' '$DEST/controller/policies/dance'"
+    "mkdir -p $REMOTE_DIRS '$DEST/controller/config' '$DEST/integration/config' '$DEST/controller/policies/dance'"
 
-rsync "${RSYNC_BASE[@]}" "$MODEL" "$ROBOT:$REMOTE_MODEL"
+for rel in "${SYNC_PATHS[@]}"; do
+    rsync "${RSYNC_BASE[@]}" "$HIGH_DIR/$rel" "$ROBOT:$DEST/controller/$rel"
+done
 rsync "${RSYNC_BASE[@]}" "$HIGH_DIR/config/locomotion.yaml" "$ROBOT:$REMOTE_CONFIG"
+rsync "${RSYNC_BASE[@]}" "$HIGH_DIR/config/gestures.yaml" "$ROBOT:$REMOTE_GESTURES"
 rsync "${RSYNC_BASE[@]}" "$MANIFEST_TMP" "$ROBOT:$REMOTE_MANIFEST"
 if (( WITH_DANCE )); then
     rsync "${RSYNC_BASE[@]}" "$DANCE_CONFIG" "$ROBOT:$REMOTE_DANCE_CONFIG"
@@ -198,9 +210,9 @@ hb_ok "files synchronized"
 "${SSH[@]}" -t "$ROBOT" '
 set -e
 STATUS=/run/hb/status.env
-grep -qx "high_state=DISARMED" "$STATUS"
+grep -q "^high_state=DISARMED" "$STATUS"
 grep -qx "high_armed=0" "$STATUS"
-sudo systemctl restart hb_high_level.service
+sudo -n systemctl restart hb_high_level.service
 sleep 2
 systemctl is-active --quiet hb_high_level.service
 '

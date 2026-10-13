@@ -1,0 +1,10 @@
+Reference-only candidate; not hardware or simulator validated.
+
+Source: HB/controller/policies/dance/nhay3_20260904/nhay3_r1_neodat_20260904.npz
+Cut: remove source frames 0..83; first retained source frame 84 at 1.68 s.
+Retained frames: 1177 at 50 Hz (23.54 s).
+Reason: this removes the first simultaneous moderate-tilt/support-proxy interval (source frames 66..83, 1.32..1.66 s) identified by scanning both feet together. It does not remove the later interval at frames 381..389 (7.62..7.78 s).
+
+With the current dance_start_frame=-1 and dance_start_search_frames=200, FindSmoothStartFrame selects local frame 3, source frame 87 (1.74 s). At that selected frame, reference foot tilts are about 7.0/11.2 deg, foot-site heights are 0.028/0.011 m, and max leg joint speed is 0.69 rad/s. This starts with one foot lifted and is not a verified safe transition.
+
+The foot-site height is a kinematic proxy, not measured contact. The source archive and active dance.yaml route are unchanged.

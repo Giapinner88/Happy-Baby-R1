@@ -73,6 +73,7 @@ InputCommand KeyboardX11::GetCommand() {
 
     if (want_stand_lock_.exchange(false)) cmd.want_stand_lock = true;
     if (want_locomotion_.exchange(false)) cmd.want_locomotion = true;
+    if (want_teleop_locomotion_.exchange(false)) cmd.want_teleop_locomotion = true;
     cmd.want_mimic_key = want_mimic_key_.exchange(0);
     if (want_reset_.exchange(false))      cmd.want_reset = true;
     if (want_safe_shutdown_.exchange(false))   cmd.want_safe_shutdown = true;
@@ -152,6 +153,7 @@ void KeyboardX11::ThreadFn() {
                 set_key(sym, true);
                 if (sym == XK_0) want_stand_lock_ = true;
                 if (sym == XK_1) want_locomotion_ = true;
+                if (sym == XK_t || sym == XK_T) want_teleop_locomotion_ = true;
                 if (sym == XK_2) want_mimic_key_ = 2;
                 if (sym == XK_3) want_mimic_key_ = 3;
                 if (sym == XK_4) want_mimic_key_ = 4;

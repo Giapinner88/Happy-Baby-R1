@@ -170,6 +170,7 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "startup_voice_delay_s") startup_voice_delay_s = f();
     else if (key == "voice_stand_lock")    voice_stand_lock = value;
     else if (key == "voice_locomotion")    voice_locomotion = value;
+    else if (key == "voice_locomotion_teleop") voice_locomotion_teleop = value;
     else if (key == "voice_sit_down")      voice_sit_down = value;
     else if (key == "voice_safe_stop")     voice_safe_stop = value;
     else if (key == "voice_fast_speed")    voice_fast_speed = value;
@@ -305,8 +306,12 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "mimic_telemetry_hz")      mimic_telemetry_hz = i();
     else if (key == "mimic_telemetry_post_s")  mimic_telemetry_post_s = f();
     else if (key == "mimic_telemetry_dir")     mimic_telemetry_dir = value;
-    else if (key == "flat_policy_contract") flat_policy_contract = value;
-    else if (key == "flat_model")         flat_model = value;
+    else if (key == "flat_policy_contract") { flat_policy_contract = value; flat_model_configured = true; }
+    else if (key == "flat_model")         { flat_model = value; flat_model_configured = true; }
+    else if (key == "walk_policy")        walk_policy = value;
+    else if (key == "teleop_policy")      teleop_policy = value;
+    else if (key == "policy_swap_dwell_s")   policy_swap_dwell_s = f();
+    else if (key == "policy_swap_timeout_s") policy_swap_timeout_s = f();
     else if (key == "gait_stop_request_lin") gait_stop_request_lin = f();
     else if (key == "gait_stop_request_ang") gait_stop_request_ang = f();
     else if (key == "gait_move_request_lin") gait_move_request_lin = f();
@@ -361,13 +366,25 @@ bool Tuning::Validate() const {
         }
     };
 
-    require(!flat_model.empty(), "flat_model must not be empty");
-    require(flat_policy_contract == "legacy_83" ||
+    const bool bundle_route = !walk_policy.empty();
+    require(!bundle_route || !flat_model_configured,
+            "walk_policy and flat_model/flat_policy_contract are mutually exclusive; "
+            "select the locomotion policy in exactly one way");
+    require(bundle_route || teleop_policy.empty(),
+            "teleop_policy requires walk_policy (bundle route)");
+    require(bundle_route || !flat_model.empty(), "flat_model must not be empty");
+    require(bundle_route ||
+                flat_policy_contract == "legacy_83" ||
                 flat_policy_contract == "flat_plus_h4_v1" ||
                 flat_policy_contract == "flat_plus_h5_v1" ||
                 flat_policy_contract == "flat_plus_gait_h4_v1",
             "flat_policy_contract must be legacy_83, flat_plus_h4_v1, "
             "flat_plus_h5_v1 or flat_plus_gait_h4_v1");
+    require(finite_in(policy_swap_dwell_s, 0.1f, 5.0f),
+            "policy_swap_dwell_s must be finite and in [0.1, 5]");
+    require(finite_in(policy_swap_timeout_s, 1.0f, 30.0f) &&
+                policy_swap_timeout_s > policy_swap_dwell_s,
+            "policy_swap_timeout_s must be > policy_swap_dwell_s and in [1, 30]");
     require(gesture_voice_command_socket.rfind("/run/hb/", 0) == 0 &&
                 gesture_voice_command_socket.size() < 108 &&
                 gesture_voice_command_socket.find("..") == std::string::npos,
@@ -387,7 +404,11 @@ bool Tuning::Validate() const {
             std::all_of(teleop_h4_model_sha256.begin(), teleop_h4_model_sha256.end(),
                         [](char c) { return (c >= '0' && c <= '9') ||
                                             (c >= 'a' && c <= 'f'); });
-        require(teleop_enabled && flat_policy_contract == "flat_plus_gait_h4_v1" && hash_ok,
+        // Route bundle: contract + SHA-256 nằm trong policy.yaml của teleop bundle và
+        // được kiểm lúc InitControllers; teleop_h4_model_sha256 chỉ dùng cho route cũ.
+        require(teleop_enabled &&
+                    (bundle_route ||
+                     (flat_policy_contract == "flat_plus_gait_h4_v1" && hash_ok)),
                 "teleop H4 requires teleop_enabled, exact gait-H4 contract and 64-char lowercase SHA-256");
     }
     // Sàn 100: dưới 84 thì 2 cổ chân không thắng nổi m*g*h=168 Nm/rad của robot ->

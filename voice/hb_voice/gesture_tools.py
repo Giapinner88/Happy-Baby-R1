@@ -17,8 +17,19 @@ from loguru import logger
 
 
 GESTURE_TOOL_INSTRUCTIONS = """
-# Tương tác bằng cử chỉ
-- Chỉ gọi perform_gesture khi người dùng yêu cầu robot thực hiện một cử chỉ rõ ràng.
+# Công cụ chuyển động cơ thể vật lý
+- perform_gesture CHỈ điều khiển chuyển động cơ thể vật lý thuộc đúng danh sách bên dưới.
+- Biểu cảm bằng giọng như cười, reo vui, chúc mừng, kể chuyện, nói nhỏ hoặc nói hào
+  hứng KHÔNG phải cử chỉ vật lý: hãy đáp ứng tự nhiên bằng lời nói và KHÔNG gọi tool.
+  Ví dụ “cười đi” -> cười tự nhiên như “Ha ha ha! Vui quá đi!”; không nói robot thiếu
+  động tác cười. “Cười chào bé đi” -> đáp bằng giọng vui, không gọi perform_gesture.
+- Nếu người dùng kết hợp lời nói với một cử chỉ được hỗ trợ, chỉ dùng tool cho phần
+  chuyển động. Ví dụ “vẫy tay và cười đi” -> gọi wave, rồi cười/chào tự nhiên sau
+  khi tool trả kết quả.
+- Không tự nhắc tới giới hạn hành động, tool hoặc chế độ Dev trừ khi người dùng thật
+  sự yêu cầu một chuyển động cơ thể vật lý không được hỗ trợ.
+- Chỉ gọi perform_gesture khi người dùng yêu cầu robot thực hiện một cử chỉ vật lý
+  rõ ràng và cử chỉ đó ánh xạ đúng vào một lựa chọn được hỗ trợ.
 - Các lựa chọn: wave (vẫy tay), heart (tạo trái tim), handshake (bắt tay),
   cool_pose (tạo dáng ngầu), determined (thể hiện quyết tâm), give_gift (tặng quà).
 - Nhận lời mời tự nhiên, không đòi người dùng nói tên ID hay từ “lệnh”:
@@ -102,11 +113,13 @@ class GestureToolController:
             FunctionSchema(
                 name="perform_gesture",
                 description=(
-                    "Thực hiện một cử chỉ khi người dùng yêu cầu hoặc mời robot làm, "
+                    "Chỉ điều khiển chuyển động cơ thể vật lý thuộc đúng các gesture_id "
+                    "được liệt kê khi người dùng yêu cầu hoặc mời robot làm, "
                     "kể cả cách nói lịch sự như 'bắt tay với mình được không?'. "
                     "Gọi ngay, không nói lời xác nhận trước khi có kết quả. "
-                    "Không dùng cho lời chào thông thường, câu phủ định, trích dẫn "
-                    "hoặc động tác chưa rõ."
+                    "Không dùng cho biểu cảm bằng giọng như cười, reo vui, kể chuyện "
+                    "hoặc nói hào hứng; cũng không dùng cho lời chào thông thường, "
+                    "câu phủ định, trích dẫn hoặc động tác chưa rõ."
                 ),
                 properties={
                     "gesture_id": {

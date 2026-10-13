@@ -1,0 +1,112 @@
+schema_version: 1
+
+network:
+  # Laptop address serving HTTPS/WebXR. `auto` follows the default route.
+  host_ip: auto
+  # Set this when the laptop has multiple active interfaces, e.g. wlp111s0.
+  host_interface: ""
+  # Preferred SSH/rsync route for deploy. It can be Ethernet, Wi-Fi, or
+  # Tailscale; scripts/_find_robot.sh probes fallbacks if this route is down.
+  # R1 verified development Ethernet address. The Quest endpoint itself stays
+  # on robot_runtime.host_interface (wlan0), independent from this SSH route.
+  robot: unitree@192.168.123.164
+  # Unitree DDS interface inside the robot. This is independent of Wi-Fi.
+  robot_interface: eth10
+  cert_file: ~/.config/xr_teleoperate/happybaby_lan/cert.pem
+  key_file: ~/.config/xr_teleoperate/happybaby_lan/key.pem
+  vuer_port: 8012
+
+environments:
+  vuer: tv
+  ik: unitree_sim_env
+  vendor_python: ~/.local/share/hb/teleop/vendor_ik_env/bin/python
+
+bridge:
+  duration_s: 3000
+  frequency_hz: 30
+  deadman_source: right_trigger
+  # TeleVuer uses an inverted analog scale: 10=released, 0=pressed.
+  trigger_value_threshold: 5.0
+
+ik:
+  backend: vendor_r1_a5
+  stream_contract: h4
+  joint_limits_only: true
+  # Legacy laptop pipeline: giữ 2 phút sau khi nhả cò trước khi thoát.
+  release_debounce_s: 120
+  control_hz: 10
+  # ARM64 vendor IK occasionally needs >300 ms for one solve.
+  source_timeout_s: 0.60
+  max_joint_velocity_rad_s: 0.50
+  max_joint_acceleration_rad_s2: 1.0
+
+limits:
+  # Increase only in deliberate suspended-robot steps: 0.15 -> 0.35 -> 0.60.
+  max_offset_rad: 0.15
+  head_yaw_max_rad: 0.60
+  head_pitch_max_rad: 0.70
+
+sidecar:
+  udp_host: 127.0.0.1
+  udp_port: 5560
+  first_input_timeout_s: 120
+  input_timeout_s: 0.75
+  state_timeout_s: 0.20
+  send_hz: 100
+  expected_mode_machine: 1
+
+safety:
+  # Set false to require typing YES in an interactive terminal.
+  confirm_suspended_with_estop: true
+  confirm_dev_mode: true
+  # `false` = one launcher command accepts ZERO_TORQUE or LOCOMOTION. In
+  # LOCOMOTION, zero velocity is valid; the H4 STOP preamble is still sent.
+  require_locomotion: false
+  locomotion_wait_s: 30
+
+paths:
+  results_dir: results/smoke
+
+# Runtime chạy trực tiếp trên R1; laptop chỉ dùng để đổi Wi-Fi/deploy một lần.
+# IK vendor là đường chính và không tự rơi xuống solver khác nếu thiếu dependency.
+robot_runtime:
+  enabled: true
+  host_interface: wlan0
+  hostname: hb-r1.local
+  port: 8012
+  ik_backend: vendor_r1_a5
+  cert_file: /etc/hb/teleop/cert.pem
+  key_file: /etc/hb/teleop/key.pem
+  joint_limits_only: true
+  # 0 = chạy vô hạn; START chỉ tắt quyền teleop ở high-level.
+  duration_s: 0
+  # 0 = chờ Quest vô hạn; sidecar chỉ phát STOP cho tới khi có target hợp lệ.
+  first_input_timeout_s: 0
+  # 0 = chờ rt/lowstate vô hạn sau khi runtime start. Không gửi UDP trước khi
+  # high-level thực sự nhận LowState, tránh sidecar chết do DDS/R3 lên chậm.
+  initial_state_timeout_s: 0
+  # Phát nghiệm mới tối đa 30 Hz; không phát lại nghiệm cũ để gia hạn deadman.
+  control_hz: 30
+  source_timeout_s: 0.60
+  # 0 = giữ pipeline robot-local sống sau khi nhả cò; có thể bóp lại bất cứ lúc nào.
+  release_debounce_s: 0
+  max_offset_rad: 0.15
+  head_yaw_max_rad: 0.65
+  head_pitch_max_rad: 0.70
+  # `auto` tách bridge, mapper/sidecar và vendor IK khi R1 có ít nhất 4 lõi
+  # online. `off` chỉ dùng khi cần chẩn đoán hoặc một R1 có topology lạ.
+  cpu_affinity: auto
+  # Camera R1 chạy ngay trên robot, không qua laptop hay SSH tunnel. A tay
+  # phải trên Quest đổi giữa passthrough và ảnh camera. Khi passthrough, không
+  # fetch/decode frame; bấm A sẽ chờ một frame mới rồi hiện camera.
+  camera_enabled: true
+  camera_interface: eth10
+  # 0 = adaptive FPS, measured source/CPU capacity + WebRTC bandwidth feedback.
+  # Positive value is an explicit operator cap.
+  camera_capture_hz: 0
+  camera_media_port: 8013
+  camera_width: 640
+  camera_height: 360
+  camera_startup_timeout_s: 5.0
+  camera_enable_max_age_s: 0.50
+  camera_fallback_max_age_s: 1.00

@@ -105,7 +105,12 @@ emit_directory() {
 # candidate/checkpoint directories stay visible instead of being silently
 # merged. `backup` is archived content and is not a runtime package.
 emit_directory policy "$ROOT/controller/policies/flat" runtime
-emit_directory policy "$ROOT/controller/policies/locomotion/flat_plus" runtime
+emit_directory policy "$ROOT/controller/policies/locomotion/_archive/flat_plus" archive
+# One row per locomotion bundle (policy.onnx + policy.yaml).
+while IFS= read -r directory; do
+    [[ "$(basename "$directory")" == _* ]] && continue
+    emit_directory policy "$directory" runtime
+done < <(find "$ROOT/controller/policies/locomotion" -mindepth 1 -maxdepth 1 -type d -print | sort)
 emit_directory policy "$ROOT/controller/policies/gestures" runtime
 if [[ -d "$ROOT/controller/policies/dance" ]]; then
     while IFS= read -r directory; do

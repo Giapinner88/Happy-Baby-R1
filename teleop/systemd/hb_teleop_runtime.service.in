@@ -1,8 +1,11 @@
 [Unit]
 Description=HB R1 robot-local Quest WebXR H4 teleop
-After=network-online.target hb_high_level.service hb_teleop_cert.service
-Wants=network-online.target hb_high_level.service hb_teleop_cert.service
-Requires=hb_high_level.service
+After=network-online.target avahi-daemon.service hb_high_level.service hb_teleop_cert.service
+# A failed high-level boot attempt must not cancel this unit's restart loop.
+# ExecStartPre verifies high-level/certificate readiness before opening WebXR.
+Wants=network-online.target hb_teleop_cert.service hb_high_level.service
+Requires=avahi-daemon.service
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple

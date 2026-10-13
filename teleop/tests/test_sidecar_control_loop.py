@@ -193,3 +193,48 @@ def test_h4_stream_loop_sends_start_and_exit_stop_without_dds_writer(
     assert decoded[0][2:6] == (0, 0, 0, 1)
     assert any(packet[2:6] == (1, 1, 1, 1) for packet in decoded[1:-1])
     assert decoded[-1][2:6] == (0, 0, 0, 1)
+
+
+def test_joint_limits_only_keeps_head_wire_envelope(monkeypatch, tmp_path):
+    sidecar = _sidecar()
+    packets = []
+    class FakeSocket:
+        def connect(self, address): pass
+        def send(self, packet): packets.append(sidecar.PACKET.unpack(packet))
+        def close(self): pass
+    monkeypatch.setattr(sidecar.socket, 'socket', lambda *args: FakeSocket())
+    state = SimpleNamespace(mode_machine=1, motor_state=[SimpleNamespace(q=0.) for _ in range(35)])
+    states = SimpleNamespace(snapshot=lambda: (state, time.monotonic()))
+    lines = queue.Queue()
+    lines.put(json.dumps({'sequence_id': 1, 'upstream_sequence_id': 1, 'enabled': True,
+                         'joint_names': sidecar.JOINT_NAMES, 'positions_rad': [1.2]*10+[2.0048,-.7]}))
+    args = SimpleNamespace(joint_limits_only=True, max_offset_rad=.2, source_timeout_s=.6,
+                           input_timeout_s=.75, head_yaw_max_rad=.65, head_pitch_max_rad=.64,
+                           udp_host='127.0.0.1', udp_port=5560, send_hz=100., duration_s=.025,
+                           first_input_timeout_s=1., state_timeout_s=.2, expected_mode_machine=1)
+    assert sidecar.run_h4_stream(args, states, lines, {}, tmp_path/'meta.json', tmp_path/'samples.jsonl') == 0
+    enabled = [p for p in packets if p[2]]
+    assert enabled
+    assert enabled[0][6:16] == pytest.approx([1.2]*10)
+    assert enabled[0][-2:] == pytest.approx([.65,-.64])
+
+
+def test_receiver_limits_follow_ordered_includes_and_overrides(tmp_path):
+    sidecar = _sidecar()
+    (tmp_path/'first.yaml').write_text('teleop_head_yaw_max: 1.0\nteleop_head_pitch_max: 0.7\n')
+    (tmp_path/'second.yaml').write_text('teleop_head_yaw_max: 0.65\nteleop_head_pitch_max: 0.64\n')
+    config = tmp_path/'tuning.yaml'
+    config.write_text('include: first.yaml\ninclude: "second.yaml"\n')
+    assert sidecar.receiver_head_limits(config) == (.65,.64)
+    config.write_text('include: tuning.yaml\n')
+    with pytest.raises(ValueError, match='cycle'):
+        sidecar.receiver_head_limits(config)
+
+
+def test_receiver_limits_fail_closed_on_missing_or_invalid_keys(tmp_path):
+    sidecar = _sidecar()
+    config = tmp_path/'tuning.yaml'
+    config.write_text('teleop_head_yaw_max: .65\n')
+    with pytest.raises(KeyError): sidecar.receiver_head_limits(config)
+    config.write_text('teleop_head_yaw_max: nan\nteleop_head_pitch_max: .64\n')
+    with pytest.raises(ValueError): sidecar.receiver_head_limits(config)

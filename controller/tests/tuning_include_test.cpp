@@ -21,13 +21,13 @@ int main() {
     Tuning tuning;
     assert(tuning.LoadFromFile(HB_TUNING_CONFIG_PATH));
     assert(tuning.network_interface == "eth10");
-    assert(tuning.flat_policy_contract == "flat_plus_gait_h4_v1");
     // Ghim route policy đang active để đổi model phải cập nhật manifest và
-    // preflight cùng lúc; policy legacy vẫn giữ riêng để rollback.
-    assert(tuning.flat_model == "policy_flat_plus_gait_0917_armfree.onnx");
+    // preflight cùng lúc; contract + sha256 nằm trong policy.yaml của bundle.
+    assert(tuning.walk_policy == "flat_plus_gait_0917_armfree");
+    assert(tuning.teleop_policy == "u1_seed42");
+    assert(!tuning.flat_model_configured);
     assert(tuning.teleop_h4_enabled);
-    assert(tuning.teleop_h4_model_sha256 ==
-           "7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ecad815ccb");
+    assert(tuning.teleop_h4_model_sha256.empty());
     // Audio cues and per-motor head gains are part of the active runtime
     // config; dropping audio.yaml values silently falls back to Tuning defaults.
     assert(std::fabs(tuning.voice_volume - 0.95f) < 1e-6f);

@@ -59,9 +59,16 @@ set(CMAKE_INSTALL_RPATH "${ONNXRUNTIME_DIR}/lib;/opt/unitree_robotics/lib")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 # ─── Build ────────────────────────────────────────────────
-add_executable(run_r1
-    src/main.cpp
+# Everything run_r1 links except main.cpp; Application tests reuse the list.
+set(HB_APP_SOURCES
     src/app/Application.cpp
+    src/app/ApplicationArming.cpp
+    src/app/ApplicationInit.cpp
+    src/app/ApplicationPolicy.cpp
+    src/app/ApplicationPostures.cpp
+    src/app/ApplicationTelemetry.cpp
+    src/app/ApplicationTransitions.cpp
+    src/app/ApplicationUpperBody.cpp
     src/config/Tuning.cpp
     src/logging/MimicTelemetryLogger.cpp
     src/motion/MotionData.cpp
@@ -70,6 +77,7 @@ add_executable(run_r1
     src/input/KeyboardX11.cpp
     ${CNPY_DIR}/cnpy.cpp
 )
+add_executable(run_r1 src/main.cpp ${HB_APP_SOURCES})
 
 target_link_libraries(run_r1
     unitree_sdk2
@@ -84,16 +92,36 @@ if(BUILD_TESTING)
     add_executable(teleop_h4_policy_gate_test tests/teleop_h4_policy_gate_test.cpp)
     add_test(NAME teleop_h4_policy_gate_test COMMAND teleop_h4_policy_gate_test)
     add_executable(application_safety_test
-        tests/application_safety_test.cpp
-        src/app/Application.cpp src/config/Tuning.cpp
-        src/logging/MimicTelemetryLogger.cpp
-        src/motion/MotionData.cpp src/motion/JointTrajectory.cpp
-        src/policy/OnnxPolicy.cpp src/input/KeyboardX11.cpp ${CNPY_DIR}/cnpy.cpp)
+        tests/application_safety_test.cpp ${HB_APP_SOURCES})
     target_compile_definitions(application_safety_test PRIVATE
         HB_TEST_PACKET_SINK HB_PROJECT_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
     target_link_libraries(application_safety_test unitree_sdk2 ${ONNXRUNTIME_LIB}
         ZLIB::ZLIB ${X11_LIBRARIES} pthread)
     add_test(NAME application_safety_test COMMAND application_safety_test)
+
+    # Golden replay of the full state machine; see the header of the test file.
+    # Float/ONNX results are CPU specific, so the golden is pinned to the x86_64
+    # dev machines (the robot build only compiles run_r1).
+    if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    add_executable(application_replay_test
+        tests/application_replay_test.cpp ${HB_APP_SOURCES})
+    target_compile_definitions(application_replay_test PRIVATE
+        HB_TEST_PACKET_SINK
+        HB_REPLAY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/replay"
+        HB_REPLAY_GOLDEN="${CMAKE_CURRENT_SOURCE_DIR}/tests/golden/application_replay.txt")
+    target_link_libraries(application_replay_test unitree_sdk2 ${ONNXRUNTIME_LIB}
+        ZLIB::ZLIB ${X11_LIBRARIES} pthread)
+    add_test(NAME application_replay_test COMMAND application_replay_test)
+    endif()
+
+    # Walk <-> teleop locomotion modes with two bundles (R2+A / R2+X, START gate).
+    add_executable(application_loco_mode_test
+        tests/application_loco_mode_test.cpp ${HB_APP_SOURCES})
+    target_compile_definitions(application_loco_mode_test PRIVATE
+        HB_TEST_PACKET_SINK HB_PROJECT_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
+    target_link_libraries(application_loco_mode_test unitree_sdk2 ${ONNXRUNTIME_LIB}
+        ZLIB::ZLIB ${X11_LIBRARIES} pthread)
+    add_test(NAME application_loco_mode_test COMMAND application_loco_mode_test)
 
     add_executable(input_sample_progress_test tests/input_sample_progress_test.cpp)
     target_link_libraries(input_sample_progress_test unitree_sdk2 pthread)
@@ -239,6 +267,16 @@ if(BUILD_TESTING)
         HB_DOREMON_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/dance/doremon_v8/policy.onnx")
     add_test(NAME onnx_input_contract_test COMMAND onnx_input_contract_test)
 
+    # r1_wb_legs_v1_blind: obs/action/target parity with the Python golden
+    # (scripts/make_wb_legs_golden.py). Tolerance covers onnxruntime versions.
+    add_executable(wb_legs_golden_test tests/wb_legs_golden_test.cpp
+        src/policy/OnnxPolicy.cpp)
+    target_link_libraries(wb_legs_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
+    target_compile_definitions(wb_legs_golden_test PRIVATE
+        HB_WB_LEGS_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u1_seed42/policy.onnx"
+        HB_WB_LEGS_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_golden_trace.txt")
+    add_test(NAME wb_legs_golden_test COMMAND wb_legs_golden_test)
+
     add_executable(tuning_include_test tests/tuning_include_test.cpp src/config/Tuning.cpp)
     target_compile_definitions(tuning_include_test PRIVATE
         HB_TUNING_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/tuning.yaml")
@@ -258,6 +296,11 @@ if(BUILD_TESTING)
     set_tests_properties(preflight_test PROPERTIES
         ENVIRONMENT "HB_PROJECT_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
+
+# ─── dds_probe: công cụ đo sim2real (chỉ nghe DDS, không gửi gì) ───
+# Chạy song song run_r1 lúc robot nhảy. Xem test/controller_lab/docs/PLAN_mimic_sim2real.md (C2, C3).
+add_executable(dds_probe tools/dds_probe.cpp)
+target_link_libraries(dds_probe unitree_sdk2 pthread)
 
 # ─── record_motion: ghi quỹ đạo khớp từ built-in (chỉ nghe, không gửi gì) ───
 # Dùng để tạo motions/getup.npz + motions/liedown.npz cho chức năng đứng lên/nằm

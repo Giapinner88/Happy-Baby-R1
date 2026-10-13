@@ -85,3 +85,44 @@ hb_config_get() {
     hb_config_reader_walk "$1" || return
     printf '%s\n' "$HB_CONFIG_READER_VALUE"
 }
+
+# Print "<rel-path> <contract>" of the locomotion policy selected by ROLE
+# (walk_policy | teleop_policy) in ENTRY-CONFIG, relative to the controller dir.
+# Mirrors Application::InitControllers: bundle route when walk_policy is set
+# (teleop_policy empty = same bundle), otherwise legacy flat_model route.
+hb_selected_policy() {
+    [[ $# -eq 2 && ( "$2" == walk_policy || "$2" == teleop_policy ) ]] || {
+        echo "Usage: hb_selected_policy <entry-config.yaml> <walk_policy|teleop_policy>" >&2
+        return 2
+    }
+    local cfg="$1" role="$2" high_dir name contract model
+    high_dir="$(cd "$(dirname "$cfg")/.." && pwd)" || return 1
+    name="$(hb_config_get "$cfg" walk_policy)" || return 1
+    if [[ -n "$name" ]]; then
+        if [[ "$role" == teleop_policy ]]; then
+            local teleop
+            teleop="$(hb_config_get "$cfg" teleop_policy)" || return 1
+            [[ -z "$teleop" ]] || name="$teleop"
+        fi
+        [[ "$name" != */* && "$name" != "." && "$name" != ".." ]] || {
+            echo "$role must name a bundle directory: '$name'" >&2
+            return 1
+        }
+        contract="$(hb_config_get "$high_dir/policies/locomotion/$name/policy.yaml" contract)" || return 1
+        [[ -n "$contract" ]] || { echo "bundle '$name' has no contract" >&2; return 1; }
+        printf '%s %s\n' "policies/locomotion/$name/policy.onnx" "$contract"
+        return 0
+    fi
+    model="$(hb_config_get "$cfg" flat_model)" || return 1
+    contract="$(hb_config_get "$cfg" flat_policy_contract)" || return 1
+    [[ -n "$model" && "$model" != */* && "$model" != "." && "$model" != ".." ]] || {
+        echo "flat_model must name a file, not a path: '$model'" >&2
+        return 1
+    }
+    case "$contract" in
+        legacy_83) printf '%s %s\n' "policies/flat/$model" "$contract" ;;
+        flat_plus_h4_v1|flat_plus_h5_v1|flat_plus_gait_h4_v1)
+            printf '%s %s\n' "policies/locomotion/_archive/flat_plus/$model" "$contract" ;;
+        *) echo "unsupported flat_policy_contract '$contract'" >&2; return 1 ;;
+    esac
+}

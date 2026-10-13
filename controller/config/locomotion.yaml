@@ -36,11 +36,20 @@ heading_hold_move_min: 0.15
 heading_hold_relatch_gyro: 0.3
 
 # ============================================================================
-# CHỌN POLICY ĐI BỘ — flat_policy_contract và flat_model PHẢI khớp nhau. Đổi model thì
-# xem checklist ở docs/policies.md §3. Đổi xong: make preflight (robot) / make deploy-policy (máy dev).
+# CHỌN POLICY ĐI BỘ — tên thư mục bundle dưới controller/policies/locomotion/<tên>/
+# (policy.onnx + policy.yaml; contract và sha256 nằm trong policy.yaml).
+#   walk_policy   : R2+A — đi bộ thường
+#   teleop_policy : R2+X — đi bộ + teleop tay (START); trống = dùng walk_policy
+# Hai policy khác nhau phải cùng default_joint_pos; đổi chế độ khi đang đi chỉ xảy ra
+# khi robot đứng yên (policy_swap_*). `./hb policy list` liệt kê bundle; checklist ở
+# docs/policies.md §3. Đổi xong: ./hb preflight (robot) / ./hb deploy policy (máy dev).
+# Route cũ flat_model + flat_policy_contract vẫn dùng được (bỏ hai dòng dưới) để rollback.
 # ============================================================================
-flat_policy_contract: flat_plus_gait_h4_v1
-flat_model: policy_flat_plus_gait_0917_armfree.onnx
+walk_policy: flat_plus_gait_0917_armfree
+teleop_policy: u1_seed42
+# Đổi nóng walk <-> teleop: đứng yên ổn định liên tục dwell rồi mới đổi; quá timeout thì huỷ.
+policy_swap_dwell_s: 0.5
+policy_swap_timeout_s: 6.0
 
 # policy_rate_limit: không hạ quá thấp, sẽ gây trễ phase.
 stand_up_time_s: 2.5

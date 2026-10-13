@@ -181,6 +181,7 @@ public:
 
         if (cur.L2 && cur.up && !last.up)     cmd.want_stand_lock = true;
         if (cur.R2 && cur.A && !last.A)       cmd.want_locomotion = true;
+        if (cur.R2 && cur.X && !last.X)       cmd.want_teleop_locomotion = true;
 
         if (cur.R1 && cur.up && !last.up)       cmd.want_mimic_key = 2;
         if (cur.R1 && cur.right && !last.right) cmd.want_mimic_key = 3;
@@ -216,7 +217,8 @@ public:
             cmd.want_safe_shutdown = true;
         if (held(cur.L2 && cur.X, l2x_start_, l2x_active_, l2x_fired_))
             cmd.want_get_up_down = true;
-        // START cạnh-lên (nút trần): một lần nhấn bật/tắt teleop tay+đầu.
+        // START cạnh-lên (nút trần): một lần nhấn bật/tắt teleop tay+đầu. Trong
+        // LOCOMOTION chỉ có tác dụng ở chế độ đi bộ + teleop (R2+X).
         // Không phụ thuộc Quest đã vào VR trước hay sau. Chặn modifier để không
         // đụng combo khác; SELECT/F1/F2 đã thuộc voice.
         const bool no_mod_btn = !cur.L1 && !cur.L2 && !cur.R1 && !cur.R2;

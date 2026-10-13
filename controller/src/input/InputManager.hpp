@@ -41,6 +41,7 @@ public:
         if (!m.want_emergency_stop) {
             m.want_stand_lock = g.want_stand_lock || k.want_stand_lock;
             m.want_locomotion = g.want_locomotion || k.want_locomotion;
+            m.want_teleop_locomotion = g.want_teleop_locomotion || k.want_teleop_locomotion;
             m.want_mimic_key  = g.want_mimic_key ? g.want_mimic_key : k.want_mimic_key;
             m.want_reset      = g.want_reset || k.want_reset;
             m.want_safe_shutdown      = g.want_safe_shutdown || k.want_safe_shutdown;

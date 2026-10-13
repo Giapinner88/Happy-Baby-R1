@@ -1,0 +1,47 @@
+name: xexe_trimmed_129obs_goc_4096env_20k_20261007
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Fresh Xexe GOC after Meta; 4096 envs; 20k iterations.
+motion:
+  file: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: e1b9c60cae5071d4e810140eb76069aa786c68652392c47fd03744b215484604
+  env.yaml: d31fcd0fdc4354c1608cacf7b550e0556fb9ad8cf3b2f1d5b83f68557d9aad7e
+  model_19999.pt: 168ff0569f4a62789d94a450fe68d28dd355b7a81f78c1df8889fdd7dffad951
+  onnx_metadata.yaml: 64104a813ec1a48e1aa74eb5b27d6e09da9857665d76a233e621fe6fdbfe2630
+  policy.onnx: cc7c4480e0864ec898715b76959fb250f7a6dd106a6af6cf8b266841a48da258
+  source.txt: a77e9fa1f90a37a5f323ccf1ba7b712f0e87d8b959a724d1ae8de331da5297c8
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz: 229d99c61057e7e1ce345c26fcc7b6f416f78c0ccaf8c61010d83525e23a55a4

@@ -1,0 +1,48 @@
+name: r1nhayngan_3_meta_4096env_17k_20261007
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-07_13-48-19_r1nhayngan_3_meta_fresh_17k_4096_gpu0_20261007
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-07_13-48-19_r1nhayngan_3_meta_fresh_17k_4096_gpu0_20261007/2026-10-07_13-48-19_r1nhayngan_3_meta_fresh_17k_4096_gpu0_20261007.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 17000
+  iterations_target: 17000
+  checkpoint: model_16999.pt
+  notes: r1nhayngan_3 Meta run; 4096 envs; 17k iterations; matching audio confirmed
+    by user.
+motion:
+  file: r1nhayngan_3.npz
+  frames: 814
+  fps: 50.0
+audio: r1nhayngan1_source.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: r1nhayngan_3.npz
+  audio: r1nhayngan1_source.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_16999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: a64352eed495979f7616af594fefa2178765baca63a8599ca82434b773c8240b
+  env.yaml: e863b502ff3010d9888dbb37bf37a2caacc70aa0b95fc13f254bcc5913f648bf
+  model_16999.pt: 0257ce2bdbef309f8d4c7cd82effaef21507d4fae6778d532629b682a12068c3
+  onnx_metadata.yaml: 561165f31e15cac5dd3b76a321547d105d8e62c20fee1c8d458b6cb8e09d89c4
+  policy.onnx: cb082b2c9647b0862b762d4fe4d15e586e94a110ee0413d8b0cd8e10947452aa
+  r1nhayngan1_source.mp3: 03aa91cafa1d99c740376eca60d2f1bbe87ff43ed0209283c2138ca511696680
+  r1nhayngan_3.npz: 470f2934371bffc41040e6c7d44cfe03272e5eac483c697f50e909fc744ca121
+  source.txt: 55734909f74a11090700bae04efd1af57d3208245947297a456934f544621e3f

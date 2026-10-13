@@ -5,28 +5,49 @@ Nguồn sự thật là mã và cấu hình (`controller/src/input/GamepadR3.hpp
 
 ## 1. Tay cầm R3 / bàn phím
 
-| Việc | Tay cầm R3 | Bàn phím (chỉ khi chạy tay có màn hình) |
+Mỗi modifier là một nhóm việc, không chồng chéo: **L2 = an toàn / tư thế**, **R2 = di chuyển**, **R1 = nhảy**, **nút trần = động tác tay / teleop**. Tay cầm phải được bàn giao trước: **L2+R2** (một lần, toggle của hãng) rồi giữ **R1+R2** ~1 s.
+
+**L2 — an toàn / tư thế**
+
+| Việc | Tay cầm R3 | Bàn phím |
 | --- | --- | --- |
-| Bàn giao từ controller hãng rồi arm `run_r1` | **L2+R2** (một lần — toggle của hãng), rồi giữ **R1+R2** ~1 s | — |
+| **Dừng khẩn cấp** (damping) | **L2+B** (giữ) | ESC (damping rồi thoát) |
 | Khóa đứng; đang nhảy thì huỷ điệu | **L2+Lên** | 0 |
-| Đi bộ (từ khóa đứng) | **R2+A** | 1 |
+| Ngồi ghế (ghế cao 43 cm) | **L2+Trái** (giữ) | 9 |
+| Nằm xuống; đứng dậy (2 bước) | **L2+X** (giữ); **L2+Lên** rồi **L2+X** | — |
+| Zero-torque (chỉ từ IDLE; robot đã nằm hoặc được đỡ) | **L2+Y** | — |
+
+**R2 — di chuyển** (hai chế độ đi bộ = hai policy chọn trong `locomotion.yaml`)
+
+| Việc | Tay cầm R3 | Bàn phím |
+| --- | --- | --- |
+| Đi bộ thường (`walk_policy`) | **R2+A** | 1 |
+| Đi bộ + teleop (`teleop_policy`) | **R2+X** | T |
+| Tốc độ nhanh / chậm | **R2+Lên / R2+Xuống** | Tab (đảo) |
+| Tiến–lùi / sang ngang / xoay | Stick trái ↑↓ / stick trái ←→ / stick phải ←→ | W S / A D / Q E |
+| Reset policy | — | R |
+
+Từ STAND LOCK, R2+A / R2+X vào thẳng chế độ tương ứng. Đang đi bộ, bấm chế độ kia thì robot **dừng chân, thu tay, chờ gait đứng yên ổn định** (`policy_swap_dwell_s`, mặc định 0.5 s) rồi mới đổi policy; bấm lại chế độ hiện tại để huỷ, quá `policy_swap_timeout_s` (6 s) cũng tự huỷ. Sau IDLE (E-stop, ngã) robot luôn quay về chế độ đi bộ thường.
+
+**R1 — nhảy** (từ LOCOMOTION ở chế độ nào cũng được; xong tự về chế độ đó)
+
+| Việc | Tay cầm R3 | Bàn phím |
+| --- | --- | --- |
 | Nhảy slot 2 / 3 / 4 / 5 | **R1+Lên / Phải / Xuống / Trái** | 2–5 |
 | Nhảy slot 6 / 7 / 8 | **R1+Y / R1+B / R1+A** | 6 / 7 / 8 |
-| Tiến–lùi / sang ngang / xoay | Stick trái ↑↓ / stick trái ←→ / stick phải ←→ | W S / A D / Q E |
-| Tốc độ nhanh / chậm | **R2+Lên / R2+Xuống** | Tab (đảo) |
-| Reset policy | — | R |
-| Ngồi ghế (ghế cao 43 cm) | **L2+Trái** | 9 |
-| Nằm xuống; đứng dậy (2 bước) | **L2+X**; **L2+Lên** rồi **L2+X** | — |
-| **Dừng khẩn cấp** (damping) | **L2+B** (giữ) | ESC (damping rồi thoát) |
-| Zero-torque (chỉ từ IDLE; robot đã nằm hoặc được đỡ) | **L2+Y** | — |
-| Động tác tay (bấm lại để thu) | double-click nút trần: Lên=1, Xuống=2, Trái=3, Phải=4, A=5, B=6, X=7, Y=8 | — |
-| Cấp/thu quyền teleop (LOCOMOTION hoặc ZERO TORQUE) | nhấn **START** một lần (nút trần) — xem [teleop.md](teleop.md) | — |
-| Voice: nói (push-to-talk) / ngắt lượt | giữ **SELECT** / double-tap **SELECT** | — |
-| Voice: rảnh tay / đổi nguồn mic | double-click **F1** / nhấn **F2** một lần | — |
-| Voice preset | giữ **L1** một mình 3 s để bật/tắt; giữ **L1** + Lên/Phải/Xuống/Trái để phát | — |
+
+**Nút trần — tay, teleop, voice**
+
+| Việc | Tay cầm R3 |
+| --- | --- |
+| Động tác tay (bấm lại để thu) | double-click: Lên=1, Xuống=2, Trái=3, Phải=4, A=5 (voice-auto), B=6, X=7, Y=8 |
+| Cấp/thu quyền tay teleop | nhấn **START** một lần — chỉ ở chế độ **đi bộ + teleop** hoặc ZERO TORQUE; xem [teleop.md](teleop.md) |
+| Voice: nói (push-to-talk) / ngắt lượt | giữ **SELECT** / double-tap **SELECT** |
+| Voice: rảnh tay / đổi nguồn mic | double-click **F1** / nhấn **F2** một lần |
+| Voice preset | giữ **L1** một mình 3 s để bật/tắt; giữ **L1** + Lên/Phải/Xuống/Trái để phát |
 
 Tên điệu ở mỗi slot nằm trong `controller/config/dance.yaml` (`dance_2` … `dance_8`); slot không có artifact sẽ bị bỏ qua lúc khởi động (xem [policies.md](policies.md) §4).
-Không gán chức năng mới lên **L2+R2**, **L1+L2** (của hãng) hay **SELECT/F1/F2** (của voice).
+Không gán chức năng mới lên **L2+R2**, **L1+L2** (của hãng) hay **SELECT/F1/F2** (của voice). Thêm chức năng mới thì đặt vào đúng nhóm modifier ở trên.
 
 ## 2. Cổng và giao diện
 
@@ -43,13 +64,19 @@ Không gán chức năng mới lên **L2+R2**, **L1+L2** (của hãng) hay **SEL
 
 ## 3. Lệnh
 
-| Trên robot | Từ máy dev |
-| --- | --- |
-| `make build`, `make preflight`, `make install` | `make deploy` — backup, sync, build ARM64, preflight, restart khi DISARMED |
-| `make status` — service active, `high_alive=1` | `make deploy-policy [ARGS=--with-dance]` |
-| `make stop-high` / `stop-all` / `restart-all` — từ chối nếu chưa DISARMED | `make rollback` — không chạy khi robot armed |
-| `make start-high` / `start-all` | `ROBOT=unitree@<ip>` để ép địa chỉ robot |
-| `make teleop-runtime`, `make teleop-check` | |
-| `journalctl -u hb_high_level -f`, `pgrep -a run_r1` (phải đúng 1 dòng) | |
+Chạy từ **máy trạm** ở gốc repo; lệnh service/status/logs tự chạy trên robot qua SSH (Tailscale). Robot không giữ repo. `./hb help` liệt kê đầy đủ, chi tiết ở [deploy.md](deploy.md).
 
-Trình tự chuẩn: treo/đỡ robot → bật nguồn → **L2+R2**, giữ **R1+R2** → **L2+Lên** → đặt xuống đất → **R2+A** → điệu / động tác → **L2+Trái** khi xong. Bấm phím trước, đỡ robot sau.
+| Việc | Lệnh |
+| --- | --- |
+| Đồng bộ toàn bộ (mặc định) | `./hb field` — chờ robot trên Tailscale, sync, build ARM64 trên robot, preflight, restart khi DISARMED |
+| Đồng bộ từng phần | `./hb deploy policy` / `dance` / `high` / `voice` / `integration` / `presets` / `teleop` |
+| Shell trên robot | `./hb ssh [lệnh]` |
+| Policy đi bộ | `./hb policy list` / `./hb policy add <file.onnx> <tên> [--teleop]` — chọn bằng `locomotion.yaml: walk_policy / teleop_policy` |
+| Xem trước / quay lại / kéo về | `./hb diff` / `./hb rollback` / `./hb pull` |
+| Start / stop / restart | `./hb start\|stop\|restart <all\|high\|integration\|voice\|presets\|teleop>` — high/all từ chối nếu chưa DISARMED; teleop lúc nào cũng được |
+| Trạng thái / log | `./hb status` / `./hb logs [high\|voice\|teleop\|…]` |
+| Build / kiểm tra (máy trạm) | `./hb build`, `./hb test` |
+| Ép địa chỉ robot | `ROBOT=unitree@<ip> ./hb …`, hoặc `HB_ROBOT_TAILSCALE=<ip>` cho `field`/`ssh` |
+| Kiểm không chạy trùng | `./hb ssh pgrep -a run_r1` (phải đúng 1 dòng) |
+
+Trình tự chuẩn: treo/đỡ robot → bật nguồn → **L2+R2**, giữ **R1+R2** → **L2+Lên** → đặt xuống đất → **R2+A** (hoặc **R2+X** + START nếu teleop) → điệu / động tác → **L2+Trái** khi xong. Bấm phím trước, đỡ robot sau.

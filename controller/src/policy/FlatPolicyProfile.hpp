@@ -10,6 +10,7 @@ enum class FlatPolicyProfile {
     kFlatPlusH4V1,
     kFlatPlusH5V1,
     kFlatPlusGaitH4V1,
+    kWholeBodyLegsBlindV1,   // r1_wb_legs_v1_blind: 71-D obs, 12 leg actions (chỉ route bundle)
 };
 
 inline FlatPolicyProfile ParseFlatPolicyProfile(const std::string& value) {
@@ -17,5 +18,6 @@ inline FlatPolicyProfile ParseFlatPolicyProfile(const std::string& value) {
     if (value == "flat_plus_h4_v1") return FlatPolicyProfile::kFlatPlusH4V1;
     if (value == "flat_plus_h5_v1") return FlatPolicyProfile::kFlatPlusH5V1;
     if (value == "flat_plus_gait_h4_v1") return FlatPolicyProfile::kFlatPlusGaitH4V1;
+    if (value == "r1_wb_legs_v1_blind") return FlatPolicyProfile::kWholeBodyLegsBlindV1;
     throw std::runtime_error("Unknown flat_policy_contract: " + value);
 }

@@ -1,0 +1,47 @@
+name: xexe_meta_129obs_fresh_20k_2048_20261006
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-06_13-02-33_xexe_trimmed_129obs_meta_fresh_20k_2048_gpu1_20261006
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-06_13-02-33_xexe_trimmed_129obs_meta_fresh_20k_2048_gpu1_20261006/2026-10-06_13-02-33_xexe_trimmed_129obs_meta_fresh_20k_2048_gpu1_20261006.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Fresh 20k Xexe motion tracking run; policy exported from unitree_rl_mjlab_meta.
+motion:
+  file: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: e97b9aec8dc125756d944a9e5f933b1c57ae9ec79d49f53005159bb1b7a2e508
+  env.yaml: 3660d2640d2d5868158409a78fa674987c8095c890f03c5b9856e49df60f77df
+  model_19999.pt: d788e9ca4f77be411bc2065873c2e17ff22790c6d021a8988363ec8b1b24722a
+  onnx_metadata.yaml: 6968c36194013b4e4d2c586fab3c6498edc713c9735274bdc141bd0fa436f45d
+  policy.onnx: f28e90fa035863d6c925ed0c9979327288a75121e5ccde541a283dc7a635b381
+  source.txt: ea90a4f3b0bf2fe164dea09dee1ab42e4a8481aa8bcf6701406272c0a4beb006
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz: 229d99c61057e7e1ce345c26fcc7b6f416f78c0ccaf8c61010d83525e23a55a4

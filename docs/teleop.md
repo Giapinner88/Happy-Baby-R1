@@ -16,38 +16,45 @@ Tất cả chạy trong service `hb_teleop_runtime` trên robot; không cần la
 Teleop chỉ điều khiển **10 khớp tay + 2 khớp đầu**. Chân và eo luôn do policy (LOCOMOTION) hoặc zero-torque (Mode Z) giữ.
 Sidecar không có DDS publisher; `run_r1` là nơi duy nhất ghi `rt/lowcmd`.
 
-## 2. Cài đặt (một lần trên robot)
+## 2. Cài đặt (từ máy trạm)
 
 ```bash
-make teleop-runtime     # tạo env conda hb_teleop, cert, /etc/hb/teleop/runtime.env, bật 2 service
-make teleop-check       # đọc rt/lowstate, không tạo publisher: phải thấy mode_machine=1, motors=35
+./hb deploy teleop      # đồng bộ teleop/, tạo env conda hb_teleop, cert, /etc/hb/teleop/runtime.env, bật 2 service, in Quest URL
+./hb ssh ./HB/hb teleop-check   # đọc rt/lowstate, không tạo publisher: phải thấy mode_machine=1, motors=35
 ```
 
-Cấu hình duy nhất: [`teleop/config/teleop.yaml`](../teleop/config/teleop.yaml) (`robot_runtime.*`).
-Sửa xong chạy lại `make teleop-runtime`. Đặt `enabled: false` để tắt và gỡ hai service.
-`make deploy` từ máy dev cũng đồng bộ và khởi động lại runtime này (chỉ khi robot DISARMED).
+`./hb field` cũng làm bước cài này.
+
+Cấu hình duy nhất: [`teleop/config/teleop.yaml`](../teleop/config/teleop.yaml) (`robot_runtime.*`). Mặc định: chờ Quest và `rt/lowstate` vô hạn sau khi service khởi động (`first_input_timeout_s: 0`, `initial_state_timeout_s: 0`; sidecar chỉ phát STOP cho tới khi có target hợp lệ), `control_hz: 30`, `cpu_affinity: auto` (tách bridge / IK / mapper+sidecar khi có ≥ 4 lõi). Sidecar đọc giới hạn đầu thật của `run_r1` từ `controller/config/tuning.yaml` để không gửi gói bị receiver từ chối.
+Bước cài cũng cấu hình mDNS (Avahi `hb-r1.local` trên `wlan0`) và, nếu UFW đang bật, mở cổng WebXR/mDNS/WebRTC cho subnet của Quest. Restart runtime không cần DISARMED: nếu đang ARMED, tay về tư thế nền như khi nhả deadman và phải bóp lại cò sau khi runtime lên.
+Sửa trên máy trạm rồi chạy lại `./hb deploy teleop`. Đặt `enabled: false` để tắt và gỡ hai service.
+Chỉ khởi động lại thì `./hb restart teleop` (dùng được cả khi robot đang ARMED).
 
 Phía `run_r1`: `config/gestures.yaml` phải có `teleop_enabled: true`; cổng UDP `teleop_udp_port: 5560`.
 
 ## 3. Chạy một phiên
 
 1. Robot treo trên giá, người giữ E-stop sẵn sàng. Bàn giao: `L2+R2` → giữ `R1+R2` ~1 s.
-2. Vào trạng thái cho phép: **ZERO TORQUE** (`L2+Y`, chỉ từ IDLE, robot đang treo) hoặc **LOCOMOTION** (`R2+A`).
+2. Vào trạng thái cho phép: **ZERO TORQUE** (`L2+Y`, chỉ từ IDLE, robot đang treo) hoặc chế độ **đi bộ + teleop** (`R2+X` từ STAND LOCK; đang đi bộ thường thì `R2+X` đổi chế độ khi robot đứng yên). Chế độ đi bộ thường (`R2+A`) không nhận teleop. Ở chế độ teleop, `teleop_policy` hiện là U1 (`u1_seed42`, chỉ điều khiển chân; tay theo target Quest trực tiếp); gesture double-click không chạy ở chế độ này. U1 dùng được tới ~1.1 m/s trong mô phỏng, nên giữ tốc độ chậm (`R2+Xuống`).
 3. Lấy URL: `journalctl -u hb_teleop_runtime -n 50 | grep "Quest URL"` (theo IP hiện tại của `wlan0`).
    Trên Quest: cùng Wi-Fi, mở URL, chấp nhận chứng chỉ, **Enter VR**. Tab cũ phải reload.
-4. **Nhấn START một lần** (nút trần, không kèm L1/L2/R1/R2) để cấp quyền teleop trong `run_r1`; nhấn lại để thu quyền ngay. Giữ nút không lặp lại lệnh. Ngoài LOCOMOTION / ZERO TORQUE, START bị từ chối kèm lý do. Cấp quyền chưa làm robot cử động: còn cần deadman cò Quest (bước 6).
+4. **Nhấn START một lần** (nút trần, không kèm L1/L2/R1/R2) để cấp quyền teleop trong `run_r1`; nhấn lại để thu quyền ngay. Giữ nút không lặp lại lệnh. Ngoài chế độ đi bộ + teleop / ZERO TORQUE, START bị từ chối kèm lý do. Đổi sang `R2+A` thì teleop tự thu quyền trước khi đổi policy. Cấp quyền chưa làm robot cử động: còn cần deadman cò Quest (bước 6).
 5. Đưa người điều khiển và robot về tư thế neutral; **đỡ đầu robot ngang** (ở ZERO TORQUE đầu rũ xuống).
 6. **Giữ cò phải** (deadman). Frame đầu tiên được chốt làm `source_zero`, encoder hiện tại làm `start_q`; target sau đó là độ lệch tương đối, bị chặn trong `max_offset_rad` (mặc định 0.15 rad).
 7. Di chuyển chậm. Log `run_r1` in `[Teleop] stream ACTIVE` / `stream INACTIVE reason=...` ở mỗi lần đổi trạng thái.
 
-Cò trái không dùng. Nhả cò phải: stream gửi STOP, đầu nhả ngay, tay thu quyền rồi về trạng thái nền. Pipeline chờ `release_debounce_s` (120 s) để bóp lại mà không khởi động lại.
+Cò trái không dùng. Nhả cò phải: stream gửi STOP, đầu nhả ngay, tay thu quyền rồi về trạng thái nền. Mặc định `release_debounce_s: 0`: pipeline sống tiếp sau khi nhả cò, bóp lại bất cứ lúc nào mà không khởi động lại. Mất tracking tay cầm trái giữa phiên: tay trái được giữ tại chỗ cho tới khi nhả hẳn cò phải (tay cầm vừa có lại không được tự kéo tay khi cò vẫn giữ). Gói lỗi, timestamp nguồn sai hoặc watchdog nguồn: sidecar gửi STOP và chỉ nhận target mới sau khi nhả hẳn cò.
+
+**Camera robot:** nút **A tay phải** trên Quest đổi giữa passthrough và ảnh camera R1 (WebRTC VP8, phục vụ ngay trên robot ở cổng `camera_media_port` 8013, cùng origin HTTPS). Ở passthrough không đọc/giải mã frame. Tắt bằng `camera_enabled: false`. Camera lỗi không chặn teleop tay/đầu.
+
+**Chẩn đoán nút tay cầm:** mở `https://hb-r1.local:8012/static/teleop/scripts/teleop/quest_input_probe.html` trên Quest (đóng tab teleop trước). Trang chỉ đọc WebXR, không gửi lệnh.
 
 ## 4. Dừng
 
 - Bình thường: giữ tư thế → nhả cò phải → nhấn START để thu quyền.
 - Bất thường (rung, sai chiều, va chạm, tiếng lạ, mất mạng, target không khớp người điều khiển): **E-stop ngay**, không chờ watchdog.
 - Tự nhả quyền khi: mất gói > `teleop_timeout_ms` (300 ms), `enable=0`, nghiêng/gyro vượt ngưỡng, rời LOCOMOTION/ZERO TORQUE, mất tay cầm.
-- Trước khi dừng/restart service: làm DISARMED theo [safety.md §3](safety.md).
+- Trước khi dừng/restart high-level: làm DISARMED theo [safety.md §3](safety.md). Teleop thì dừng/restart lúc nào cũng được (`./hb restart teleop`).
 
 ## 5. Mode Z: giữ chân và eo trên giá
 
@@ -56,10 +63,10 @@ Chỉ dùng trên giá treo; **không** dùng để đỡ robot đứng trên s�
 
 ## 6. Log
 
-`teleop/logs/robot_runtime/<UTC>_robot_quest3/`: `quest_commands.jsonl`, `vendor_ik_stats.json`, `vendor_targets_diagnostics.jsonl`, `targets.jsonl`, log từng tầng. Log của `run_r1`: `journalctl -u hb_high_level -f`.
+`teleop/logs/robot_runtime/<UTC>_robot_quest3/`: `quest_commands.jsonl`, `vendor_ik_stats.json`, `vendor_targets_diagnostics.jsonl`, `targets.jsonl`, `camera_webrtc.jsonl`, log từng tầng. Mẫu của sidecar ghi `stop_reason`, tuổi input/nguồn và `max_send_gap_s` mỗi khi trạng thái đổi. Log của `run_r1`: `journalctl -u hb_high_level -f`.
 
 ## 7. Cổng phần cứng còn mở
 
 Chưa đạt: bám trên phần cứng thật (tầng IK đã đo trên máy trạm, chưa trên robot), giới hạn vận tốc/gia tốc được duyệt cho phần cứng, guard va chạm/mô-men, hành vi khi mất kết nối Quest, đối chiếu dấu/thứ tự khớp FK với robot.
-Đã xác nhận trên robot: IDL 29 = head pitch, IDL 30 = head yaw (đo `rt/lowstate` 2026-08-29); `run_r1` là publisher `rt/lowcmd` duy nhất (`make test` kiểm tra tĩnh).
+Đã xác nhận trên robot: IDL 29 = head pitch, IDL 30 = head yaw (đo `rt/lowstate` 2026-08-29); `run_r1` là publisher `rt/lowcmd` duy nhất (`./hb test` kiểm tra tĩnh).
 Bằng chứng chi tiết và các phép đo nằm ở nhánh `teleop`.

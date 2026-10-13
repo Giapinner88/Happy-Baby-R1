@@ -33,40 +33,39 @@ Chạy `controller` theo **2 cách**:
 | `audio.yaml: voice_enabled` | giọng nói thông báo | **`true`** — headless không màn hình, giọng nói là kênh phản hồi chính. |
 | `safety.yaml: safe_stop_enabled` | mất hết input thì đứng yên | **`true`**. |
 
-Các tham số khác (gains, tốc độ, dance, ngồi ghế…) chỉnh theo nhu cầu; sửa xong cần `make restart-all` (chỉ chạy khi robot DISARMED).
+Các tham số khác (gains, tốc độ, dance, ngồi ghế…) chỉnh theo nhu cầu; sửa xong cần `./hb restart all` (chỉ chạy khi robot DISARMED).
 
-> ⚠ **Đổi `locomotion.yaml: flat_model` thì phải kiểm 3 thứ đi kèm — không có cái nào tự động:**
+> ⚠ **Đổi `locomotion.yaml: walk_policy` / `teleop_policy` thì phải kiểm 3 thứ đi kèm — không có cái nào tự động** (cách thêm bundle: [policies.md](policies.md) §3):
 > 1. `gait_period_s` phải bằng `period` của phase obs lúc train đúng model đó (mjlab:
 >    `velocity_env_cfg.py` term `phase`; deploy chuẩn: `.../velocity/v0/params/deploy.yaml`
 >    → `observations.gait_phase.params.period`). Sai = robot bước sai nhịp, không gain nào bù được.
 >    Chạy `run_r1 --preflight` để xem số đang chạy: dòng `[Locomotion] gait_period=...`.
 > 2. Trần tốc độ (`slow_*`/`fast_*`) phải nằm trong dải lệnh model đó đã train.
-> 3. Sửa tên model trong `tests/tuning_include_test.cpp` và `tests/config_reader_test.sh` —
+> 3. Sửa tên bundle trong `tests/tuning_include_test.cpp` và `tests/config_reader_test.sh` —
 >    hai chỗ đó ghim tên có chủ đích để bắt việc đổi model ngoài ý muốn.
 
 ---
 
-## 2. Cài Auto (systemd) — làm 1 lần
+## 2. Đồng bộ và cài Auto (systemd) — từ máy trạm
 
-> 🛑 **BẮT BUỘC:** phải chắc controller **built-in đã TẮT** trước khi bật Auto (không thì xung đột `rt/lowcmd`). Chưa xử lý xong thì **chưa `make install`** — chạy tay Cách B an toàn hơn.
+> 🛑 **BẮT BUỘC:** phải chắc controller **built-in đã TẮT** trước khi bật Auto (không thì xung đột `rt/lowcmd`). `run_r1` boot ở `DISARMED` và chỉ tiếp quản sau bàn giao (§ đầu trang).
+
+Robot không giữ repo; mọi thay đổi đi từ máy trạm qua SSH/Tailscale ([deploy.md](deploy.md)):
 
 ```bash
-# Trên robot, ở thư mục repo (~/HB):
-make build          # build controller + voice + integration
-make preflight      # kiểm model/config/asset, không xuất lệnh động cơ
-make install        # cài + bật service (cần sudo)
-make status
+# Trên máy trạm, ở gốc repo; robot đã bật và DISARMED:
+./hb field          # đồng bộ -> build ARM64 trên robot -> preflight -> cài/refresh service -> restart an toàn
+./hb status
 ```
 
-Từ máy dev thay cho các bước trên: `make deploy` (xem [deploy.md](deploy.md)).
-Xong: dịch vụ **`hb_high_level`** đã cài + bật tự khởi động.
+Xong: dịch vụ **`hb_high_level`** đã cài + bật tự khởi động. Lần sau bật robot là stack tự chạy; chỉ chạy lại `./hb field` khi có thay đổi.
 
 ---
 
 ## 3. CÁCH A — Vận hành headless bằng R3-1
 
 ### 3.1 Bật
-- **Bật nguồn robot** → tự chạy, sẵn sàng nhận R3-1 (hoặc `make start-high`).
+- **Bật nguồn robot** → tự chạy, sẵn sàng nhận R3-1 (hoặc `./hb start high`).
 - Robot nói **"Máy tính phát triển đã sẵn sàng"** khi kết nối xong.
 
 ### 3.2 Bảng điều khiển
@@ -106,7 +105,7 @@ Bảng đầy đủ (tay cầm R3 và bàn phím): [controls.md](controls.md).
 > Thao tác đúng: **bấm phím trước, cầm/đỡ robot sau** — cầm trước rồi bấm thì policy thấy chân lơ lửng.
 
 ### 3.4 Trình tự chuẩn
-Treo/đỡ robot → bật nguồn → **L2+Lên** (đứng dậy) → đặt xuống đất → **R2+A** (đi bộ) → **R1+D-pad** (nhảy, tự về đi bộ khi xong) → **L2+Trái** (ngồi) khi xong.
+Treo/đỡ robot → bật nguồn → **L2+Lên** (đứng dậy) → đặt xuống đất → **R2+A** (đi bộ; **R2+X** nếu cần teleop tay) → **R1+D-pad** (nhảy, tự về đi bộ khi xong) → **L2+Trái** (ngồi) khi xong.
 
 ### 3.5 Ngồi ghế
 
@@ -148,7 +147,7 @@ DAMPING(nằm) ──[L2+Lên: chuẩn bị]──► gồng cứng về tư th�
 - Bấm L2+X thẳng khi đang nằm → robot nhắc "bấm L2+Lên trước".
 - Chưa ghi file (`motions/getup.npz` / `liedown.npz`) → robot **không làm gì** (an toàn mặc định).
 
-**Ghi quỹ đạo** (1 lần, trên robot thật):
+**Ghi quỹ đạo** (1 lần, trên robot thật, vào bằng `./hb ssh`):
 
 ```bash
 cd ~/HB/controller/build
@@ -162,30 +161,30 @@ cp ../motions/raw/capture_001_xxx.npz ../motions/getup.npz
 cp ../motions/raw/capture_002_xxx.npz ../motions/liedown.npz
 ```
 
-Đổi `.npz` chỉ cần **khởi động lại run_r1**, không cần build lại. Tham số phát lại: `getup_*` / `liedown_*` trong `config/postures.yaml`.
+File ghi chỉ nằm trên robot: kéo về máy trạm (`./hb pull`) rồi commit, để chúng có trong repo và theo các lần đồng bộ sau. Đổi `.npz` chỉ cần **khởi động lại run_r1**, không cần build lại. Tham số phát lại: `getup_*` / `liedown_*` trong `config/postures.yaml`.
 
-### 3.8 Log / dừng
+### 3.8 Log / dừng (từ máy trạm)
 ```bash
-journalctl -u hb_high_level -f     # log realtime
-make stop-high                     # dừng (từ chối nếu chưa DISARMED)
-make restart-all                   # nạp lại sau khi sửa config (cần DISARMED)
+./hb logs high                     # log realtime của run_r1
+./hb stop high                     # dừng (từ chối nếu chưa DISARMED)
+./hb field                         # sửa config trên máy trạm rồi đồng bộ + nạp lại (restart khi DISARMED)
 ```
 
 ---
 
 ## 4. CÁCH B — Chạy tay có bàn phím (dev/test)
 
-Chỉ dùng khi có màn hình (dev PC / NoMachine / `ssh -Y`).
+Chỉ dùng khi có màn hình (NoMachine, hoặc `ssh -Y unitree@100.82.165.36` từ máy trạm). Sửa `runtime.yaml` trên máy trạm rồi `./hb field --no-restart` thay vì sửa tại chỗ.
 
 ```bash
-make stop-high                          # 1. TẮT Auto trước (bắt buộc, cần DISARMED)
-# 2. Đổi dev_no_keyboard: false trong config/runtime.yaml
+./hb stop high                          # 1. TẮT Auto trước (bắt buộc, cần DISARMED)
+# 2. dev_no_keyboard: false trong config/runtime.yaml (sửa trên máy trạm, ./hb field --no-restart)
 cd ~/HB/controller/build && ./run_r1     # 3. chạy tay (cần $DISPLAY)
 ```
 
 Bàn phím **chỉ mở khi CẢ HAI**: `dev_no_keyboard: false` **và** có `$DISPLAY`. Cửa sổ "R1 ROBOT CONTROL" hiện ra — **phải click vào** mới nhận phím. Bảng phím: cột "Bàn phím" trong [controls.md](controls.md).
 
-Xong test: thoát (ESC) → `make start-high`. Kiểm không chạy trùng: `pgrep -a run_r1` — chỉ nên thấy **1** dòng.
+Xong test: thoát (ESC) → `./hb start high`. Kiểm không chạy trùng: `pgrep -a run_r1` — chỉ nên thấy **1** dòng.
 
 ---
 
@@ -221,10 +220,10 @@ Xong test: thoát (ESC) → `make start-high`. Kiểm không chạy trùng: `pgr
 | Triệu chứng | Nguyên nhân | Cách xử lý |
 |-------------|-------------|------------|
 | Robot giật/loạn, chập chờn xả lực | **2 bản run_r1** cùng chạy | `pgrep -a run_r1`; tắt bớt (`systemctl stop` + kill bản tay) |
-| "Chờ kết nối DDS…" mãi | sai `network_interface` | kiểm `ip a`, sửa `config/runtime.yaml`, `make restart-all` |
+| "Chờ kết nối DDS…" mãi | sai `network_interface` | kiểm `ip a`, sửa `config/runtime.yaml`, `./hb restart all` |
 | Không nghe robot nói | `voice_enabled: false` hoặc TTS kém | bật `voice_enabled: true`; TTS tệ → thay `voice_*` bằng file .mp3 thu sẵn |
 | R3-1 không điều khiển được | tay cầm chưa kết nối / hết pin | kiểm remote; `journalctl -u hb_high_level -f` |
-| Sửa tuning.yaml không đổi | Auto đã nạp config lúc bật | `make restart-all` (cần DISARMED) |
+| Sửa tuning.yaml không đổi | Auto đã nạp config lúc bật | `./hb restart all` (cần DISARMED) |
 | Muốn tắt hẳn auto-boot | — | `sudo systemctl disable hb_high_level` (bật lại: `enable`) |
 
 ---
@@ -232,9 +231,9 @@ Xong test: thoát (ESC) → `make start-high`. Kiểm không chạy trùng: `pgr
 ## 7. Lệnh (cheat-sheet)
 
 ```bash
-make status                              # trạng thái mọi service + health check
-make start-high | stop-high              # stop từ chối nếu chưa DISARMED
-make restart-all                         # cần DISARMED
+./hb status                              # trạng thái mọi service + health check
+./hb start high | stop-high              # stop từ chối nếu chưa DISARMED
+./hb restart all                         # cần DISARMED
 sudo systemctl enable|disable hb_high_level   # bật/tắt tự khởi động lúc boot
 journalctl -u hb_high_level -f           # log realtime
 pgrep -a run_r1                          # số bản đang chạy (phải = 1)

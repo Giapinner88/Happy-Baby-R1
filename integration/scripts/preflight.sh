@@ -70,12 +70,15 @@ if includes high; then
 
     # shellcheck disable=SC1091
     source "$INTEGRATION_DIR/config/model_manifest.conf"
-    SELECTED="$(hb_config_get "$HIGH_DIR/config/tuning.yaml" flat_model)"
-    [[ -n "$SELECTED" && "$SELECTED" != */* && "$SELECTED" != "." && "$SELECTED" != ".." ]] || fail "flat_model must name a file, not a path"
-    # Contract phải khớp cả ba nơi: config, manifest và (với route history) cả
-    # metadata trong ONNX. Hash trùng chỉ chứng minh đúng file, không chứng minh
-    # runtime sẽ diễn giải nó đúng cách.
-    SELECTED_CONTRACT="$(hb_config_get "$HIGH_DIR/config/tuning.yaml" flat_policy_contract)"
+    # walk_policy (bundle) hoặc flat_model (route cũ) -> "<rel> <contract>".
+    # Contract phải khớp cả ba nơi: config/bundle, manifest và metadata trong ONNX.
+    # Hash trùng chỉ chứng minh đúng file, không chứng minh runtime diễn giải đúng.
+    SELECTED_POLICY="$(hb_selected_policy "$HIGH_DIR/config/tuning.yaml" walk_policy)" || \
+        fail "cannot resolve walk_policy/flat_model"
+    read -r SELECTED_REL SELECTED_CONTRACT <<<"$SELECTED_POLICY"
+    SELECTED_TELEOP="$(hb_selected_policy "$HIGH_DIR/config/tuning.yaml" teleop_policy)" || \
+        fail "cannot resolve teleop_policy"
+    read -r SELECTED_TELEOP_REL _ <<<"$SELECTED_TELEOP"
     [[ -n "${MODEL_CONTRACT:-}" ]] || fail "manifest has no MODEL_CONTRACT; re-run update_model_manifest.sh"
     [[ "$MODEL_CONTRACT" == "$SELECTED_CONTRACT" ]] || \
         fail "manifest contract=$MODEL_CONTRACT but tuning selects $SELECTED_CONTRACT"
@@ -83,7 +86,7 @@ if includes high; then
     # Chạy binary TRƯỚC rồi mới đối chiếu manifest: run_r1 là nguồn sự thật duy
     # nhất về đường dẫn model và số chiều obs của từng contract. Script này từng
     # giữ bảng contract riêng và ép mọi model nằm dưới policies/flat — cả hai đều
-    # lệch với runtime (non-legacy nạp từ policies/locomotion/flat_plus).
+    # lệch với runtime (non-legacy nạp từ bundle policies/locomotion/<tên>).
     HIGH_PREFLIGHT_LOG="$(mktemp /tmp/hb-high-preflight.XXXXXX)"
     TEMP_FILES+=("$HIGH_PREFLIGHT_LOG")
     "$BIN" --preflight >"$HIGH_PREFLIGHT_LOG" 2>&1 || {
@@ -99,8 +102,14 @@ if includes high; then
     RUNTIME_OUTPUT="$(sed -n 's/.* output=\([^ ]*\).*/\1/p' <<<"$MODEL_LINE")"
     [[ "$RUNTIME_CONTRACT" == "$SELECTED_CONTRACT" ]] || \
         fail "runtime nap contract=$RUNTIME_CONTRACT nhung tuning chon $SELECTED_CONTRACT"
-    [[ "$RUNTIME_REL" == */"$SELECTED" ]] || \
-        fail "runtime nap $RUNTIME_REL nhung flat_model=$SELECTED"
+    [[ "$RUNTIME_REL" == "$SELECTED_REL" ]] || \
+        fail "runtime nap $RUNTIME_REL nhung config chon $SELECTED_REL"
+    # Teleop policy: run_r1 đã tự kiểm sha256 của bundle; ở đây chỉ chắc runtime
+    # nạp đúng bundle mà config chọn.
+    TELEOP_LINE="$(grep -m1 '^\[Preflight\] TELEOP_MODEL ' "$HIGH_PREFLIGHT_LOG" || true)"
+    RUNTIME_TELEOP_REL="$(sed -n 's/.* rel=\([^ ]*\).*/\1/p' <<<"$TELEOP_LINE")"
+    [[ "$RUNTIME_TELEOP_REL" == "$SELECTED_TELEOP_REL" ]] || \
+        fail "runtime nap teleop $RUNTIME_TELEOP_REL nhung config chon $SELECTED_TELEOP_REL"
     [[ "$MODEL_REL" == "$RUNTIME_REL" ]] || \
         fail "manifest MODEL_REL=$MODEL_REL nhung runtime nap $RUNTIME_REL"
     [[ "${MODEL_INPUT:-}" == "$RUNTIME_INPUT" ]] || \

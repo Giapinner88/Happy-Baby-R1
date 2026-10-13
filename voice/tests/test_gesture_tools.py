@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from hb_voice.gesture_tools import GestureToolController
+from hb_voice.gesture_tools import GESTURE_TOOL_INSTRUCTIONS, GestureToolController
 
 
 class FakeParams:
@@ -17,6 +17,22 @@ class FakeParams:
 
 
 class GestureToolControllerTest(unittest.IsolatedAsyncioTestCase):
+    async def test_prompt_and_schema_keep_vocal_expression_out_of_motor_tools(self):
+        controller = GestureToolController(
+            mode="shadow",
+            socket_path=Path("/run/hb/gesture_owner.sock"),
+            timeout_s=0.1,
+        )
+        perform_gesture = next(
+            tool for tool in controller.tools if tool.name == "perform_gesture"
+        )
+
+        self.assertIn("cười", GESTURE_TOOL_INSTRUCTIONS)
+        self.assertIn("KHÔNG gọi tool", GESTURE_TOOL_INSTRUCTIONS)
+        self.assertIn("không nói robot thiếu", GESTURE_TOOL_INSTRUCTIONS)
+        self.assertIn("biểu cảm bằng giọng", perform_gesture.description)
+        self.assertIn("cười", perform_gesture.description)
+
     async def test_off_mode_advertises_no_tools(self):
         controller = GestureToolController(
             mode="off", socket_path=Path("/run/hb/gesture_owner.sock"), timeout_s=0.1

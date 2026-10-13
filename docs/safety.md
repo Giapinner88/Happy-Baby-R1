@@ -25,9 +25,9 @@
 1. Đỡ/treo robot trước khi vào ZERO TORQUE (Mode Z).
 2. Nhả deadman Quest và mọi nút R3. Chờ teleop thu tay hết.
 3. Robot đứng yên, giữ đúng `R1+R2` trong `arm_hold_s` (hiện 1 s).
-4. Chờ `DISARMED` / `high_armed=0`, rồi mới `make stop-high` (trước auto-calib) hoặc `make restart-all`.
+4. Chờ `DISARMED` / `high_armed=0`, rồi mới `./hb stop high` (trước auto-calib) hoặc `./hb restart all`.
 
-`make stop-all`, `make stop-high`, `make restart-all` tự từ chối khi chưa DISARMED. Không dùng `systemctl stop hb_high_level` trực tiếp khi robot còn armed.
+`./hb stop all`, `./hb stop high`, `./hb restart all` tự từ chối khi chưa DISARMED. Không dùng `systemctl stop hb_high_level` trực tiếp khi robot còn armed.
 
 Release bị chặn nếu: còn lệnh UDP mới trong hàng đợi, teleop đang active/thu tay, LowState hỏng/cũ, gyro > 0.15 rad/s, hoặc tốc độ khớp > 0.10 rad/s (kể cả khớp đầu). Phần mềm **không** biết robot có đang được đỡ hay không. Arm lại cần nhả hết nút, giữ lại từ đầu và thỏa lại cổng quan sát controller hãng.
 
@@ -49,14 +49,15 @@ Làm tròn vào trong từ 66 774 frame encoder đã ghi; **chưa** phải giớ
 - Mất ổn định mạng/DDS, hoặc log báo lỗi/timeout/restart liên tục.
 - Target teleop lệch với chuyển động người vận hành.
 - Có người đi vào vùng test.
-- Phát hiện cấu hình hoặc binary không khớp phiên bản đã kiểm tra (`make preflight` báo lỗi).
+- Phát hiện cấu hình hoặc binary không khớp phiên bản đã kiểm tra (`./hb preflight` báo lỗi).
 
 ## 6. Thay đổi phần mềm
 
-- Mã mới phải qua `make test` và `make preflight` trước khi chạy trên robot.
-- Không đổi đồng thời logic điều khiển và cấu hình mạng trong cùng một lần thử nếu chưa có kế hoạch rollback (`make rollback` từ máy dev — xem [deploy.md](deploy.md)).
-- Đổi policy theo [policies.md](policies.md); không chạy policy chưa có checksum trong manifest.
+- Mã mới phải qua `./hb test` và `./hb preflight` trước khi chạy trên robot.
+- Không đổi đồng thời logic điều khiển và cấu hình mạng trong cùng một lần thử nếu chưa có kế hoạch rollback (`./hb rollback` từ máy trạm — xem [deploy.md](deploy.md)).
+- Đổi policy theo [policies.md](policies.md); không chạy policy chưa có checksum trong manifest/`policy.yaml`.
+- Khi `walk_policy` và `teleop_policy` là hai model **khác nhau**, lần đầu đổi chế độ R2+A ↔ R2+X phải làm trên giá treo, có người giữ E-stop.
 
 ## 7. Chưa được nghiệm thu trên phần cứng
 
-Kiểm thử local (CTest, test hợp đồng) chỉ bao phủ hợp đồng phần mềm, không phải thăng bằng vật lý hay firmware động cơ. Còn mở: thời gian thực trên PC2, bàn giao khi robot được đỡ, tầm/tải khớp đầu, nghiệm thu E-stop phần cứng, hành vi mất tay cầm trong Mimic/đứng dậy/nằm xuống.
+Kiểm thử local (CTest, test hợp đồng) chỉ bao phủ hợp đồng phần mềm, không phải thăng bằng vật lý hay firmware động cơ. Còn mở: thời gian thực trên PC2, bàn giao khi robot được đỡ, tầm/tải khớp đầu, nghiệm thu E-stop phần cứng, hành vi mất tay cầm trong Mimic/đứng dậy/nằm xuống, đổi nóng giữa hai policy đi bộ khác nhau (chỉ có test hợp đồng với plant lý tưởng).

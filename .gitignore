@@ -42,3 +42,10 @@ controller/motions/raw/
 *.tar
 *.tar.gz
 *.tgz
+
+# Lab snapshot (test/): run output stays local
+test/teleop/results/
+test/teleop/logs/
+
+# make dance-prune archive (local only)
+_archive/

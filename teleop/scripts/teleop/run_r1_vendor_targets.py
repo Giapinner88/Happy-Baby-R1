@@ -27,6 +27,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from teleop.r1.rate_limit import OnlineJointLimiter  # noqa: E402
+from teleop.hardware.stream_io import (  # noqa: E402
+    AsyncFileLog, ControlInputError, LatestControlInbox, control_batch, read_control_stream,
+)
 
 MODEL_NAMES = (
     "left_shoulder_pitch_joint", "left_shoulder_roll_joint", "left_shoulder_yaw_joint",
@@ -109,7 +112,7 @@ def main() -> int:
     )
     if args.diagnostics_log:
         args.diagnostics_log.parent.mkdir(parents=True, exist_ok=True)
-    log = args.diagnostics_log.open("w", encoding="utf-8") if args.diagnostics_log else None
+    log = AsyncFileLog(args.diagnostics_log) if args.diagnostics_log else None
 
     def event(name: str, **details: object) -> None:
         record = {"event": name, "monotonic_s": time.monotonic(), **details}
@@ -124,8 +127,9 @@ def main() -> int:
             else:
                 print(f"[TARGET] {name}", file=sys.stderr, flush=True)
 
-    lines: "queue.Queue[str | None]" = queue.Queue()
-    threading.Thread(target=reader, args=(lines,), daemon=True).start()
+    lines = LatestControlInbox('deadman_enabled') if args.stream_contract == 'h4' else queue.Queue()
+    read = read_control_stream if args.stream_contract == 'h4' else reader
+    threading.Thread(target=read, args=(lines,), daemon=True).start()
     started = time.monotonic()
     period = 1.0 / args.control_hz
     last_source_at: float | None = None
@@ -137,12 +141,15 @@ def main() -> int:
         while args.duration_s == 0 or time.monotonic() - started < args.duration_s:
             tick = time.monotonic()
             newest: dict | None = None
+            control_boundary: dict | None = None
             closed = False
-            while True:
-                try:
-                    line = lines.get_nowait()
-                except queue.Empty:
-                    break
+            try:
+                batch = control_batch(lines)
+            except ControlInputError as exc:
+                event('source_rejected', reason=str(exc))
+                stopped = True
+                return 2
+            for line in batch:
                 if line is None:
                     closed = True
                     break
@@ -156,7 +163,10 @@ def main() -> int:
                         raise ValueError("invalid source timestamp")
                     last_sequence = sequence
                     newest = payload
-                    last_source_at = time.monotonic()
+                    if payload.get("reset_requested") or payload.get("deadman_enabled") is False:
+                        control_boundary = payload
+                    # Backlogged input cannot acquire a new lease when read.
+                    last_source_at = getattr(line, 'received_monotonic_s', time.monotonic())
                 except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
                     event("source_rejected", reason=str(exc))
                     stopped = True
@@ -166,6 +176,10 @@ def main() -> int:
                 stopped = True
                 return 0
             now = time.monotonic()
+            if control_boundary is not None and newest is not None and newest.get("deadman_enabled"):
+                # A release/reset must reach H4 even if a newer enabled pose
+                # arrived in the same tick. Resume on a subsequent fresh solve.
+                newest = control_boundary
             if last_source_at is not None and now - last_source_at > args.source_timeout_s:
                 event("stop", reason="source_watchdog", last_sequence=last_sequence)
                 stopped = True
@@ -177,9 +191,12 @@ def main() -> int:
                     stopped = True
                     return 2
                 if newest.get("reset_requested"):
-                    event("stop", reason="reset_requested")
-                    stopped = True
-                    return 0
+                    if args.stream_contract != "h4":
+                        event("stop", reason="reset_requested")
+                        stopped = True
+                        return 0
+                    event("reset", reason="reset_requested")
+                    enabled = False
                 if not enabled:
                     if release_since is None:
                         release_since = now
@@ -212,7 +229,8 @@ def main() -> int:
                         solved_at = float(solved_at)
                     except (TypeError, ValueError):
                         solved_at = float("nan")
-                    if not math.isfinite(solved_at) or now - solved_at > args.source_timeout_s:
+                    if (not math.isfinite(solved_at) or solved_at > now + .05 or
+                            now - solved_at > args.source_timeout_s):
                         event("stop", reason="stale_solved_sample", last_sequence=last_sequence)
                         stopped = True
                         return 2
@@ -232,6 +250,16 @@ def main() -> int:
                         event("source_rejected", reason="joint_limit_mismatch", max_clamp_rad=max_clamp)
                         stopped = True
                         return 2
+                    arm_tracking = newest.get("arm_tracking", {"left": True, "right": True})
+                    if (not isinstance(arm_tracking, dict) or
+                            any(type(arm_tracking.get(side)) is not bool for side in ("left", "right")) or
+                            not arm_tracking["right"]):
+                        event("source_rejected", reason="invalid active-arm tracking mask")
+                        return 2
+                    if not arm_tracking["left"] and (args.stream_contract != "h4" or
+                            newest.get("upstream_arm_tracking") != arm_tracking):
+                        event("source_rejected", reason="inactive-arm hold requires verified H4 solver mask")
+                        return 2
                     positions = bounded if args.joint_limits_only else limiter.step(bounded)
                     output_sequence += 1
                     wire = {
@@ -244,10 +272,12 @@ def main() -> int:
                         # parser requires an explicit boolean deadman lease.
                         "enabled": True,
                         "sent_monotonic_s": time.monotonic(),
+                        "source_monotonic_s": solved_at,
                         "joint_names": WIRE_NAMES,
                         "positions_rad": [*(float(v) for v in positions[:10]),
                                           float(positions[11]), float(positions[10])],
                         "solution_kind": SOLVER_ID,
+                        "arm_tracking": arm_tracking,
                     }
                     try:
                         print(json.dumps(wire, separators=(",", ":")), flush=True)
@@ -275,6 +305,9 @@ def main() -> int:
             event("stop", reason="exception", last_sequence=last_sequence)
         if log:
             log.close()
+            stats = log.stats()
+            if stats['dropped'] or stats['error'] or stats['pending']:
+                print(f'[TARGET LOG] {json.dumps(stats)}', file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":

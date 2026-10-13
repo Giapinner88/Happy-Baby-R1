@@ -12,9 +12,9 @@ Mỗi buổi chạy robot thật ghi một bản theo mẫu này (cùng thư m�
 ## 2. Phiên bản
 
 - Commit: `git rev-parse --short HEAD` (ghi rõ nếu có thay đổi chưa commit)
-- Policy đi bộ: `flat_model` + SHA (`integration/config/model_manifest.conf`)
+- Policy đi bộ: `walk_policy` / `teleop_policy` + SHA (`policy.yaml` của bundle; `integration/config/model_manifest.conf`)
 - Slot nhảy dùng trong buổi (`controller/config/dance.yaml`):
-- Kết quả `make preflight`: đạt / cảnh báo (chép cảnh báo)
+- Kết quả `./hb preflight`: đạt / cảnh báo (chép cảnh báo)
 
 ## 3. Nội dung
 

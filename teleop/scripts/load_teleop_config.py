@@ -7,6 +7,7 @@ here keeps one operator-editable config without a YAML dependency in shell.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 from pathlib import Path
 import shlex
@@ -55,14 +56,38 @@ def load(path: Path) -> dict[str, str]:
         "HB_TELEOP_RUNTIME_SEND_HZ": ("robot_runtime", "send_hz"),
         "HB_TELEOP_RUNTIME_DURATION_S": ("robot_runtime", "duration_s"),
         "HB_TELEOP_RUNTIME_FIRST_INPUT_TIMEOUT_S": ("robot_runtime", "first_input_timeout_s"),
+        "HB_TELEOP_RUNTIME_INITIAL_STATE_TIMEOUT_S": ("robot_runtime", "initial_state_timeout_s"),
         "HB_TELEOP_RUNTIME_SOURCE_TIMEOUT_S": ("robot_runtime", "source_timeout_s"),
         "HB_TELEOP_RUNTIME_RELEASE_DEBOUNCE_S": ("robot_runtime", "release_debounce_s"),
         "HB_TELEOP_RUNTIME_MAX_OFFSET_RAD": ("robot_runtime", "max_offset_rad"),
         "HB_TELEOP_RUNTIME_HEAD_YAW_MAX_RAD": ("robot_runtime", "head_yaw_max_rad"),
         "HB_TELEOP_RUNTIME_HEAD_PITCH_MAX_RAD": ("robot_runtime", "head_pitch_max_rad"),
+        "HB_TELEOP_RUNTIME_CPU_AFFINITY": ("robot_runtime", "cpu_affinity"),
+        "HB_TELEOP_RUNTIME_CAMERA_ENABLED": ("robot_runtime", "camera_enabled"),
+        "HB_TELEOP_RUNTIME_CAMERA_INTERFACE": ("robot_runtime", "camera_interface"),
+        "HB_TELEOP_RUNTIME_CAMERA_MEDIA_PORT": ("robot_runtime", "camera_media_port"),
+        "HB_TELEOP_RUNTIME_CAMERA_CAPTURE_HZ": ("robot_runtime", "camera_capture_hz"),
+        "HB_TELEOP_RUNTIME_CAMERA_WIDTH": ("robot_runtime", "camera_width"),
+        "HB_TELEOP_RUNTIME_CAMERA_HEIGHT": ("robot_runtime", "camera_height"),
+        "HB_TELEOP_RUNTIME_CAMERA_STARTUP_TIMEOUT_S": ("robot_runtime", "camera_startup_timeout_s"),
+        "HB_TELEOP_RUNTIME_CAMERA_ENABLE_MAX_AGE_S": ("robot_runtime", "camera_enable_max_age_s"),
+        "HB_TELEOP_RUNTIME_CAMERA_FALLBACK_MAX_AGE_S": ("robot_runtime", "camera_fallback_max_age_s"),
     }
     for env_name, (section, key) in mapping.items():
         values[env_name] = _scalar(_get(raw, section, key, path=path), path=path)
+
+    runtime = raw["robot_runtime"]
+    for name in ("camera_capture_hz", "camera_startup_timeout_s", "camera_enable_max_age_s", "camera_fallback_max_age_s"):
+        value = float(runtime[name])
+        if not math.isfinite(value) or value < 0 or (name != "camera_capture_hz" and value == 0):
+            raise ValueError(f"{path}: robot_runtime.{name} is invalid")
+    if float(runtime["camera_fallback_max_age_s"]) < float(runtime["camera_enable_max_age_s"]):
+        raise ValueError(f"{path}: camera fallback age must be >= enable age")
+    for name in ("port", "camera_media_port", "camera_width", "camera_height"):
+        if type(runtime[name]) is not int or not 1 <= runtime[name] <= 65535:
+            raise ValueError(f"{path}: robot_runtime.{name} must be a positive integer <=65535")
+    if runtime["port"] == runtime["camera_media_port"]:
+        raise ValueError(f"{path}: camera media and WebXR ports must differ")
 
     # Normalize relative paths against the teleop directory.
     for env_name in ("HB_TELEOP_RUNTIME_CERT_FILE", "HB_TELEOP_RUNTIME_KEY_FILE"):

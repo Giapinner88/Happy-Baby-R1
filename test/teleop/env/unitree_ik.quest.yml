@@ -1,0 +1,13 @@
+name: unitree_sim_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy=1.26
+
+variables:
+  # Bảo đảm smoke test và launcher chỉ dùng dependency trong env.
+  PYTHONNOUSERSITE: "1"
+
+# Tên env được giữ để tương thích launcher cũ. Đường Goal B chỉ chạy solver
+# NumPy/URDF thuần trong teleop.r1; nó không import Isaac Sim, CUDA, DDS hay SDK2.

@@ -1,0 +1,21 @@
+workspace: /home/ubuntu22/Projects/Happy-Baby-R1
+commit:    7e223e492bff7622c4f4044344a3fd6546b4ed82
+worktree:  dirty
+synced_at: 2026-08-18T14:30:44Z
+by:        ubuntu22@ubuntu22-X670E-Taichi
+
+# Bản ghi trên là lần full-sync lịch sử, không mô tả các phần port mới.
+ported_from_workspace_head: c785c069023f4dd31d17503815014923dc74c6d7
+ported_mapping_source: Happy-Baby-R1/teleop/r1/mapping.py
+ported_mapping_source_sha256: 4fc8c732261609ad65ed5da823d6183edd22ccba2288c11b4b9591eb3d61ba28
+ported_mapping_hb_sha256: 8445e257a11403dfbf31dae2ea5331ef07cd793c4047007532f6cca623ba9242
+ported_sidecar_source: Happy-Baby-R1/hardware/teleop/src/teleop/hardware/high_level_sidecar.py
+vendor_r1_a5_upstream: https://github.com/unitreerobotics/xr_teleoperate
+vendor_r1_a5_release_label: v1.6 (2026-07-29); no v1.6 Git tag
+vendor_r1_a5_commit: 64ed45b4177e6297936940866df623b72621643a
+vendor_r1_a5_ik_source_sha256: f395b3ef868ed3c854654b08b33f74ee73f57dbb7c0e8f20440a7f788115a085
+vendor_r1_a5_urdf_sha256: 886405d88699b3436eef8034f60a8379e8357ac6cfb74fb306ca8d15e9d75d89
+vendor_r1_a5_64ed45b_contract: historical contract; preserved in config/upstream_vendor_contract.json
+vendor_r1_a5_845b25b_checkout: third_party/xr_teleoperate_r1_a5_845b25b; local workstation only
+vendor_r1_a5_845b25b_route: default HB_TELEOP_IK_BACKEND=vendor_r1_a5; coupled_dls is explicit rollback; contract config/vendor_r1_a5_845b25b.json
+teleop_h4_motor_route: compiled and exact-artifact gated; still not hardware-accepted

@@ -12,7 +12,8 @@ trap 'rm -f -- "$OUTPUT"' EXIT
 EXPECTED_HEADER=$'kind\tpath\tstatus\tonnx\tnpz\taudio\tmanifest\tsha256'
 [[ "$(head -n 1 "$OUTPUT")" == "$EXPECTED_HEADER" ]]
 
-grep -Fq $'policy\tcontroller/policies/locomotion/flat_plus\t' "$OUTPUT"
+grep -Fq $'policy\tcontroller/policies/locomotion/_archive/flat_plus\tarchive\t' "$OUTPUT"
+grep -Fq $'policy\tcontroller/policies/locomotion/flat_plus_gait_0917_armfree\truntime\t' "$OUTPUT"
 grep -Fq $'policy\tcontroller/policies/dance/' "$OUTPUT"
 grep -Fq $'generated\tcontroller/build\t' "$OUTPUT"
 

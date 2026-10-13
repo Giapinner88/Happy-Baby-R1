@@ -1,0 +1,7 @@
+# Locomotion policy bundle — chọn bằng walk_policy / teleop_policy trong
+# controller/config/locomotion.yaml. run_r1 kiểm sha256 và metadata ONNX lúc khởi động.
+contract: r1_wb_legs_v1_blind
+sha256: 9cdf005ef7a7842b630744f298d992ad370ee2320f99d69691fc2db86b9e5fa5
+# true = tay nhận target teleop H4 (tay+đầu từ Quest); policy chỉ điều khiển 12 khớp chân.
+teleop_h4: true
+# Nguồn: nhánh loco, experiments/r1_loco/u1/runs/isaac/u1_seed42 (model_10000.pt). Xem README.md.

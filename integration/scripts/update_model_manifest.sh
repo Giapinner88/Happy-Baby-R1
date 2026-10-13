@@ -8,12 +8,11 @@ MANIFEST="$HB_ROOT/integration/config/model_manifest.conf"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/config_reader.sh"
 source "$SCRIPT_DIR/status_log.sh"
-SELECTED="$(hb_config_get "$HIGH_DIR/config/tuning.yaml" flat_model)"
-CONTRACT="$(hb_config_get "$HIGH_DIR/config/tuning.yaml" flat_policy_contract)"
-[[ -n "$SELECTED" && "$SELECTED" != */* && "$SELECTED" != "." && "$SELECTED" != ".." ]] || {
-    echo "flat_model must name a file, not a path: '$SELECTED'" >&2
+SELECTED_POLICY="$(hb_selected_policy "$HIGH_DIR/config/tuning.yaml" walk_policy)" || {
+    echo "cannot resolve walk_policy/flat_model" >&2
     exit 1
 }
+read -r SELECTED_REL CONTRACT <<<"$SELECTED_POLICY"
 HIGH_BIN="${HIGH_BIN:-}"
 CHECK_BUILD=""
 PREFLIGHT_LOG=""
@@ -69,8 +68,8 @@ RUNTIME_CONTRACT="$(sed -n 's/.* contract=\([^ ]*\).*/\1/p' <<<"$MODEL_LINE")"
     echo "runtime nap contract=$RUNTIME_CONTRACT nhung tuning chon $CONTRACT" >&2
     exit 1
 }
-[[ "$MODEL_REL" == */"$SELECTED" ]] || {
-    echo "runtime nap $MODEL_REL nhung flat_model=$SELECTED" >&2
+[[ "$MODEL_REL" == "$SELECTED_REL" ]] || {
+    echo "runtime nap $MODEL_REL nhung config chon $SELECTED_REL" >&2
     exit 1
 }
 MODEL="$HIGH_DIR/$MODEL_REL"

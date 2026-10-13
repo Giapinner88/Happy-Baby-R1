@@ -22,8 +22,10 @@ std::string ShapeString(const std::vector<int64_t>& dims) {
 }  // namespace
 
 void OnnxPolicy::Load(const std::string& model_path, Ort::Env& env,
-                      const Ort::SessionOptions& options, int expected_obs_size) {
+                      const Ort::SessionOptions& options, int expected_obs_size,
+                      int expected_action_size) {
     path_ = model_path;
+    action_size_ = expected_action_size;
     session_ = std::make_unique<Ort::Session>(env, model_path.c_str(), options);
 
     // Infer() chỉ truyền một tensor observation. Kiểm tra trước khi arm controller
@@ -64,15 +66,15 @@ void OnnxPolicy::Load(const std::string& model_path, Ort::Env& env,
     Ort::TypeInfo output_type = session_->GetOutputTypeInfo(0);
     RequirePolicyTensor(output_type.GetTensorTypeAndShapeInfo().GetElementType(),
                         output_type.GetTensorTypeAndShapeInfo().GetShape(),
-                        spec::kNumJoints, true, model_path + " output");
+                        action_size_, true, model_path + " output");
     const std::vector<int64_t> output_dims =
         output_type.GetTensorTypeAndShapeInfo().GetShape();
     const int output_size =
         output_dims.empty() ? -1 : static_cast<int>(output_dims.back());
-    if (output_size != spec::kNumJoints) {
+    if (output_size != action_size_) {
         throw std::runtime_error("Model " + model_path + " has output size " +
                                  std::to_string(output_size) + ", expected " +
-                                 std::to_string(spec::kNumJoints));
+                                 std::to_string(action_size_));
     }
 
     input_name_ = session_->GetInputNameAllocated(0, allocator_).get();
@@ -108,10 +110,10 @@ std::vector<float> OnnxPolicy::Infer(std::vector<float>& obs) {
     if (output.size() != 1 || !output[0].IsTensor())
         throw std::runtime_error("Policy output must be one tensor: " + path_);
     const auto info = output[0].GetTensorTypeAndShapeInfo();
-    RequirePolicyTensor(info.GetElementType(), info.GetShape(), spec::kNumJoints,
+    RequirePolicyTensor(info.GetElementType(), info.GetShape(), action_size_,
                         false, path_ + " inference output");
     const float* data = output[0].GetTensorData<float>();
-    return std::vector<float>(data, data + spec::kNumJoints);
+    return std::vector<float>(data, data + action_size_);
 }
 
 bool OnnxPolicy::ReadMetadataArray(const char* key,
@@ -145,6 +147,31 @@ bool OnnxPolicy::ReadMetadataArray(const char* key,
             return false;
         }
         out = tmp;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+bool OnnxPolicy::ReadMetadataFloats(const char* key, float* out, int count) {
+    try {
+        Ort::ModelMetadata md = session_->GetModelMetadata();
+        Ort::AllocatedStringPtr ptr = md.LookupCustomMetadataMapAllocated(key, allocator_);
+        if (!ptr) return false;
+        std::vector<float> tmp;
+        std::stringstream ss(ptr.get());
+        std::string token;
+        while (std::getline(ss, token, ',')) {
+            const float v = std::stof(token);
+            if (!std::isfinite(v)) return false;
+            tmp.push_back(v);
+        }
+        if (static_cast<int>(tmp.size()) != count) {
+            std::cerr << "[OnnxPolicy] Metadata '" << key << "' has " << tmp.size()
+                      << " values, expected " << count << " -> rejecting.\n";
+            return false;
+        }
+        std::copy(tmp.begin(), tmp.end(), out);
         return true;
     } catch (...) {
         return false;

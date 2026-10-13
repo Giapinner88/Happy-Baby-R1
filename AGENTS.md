@@ -6,8 +6,9 @@
 **Project:** Happy Baby R1 — `develop` branch.
 
 **Branch role:** the single canonical runtime for the Unitree R1. It holds only
-what runs on the robot; cloning it to the robot and running `make build` yields
-the runnable stack. Capability branches (`loco`, `teleop`, `vla`, dance/GMR
+what runs on the robot. The repository lives on a workstation only; `./hb field`
+(or `./hb deploy`) syncs it over SSH/Tailscale to the robot, builds ARM64 there and
+installs the runnable stack. The robot copy is a deploy target, never edited in place. Capability branches (`loco`, `teleop`, `vla`, dance/GMR
 training) deliver **results** here — ONNX/NPZ policies, configuration, and the
 robot-side teleop runtime. Training, simulation, and experiment code stay in
 those branches; do not add them here.
@@ -17,7 +18,8 @@ teleoperation control, and real-time child interaction on the R1, each gated by
 evidence before hardware use.
 
 **System:** Ubuntu 20.04 aarch64 computer on the R1, Unitree SDK2/CycloneDDS
-on `eth10`; the repo root is `HB_ROOT` (cloned to `~/HB`). `controller/`
+on `eth10`; deployed to `/home/unitree/HB` (`HB_ROOT` on the robot), reached at
+Tailscale `100.82.165.36`. `controller/`
 (`run_r1`, service `hb_high_level`) is the sole writer of `rt/lowcmd`;
 `integration/`, `voice/`, `voice_presets/` and `teleop/` never publish motor
 commands. Service names (`hb_*`), `/etc/hb`, `/run/hb` and `HB_*` variables are
@@ -26,27 +28,31 @@ running robot risks two `run_r1` instances.
 
 **Current stage:** Baseline integration. Teleop is the robot-local H4 runtime;
 the `teleop` branch's sidecar/bridge lack the H4 contract the controller requires,
-so they are not merged (a static test pins the runtime's CLI contract). No locomotion policy from `loco` has been
-accepted. Dance slots 4–8 in `controller/config/dance.yaml` reference artifacts
-that are not in the repo. No evidence authorizes teleop on the floor.
+so they are not merged (a static test pins the runtime's CLI contract). `loco` U1 (`u1_seed42`, contract `r1_wb_legs_v1_blind`)
+is wired as `teleop_policy` (R2+X) with simulation-only evidence; no `loco` policy is
+accepted for hardware. Dance slots 3–7 in `controller/config/dance.yaml` reference artifacts
+in the repo (merged from HB 2026-10-09, no robot run log here); slot 8 is empty.
+`test/` is the single exception to the runtime-only rule: a non-deployed lab
+snapshot (teleop experiments, controller captures/plans) kept for later use. No evidence authorizes teleop on the floor.
 
 **Authoritative files:**
 
-- `README.md` — scope, layout, build/run commands; `Makefile` — every entry point.
+- `README.md` — scope, layout; `./hb` — the single entry point for build/deploy/service control (`Makefile` only aliases it); `docs/deploy.md` — command table.
 - `docs/safety.md`, `docs/controls.md`, `docs/operation.md`, `docs/teleop.md`,
   `docs/policies.md`, `docs/deploy.md`, `docs/voice.md` — operation and rules.
 - `controller/config/` (`tuning.yaml` entry), `controller/policies/`,
   `teleop/config/teleop.yaml`, `voice/config/`, `integration/config/` — runtime
-  configuration; `controller/policies/locomotion/flat_plus/SHA256SUMS` and
+  configuration; `controller/policies/locomotion/<bundle>/policy.yaml` (sha256) and
   `integration/config/model_manifest.conf` — policy integrity.
 
 **Primary commands:**
 
 ```bash
-make build && make preflight        # on the robot; no motor output
-make install                        # services; controller restarts only when DISARMED
-make test                           # ctest + pytest (teleop, voice, voice_presets, integration)
-make deploy | make deploy-policy    # from the dev machine
+./hb build && ./hb test             # workstation: run_r1 + ctest + pytest; no motor output
+./hb field                          # workstation -> robot over Tailscale: sync, build, preflight, safe restart
+./hb deploy policy|dance|teleop     # partial sync; controller restarts only when DISARMED
+./hb status | logs | ssh            # robot state, logs, shell over SSH
+./hb restart|stop|start <target>    # over SSH; high/all refuse unless DISARMED
 ```
 
 **Known limitations:** `teleop/third_party/` is pinned vendor code and must

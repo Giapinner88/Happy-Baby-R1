@@ -14,9 +14,10 @@ ENV_PYTHON="$PREFIX/envs/$ENV_NAME/bin/python"
 RUNTIME_PYTHONPATH="$ROOT/teleop/src:$ROOT/teleop/third_party/xr_teleoperate/teleop/televuer/src:/home/unitree/Foundation_Unitree/unitree_sdk2_python"
 if [[ -x "$ENV_PYTHON" ]] && \
    PYTHONPATH="$RUNTIME_PYTHONPATH" "$ENV_PYTHON" -c '
-import aiohttp, casadi, cv2, numpy, pinocchio, vuer, televuer, unitree_sdk2py
+import aiortc, aiohttp, casadi, cv2, numpy, pinocchio, vuer, televuer, unitree_sdk2py
 from importlib.metadata import version
 assert version("vuer") == "0.0.60"
+assert version("aiortc") == "1.14.0"
 assert version("cyclonedds") == "0.10.2"
 ' >/dev/null 2>&1; then
     echo "[BOOTSTRAP] OK existing env=$PREFIX/envs/$ENV_NAME"
@@ -40,7 +41,7 @@ conda install -y -n "$ENV_NAME" numpy=1.26 opencv casadi pinocchio scipy pyyaml
 
 echo "[BOOTSTRAP] cài WebXR dependencies"
 conda run --no-capture-output -n "$ENV_NAME" python -m pip install --upgrade --no-cache-dir \
-    'vuer[all]==0.0.60' 'params-proto==2.13.2' 'logging-mp==0.2.1' \
+    'aiortc==1.14.0' 'vuer[all]==0.0.60' 'params-proto==2.13.2' 'logging-mp==0.2.1' \
     'typing-extensions==4.15.0' 'meshcat' 'matplotlib'
 
 # Unitree's Python SDK uses the same CycloneDDS ABI already shipped by the
@@ -56,5 +57,5 @@ CYCLONEDDS_HOME="$CYCLONEDDS_HOME" CFLAGS="-I$CYCLONEDDS_INCLUDE" \
 echo "[BOOTSTRAP] kiểm tra import"
 conda run --no-capture-output -n "$ENV_NAME" env \
     PYTHONPATH="$RUNTIME_PYTHONPATH" \
-    python -c 'import aiohttp, casadi, cv2, numpy, pinocchio, vuer, televuer, unitree_sdk2py; print("ROBOT_VENDOR_TELEOP_ENV_OK")'
+    python -c 'import aiortc, aiohttp, casadi, cv2, numpy, pinocchio, vuer, televuer, unitree_sdk2py; print("ROBOT_VENDOR_TELEOP_ENV_OK")'
 echo "[BOOTSTRAP] OK env=$PREFIX/envs/$ENV_NAME"

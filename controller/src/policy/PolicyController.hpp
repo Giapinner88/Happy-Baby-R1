@@ -21,7 +21,7 @@ public:
 
     void Init(const std::string& model_path, Ort::Env& env,
               const Ort::SessionOptions& options, const Tuning& tuning) {
-        policy_.Load(model_path, env, options, ObsSize());
+        policy_.Load(model_path, env, options, ObsSize(), ActionSize());
 
         const std::string expected_contract = ExpectedPolicyContract();
         if (!expected_contract.empty()) {
@@ -57,7 +57,19 @@ public:
         // Ưu tiên nạp thông số từ ONNX metadata.
         int missing = 0;
         missing += !LoadOrFallback("default_joint_pos", default_q_);
-        missing += !LoadOrFallback("action_scale", action_scale_);
+        if (ActionSize() == spec::kNumJoints) {
+            missing += !LoadOrFallback("action_scale", action_scale_);
+        } else {
+            // Policy chỉ điều khiển ActionSize() khớp đầu; các khớp còn lại giữ
+            // default_q nên scale của chúng không được dùng (đặt 0 cho rõ).
+            action_scale_.fill(0.0f);
+            const bool ok = policy_.ReadMetadataFloats("action_scale", action_scale_.data(),
+                                                       ActionSize());
+            std::cout << "[" << Name() << "] action_scale[" << ActionSize() << "]: "
+                      << (ok ? "Loaded from ONNX metadata." : "KHÔNG có/không khớp số chiều.")
+                      << "\n";
+            missing += !ok;
+        }
         missing += !LoadOrFallback("joint_stiffness", kp_);
         missing += !LoadOrFallback("joint_damping", kd_);
 
@@ -94,13 +106,14 @@ public:
         std::vector<float> obs(ObsSize(), 0.0f);
         BuildObservation(ctx, obs);
         std::vector<float> action = policy_.Infer(obs);
+        const int n = ActionSize();
 
         // Kiểm ngay tại NGUỒN. Cổng ở LowCmdSender vẫn chặn được, nhưng nó chỉ
         // thấy "target khớp N" — không biết model nào phân kỳ, mà một máy có thể
         // đang chạy locomotion + nhiều mimic. Ở đây còn giữ được target trước đó
         // thay vì để một action rác nhiễm cả last_action_ (và qua đó nhiễm luôn
         // history buffer của các contract có history).
-        for (int i = 0; i < spec::kNumJoints; ++i) {
+        for (int i = 0; i < n; ++i) {
             if (!std::isfinite(action[i])) {
                 if (!infer_fault_) {
                     std::cerr << "[" << Name() << "] output ONNX khong huu han o khop "
@@ -111,10 +124,13 @@ public:
             }
         }
 
-        for (int i = 0; i < spec::kNumJoints; ++i) {
+        for (int i = 0; i < n; ++i) {
             last_action_[i] = action[i];
             target_q_[i] = default_q_[i] + action[i] * action_scale_[i];
         }
+        // Khớp ngoài action (vd. eo + tay của policy chỉ-chân) giữ default_q;
+        // overlay tay (teleop/gesture) ghi đè chỉ số 14..23 ở bước gửi lệnh.
+        for (int i = n; i < spec::kNumJoints; ++i) target_q_[i] = default_q_[i];
         return target_q_;
     }
 
@@ -124,6 +140,8 @@ public:
 
     virtual bool IsFinished() const { return false; }
     virtual int ObsSize() const = 0;
+    // Số chiều output ONNX; các khớp policy[ActionSize()..24) giữ default_q.
+    virtual int ActionSize() const { return spec::kNumJoints; }
     virtual std::string Name() const = 0;
     // Contract này có chịu được overlay tay kiểu legacy không (ghi đè
     // target_q[14..23] + che obs của tay theo offset cố định của frame 83-D)?

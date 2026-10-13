@@ -19,6 +19,10 @@ import threading
 import time
 from typing import Any, NamedTuple
 
+from teleop.hardware.stream_io import (
+    AsyncFileLog, ControlInputError, LatestControlInbox, control_batch, read_control_stream,
+)
+
 STATE_TOPIC = "rt/lowstate"
 TELEOP_MAGIC = 0x314C5455
 PACKET = struct.Struct("<IIBBBB12f")
@@ -45,6 +49,7 @@ class H4Target(NamedTuple):
     upstream_sequence_id: int
     enabled: bool
     positions_rad: list[float] | None
+    arm_tracking: tuple[bool, bool] = (True, True)
 
 
 class SourceSequenceWatchdog:
@@ -75,11 +80,13 @@ class H4SourceSession:
         self.last_desired: list[float] | None = None
         self.last_used_source_sequence = -1
         self.needs_release = False
+        self.left_hold: list[float] | None = None
 
     def consume(self, target: H4Target, observed_q: list[float], now_s: float) -> list[float] | None:
         if not target.enabled:
             self.source_zero = self.robot_zero = self.last_desired = None
             self.needs_release = False
+            self.left_hold = None
             return None
         if self.needs_release or target.positions_rad is None:
             return None
@@ -104,7 +111,52 @@ class H4SourceSession:
                 base + min(self.max_offset_rad, max(-self.max_offset_rad, source - zero))
                 for base, source, zero in zip(self.robot_zero, target.positions_rad, self.source_zero)
             ]
+        if not target.arm_tracking[0] and self.left_hold is None:
+            self.left_hold = observed_q[:5].copy()
+        # A recovered controller cannot suddenly steer an arm while the right
+        # trigger is still held. A complete release starts a new arm session.
+        if self.left_hold is not None:
+            self.last_desired[:5] = self.left_hold
         return self.last_desired
+
+
+def receiver_head_limits(path: Path) -> tuple[float, float]:
+    """Read HB's ordered flat includes, including repeated include keys.
+
+    yaml.safe_load loses repeated `include:` entries in tuning.yaml. Follow
+    the C++ loader's file order so the wire envelope matches the receiver.
+    """
+    values: dict[str, float] = {}
+    loading: set[Path] = set()
+
+    def read(file: Path) -> None:
+        file = file.resolve()
+        if file in loading:
+            raise ValueError(f"receiver config include cycle: {file}")
+        loading.add(file)
+        try:
+            for line in file.read_text().splitlines():
+                line = line.split('#', 1)[0].strip()
+                if not line or ':' not in line:
+                    continue
+                key, value = (part.strip() for part in line.split(':', 1))
+                if len(value) >= 2 and value[0] == value[-1] == '"':
+                    value = value[1:-1]
+                if key == 'include':
+                    if not value:
+                        raise ValueError('empty receiver config include')
+                    read(file.parent / value)
+                elif key in ('teleop_head_yaw_max', 'teleop_head_pitch_max'):
+                    values[key] = float(value)
+        finally:
+            loading.remove(file)
+
+    read(path)
+    limits = tuple(values[key] for key in ('teleop_head_yaw_max', 'teleop_head_pitch_max'))
+    if not all(math.isfinite(value) and .05 <= value <= maximum
+               for value, maximum in zip(limits, (2., 1.5))):
+        raise ValueError('invalid receiver head limits')
+    return limits
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -115,6 +167,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--udp-port", type=int, default=5560)
     parser.add_argument("--duration-s", type=float, default=0.0,
                         help="Session duration in seconds; 0 keeps the runtime alive indefinitely.")
+    parser.add_argument(
+        "--initial-state-timeout-s", type=float, default=0.0,
+        help=(
+            "Maximum wait for the first rt/lowstate sample; 0 waits indefinitely "
+            "without sending any UDP command."
+        ),
+    )
     parser.add_argument("--first-input-timeout-s", type=float, default=120.0)
     parser.add_argument("--input-timeout-s", type=float, default=0.75)
     parser.add_argument("--source-timeout-s", type=float, default=0.30)
@@ -123,11 +182,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-offset-rad", type=float, default=0.15)
     parser.add_argument("--head-yaw-max-rad", type=float, default=0.60)
     parser.add_argument("--head-pitch-max-rad", type=float, default=0.35)
+    parser.add_argument("--receiver-config", type=Path,
+                        help="HB tuning entry point; cap head output to its actual receiver envelope.")
     parser.add_argument(
         "--joint-limits-only", action="store_true",
         help=(
             "Trust the upstream URDF-clamped target positions and skip the sidecar "
-            "offset/head envelopes. Deadman, watchdogs and finite-value checks remain active."
+            "arm offset envelope. H4 head receiver limits, deadman, watchdogs and finite checks remain active."
         ),
     )
     parser.add_argument("--expected-mode-machine", type=int, default=1)
@@ -144,8 +205,14 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("high-level teleop denied: --confirm-suspended-with-estop is required")
     if not args.confirm_dev_mode:
         raise SystemExit("high-level teleop denied: --confirm-dev-mode is required")
-    if args.duration_s < 0 or not 5 <= args.first_input_timeout_s <= 300:
-        raise SystemExit("duration must be non-negative (0=infinite) and first-input timeout must be 5..300 s")
+    if (args.duration_s < 0 or not math.isfinite(args.initial_state_timeout_s) or
+            args.initial_state_timeout_s < 0 or not (
+        args.first_input_timeout_s == 0 or 5 <= args.first_input_timeout_s <= 300
+    )):
+        raise SystemExit(
+            "duration and initial-state timeout must be non-negative; "
+            "first-input timeout must be 0 or 5..300 s"
+        )
     if not 0.1 <= args.input_timeout_s <= 1.0:
         raise SystemExit("--input-timeout-s must be in [0.1, 1.0]")
     if not 0.1 <= args.source_timeout_s <= args.input_timeout_s:
@@ -203,13 +270,17 @@ def parse_h4_target(line: str, previous_sequence: int) -> H4Target | None:
             return H4Target(sequence, upstream_sequence, False, None)
         names = tuple(str(value) for value in payload["joint_names"])
         positions = [float(value) for value in payload["positions_rad"]]
+        mask = payload.get("arm_tracking", {"left": True, "right": True})
+        if (not isinstance(mask, dict) or any(type(mask.get(side)) is not bool for side in ("left", "right"))
+                or not mask["right"]):
+            return None
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None
     if names != JOINT_NAMES or len(positions) != len(MOTOR_INDICES):
         return None
     if not all(math.isfinite(value) for value in positions):
         return None
-    return H4Target(sequence, upstream_sequence, True, positions)
+    return H4Target(sequence, upstream_sequence, True, positions, (mask["left"], mask["right"]))
 
 
 def encode_target(sequence: int, positions: list[float], *, explicit_deadman: bool = False) -> bytes:
@@ -257,14 +328,32 @@ class H4StreamPump:
         self.head_yaw_max = head_yaw_max
         self.head_pitch_max = head_pitch_max
         self.release_stop_pending = False
+        self.source_timestamp: float | None = None
+        self.last_stop_reason = 'no_input'
 
     def accept(self, line: str, now_s: float) -> bool:
         parsed = parse_h4_target(line, self.source_sequence)
         if parsed is None:
+            self.session.needs_release = True
+            self.release_stop_pending = True
+            self.last_stop_reason = 'invalid_input'
             return False
+        payload = json.loads(line)
+        source_timestamp = payload.get('source_monotonic_s', payload.get('sent_monotonic_s'))
+        if source_timestamp is not None:
+            try:
+                source_timestamp = float(source_timestamp)
+                if not math.isfinite(source_timestamp) or source_timestamp > now_s + .05:
+                    raise ValueError('invalid source timestamp')
+            except (TypeError, ValueError):
+                self.session.needs_release = True
+                self.release_stop_pending = True
+                self.last_stop_reason = 'invalid_source_timestamp'
+                return False
         self.source_sequence = parsed.sequence_id
         self.latest = parsed
-        self.last_input_at = now_s
+        self.last_input_at = getattr(line, 'received_monotonic_s', now_s)
+        self.source_timestamp = source_timestamp
         if not parsed.enabled:
             self.session.consume(parsed, [], now_s)
             self.release_stop_pending = True
@@ -274,14 +363,29 @@ class H4StreamPump:
         self.packet_sequence += 1
         if self.release_stop_pending:
             self.release_stop_pending = False
+            if not self.session.needs_release:
+                self.last_stop_reason = 'deadman_released'
             return encode_stop(self.packet_sequence, explicit_deadman=True)
         if self.latest is None or now_s - self.last_input_at > self.input_timeout_s:
             if self.latest is not None:
                 self.session.needs_release = True
+            self.last_stop_reason = 'input_watchdog' if self.latest else 'no_input'
+            return encode_stop(self.packet_sequence, explicit_deadman=True)
+        if (self.latest.enabled and self.source_timestamp is not None and
+                now_s - self.source_timestamp > self.session.watchdog.timeout_s):
+            self.session.needs_release = True
+            self.last_stop_reason = 'source_timestamp_watchdog'
             return encode_stop(self.packet_sequence, explicit_deadman=True)
         target = self.latest._replace(sequence_id=self.packet_sequence)
-        return encode_h4_frame(self.session, target, observed_q, now_s,
-                               self.head_yaw_max, self.head_pitch_max)
+        packet = encode_h4_frame(self.session, target, observed_q, now_s,
+                                 self.head_yaw_max, self.head_pitch_max)
+        if PACKET.unpack(packet)[2]:
+            self.last_stop_reason = None
+        elif self.session.needs_release:
+            self.last_stop_reason = self.last_stop_reason or 'source_watchdog_requires_release'
+        else:
+            self.last_stop_reason = 'deadman_released'
+        return packet
 
 
 def stdin_reader(lines: "queue.Queue[str | None]") -> None:
@@ -309,10 +413,10 @@ class LatestLowState:
             return self._state, self._received_at
 
 
-def wait_for_state(states: LatestLowState, timeout_s: float = 5.0,
+def wait_for_state(states: LatestLowState, timeout_s: float | None = None,
                    max_age_s: float = 0.2) -> Any:
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
+    deadline = None if timeout_s is None else time.monotonic() + timeout_s
+    while deadline is None or time.monotonic() < deadline:
         state, received_at = states.snapshot()
         if state is not None and time.monotonic() - received_at <= max_age_s:
             return state
@@ -323,48 +427,94 @@ def wait_for_state(states: LatestLowState, timeout_s: float = 5.0,
 def run_h4_stream(args: argparse.Namespace, states: LatestLowState,
                   lines: "queue.Queue[str | None]", metadata: dict[str, Any],
                   metadata_path: Path, samples_path: Path) -> int:
-    """The opt-in H4 sender; never publishes DDS and always ends with UTL1 STOP."""
+    """The opt-in H4 sender; never publishes DDS and always ends with UTL1 STOP.
+
+    ``hb_high_level`` owns the loopback UDP receiver.  It can be restarted
+    independently while Quest remains connected, which makes Linux report an
+    ICMP port-unreachable as ``ConnectionRefusedError`` on this connected UDP
+    socket.  That is a temporary receiver outage, not a reason to terminate
+    the WebXR pipeline.  During it, keep emitting only STOP and require a new
+    deadman release before targets may resume.
+    """
     # Keep direct callers and older test fixtures source-compatible when the
     # optional joint-limits-only flag is absent from their Namespace.
     joint_limits_only = getattr(args, "joint_limits_only", False)
     offset_limit = None if joint_limits_only else args.max_offset_rad
-    head_yaw_limit = None if joint_limits_only else args.head_yaw_max_rad
-    head_pitch_limit = None if joint_limits_only else args.head_pitch_max_rad
+    # The C++ receiver rejects the ENTIRE packet if either head angle exceeds
+    # its limits. Bypassing this envelope also drops otherwise valid arm data
+    # and revokes H4 after its 300ms watchdog, requiring a physical release.
+    head_yaw_limit = args.head_yaw_max_rad
+    head_pitch_limit = args.head_pitch_max_rad
     pump = H4StreamPump(offset_limit, args.source_timeout_s,
                         args.input_timeout_s, head_yaw_limit,
                         head_pitch_limit)
+    sample_log = AsyncFileLog(samples_path, mode='a')
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client.connect((args.udp_host, args.udp_port))
     period = 1.0 / args.send_hz
-    first_deadline = time.monotonic() + args.first_input_timeout_s
+    first_deadline = (
+        None if args.first_input_timeout_s == 0
+        else time.monotonic() + args.first_input_timeout_s
+    )
     started_at: float | None = None
     sample_index = 0
     stop_reason = "duration_elapsed"
     status = "completed"
+    last_sent_at = None
+    max_send_gap_s = 0.0
+    previous_enabled = None
+    previous_stop_reason = None
+    receiver_unavailable = False
+    receiver_errors = 0
+
+    def send(packet: bytes) -> bool:
+        """Send one H4 packet, fail closed across a high-level restart."""
+        nonlocal receiver_unavailable, receiver_errors
+        try:
+            client.send(packet)
+        except ConnectionRefusedError:
+            receiver_errors += 1
+            if not receiver_unavailable:
+                print("[SIDECAR] H4 receiver unavailable; sending STOP until it returns; "
+                      "release and press the trigger again afterwards", file=sys.stderr,
+                      flush=True)
+            receiver_unavailable = True
+            pump.session.needs_release = True
+            pump.release_stop_pending = True
+            pump.last_stop_reason = 'receiver_unavailable_requires_release'
+            return False
+        if receiver_unavailable:
+            print("[SIDECAR] H4 receiver restored; waiting for deadman release", file=sys.stderr,
+                  flush=True)
+            receiver_unavailable = False
+        return True
+
     try:
-        client.send(pump.frame([], time.monotonic()))  # STOP before any target
+        send(pump.frame([], time.monotonic()))  # STOP before any target
         while True:
             loop_start = time.monotonic()
-            while True:
-                try:
-                    line = lines.get_nowait()
-                except queue.Empty:
-                    break
+            input_closed = False
+            try:
+                batch = control_batch(lines)
+            except ControlInputError as error:
+                stop_reason, status = f'invalid_input: {error}', 'failed'
+                break
+            for line in batch:
                 if line is None:
                     # The upstream mapper intentionally closes its stdout after
                     # the release debounce.  It is a normal deadman release,
                     # not an H4 transport failure; the finally block below still
                     # emits an explicit UTL1 STOP with pad=1.
                     stop_reason, status = "stream_closed", "completed"
+                    input_closed = True
                     break
                 if pump.accept(line, time.monotonic()) and started_at is None:
                     started_at = time.monotonic()
                     metadata["status"] = "running"
-                    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-            if status == "failed":
+            if input_closed or status == "failed":
                 break
             now_s = time.monotonic()
-            if started_at is None and now_s >= first_deadline:
+            if started_at is None and first_deadline is not None and now_s >= first_deadline:
                 stop_reason, status = "first_input_timeout", "no_input"
                 break
             if started_at is not None and args.duration_s > 0 and now_s - started_at >= args.duration_s:
@@ -378,20 +528,35 @@ def run_h4_stream(args: argparse.Namespace, states: LatestLowState,
                 break
             observed_q = [float(state.motor_state[index].q) for index in MOTOR_INDICES]
             packet = pump.frame(observed_q, now_s)
-            client.send(packet)
-            if sample_index % max(1, round(args.send_hz / 10.0)) == 0:
-                fields = PACKET.unpack(packet)
+            sent = send(packet)
+            sent_at = time.monotonic()
+            if sent and last_sent_at is not None:
+                max_send_gap_s = max(max_send_gap_s, sent_at - last_sent_at)
+            if sent:
+                last_sent_at = sent_at
+            fields = PACKET.unpack(packet)
+            enabled = bool(fields[2])
+            if (sample_index % max(1, round(args.send_hz / 10.0)) == 0 or
+                    enabled != previous_enabled or pump.last_stop_reason != previous_stop_reason):
                 record = {
                     "monotonic_s": now_s,
                     "source_sequence_id": pump.source_sequence,
                     "upstream_sequence_id": pump.latest.upstream_sequence_id if pump.latest else None,
                     "ipc_sequence_id": pump.packet_sequence,
                     "enabled": bool(fields[2]),
+                    "stop_reason": pump.last_stop_reason,
+                    "input_age_s": now_s - pump.last_input_at if pump.latest else None,
+                    "source_age_s": now_s - pump.source_timestamp if pump.source_timestamp is not None else None,
+                    "receiver_unavailable": receiver_unavailable,
+                    "receiver_errors": receiver_errors,
+                    "max_send_gap_s": max_send_gap_s,
+                    "compacted_input_samples": getattr(lines, 'compacted', 0),
+                    "arm_tracking": list(pump.latest.arm_tracking) if pump.latest else None,
                     "observed_q": observed_q,
                     "target_q": list(fields[6:]) if fields[2] else None,
                 }
-                with samples_path.open("a", encoding="utf-8") as stream:
-                    stream.write(json.dumps(record, separators=(",", ":")) + "\n")
+                sample_log.write(json.dumps(record, separators=(",", ":")) + "\n")
+            previous_enabled, previous_stop_reason = enabled, pump.last_stop_reason
             sample_index += 1
             remaining = period - (time.monotonic() - loop_start)
             if remaining > 0:
@@ -406,8 +571,13 @@ def run_h4_stream(args: argparse.Namespace, states: LatestLowState,
         except OSError:
             pass
         client.close()
+        sample_log.close()
         metadata.update(status=status, stop_reason=stop_reason,
+                        diagnostic_log=sample_log.stats(),
+                        max_send_gap_s=max_send_gap_s,
+                        compacted_input_samples=getattr(lines, 'compacted', 0),
                         last_ipc_sequence_id=pump.packet_sequence,
+                        receiver_errors=receiver_errors,
                         finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
         metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
         print(f"[{status.upper()}] stop={stop_reason} evidence: {metadata_path.parent}")
@@ -416,6 +586,16 @@ def run_h4_stream(args: argparse.Namespace, states: LatestLowState,
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.receiver_config is not None:
+        try:
+            yaw, pitch = receiver_head_limits(args.receiver_config)
+            args.head_yaw_max_rad = min(args.head_yaw_max_rad, yaw)
+            args.head_pitch_max_rad = min(args.head_pitch_max_rad, pitch)
+        except (OSError, KeyError, ValueError) as error:
+            raise SystemExit(f'receiver head envelope unavailable: {error}')
+        print(f'[SIDECAR] receiver head envelope yaw={args.head_yaw_max_rad:g}, '
+              f'pitch={args.head_pitch_max_rad:g}; enforced in H4 joint-limits-only',
+              file=sys.stderr, flush=True)
     validate_args(args)
     if args.udp_host not in {"127.0.0.1", "localhost"}:
         raise SystemExit("high-level teleop transport is restricted to loopback")
@@ -430,7 +610,20 @@ def main(argv: list[str] | None = None) -> int:
     subscriber = ChannelSubscriber(STATE_TOPIC, LowState_)
     states = LatestLowState()
     subscriber.Init(states.receive)
-    state = wait_for_state(states, max_age_s=args.state_timeout_s)
+    initial_state_timeout_s = (
+        None if args.initial_state_timeout_s == 0 else args.initial_state_timeout_s
+    )
+    print(
+        f"[SIDECAR] waiting for initial {STATE_TOPIC} on {args.interface} "
+        f"(timeout={'infinite' if initial_state_timeout_s is None else f'{initial_state_timeout_s:g}s'}); "
+        "UDP output remains disabled",
+        file=sys.stderr,
+        flush=True,
+    )
+    state = wait_for_state(states, timeout_s=initial_state_timeout_s,
+                           max_age_s=args.state_timeout_s)
+    print(f"[SIDECAR] initial {STATE_TOPIC} ready; H4 STOP preamble armed", file=sys.stderr,
+          flush=True)
     if int(state.mode_machine) != args.expected_mode_machine:
         raise SystemExit(
             f"mode_machine={state.mode_machine}, expected {args.expected_mode_machine}; refusing sidecar"
@@ -451,16 +644,21 @@ def main(argv: list[str] | None = None) -> int:
         "motor_indices": MOTOR_INDICES,
         "max_offset_from_start_rad": None if args.joint_limits_only else args.max_offset_rad,
         "position_limit_mode": "joint_limits_only" if args.joint_limits_only else "session_offset",
+        "head_yaw_limit_rad": args.head_yaw_max_rad,
+        "head_pitch_limit_rad": args.head_pitch_max_rad,
+        "receiver_config": str(args.receiver_config) if args.receiver_config is not None else None,
         "send_hz": args.send_hz,
         "input_timeout_s": args.input_timeout_s,
         "state_timeout_s": args.state_timeout_s,
+        "initial_state_timeout_s": args.initial_state_timeout_s,
         "duration_s": args.duration_s,
         "stream_contract": args.stream_contract,
     }
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
 
-    lines: "queue.Queue[str | None]" = queue.Queue()
-    threading.Thread(target=stdin_reader, args=(lines,), daemon=True).start()
+    lines = LatestControlInbox('enabled') if args.stream_contract == 'h4' else queue.Queue()
+    read = read_control_stream if args.stream_contract == 'h4' else stdin_reader
+    threading.Thread(target=read, args=(lines,), daemon=True).start()
     if args.stream_contract == "h4":
         return run_h4_stream(args, states, lines, metadata, metadata_path, samples_path)
     source_zero: list[float] | None = None
