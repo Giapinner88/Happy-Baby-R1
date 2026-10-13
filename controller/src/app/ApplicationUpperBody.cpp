@@ -156,7 +156,8 @@ void Application::InitTeleop() {
               << " (tay+dau). Mode Z san sang trong ZERO TORQUE; co Quest + R3 "
                  "la hai lop deadman. ";
     if (h4_teleop_approved_) {
-        std::cout << "H4: R2+X vao che do di bo + teleop, roi nhan START de arm/disarm; "
+        std::cout << "H4: R2+A nha can ve 0 (base khoa), R2+X cho phep di chuyen; "
+                     "nhan START de arm/disarm; "
                      "ZERO TORQUE: START truc tiep.\n";
     } else if (locomotion_->SupportsArmOverlay()) {
         std::cout << "Teleop legacy: nhan START mot lan trong LOCOMOTION.\n";

@@ -35,10 +35,10 @@ Phía `run_r1`: `config/gestures.yaml` phải có `teleop_enabled: true`; cổng
 ## 3. Chạy một phiên
 
 1. Robot treo trên giá, người giữ E-stop sẵn sàng. Bàn giao: `L2+R2` → giữ `R1+R2` ~1 s.
-2. Vào trạng thái cho phép: **ZERO TORQUE** (`L2+Y`, chỉ từ IDLE, robot đang treo) hoặc chế độ **đi bộ + teleop** (`R2+X` từ STAND LOCK; đang đi bộ thường thì `R2+X` đổi chế độ khi robot đứng yên). Chế độ đi bộ thường (`R2+A`) không nhận teleop. Ở chế độ teleop, `teleop_policy` hiện là U1 (`u1_seed42`, chỉ điều khiển chân; tay theo target Quest trực tiếp); gesture double-click không chạy ở chế độ này. U1 dùng được tới ~1.1 m/s trong mô phỏng, nên giữ tốc độ chậm (`R2+Xuống`).
+2. Vào trạng thái cho phép: **ZERO TORQUE** (`L2+Y`, chỉ từ IDLE, robot đang treo), **R2+A** hoặc **R2+X**. Cả hai mode locomotion phải có bundle H4 đã qua gate. Với R2+A, thả cần để `vx/vy/yaw` về 0 trước START; sau đó base bị khóa. R2+X dùng `teleop_policy` và cho phép vừa đi vừa teleop. `teleop_policy` hiện là U1 (`u1_seed42`, chỉ điều khiển chân; tay theo target Quest trực tiếp); gesture double-click không chạy với H4 active. U1 dùng được tới ~1.1 m/s trong mô phỏng, nên giữ tốc độ chậm (`R2+Xuống`).
 3. Lấy URL: `journalctl -u hb_teleop_runtime -n 50 | grep "Quest URL"` (theo IP hiện tại của `wlan0`).
    Trên Quest: cùng Wi-Fi, mở URL, chấp nhận chứng chỉ, **Enter VR**. Tab cũ phải reload.
-4. **Nhấn START một lần** (nút trần, không kèm L1/L2/R1/R2) để cấp quyền teleop trong `run_r1`; nhấn lại để thu quyền ngay. Giữ nút không lặp lại lệnh. Ngoài chế độ đi bộ + teleop / ZERO TORQUE, START bị từ chối kèm lý do. Đổi sang `R2+A` thì teleop tự thu quyền trước khi đổi policy. Cấp quyền chưa làm robot cử động: còn cần deadman cò Quest (bước 6).
+4. **Nhấn START một lần** (nút trần, không kèm L1/L2/R1/R2) để cấp quyền teleop trong `run_r1`; nhấn lại để thu quyền ngay. Giữ nút không lặp lại lệnh. R2+A từ chối START nếu lệnh vận tốc chưa về 0 và khóa base sau khi arm; R2+X cho phép START và vận tốc đồng thời. Đổi policy R2+A ↔ R2+X sẽ tự thu quyền để tay về nền rồi mới swap. Cấp quyền chưa làm robot cử động: còn cần deadman cò Quest (bước 6).
 5. Đưa người điều khiển và robot về tư thế neutral; **đỡ đầu robot ngang** (ở ZERO TORQUE đầu rũ xuống).
 6. **Giữ cò phải** (deadman). Frame đầu tiên được chốt làm `source_zero`, encoder hiện tại làm `start_q`; target sau đó là độ lệch tương đối, bị chặn trong `max_offset_rad` (mặc định 0.15 rad).
 7. Di chuyển chậm. Log `run_r1` in `[Teleop] stream ACTIVE` / `stream INACTIVE reason=...` ở mỗi lần đổi trạng thái.

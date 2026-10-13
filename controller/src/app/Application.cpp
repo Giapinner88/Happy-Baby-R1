@@ -425,13 +425,16 @@ void Application::HandleTeleopToggle(const InputCommand& cmd) {
                          "khong ho tro arm overlay va H4 chua qua artifact gate.\n";
         } else if (teleop_runtime_on_) {
             SetTeleopArmed(false, "START");
-        } else if (state_ == AppState::kLocomotion &&
-                   (loco_mode_ != LocoMode::kTeleop || loco_swap_pending_)) {
-            // Tay teleop chỉ thuộc chế độ đi bộ + teleop: không lẫn với đi bộ thường.
-            std::cout << "[Teleop] START bi tu choi — dang o che do "
-                      << LocoModeName(loco_mode_)
-                      << (loco_swap_pending_ ? " (dang doi che do)" : "")
-                      << ". Bam R2+X de vao che do di bo + teleop.\n";
+        } else if (state_ == AppState::kLocomotion && loco_swap_pending_) {
+            std::cout << "[Teleop] START bi tu choi — dang doi policy locomotion; "
+                         "cho robot dung yen va doi xong.\n";
+        } else if (state_ == AppState::kLocomotion && loco_mode_ == LocoMode::kWalk &&
+                   (std::fabs(cmd.vx) > 1e-4f || std::fabs(cmd.vy) > 1e-4f ||
+                    std::fabs(cmd.yaw) > 1e-4f)) {
+            // R2+A dùng walk_policy: chỉ cấp quyền từ trạng thái dừng hẳn và
+            // UpdateBaseCommand khóa base suốt phiên teleop.
+            std::cout << "[Teleop] START bi tu choi — R2+A yeu cau nha can dieu khien "
+                         "ve 0, cho robot dung yen roi nhan START.\n";
         } else if (state_ != AppState::kLocomotion &&
                    !(h4_teleop_approved_ && state_ == AppState::kZeroTorque)) {
             // Teleop là overlay TRÊN policy đi bộ: chân phải đang được policy giữ.
@@ -460,10 +463,9 @@ void Application::SyncUpperBodyOwnership() {
     // A new LOCOMOTION entry must see a fresh explicit STOP before any H4
     // enable packet can own the upper body, including returns from dance.
     if (h4_teleop_approved_) {
-        // Phiên H4 mới mỗi lần vào chế độ teleop (từ STAND LOCK, sau dance, hoặc
-        // đổi nóng từ walk): luôn cần STOP tường minh trước gói enable đầu tiên.
-        const bool in_locomotion = state_ == AppState::kLocomotion &&
-                                   loco_mode_ == LocoMode::kTeleop;
+        // Phiên H4 mới mỗi lần vào LOCOMOTION (R2+A hoặc R2+X), từ STAND LOCK
+        // hay sau dance: luôn cần STOP tường minh trước gói enable đầu tiên.
+        const bool in_locomotion = state_ == AppState::kLocomotion;
         if (in_locomotion && !h4_session_in_locomotion_) {
             teleop_.BeginH4Session();
             h4_history_release_s_ = 0.0f;
@@ -477,10 +479,6 @@ void Application::SyncUpperBodyOwnership() {
     if (teleop_runtime_on_ && state_ != AppState::kLocomotion &&
         !(h4_teleop_approved_ && state_ == AppState::kZeroTorque))
         SetTeleopArmed(false, "rời LOCOMOTION");
-    if (teleop_runtime_on_ && state_ == AppState::kLocomotion &&
-        loco_mode_ != LocoMode::kTeleop)
-        SetTeleopArmed(false, "che do di bo thuong");
-
     // Ngoài locomotion, target tay thuộc về state controller (stand/sit/getup...)
     // và không có policy BlendInto để hoàn tất gesture handover. Hủy quyền overlay
     // để player không giữ pose cũ rồi phát lại khi locomotion được bật lần nữa.
@@ -665,8 +663,8 @@ void Application::EnterIdle(const std::string& reason) {
     announcing_ = false;
     pending_action_ = PendingAction::kNone;
     dance_stopping_ = false;
-    // Sau IDLE (E-stop, ngã, mất input) luôn quay về chế độ đi bộ thường; vào
-    // teleop lại phải chọn tường minh bằng R2+X.
+    // Sau IDLE (E-stop, ngã, mất input) luôn quay về chế độ đi bộ thường;
+    // teleop chỉ được cấp lại bằng START trong mode locomotion phù hợp.
     loco_swap_pending_ = false;
     loco_mode_ = LocoMode::kWalk;
     locomotion_ = walk_ctrl_.get();
@@ -741,7 +739,7 @@ void Application::UpdateHud() {
                                                     : "L2+Lên: Đứng dậy gồng cứng"};
             break;
         case AppState::kStandLock:
-            hints = {"1 / R2+A : ĐI BỘ | T / R2+X : ĐI BỘ+TELEOP",
+            hints = {"1 / R2+A : ĐI BỘ A | T / R2+X : ĐI BỘ X",
                      "L2+Trái : Ngồi ghế", "L2+X : Nằm xuống"};
             break;
         case AppState::kLocomotion: {
@@ -750,7 +748,9 @@ void Application::UpdateHud() {
                          (loco_swap_pending_ ? std::string(" -> ") + LocoModeName(loco_swap_target_) +
                                                    " (dung yen...)"
                                              : std::string()) +
-                         (loco_mode_ == LocoMode::kTeleop ? " | START: tay teleop" : ""),
+                         (loco_mode_ == LocoMode::kTeleop
+                              ? " | START: tay teleop + di chuyen"
+                              : " | START: tay teleop (can dieu khien = 0)"),
                      "W/S/A/D : Move | Q/E : Yaw | 1/T : doi che do",
                      "Tab : speed | R : Reset policy",
                      dance_keys + "0 : STAND LOCK | 9 : Sit down",

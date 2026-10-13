@@ -21,8 +21,8 @@ Mỗi modifier là một nhóm việc, không chồng chéo: **L2 = an toàn / t
 
 | Việc | Tay cầm R3 | Bàn phím |
 | --- | --- | --- |
-| Đi bộ thường (`walk_policy`) | **R2+A** | 1 |
-| Đi bộ + teleop (`teleop_policy`) | **R2+X** | T |
+| Chọn `walk_policy` | **R2+A** | 1 |
+| Chọn `teleop_policy` | **R2+X** | T |
 | Tốc độ nhanh / chậm | **R2+Lên / R2+Xuống** | Tab (đảo) |
 | Tiến–lùi / sang ngang / xoay | Stick trái ↑↓ / stick trái ←→ / stick phải ←→ | W S / A D / Q E |
 | Reset policy | — | R |
@@ -41,7 +41,7 @@ Từ STAND LOCK, R2+A / R2+X vào thẳng chế độ tương ứng. Đang đi b
 | Việc | Tay cầm R3 |
 | --- | --- |
 | Động tác tay (bấm lại để thu) | double-click: Lên=1, Xuống=2, Trái=3, Phải=4, A=5 (voice-auto), B=6, X=7, Y=8 |
-| Cấp/thu quyền tay teleop | nhấn **START** một lần — chỉ ở chế độ **đi bộ + teleop** hoặc ZERO TORQUE; xem [teleop.md](teleop.md) |
+| Cấp/thu quyền tay teleop | nhấn **START** một lần ở **R2+A, R2+X** hoặc ZERO TORQUE. R2+A: thả cần về 0, base sẽ khóa; R2+X: được vừa đi vừa teleop; xem [teleop.md](teleop.md) |
 | Voice: nói (push-to-talk) / ngắt lượt | giữ **SELECT** / double-tap **SELECT** |
 | Voice: rảnh tay / đổi nguồn mic | double-click **F1** / nhấn **F2** một lần |
 | Voice preset | giữ **L1** một mình 3 s để bật/tắt; giữ **L1** + Lên/Phải/Xuống/Trái để phát |
@@ -79,4 +79,4 @@ Chạy từ **máy trạm** ở gốc repo; lệnh service/status/logs tự ch�
 | Ép địa chỉ robot | `ROBOT=unitree@<ip> ./hb …`, hoặc `HB_ROBOT_TAILSCALE=<ip>` cho `field`/`ssh` |
 | Kiểm không chạy trùng | `./hb ssh pgrep -a run_r1` (phải đúng 1 dòng) |
 
-Trình tự chuẩn: treo/đỡ robot → bật nguồn → **L2+R2**, giữ **R1+R2** → **L2+Lên** → đặt xuống đất → **R2+A** (hoặc **R2+X** + START nếu teleop) → điệu / động tác → **L2+Trái** khi xong. Bấm phím trước, đỡ robot sau.
+Trình tự chuẩn: treo/đỡ robot → bật nguồn → **L2+R2**, giữ **R1+R2** → **L2+Lên** → đặt xuống đất → **R2+A** (thả cần về 0) hoặc **R2+X** → **START** nếu teleop → điệu / động tác → **L2+Trái** khi xong. Bấm phím trước, đỡ robot sau.

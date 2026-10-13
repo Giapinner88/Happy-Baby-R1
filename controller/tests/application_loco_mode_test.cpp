@@ -5,11 +5,13 @@
 // (the armfree flat_plus_gait_h4_v1 artifact) and teleop_b (the U1
 // r1_wb_legs_v1_blind artifact, 12 leg actions, leg default differs by 0.048 rad),
 // as in the live config. Checks:
-//   * START is refused in walk mode and accepted in teleop mode;
+//   * R2+A accepts START only while stopped and locks base; R2+X accepts it
+//     while moving and preserves base velocity;
 //   * a mode request while walking stops the base and only swaps after the gait
 //     is STAND-stable for policy_swap_dwell_s;
 //   * a bundle whose policy.yaml hash differs refuses startup;
 //   * IDLE always returns to walk mode.
+#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -163,13 +165,20 @@ struct ApplicationTestAccess {
         Press(kL2 | kUp);
         WaitFor(AppState::kStandLock, 5000); Wait(200);
 
-        // R2+A: walk mode, walk controller; START is refused there.
+        // R2+A: walk mode, walk controller; H4 START also works after the
+        // operator velocity command has settled to zero.
         Press(kR2 | kA);
         CHECK(a.state_ == AppState::kLocomotion);
         CHECK(a.loco_mode_ == LocoMode::kWalk && a.locomotion_ == a.walk_ctrl_.get());
         CHECK(a.active_ == a.walk_ctrl_.get());
-        CHECK(!a.PolicyCaps().h4);
+        CHECK(a.PolicyCaps().h4);
         Wait(600);
+        ly = 0.8f; Wait(100);
+        Press(kStart);
+        CHECK(!a.teleop_runtime_on_);
+        ly = 0.0f; Wait(1000);
+        Press(kStart);
+        CHECK(a.teleop_runtime_on_);
         Press(kStart);
         CHECK(!a.teleop_runtime_on_);
 
@@ -193,10 +202,14 @@ struct ApplicationTestAccess {
         CHECK(a.state_ == AppState::kLocomotion);
         CHECK(a.PolicyCaps().h4);
 
-        // START is accepted in teleop mode and toggles off again.
+        // R2+X uses teleop_policy: START is accepted while moving and base
+        // velocity remains available during the H4 session.
         Wait(100);
+        ly = 0.8f; Wait(100);
         Press(kStart);
         CHECK(a.teleop_runtime_on_);
+        CHECK(std::fabs(a.cmd_vx_) > 1e-4f);
+        ly = 0.0f; Wait(1000);
         Press(kStart);
         CHECK(!a.teleop_runtime_on_);
 

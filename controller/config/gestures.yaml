@@ -102,12 +102,13 @@ gesture_voice_cool_pose_slot: 7
 gesture_voice_determined_slot: 8
 gesture_voice_give_gift_slot: 4
 
-# START là toggle cạnh nhấn cho teleop H4/legacy; trong LOCOMOTION chỉ có tác dụng ở
-# chế độ đi bộ + teleop (R2+X). Quest có thể vào trước hoặc sau.
+# START là toggle cạnh nhấn cho teleop H4/legacy; trong LOCOMOTION có tác dụng ở
+# cả R2+A và R2+X. R2+A yêu cầu vận tốc về 0 và khóa base; R2+X được vừa đi vừa teleop.
+# Quest có thể vào trước hoặc sau.
 # teleop_enabled: false = không mở socket teleop.
 teleop_enabled: true
-# H4 overlay: teleop_policy (locomotion.yaml) phải là bundle flat_plus_gait_h4_v1 có
-# teleop_h4: true; hash nằm trong policy.yaml của bundle. teleop_h4_model_sha256 chỉ
+# H4 overlay: walk_policy và teleop_policy (locomotion.yaml) đều phải là bundle
+# teleop_h4: true có contract hỗ trợ H4; hash nằm trong policy.yaml của bundle. teleop_h4_model_sha256 chỉ
 # dùng cho route cũ flat_model.
 teleop_h4_enabled: true
 teleop_udp_port: 5560

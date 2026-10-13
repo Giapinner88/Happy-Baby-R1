@@ -218,7 +218,7 @@ public:
         if (held(cur.L2 && cur.X, l2x_start_, l2x_active_, l2x_fired_))
             cmd.want_get_up_down = true;
         // START cạnh-lên (nút trần): một lần nhấn bật/tắt teleop tay+đầu. Trong
-        // LOCOMOTION chỉ có tác dụng ở chế độ đi bộ + teleop (R2+X).
+        // LOCOMOTION nhận ở cả R2+A và R2+X khi cần điều khiển vận tốc đã về 0.
         // Không phụ thuộc Quest đã vào VR trước hay sau. Chặn modifier để không
         // đụng combo khác; SELECT/F1/F2 đã thuộc voice.
         const bool no_mod_btn = !cur.L1 && !cur.L2 && !cur.R1 && !cur.R2;

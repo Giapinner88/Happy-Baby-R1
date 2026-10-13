@@ -87,7 +87,7 @@ PolicyController* Application::LocomotionFor(LocoMode mode) const {
 }
 
 const char* Application::LocoModeName(LocoMode mode) {
-    return mode == LocoMode::kTeleop ? "DI BO + TELEOP" : "DI BO";
+    return mode == LocoMode::kTeleop ? "DI BO X" : "DI BO A";
 }
 
 void Application::EnterLocomotion(LocoMode mode) {
@@ -122,9 +122,9 @@ void Application::RequestLocoMode(LocoMode mode) {
     loco_swap_timer_s_ = 0.0f;
     loco_swap_still_s_ = 0.0f;
     input_.ZeroVelocity();
-    // Rời teleop: nhả quyền ngay để tay thu về theo đường handover H4 sẵn có.
-    if (loco_mode_ == LocoMode::kTeleop && teleop_runtime_on_)
-        SetTeleopArmed(false, "doi sang di bo thuong");
+    // Đổi policy: nhả quyền ngay để tay thu về theo đường handover H4 sẵn có.
+    if (teleop_runtime_on_)
+        SetTeleopArmed(false, "doi policy locomotion");
     std::cout << "[Application] Doi che do " << LocoModeName(loco_mode_) << " -> "
               << LocoModeName(mode) << ": dung yen, cho tay thu va gait STAND on dinh...\n";
 }
@@ -147,8 +147,8 @@ void Application::AdvanceLocoModeSwap(const RobotState& rs) {
         CancelLocoModeSwap("qua policy_swap_timeout_s, robot chua dung yen");
         return;
     }
-    if (loco_mode_ == LocoMode::kTeleop && teleop_runtime_on_)
-        SetTeleopArmed(false, "doi sang di bo thuong");
+    if (teleop_runtime_on_)
+        SetTeleopArmed(false, "doi policy locomotion");
 
     PolicyController* next = LocomotionFor(loco_swap_target_);
     const bool same_ctrl = next == locomotion_;
@@ -251,9 +251,8 @@ void Application::RunPolicy(const InputCommand& cmd) {
 
 Application::PolicyOverlayCaps Application::PolicyCaps() const {
     const bool legacy_arm_overlay_supported = locomotion_->SupportsArmOverlay();
-    // H4 overlay chỉ thuộc chế độ đi bộ + teleop; ở chế độ thường gói Quest bị bỏ qua.
+    // Cả R2+A và R2+X đều nhận H4 khi bundle đang chạy qua artifact gate.
     const bool h4_overlay_supported = h4_teleop_approved_ &&
-        loco_mode_ == LocoMode::kTeleop &&
         locomotion_->SupportsH4TeleopOverlay();
     const bool history_gesture_contract = tuning_.gesture_history_enabled &&
         locomotion_->SupportsHistoryGestureOverlay();
@@ -303,15 +302,13 @@ void Application::UpdateBaseCommand(const InputCommand& cmd, const PolicyOverlay
     const bool legacy_arm_overlay_supported = caps.legacy_arm;
     const bool h4_overlay_supported = caps.h4;
     const bool history_gesture_contract = caps.history_gesture;
-    // teleop_lock_base: khi teleop đang ARMED thì bỏ qua cần analog -> chân chỉ đứng
-    // giữ thăng bằng, teleop đúng nghĩa CHỈ điều khiển tay + đầu.
+    // R2+A dùng walk_policy nên khi teleop ARMED sẽ bỏ qua cần analog. R2+X dùng
+    // teleop_policy và vẫn nhận vận tốc để đi bộ đồng thời với tay + đầu.
     const bool history_gesture_holds_base = history_gesture_contract &&
         (!arm_gesture_.Idle() || gesture_history_release_s_ > 0.0f);
     const bool teleop_locks_base = tuning_.teleop_lock_base &&
-        ((teleop_runtime_on_ && legacy_arm_overlay_supported) ||
-         (h4_overlay_supported &&
-          (teleop_.H4Authorized() || teleop_.Weight() > 0.0f ||
-           h4_history_release_s_ > 0.0f || h4_head_release_s_ > 0.0f)));
+        loco_mode_ == LocoMode::kWalk && teleop_runtime_on_ &&
+        (legacy_arm_overlay_supported || h4_overlay_supported);
     if (state_ == AppState::kLocomotion && !holding && !teleop_locks_base &&
         !history_gesture_holds_base) {
         cmd_vx_ = cmd.vx;

@@ -160,11 +160,15 @@ void Application::InitControllers() {
         print_model("TELEOP_MODEL", teleop.contract, teleop.rel_path, teleop_ctrl);
 
         if (tuning_.teleop_h4_enabled) {
-            h4_teleop_approved_ = teleop.teleop_h4 &&
+            const bool walk_h4_approved = walk.teleop_h4 &&
+                walk_ctrl_->SupportsH4TeleopOverlay();
+            const bool teleop_h4_approved = teleop.teleop_h4 &&
                 teleop_ctrl.SupportsH4TeleopOverlay();
+            h4_teleop_approved_ = walk_h4_approved && teleop_h4_approved;
             if (!h4_teleop_approved_)
-                throw std::runtime_error("H4 teleop denied: teleop_policy '" + teleop.name +
-                                         "' is not a teleop_h4 bundle with a teleop-capable contract");
+                throw std::runtime_error("H4 teleop denied: walk_policy '" + walk.name +
+                                         "' and teleop_policy '" + teleop.name +
+                                         "' must both be teleop_h4 bundles with teleop-capable contracts");
         }
     } else {
         // Route cũ (rollback/so sánh): flat_model + flat_policy_contract, một policy
@@ -200,8 +204,8 @@ void Application::InitControllers() {
         std::cout << "[FlatPlusGaitH4] gait_settle_dwell_s="
                   << tuning_.gait_settle_dwell_s << "s (runtime config)\n";
     }
-    std::cout << "[Application] Locomotion: R2+A = walk '" << walk_policy_label_
-              << "', R2+X = teleop '" << teleop_policy_label_ << "'"
+    std::cout << "[Application] Locomotion: R2+A policy '" << walk_policy_label_
+              << "', R2+X policy '" << teleop_policy_label_ << "'"
               << (teleop_ctrl_ ? " (hai policy rieng, doi nong khi dung yen)" : " (chung policy)")
               << "\n";
 

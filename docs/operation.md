@@ -105,7 +105,7 @@ Bảng đầy đủ (tay cầm R3 và bàn phím): [controls.md](controls.md).
 > Thao tác đúng: **bấm phím trước, cầm/đỡ robot sau** — cầm trước rồi bấm thì policy thấy chân lơ lửng.
 
 ### 3.4 Trình tự chuẩn
-Treo/đỡ robot → bật nguồn → **L2+Lên** (đứng dậy) → đặt xuống đất → **R2+A** (đi bộ; **R2+X** nếu cần teleop tay) → **R1+D-pad** (nhảy, tự về đi bộ khi xong) → **L2+Trái** (ngồi) khi xong.
+Treo/đỡ robot → bật nguồn → **L2+Lên** (đứng dậy) → đặt xuống đất → **R2+A** (thả cần về 0) hoặc **R2+X** (cho phép vừa đi vừa teleop) → **START** nếu cần teleop tay → **R1+D-pad** (nhảy, tự về đi bộ khi xong) → **L2+Trái** (ngồi) khi xong.
 
 ### 3.5 Ngồi ghế
 

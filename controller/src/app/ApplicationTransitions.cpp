@@ -162,7 +162,7 @@ void Application::HandleTransitions(const InputCommand& cmd) {
         return;
     }
 
-    // R2+A = đi bộ thường, R2+X = đi bộ + teleop. Từ STAND LOCK: vào thẳng chế độ
+    // R2+A/R2+X chọn hai policy locomotion. Từ STAND LOCK: vào thẳng chế độ
     // đó. Đang LOCOMOTION: xin đổi chế độ, đổi thật khi robot đứng yên.
     if (cmd.want_locomotion || cmd.want_teleop_locomotion) {
         const LocoMode mode = cmd.want_teleop_locomotion ? LocoMode::kTeleop : LocoMode::kWalk;

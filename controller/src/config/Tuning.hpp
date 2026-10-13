@@ -382,8 +382,8 @@ struct Tuning {
     // Trần tốc độ đầu riêng cho teleop. Nguồn teleop đến từ ngoài mạng nên phải bị
     // siết ÍT NHẤT bằng gesture; <=0 nghĩa là kế thừa policy_rate_limit (lỏng hơn).
     float teleop_head_rate_limit_rad_s = 1.5f;
-    // Khi teleop đang ARMED thì bỏ qua cần analog (vx/vy/yaw = 0): chân chỉ đứng giữ
-    // thăng bằng, teleop đúng nghĩa chỉ điều khiển tay + đầu. false = vừa đi vừa teleop.
+    // Trong walk_policy (R2+A), khi teleop ARMED thì bỏ qua cần analog
+    // (vx/vy/yaw = 0). teleop_policy (R2+X) luôn cho phép vừa đi vừa teleop.
     bool  teleop_lock_base        = true;
     // Pilot Mode Z trên giá treo: giữ chân và eo tại encoder chốt khi teleop
     // bắt đầu active. Mặc định tắt để giữ nguyên hành vi zero-torque hiện tại.
@@ -474,8 +474,9 @@ struct Tuning {
     bool flat_model_configured = false;   // config khai flat_model/flat_policy_contract (route cũ)
 
     // Route bundle (khuyến nghị): tên thư mục dưới policies/locomotion/<tên>/ chứa
-    // policy.onnx + policy.yaml. walk_policy = đi bộ thường (R2+A), teleop_policy =
-    // đi bộ kèm teleop tay (R2+X); trống = dùng chung walk_policy. Khi walk_policy
+    // policy.onnx + policy.yaml. walk_policy = R2+A, teleop_policy = R2+X; START
+    // cấp teleop tay ở cả hai mode. R2+A yêu cầu vận tốc bằng 0, R2+X vừa đi vừa teleop;
+    // trống = dùng chung walk_policy. Khi walk_policy
     // được khai, flat_model/flat_policy_contract KHÔNG được khai (tránh hai nguồn sự thật).
     std::string walk_policy;
     std::string teleop_policy;

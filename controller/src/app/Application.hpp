@@ -61,7 +61,7 @@ enum class AppState {
 };
 
 // Chế độ đi bộ = policy locomotion đang chạy. kWalk: walk_policy (R2+A).
-// kTeleop: teleop_policy (R2+X), chỉ chế độ này mới nhận START/teleop H4.
+// kTeleop: teleop_policy (R2+X). Cả hai nhận START/H4 khi bundle qua gate.
 enum class LocoMode {
     kWalk,
     kTeleop,
@@ -291,8 +291,8 @@ private:
 
     // Teleop thân trên (tay + đầu) qua UDP — nguồn override ưu tiên hơn gesture.
     TeleopReceiver teleop_;
-    // Artifact gate của teleop policy đã qua lúc khởi động (dùng cho cả Mode Z).
-    // Trong LOCOMOTION, overlay H4 còn cần loco_mode_ == kTeleop (PolicyCaps).
+    // Artifact gate của cả walk_policy và teleop_policy đã qua lúc khởi động
+    // (dùng cho cả Mode Z và hai mode LOCOMOTION).
     bool h4_teleop_approved_ = false;
     bool h4_session_in_locomotion_ = false;
     float h4_history_release_s_ = 0.0f;

@@ -38,8 +38,10 @@ heading_hold_relatch_gyro: 0.3
 # ============================================================================
 # CHỌN POLICY ĐI BỘ — tên thư mục bundle dưới controller/policies/locomotion/<tên>/
 # (policy.onnx + policy.yaml; contract và sha256 nằm trong policy.yaml).
-#   walk_policy   : R2+A — đi bộ thường
-#   teleop_policy : R2+X — đi bộ + teleop tay (START); trống = dùng walk_policy
+#   walk_policy   : R2+A — chọn policy đi bộ A
+#   teleop_policy : R2+X — chọn policy đi bộ X; trống = dùng walk_policy
+# Cả hai mode nhận teleop tay qua START. R2+A yêu cầu vận tốc bằng 0 và khóa base;
+# R2+X dùng teleop_policy nên được vừa đi vừa teleop.
 # Hai policy khác nhau phải cùng default_joint_pos; đổi chế độ khi đang đi chỉ xảy ra
 # khi robot đứng yên (policy_swap_*). `./hb policy list` liệt kê bundle; checklist ở
 # docs/policies.md §3. Đổi xong: ./hb preflight (robot) / ./hb deploy policy (máy dev).

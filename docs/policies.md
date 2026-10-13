@@ -12,8 +12,8 @@ Nhánh này chỉ nhận **kết quả** (ONNX/NPZ, cấu hình, motion) từ c�
 ## 1. Chọn policy đang chạy
 
 - Đi bộ: mỗi policy là một **bundle** `controller/policies/locomotion/<tên>/` gồm `policy.onnx` + `policy.yaml` (`contract`, `sha256`, `teleop_h4`). Chọn trong `controller/config/locomotion.yaml`:
-  - `walk_policy: <tên>` — chế độ **đi bộ thường** (R2+A);
-  - `teleop_policy: <tên>` — chế độ **đi bộ + teleop** (R2+X); bỏ trống = dùng chung `walk_policy`. Bundle này phải là `flat_plus_gait_h4_v1` có `teleop_h4: true`.
+  - `walk_policy: <tên>` — policy chạy khi chọn R2+A;
+  - `teleop_policy: <tên>` — policy chạy khi chọn R2+X; bỏ trống = dùng chung `walk_policy`. Khi H4 được bật, cả hai bundle phải có `teleop_h4: true` và contract hỗ trợ H4. R2+A yêu cầu lệnh vận tốc về 0 trước START; R2+X cho phép vừa đi vừa teleop.
   - Hai bundle khác nhau phải trùng `default_joint_pos` của tay; chân + eo được lệch ≤ 0.10 rad (đổi chế độ blend `blend_time_s`), lệch hơn thì run_r1 từ chối khởi động. `./hb policy list` cho biết bundle nào đang được chọn.
 - Route cũ `flat_model` + `flat_policy_contract` vẫn chạy được để rollback/so sánh (đọc từ `policies/flat/` hoặc `policies/locomotion/_archive/flat_plus/`); không được khai cùng lúc với `walk_policy`.
 - Nhảy: `controller/config/dance.yaml` → `dance_2` … `dance_8` (slot ứng với nút trong [controls.md](controls.md)).
