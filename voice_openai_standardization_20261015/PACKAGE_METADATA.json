@@ -1,0 +1,21 @@
+{
+  "package": "hb_voice_openai_standardization",
+  "created_utc": "2026-10-15T16:44:39Z",
+  "source_workspace": "/home/ubuntu22/Projects/Happy-Baby-R1-vla",
+  "workspace_commit": "d422befb4d8cd5d566e4f4f8a588e3a644b67669",
+  "source_version_note": "The HB voice/integration sources are untracked in the workspace Git index; use MANIFEST.sha256 as the content identity for this snapshot.",
+  "runtime_target": {
+    "platform": "Unitree R1 embedded computer",
+    "architecture": "ARM64",
+    "deployment_root": "/home/unitree/HB"
+  },
+  "services": [
+    "OpenAI Realtime",
+    "ElevenLabs streaming TTS",
+    "Unitree R1 audio bridge",
+    "read-only camera function tool",
+    "bounded gesture function tools"
+  ],
+  "contains_secrets": false,
+  "hardware_ready_claim": false
+}

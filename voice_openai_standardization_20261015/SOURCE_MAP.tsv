@@ -1,0 +1,25 @@
+area	path	role	target_boundary
+openai_realtime	voice_r1/hb_voice/app.py	Realtime session, tools, ElevenLabs pipeline	conversation_runtime
+openai_realtime	voice_r1/hb_voice/__main__.py	headless supervisor and reconnect	conversation_runtime
+configuration	voice_r1/hb_voice/config.py	validated YAML/env loader	configuration
+configuration	voice_r1/config/tuning.yaml	runtime tuning without secrets	configuration
+configuration	voice_r1/config/prompt.txt	conversation policy/prompt	configuration
+audio_input	voice_r1/hb_voice/input.py	USB ALSA and robot-mic input	audio_adapters
+audio_output	voice_r1/hb_voice/output.py	PCM, cue and R1 speaker output	audio_adapters
+audio_gate	voice_r1/hb_voice/gate.py	PTT/speaker safety gate	integration_boundary
+resilience	voice_r1/hb_voice/resilience.py	buffer, reconnect and status	conversation_runtime
+function_calling	voice_r1/hb_voice/gesture_tools.py	bounded gesture tool schema/client	tool_adapters
+function_calling	voice_r1/hb_voice/gesture_response.py	tool-first response guard	tool_adapters
+function_owner	high_level_2/src/input/VoiceGestureOwner.hpp	validated Unix-socket owner contract	high_level_contract
+function_owner	high_level_2/config/gestures.yaml	gesture IDs and owner socket	high_level_contract
+function_assets	high_level_2/policies/gestures/*.npz	active gesture clips selected by the catalog	high_level_contract
+vision	voice_r1/hb_voice/vision_tools.py	fresh-frame camera function tool	tool_adapters
+elevenlabs	voice_r1/ELEVENLABS_ROBOT_RUNBOOK.md	operator setup and tuning	documentation
+dependencies	voice_r1/pyproject.toml	Python dependency declaration	build
+dependencies	voice_r1/uv.lock	reproducible Python lock	build
+speaker_bridge	voice_r1/unitree_bridge/r1_bridge.cpp	Unitree SDK2 audio bridge	native_adapters
+speaker_bridge	voice_r1/unitree_bridge/CMakeLists.txt	ARM64 bridge build	native_adapters
+coordinator	r1_integration/src/main.cpp	Select/F1/F2 and fail-closed gate	integration_boundary
+service	r1_integration/systemd/hb_voice.service.in	production service contract	deployment
+deployment	r1_integration/scripts/preflight.sh	voice preflight	deployment
+deployment	r1_integration/scripts/health_check.sh	runtime health evidence	deployment

@@ -1,0 +1,27 @@
+[Unit]
+Description=HB R1 High-Level Runner (headless, starts DISARMED)
+After=network-online.target hb_integration.service
+Wants=network-online.target hb_integration.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+WorkingDirectory=@HB_ROOT@/high_level_2/build
+Environment=DISPLAY=
+Environment=HB_ROOT=@HB_ROOT@
+Environment=HB_INTEGRATION_SOCKET=/run/hb/integration.sock
+EnvironmentFile=-/etc/hb/stack.env
+RuntimeDirectory=hb
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 60); do ip -4 addr show @INTERFACE@ 2>/dev/null | grep -q "inet " && { sleep 2; exit 0; }; sleep 0.5; done; exit 1'
+ExecStartPre=/bin/bash @HB_ROOT@/r1_integration/scripts/preflight.sh high
+ExecStart=@HB_ROOT@/high_level_2/build/run_r1
+KillSignal=SIGTERM
+TimeoutStopSec=12
+Restart=on-failure
+RestartSec=5
+PrivateTmp=yes
+
+[Install]
+WantedBy=hb-stack.target

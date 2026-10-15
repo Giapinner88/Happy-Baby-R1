@@ -52,6 +52,7 @@ from .resilience import (
     is_realtime_connection_error,
     realtime_service_state,
 )
+from .vision_tools import VISION_TOOL_INSTRUCTIONS, VisionToolController
 
 
 def _openai_session_properties(
@@ -146,7 +147,7 @@ class ServerTurnRealtimeLLMService(GestureResponseGuard, OpenAIRealtimeLLMServic
             advertised = evt.session.tools or []
             names = [tool.get("name") for tool in advertised if isinstance(tool, dict)]
             logger.info("Realtime session confirmed tools={}", names)
-            if "perform_gesture" not in names:
+            if "perform_gesture" in self._functions and "perform_gesture" not in names:
                 logger.error("Realtime session is missing perform_gesture; voice gestures cannot run")
 
     async def _handle_context(self, context) -> None:
@@ -243,9 +244,16 @@ async def run_bot(
             "gesture_control.mode={} is ignored at startup; Dev locomotion owns gesture availability",
             config.gesture_mode,
         )
-    gesture_tools: list = []
+    vision_controller = VisionToolController(
+        network_interface=config.network_interface,
+    )
+    vision_tools = vision_controller.tools
+    session_tools = list(vision_tools)
     base_system_instruction = config.load_prompt()
-    system_instruction = base_system_instruction
+    vision_system_instruction = (
+        f"{base_system_instruction}\n\n{VISION_TOOL_INSTRUCTIONS}"
+    )
+    system_instruction = vision_system_instruction
 
     llm = ServerTurnRealtimeLLMService(
         guard_gesture_text=False,
@@ -253,12 +261,16 @@ async def run_bot(
         settings=OpenAIRealtimeLLMService.Settings(
             model=config.model,
             system_instruction=system_instruction,
-            session_properties=_openai_session_properties(config, tools=gesture_tools),
+            session_properties=_openai_session_properties(config, tools=session_tools),
         ),
     )
+    # SessionProperties advertises tools to OpenAI, but Pipecat does not bind
+    # their Python handlers until a later tool/context update. Bind the always-on
+    # camera handler before the first user turn can call it.
+    llm._register_advertised_tool_handlers(session_tools)
     external_tts = _create_external_tts(config)
 
-    context = LLMContext(tools=gesture_tools)
+    context = LLMContext(tools=session_tools)
     user_aggregator = LLMUserAggregator(
         context,
         _realtime_service_mode=True,
@@ -388,7 +400,7 @@ async def run_bot(
                                     config,
                                     conversation_mode=requested,
                                     mic_source=active_mic_source,
-                                    tools=gesture_tools,
+                                    tools=session_tools,
                                 )
                             ),
                             service=llm,
@@ -430,7 +442,7 @@ async def run_bot(
 
     async def sync_gesture_dev_mode(*, force: bool = False) -> bool:
         """Advertise gesture tools only while run_r1 owns Dev locomotion."""
-        nonlocal gesture_tools, system_instruction, gesture_session_enabled
+        nonlocal session_tools, system_instruction, gesture_session_enabled
         async with realtime_settings_lock:
             requested = gate.snapshot.gesture_dev_ready
             if not force and requested == gesture_session_enabled:
@@ -438,23 +450,25 @@ async def run_bot(
 
             if requested:
                 gesture_controller.set_mode("execute")
-                next_tools = gesture_controller.tools
+                next_gesture_tools = gesture_controller.tools
+                next_tools = [*vision_tools, *next_gesture_tools]
                 # Handler registration must precede the remote session update:
                 # the first post-Dev turn may call a function immediately.
                 llm._register_advertised_tool_handlers(next_tools)
             else:
                 await gesture_controller.disable_for_dev_exit()
-                next_tools = []
+                next_gesture_tools = []
+                next_tools = list(vision_tools)
 
-            gesture_tools = next_tools
+            session_tools = next_tools
             context.set_tools(next_tools)
             system_instruction = (
-                f"{base_system_instruction}\n\n{GESTURE_TOOL_INSTRUCTIONS}"
-                if next_tools
-                else base_system_instruction
+                f"{vision_system_instruction}\n\n{GESTURE_TOOL_INSTRUCTIONS}"
+                if next_gesture_tools
+                else vision_system_instruction
             )
             llm.set_gesture_text_guard(
-                bool(next_tools) and config.tts_provider == "elevenlabs"
+                bool(next_gesture_tools) and config.tts_provider == "elevenlabs"
             )
             try:
                 await llm.process_frame(
@@ -479,20 +493,20 @@ async def run_bot(
             except Exception as error:
                 logger.error("Gesture Dev session update failed; disabling tools: {}", error)
                 gesture_controller.set_mode("off")
-                gesture_tools = []
-                context.set_tools([])
-                system_instruction = base_system_instruction
+                session_tools = list(vision_tools)
+                context.set_tools(vision_tools)
+                system_instruction = vision_system_instruction
                 llm.set_gesture_text_guard(False)
                 try:
                     await llm.process_frame(
                         LLMUpdateSettingsFrame(
                             delta=OpenAIRealtimeLLMService.Settings(
-                                system_instruction=base_system_instruction,
+                                system_instruction=vision_system_instruction,
                                 session_properties=_openai_session_properties(
                                     config,
                                     conversation_mode=gate.snapshot.conv_mode,
                                     mic_source=active_mic_source,
-                                    tools=[],
+                                    tools=vision_tools,
                                 ),
                             ),
                             service=llm,
@@ -501,7 +515,7 @@ async def run_bot(
                     )
                 except Exception as rollback_error:
                     logger.error("Could not publish gesture disable rollback: {}", rollback_error)
-                llm._sync_registered_tool_handlers([])
+                llm._sync_registered_tool_handlers(vision_tools)
                 gesture_session_enabled = False
                 return False
 
@@ -509,7 +523,7 @@ async def run_bot(
             logger.info(
                 "Gesture tools {} for Dev locomotion: tools={} owner={}",
                 "enabled" if requested else "disabled",
-                [tool.name for tool in next_tools],
+                [tool.name for tool in next_gesture_tools],
                 config.gesture_socket,
             )
             return requested

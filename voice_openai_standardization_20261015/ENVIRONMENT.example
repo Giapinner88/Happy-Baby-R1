@@ -1,0 +1,18 @@
+# OpenAI Realtime
+OPENAI_API_KEY=replace-on-target
+
+# Required when tts.provider=elevenlabs
+ELEVENLABS_API_KEY=replace-on-target
+ELEVENLABS_VOICE_ID=replace-on-target
+
+# Robot-specific runtime settings
+UNITREE_NETWORK_INTERFACE=eth10
+ALSA_SAMPLE_RATE=48000
+
+# Optional only when more than one USB capture device is present.
+# ALSA_DEVICE=plughw:CARD=BOYALINK,DEV=0
+
+# Optional rollback path for the PC1 multicast microphone.
+# UNITREE_MIC_GROUP_IP=239.168.123.161
+# UNITREE_MIC_PORT=5555
+# UNITREE_MIC_PAYLOAD_MODE=raw

@@ -61,6 +61,32 @@ unitree_bridge/        bridge SDK2 được build trực tiếp trên ARM64
 tools/test_mic.py      công cụ ghi thử mic
 ```
 
+## Camera trong hội thoại
+
+OpenAI Realtime luôn được quảng bá tool read-only `inspect_camera`. Khi người
+dùng hỏi về cảnh hiện tại, tool chụp một JPEG mới từ camera đầu, gắn ảnh vào
+đúng lượt hội thoại rồi mới cho model trả lời. Không tái sử dụng ảnh của lượt
+trước và không dùng kết quả ảnh để cấp quyền chuyển động hoặc suy ra khoảng
+cách an toàn.
+
+Camera không thay đổi gate của gesture:
+
+- ngoài Dev locomotion: session chỉ có `inspect_camera`;
+- trong Dev locomotion: `inspect_camera` và `perform_gesture` hoạt động đồng
+  thời;
+- khi rời Dev locomotion hoặc cập nhật gesture lỗi: chỉ gesture bị gỡ, camera
+  vẫn còn; controller vẫn là tiến trình duy nhất sở hữu chuyển động.
+
+Capture dùng Python hệ thống để gọi probe ngoài repository:
+
+```text
+/home/unitree/Foundation_Unitree/tools/r1_video_rpc_probe.py
+```
+
+Nếu probe hoặc camera không sẵn sàng, tool trả `camera_unavailable`; voice,
+mic, TTS và service vẫn tiếp tục chạy. Việc có file probe mới chỉ xác nhận
+interface phần mềm, chưa thay thế kiểm tra camera thật trên robot.
+
 Entry point duy nhất:
 
 ```bash
