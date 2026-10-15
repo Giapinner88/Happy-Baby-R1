@@ -1,0 +1,48 @@
+name: doremon_ab_w21_final11_meta_friction08to12_20k_8192_20261013
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Doremon A/B W21/final11; 8192 envs; friction 0.8-1.2; packaged inactive pending
+    hardware acceptance.
+motion:
+  file: doremon_w21_final11.npz
+  frames: 4560
+  fps: 50.0
+audio: doremon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon_w21_final11.npz
+  audio: doremon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 6f19bcef8d93fab5c49a155cde1ae49ec539bc1aa5a82a4f5e6b4d765443793f
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon_w21_final11.npz: b081c094fe2203dc8da5fbca3ea9c26a328a57e5edfbbe5bb99bd508aec09351
+  env.yaml: 2daa53b4d41ecf3c65afdb400c435a5d4bf918eaa3016a24d4c40f23c14cc87d
+  model_19999.pt: fcb883406889eb314b7314b7cd1ec7f3fcdd5805f6c64f4426302475ba4f06a9
+  onnx_metadata.yaml: 4a87bdcc44cbbe2305f217e2b9aa5b873f2c9ec2c97beeda0c443384534ed388
+  policy.onnx: 9a4fec486d70c54544891966a748ed202c17b28e3d061561ae6faf7bc8a30ff2
+  source.txt: 2ab6e3b7f3601df3adff2e93714c797b1aa25f8cee422db537dccd2eb9b90a18

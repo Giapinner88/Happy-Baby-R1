@@ -1,0 +1,48 @@
+name: xexe_trimmed_goc_8192env_friction08to15_20k_20261013
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_21-22-52_xexe_trimmed_goc_8192env_friction08to15_20k_20261013
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_21-22-52_xexe_trimmed_goc_8192env_friction08to15_20k_20261013/2026-10-13_21-22-52_xexe_trimmed_goc_8192env_friction08to15_20k_20261013.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Xexe trimmed GOC retrain; 8192 envs; friction 0.8-1.5; packaged inactive
+    pending hardware acceptance.
+motion:
+  file: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: e051fe337a9c54ebf470425bb1286120a725d693b6131d34f2a179907f75c869
+  env.yaml: a5dab4c01055467667db8fcbf900b251fa2a6e8febb9f549c83c611457076b18
+  model_19999.pt: 4a6dccd27a504ca77e5263a9ea9c95ac31d66eb519521d52e8d689f4cc841f62
+  onnx_metadata.yaml: eaec0d0c120ff03a6145ea74621dea49a5a92c81007f4776dc4d812b0c5128cd
+  policy.onnx: 4bce0a0254d70f934e1f1a95387d5f6d614eeee172701d962596ba1b71ba6ba1
+  source.txt: 97c3e934bd59e1042a47c89de54e98d8d9144e8835305b6c69ebd064b924cce8
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz: 229d99c61057e7e1ce345c26fcc7b6f416f78c0ccaf8c61010d83525e23a55a4

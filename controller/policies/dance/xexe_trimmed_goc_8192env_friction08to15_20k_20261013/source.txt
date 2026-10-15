@@ -1,0 +1,14 @@
+folder       : xexe_trimmed_goc_8192env_friction08to15_20k_20261013
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-13_21-22-52_xexe_trimmed_goc_8192env_friction08to15_20k_20261013
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_21-22-52_xexe_trimmed_goc_8192env_friction08to15_20k_20261013
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_21-22-52_xexe_trimmed_goc_8192env_friction08to15_20k_20261013/2026-10-13_21-22-52_xexe_trimmed_goc_8192env_friction08to15_20k_20261013.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz (5007 frames @ 50 Hz)
+audio        : xexe.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Xexe trimmed GOC retrain; 8192 envs; friction 0.8-1.5; packaged inactive pending hardware acceptance.

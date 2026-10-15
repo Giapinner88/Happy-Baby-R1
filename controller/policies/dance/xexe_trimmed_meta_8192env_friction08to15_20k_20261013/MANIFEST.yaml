@@ -1,0 +1,48 @@
+name: xexe_trimmed_meta_8192env_friction08to15_20k_20261013
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-14_11-45-26_xexe_trimmed_meta_8192env_friction08to15_20k_20261013
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-14_11-45-26_xexe_trimmed_meta_8192env_friction08to15_20k_20261013/2026-10-14_11-45-26_xexe_trimmed_meta_8192env_friction08to15_20k_20261013.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Xexe trimmed Meta retrain; 8192 envs; friction 0.8-1.5; packaged inactive
+    pending hardware acceptance.
+motion:
+  file: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  frames: 5007
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: c2e2470f2e63aad12aaf1c845b9ed1952252d26c89b9f2a888cb7f3f2f425c45
+  env.yaml: de9c035bb8c406f4f4bffcb82789b4e3180f238a51230d4f2edb97574ead9a7d
+  model_19999.pt: 79208abc066e2770ef331ebe2929435bcfbc399d57e6fdd16a0f1011ac1a1661
+  onnx_metadata.yaml: cb635bc2b4424ad8d671508a85a04bb7b47c40277920e04924328e7565aa435e
+  policy.onnx: a3c8a55590a357699b54c4eeb5058e606d7c703b4e489013250f0d3bcfff0b98
+  source.txt: aebd1ddf32f6e639542e79076aa01440e33ec7ce8464ed6111af7b1d68a8b55e
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe_r1_robot_feasible_trimmed_hb_start2p04s.npz: 229d99c61057e7e1ce345c26fcc7b6f416f78c0ccaf8c61010d83525e23a55a4
