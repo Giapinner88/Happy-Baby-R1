@@ -14,7 +14,9 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 _GESTURE_HINT = re.compile(
     r"\b(vẫy|bắt\s*tay|trái\s*tim|thả\s*tim|khoanh\s*tay|tạo\s*dáng|"
     r"ngầu|nắm\s*tay|quyết\s*tâm|tặng\s*quà|đưa\s*quà|cử\s*chỉ|"
-    r"động\s*tác|hạ\s*tay|dừng\s*lại)\b",
+    r"động\s*tác|hạ\s*tay|dừng\s*lại|chào|tạm\s*biệt|hẹn\s*gặp\s*lại|"
+    r"rất\s*vui\s*được\s*gặp|dễ\s*thương|đáng\s*yêu|tuyệt\s*vời|"
+    r"thông\s*minh|xinh|đẹp|giỏi)\b",
     re.IGNORECASE,
 )
 

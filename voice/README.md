@@ -320,6 +320,19 @@ Voice có thể nhận các yêu cầu rõ ràng như “vẫy tay”, “tạo 
 call của OpenAI Realtime, nên cần có phiên Realtime đang hoạt động. Chế độ giữ
 nút `Select` và chế độ nghe liên tục đều dùng được.
 
+Khi gesture tools đang khả dụng trong Dev locomotion, ba tương tác xã hội cũng
+được ánh xạ thành cử chỉ:
+
+- chào, bảo robot chào, tạm biệt hoặc hẹn gặp lại → vẫy tay (`wave`);
+- lời khen dành cho chính robot như dễ thương, đẹp, giỏi, thông minh, tuyệt vời
+  hoặc đáng yêu → tạo trái tim (`heart`);
+- “rất vui được gặp bạn/robot” hoặc lời tương đương → đưa tay bắt
+  (`handshake`).
+
+Trích dẫn, phủ định và lời khen dành cho người/vật khác không được tự chạy cử
+chỉ. Ngoài Dev locomotion, các câu này chỉ được đáp bằng lời vì tool motor không
+được quảng bá.
+
 Đường điều khiển chỉ gửi ID hành động qua `/run/hb/gesture_owner.sock`.
 `controller` là chủ sở hữu duy nhất của player, ánh xạ ID sang slot trong
 `controller/config/gestures.yaml`, rồi áp dụng các gate arm, locomotion,

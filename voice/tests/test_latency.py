@@ -12,6 +12,11 @@ class GestureLatencyHintTest(unittest.TestCase):
             "Giơ nắm tay quyết tâm nào",
             "Đưa quà cho bé đi",
             "Dừng lại và hạ tay xuống",
+            "Chào bạn nha",
+            "Tạm biệt, hẹn gặp lại",
+            "Robot dễ thương quá",
+            "Bạn thật thông minh và giỏi",
+            "Rất vui được gặp bạn",
         ):
             with self.subTest(text=text):
                 self.assertTrue(looks_like_gesture_request(text))

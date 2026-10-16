@@ -32,6 +32,12 @@ GESTURE_TOOL_INSTRUCTIONS = """
   rõ ràng và cử chỉ đó ánh xạ đúng vào một lựa chọn được hỗ trợ.
 - Các lựa chọn: wave (vẫy tay), heart (tạo trái tim), handshake (bắt tay),
   cool_pose (tạo dáng ngầu), determined (thể hiện quyết tâm), give_gift (tặng quà).
+- Ánh xạ tương tác xã hội bắt buộc khi tool đang khả dụng:
+  người dùng chào robot, bảo robot chào/vẫy chào, hoặc nói tạm biệt/hẹn gặp lại -> wave;
+  người dùng khen chính robot dễ thương, đẹp, giỏi, thông minh, tuyệt vời hoặc đáng yêu -> heart;
+  người dùng nói “rất vui được gặp bạn/robot” hoặc lời tương đương -> handshake.
+  Đây là yêu cầu cử chỉ hợp lệ dù người dùng không nói từ “động tác”. Không kích hoạt
+  khi người dùng chỉ trích dẫn câu của người khác, phủ định hoặc hỏi robot giải thích câu đó.
 - Nhận lời mời tự nhiên, không đòi người dùng nói tên ID hay từ “lệnh”:
   “bắt tay với mình được không?” / “cho mình bắt tay” -> handshake;
   “thả tim đi” / “làm hình trái tim nhé” -> heart;
@@ -41,8 +47,8 @@ GESTURE_TOOL_INSTRUCTIONS = """
 - Câu hỏi lịch sự “... được không?” kèm một động tác cụ thể là một lời mời thực hiện.
   Chỉ hỏi chung “bạn biết làm những động tác gì?” thì giới thiệu các cử chỉ, không chạy.
   Lời nói được trích dẫn, yêu cầu phủ định và trò chuyện bình thường không được chạy cử chỉ.
-- “Chào bạn” chỉ là chào hỏi. “Đọ tay”, “giơ tay” mà chưa rõ kiểu động tác thì hỏi
-  lại ngắn gọn, không tự gán sang một cử chỉ khác hoặc giả vờ đang làm.
+- “Đọ tay”, “giơ tay” mà chưa rõ kiểu động tác thì hỏi lại ngắn gọn, không tự gán
+  sang một cử chỉ khác hoặc giả vờ đang làm.
 - Nếu chưa rõ người dùng muốn cử chỉ nào, hãy hỏi lại; không tự đoán.
 - Mỗi lượt chỉ chạy tối đa một cử chỉ; nếu người dùng yêu cầu nhiều cử chỉ, hãy hỏi chọn một.
 - Dùng cancel_gesture khi người dùng nói rõ muốn dừng hoặc hạ tay. Chỉ hủy cử chỉ do lệnh voice khởi chạy.
@@ -64,6 +70,8 @@ GESTURE_TOOL_INSTRUCTIONS = """
   Chưa gọi được tool hoặc tool báo lỗi thì không được nói đang làm hay đã làm động tác.
 - Nếu tool báo shadow, chưa thực hiện chuyển động; hãy nói rõ là robot chưa làm cử chỉ.
 - Nếu tool từ chối, giải thích tự nhiên bằng tiếng Việt, không đọc mã lỗi nội bộ.
+- Mọi lời nói sau tool result bắt buộc bằng tiếng Việt. Không chuyển sang tiếng Anh
+  vì tên hàm, gesture_id, status hoặc reason dùng token tiếng Anh.
 """.strip()
 
 SUPPORTED_GESTURES = frozenset(
@@ -118,10 +126,12 @@ class GestureToolController:
                     "Chỉ điều khiển chuyển động cơ thể vật lý thuộc đúng các gesture_id "
                     "được liệt kê khi người dùng yêu cầu hoặc mời robot làm, "
                     "kể cả cách nói lịch sự như 'bắt tay với mình được không?'. "
+                    "Chào/tạm biệt ánh xạ wave; lời khen dành cho robot ánh xạ heart; "
+                    "'rất vui được gặp bạn' ánh xạ handshake. "
                     "Gọi ngay, không nói lời xác nhận trước khi có kết quả. "
                     "Không dùng cho biểu cảm bằng giọng như cười, reo vui, kể chuyện "
-                    "hoặc nói hào hứng; cũng không dùng cho lời chào thông thường, "
-                    "câu phủ định, trích dẫn hoặc động tác chưa rõ."
+                    "hoặc nói hào hứng; không dùng cho câu phủ định, trích dẫn "
+                    "hoặc động tác chưa rõ. Sau kết quả chỉ trả lời bằng tiếng Việt."
                 ),
                 properties={
                     "gesture_id": {
@@ -184,7 +194,9 @@ class GestureToolController:
         if self._latency_tracker:
             self._latency_tracker.mark_tool("gesture")
         if not self._valid_call_id(call_id):
-            return {"ok": False, "status": "rejected", "reason": "invalid_request_id"}
+            return self._for_model(
+                {"ok": False, "status": "rejected", "reason": "invalid_request_id"}
+            )
 
         cached = self._results.get(call_id)
         if cached is not None:
@@ -221,6 +233,7 @@ class GestureToolController:
         elif command == "cancel" and result.get("ok"):
             self._voice_owned_active = False
 
+        result = self._for_model(result)
         self._remember(call_id, result)
         logger.info(
             "Gesture tool call_id={} command={} gesture={} result_status={} reason={}",
@@ -231,6 +244,17 @@ class GestureToolController:
             result.get("reason", ""),
         )
         return result
+
+    @staticmethod
+    def _for_model(result: dict[str, Any]) -> dict[str, Any]:
+        return {
+            **result,
+            "response_language": "vi",
+            "response_guidance": (
+                "Chỉ trả lời người dùng bằng tiếng Việt tự nhiên; không đọc tên hàm, "
+                "gesture_id, status, reason hoặc cơ chế nội bộ."
+            ),
+        }
 
     async def disable_for_dev_exit(self) -> dict[str, Any] | None:
         """Immediately hide tools and retract a voice-owned gesture if needed."""

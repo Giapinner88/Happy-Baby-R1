@@ -166,6 +166,10 @@ class VoiceConfig:
         speed = _number(openai, "speed", path)
         _range("openai.speed", speed, 0.25, 1.5)
         language = _text(openai, "language", path)
+        if language != "vi":
+            raise VoiceConfigError(
+                "openai.language must be 'vi' for the Vietnamese robot voice contract"
+            )
         max_response_tokens = _integer(openai, "max_response_tokens", path)
         _range("openai.max_response_tokens", max_response_tokens, 1, 4096)
 
@@ -194,6 +198,10 @@ class VoiceConfig:
 
         elevenlabs_model = _text(tts, "model", path)
         elevenlabs_language = _text(tts, "language", path)
+        if elevenlabs_language != "vi":
+            raise VoiceConfigError(
+                "tts.language must be 'vi' for the Vietnamese robot voice contract"
+            )
         elevenlabs_stability = _number(tts, "stability", path)
         _range("tts.stability", elevenlabs_stability, 0.0, 1.0)
         elevenlabs_similarity_boost = _number(tts, "similarity_boost", path)

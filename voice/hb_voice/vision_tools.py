@@ -32,6 +32,8 @@ VISION_TOOL_INSTRUCTIONS = """
   không khẳng định cảm xúc nội tâm, danh tính, tuổi, tình trạng sức khỏe hay ý định.
 - Không ước lượng khoảng cách theo mét và không dùng ảnh này để quyết định an toàn
   chuyển động. Không nhắc tên tool, API, base64 hoặc cơ chế nội bộ với người dùng.
+- Mọi câu trả lời sau khi xem ảnh phải bằng tiếng Việt, kể cả khi ảnh có chữ tiếng
+  Anh hoặc metadata/tool result dùng khóa tiếng Anh.
 """.strip()
 
 
@@ -141,6 +143,7 @@ class VisionToolController:
                 "guidance": (
                     "Quan sát ảnh mới trong cuộc hội thoại rồi trả lời câu hỏi của người dùng."
                 ),
+                "response_language": "vi",
             }
             logger.info(
                 "Vision tool attached camera frame bytes={} capture_ms={:.1f} sha256={}",
@@ -156,6 +159,7 @@ class VisionToolController:
                 "guidance": (
                     "Nói ngắn gọn rằng hiện tại chưa nhìn được camera và mời người dùng thử lại."
                 ),
+                "response_language": "vi",
             }
         await params.result_callback(result)
 

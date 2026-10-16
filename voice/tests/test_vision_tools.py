@@ -30,6 +30,7 @@ class VisionToolControllerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("đây là số mấy", tool.description)
         self.assertIn("không dùng lại ảnh", VISION_TOOL_INSTRUCTIONS)
         self.assertIn("không nói câu đệm", VISION_TOOL_INSTRUCTIONS)
+        self.assertIn("phải bằng tiếng Việt", VISION_TOOL_INSTRUCTIONS)
 
     async def test_image_is_attached_before_success_result(self):
         controller = self.controller()
@@ -49,6 +50,7 @@ class VisionToolControllerTest(unittest.IsolatedAsyncioTestCase):
         async def result(value):
             order.append("result")
             self.assertTrue(value["ok"])
+            self.assertEqual(value["response_language"], "vi")
 
         params.llm.send_client_event.side_effect = send
         params.result_callback.side_effect = result

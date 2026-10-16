@@ -47,6 +47,7 @@ class VoiceConfigTest(unittest.TestCase):
         self.assertEqual("elevenlabs", config.tts_provider)
         self.assertEqual("eleven_flash_v2_5", config.elevenlabs_model)
         self.assertEqual("vi", config.elevenlabs_language)
+        self.assertEqual("vi", config.language)
         self.assertEqual("voice-test-only", config.elevenlabs_voice_id)
         self.assertGreaterEqual(config.response_volume_percent, 0)
         self.assertLessEqual(config.response_volume_percent, 100)
@@ -80,7 +81,10 @@ class VoiceConfigTest(unittest.TestCase):
         self.assertEqual(3, config.camera_attempts)
         # A drifting clone voice reads as the robot swapping speakers.
         self.assertGreaterEqual(config.elevenlabs_stability, 0.7)
-        self.assertTrue(config.load_prompt())
+        prompt = config.load_prompt()
+        self.assertTrue(prompt)
+        self.assertIn("Luôn trả lời và nói ra loa bằng tiếng Việt", prompt)
+        self.assertIn("không chuyển sang câu hoặc cụm từ tiếng Anh", prompt)
 
     def test_absurd_echo_tail_is_rejected(self):
         tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
@@ -94,6 +98,28 @@ class VoiceConfigTest(unittest.TestCase):
             path = Path(directory) / "tuning.yaml"
             path.write_text(tuning)
             with self.assertRaisesRegex(VoiceConfigError, "audio.echo_tail_external_s"):
+                self.load_path(path)
+
+    def test_non_vietnamese_openai_language_is_rejected(self):
+        tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
+        tuning = tuning.replace('language: "vi"', 'language: "en"', 1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tuning.yaml"
+            path.write_text(tuning)
+            with self.assertRaisesRegex(VoiceConfigError, "openai.language"):
+                self.load_path(path)
+
+    def test_non_vietnamese_tts_language_is_rejected(self):
+        tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
+        first = tuning.index('language: "vi"')
+        second = tuning.index('language: "vi"', first + 1)
+        tuning = tuning[:second] + tuning[second:].replace(
+            'language: "vi"', 'language: "en"', 1
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tuning.yaml"
+            path.write_text(tuning)
+            with self.assertRaisesRegex(VoiceConfigError, "tts.language"):
                 self.load_path(path)
 
     def test_camera_attempts_must_be_bounded(self):

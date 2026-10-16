@@ -32,6 +32,10 @@ class GestureToolControllerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("không nói robot thiếu", GESTURE_TOOL_INSTRUCTIONS)
         self.assertIn("biểu cảm bằng giọng", perform_gesture.description)
         self.assertIn("cười", perform_gesture.description)
+        self.assertIn("Chào/tạm biệt ánh xạ wave", perform_gesture.description)
+        self.assertIn("lời khen dành cho robot ánh xạ heart", perform_gesture.description)
+        self.assertIn("'rất vui được gặp bạn' ánh xạ handshake", perform_gesture.description)
+        self.assertIn("bắt buộc bằng tiếng Việt", GESTURE_TOOL_INSTRUCTIONS)
 
     async def test_off_mode_advertises_no_tools(self):
         controller = GestureToolController(
@@ -51,6 +55,7 @@ class GestureToolControllerTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(params.results[0]["status"], "shadow")
         self.assertFalse(params.results[0]["executed"])
+        self.assertEqual(params.results[0]["response_language"], "vi")
 
     async def test_unknown_action_is_rejected_before_ipc(self):
         controller = GestureToolController(
