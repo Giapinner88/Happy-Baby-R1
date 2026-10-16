@@ -53,4 +53,6 @@ Mỗi file `locomotion_*.example.yaml` trong `controller/config/` là một bộ
 3. `./hb build && ./hb preflight` trên máy trạm: phải thấy `Loaded Mimic N`. Cảnh báo `default_joint_pos LECH` nghĩa là điệu được train trên thế hệ policy đi bộ khác.
 4. Từ máy trạm: `./hb deploy dance`.
 
+MP3/audio là tùy chọn: thiếu nhạc vẫn nạp và chạy dance bằng ONNX + NPZ, log ghi `no audio; dance runs without music`. Khi có nhạc, runtime phát sau warmup như thường. Thiếu ONNX/NPZ hoặc model/motion không hợp lệ vẫn làm dance bị từ chối.
+
 **Hiện trạng (2026-10-09, gộp từ HB):** slot 3–7 dùng các thư mục ngày 2026-09-04 → 2026-10-08 (`xexe_trimmed_129obs_goc…`, `xexe_r1motion_goc_fric11to17…`, `xexe_r1motion_meta…`, `nhay3_20260904_trimmed_after_bilateral_tilt_f084`, `r1nhayngan_3_meta…`), đều có trong repo; `dance_8` để trống. `xexe_meta_129obs_fresh…` và `xexe_trimmed_129obs_meta…` có trong repo nhưng chưa gán slot. Các điệu này chưa có log chạy trên robot trong repo này. `make dance-list` liệt kê thư mục đang dùng; `make dance-prune` xem trước (thêm `ARGS=--apply` để chuyển thư mục không tham chiếu sang `_archive/dance/`, `make dance-restore ARGS=<tên>` để đưa lại).

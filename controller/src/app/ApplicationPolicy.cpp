@@ -256,8 +256,10 @@ Application::PolicyOverlayCaps Application::PolicyCaps() const {
         locomotion_->SupportsH4TeleopOverlay();
     const bool history_gesture_contract = tuning_.gesture_history_enabled &&
         locomotion_->SupportsHistoryGestureOverlay();
+    const bool direct_arm_gesture_supported =
+        locomotion_->SupportsDirectArmGestureOverlay();
     const bool gesture_overlay_supported = legacy_arm_overlay_supported ||
-        history_gesture_contract;
+        history_gesture_contract || direct_arm_gesture_supported;
     return {legacy_arm_overlay_supported, h4_overlay_supported,
             history_gesture_contract, gesture_overlay_supported};
 }
@@ -433,12 +435,19 @@ Application::UpperBodyCommand Application::UpdateUpperBody(
             if (cmd.want_gesture)
                 std::cout << "[Gesture] bỏ qua slot " << cmd.want_gesture << " — "
                           << (guard_bad      ? "robot đang nghiêng/lắc"
-                              : use_teleop   ? "teleop đang giữ tay"
+                              : (use_teleop || h4_packet_authorized) ? "teleop đang giữ tay"
                               : !loco        ? "không ở LOCOMOTION (hoặc đang chuyển trạng thái)"
                               : history_gesture_move_requested ? "có lệnh di chuyển, đang thu tay"
                                              : "nguồn thân trên chưa sẵn sàng")
                           << ".\n";
-            arm_gesture_.Cancel();
+            if (loco && gesture_overlay_supported && h4_packet_authorized) {
+                // H4 waits for Idle() above. Keep rendering the bounded return
+                // and measured handover before granting the incoming stream.
+                // Cancel() here would drop the arm target straight to policy.
+                arm_gesture_.RetractSafety();
+            } else {
+                arm_gesture_.Cancel();
+            }
             voice_gesture_latched_ = false;
         } else if (guard_bad || h4_history_release_s_ > 0.0f ||
                    h4_head_release_s_ > 0.0f || history_gesture_move_requested) {

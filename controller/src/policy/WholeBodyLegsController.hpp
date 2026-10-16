@@ -34,6 +34,9 @@ public:
 
     // Tay nhận target teleop trực tiếp ở bước gửi lệnh; obs giữ q/dq tay thật.
     bool SupportsH4TeleopOverlay() const override { return true; }
+    // Policy chỉ xuất 12 action chân. Gesture có thể ghi đè target tay trực tiếp;
+    // q/dq tay thật vẫn nằm trong observation 71-D nên không mask chúng.
+    bool SupportsDirectArmGestureOverlay() const override { return true; }
 
     // Chu kỳ phase lúc train (metadata gait_period_s); Application so với tuning.
     float metadata_gait_period_s() const { return gait_period_s_; }

@@ -46,6 +46,8 @@ Từ STAND LOCK, R2+A / R2+X vào thẳng chế độ tương ứng. Đang đi b
 | Voice: rảnh tay / đổi nguồn mic | double-click **F1** / nhấn **F2** một lần |
 | Voice preset | giữ **L1** một mình 3 s để bật/tắt; giữ **L1** + Lên/Phải/Xuống/Trái để phát |
 
+Ở R2+X, gesture double-click và gesture gọi bằng voice vẫn dùng được khi H4 chưa chiếm quyền. Bật START nhưng chưa bóp cò Quest vẫn dùng gesture được. Khi H4 nhận quyền giữa một gesture, tay thu về và hoàn tất handover trước khi H4 chạy. Voice gesture chỉ bắt đầu khi robot không có lệnh di chuyển.
+
 Tên điệu ở mỗi slot nằm trong `controller/config/dance.yaml` (`dance_2` … `dance_8`); slot không có artifact sẽ bị bỏ qua lúc khởi động (xem [policies.md](policies.md) §4).
 Không gán chức năng mới lên **L2+R2**, **L1+L2** (của hãng) hay **SELECT/F1/F2** (của voice). Thêm chức năng mới thì đặt vào đúng nhóm modifier ở trên.
 

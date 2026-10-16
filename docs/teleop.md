@@ -35,7 +35,7 @@ Phía `run_r1`: `config/gestures.yaml` phải có `teleop_enabled: true`; cổng
 ## 3. Chạy một phiên
 
 1. Robot treo trên giá, người giữ E-stop sẵn sàng. Bàn giao: `L2+R2` → giữ `R1+R2` ~1 s.
-2. Vào trạng thái cho phép: **ZERO TORQUE** (`L2+Y`, chỉ từ IDLE, robot đang treo), **R2+A** hoặc **R2+X**. Cả hai mode locomotion phải có bundle H4 đã qua gate. Với R2+A, thả cần để `vx/vy/yaw` về 0 trước START; sau đó base bị khóa. R2+X dùng `teleop_policy` và cho phép vừa đi vừa teleop. `teleop_policy` hiện là U1 (`u1_seed42`, chỉ điều khiển chân; tay theo target Quest trực tiếp); gesture double-click không chạy với H4 active. U1 dùng được tới ~1.1 m/s trong mô phỏng, nên giữ tốc độ chậm (`R2+Xuống`).
+2. Vào trạng thái cho phép: **ZERO TORQUE** (`L2+Y`, chỉ từ IDLE, robot đang treo), **R2+A** hoặc **R2+X**. Cả hai mode locomotion phải có bundle H4 đã qua gate. Với R2+A, thả cần để `vx/vy/yaw` về 0 trước START; sau đó base bị khóa. R2+X dùng `teleop_policy` và cho phép vừa đi vừa teleop. `teleop_policy` hiện là U1 (`u1_seed42`, chỉ điều khiển chân; tay nhận trực tiếp từ Quest hoặc gesture). Gesture nút tay cầm và gesture gọi bằng voice dùng được ở R2+X khi Quest chưa được cấp quyền H4; voice gesture vẫn chỉ bắt đầu khi không có lệnh di chuyển. U1 dùng được tới ~1.1 m/s trong mô phỏng, nên giữ tốc độ chậm (`R2+Xuống`).
 3. Lấy URL: `journalctl -u hb_teleop_runtime -n 50 | grep "Quest URL"` (theo IP hiện tại của `wlan0`).
    Trên Quest: cùng Wi-Fi, mở URL, chấp nhận chứng chỉ, **Enter VR**. Tab cũ phải reload.
 4. **Nhấn START một lần** (nút trần, không kèm L1/L2/R1/R2) để cấp quyền teleop trong `run_r1`; nhấn lại để thu quyền ngay. Giữ nút không lặp lại lệnh. R2+A từ chối START nếu lệnh vận tốc chưa về 0 và khóa base sau khi arm; R2+X cho phép START và vận tốc đồng thời. Đổi policy R2+A ↔ R2+X sẽ tự thu quyền để tay về nền rồi mới swap. Cấp quyền chưa làm robot cử động: còn cần deadman cò Quest (bước 6).
@@ -44,6 +44,8 @@ Phía `run_r1`: `config/gestures.yaml` phải có `teleop_enabled: true`; cổng
 7. Di chuyển chậm. Log `run_r1` in `[Teleop] stream ACTIVE` / `stream INACTIVE reason=...` ở mỗi lần đổi trạng thái.
 
 Cò trái không dùng. Nhả cò phải: stream gửi STOP, đầu nhả ngay, tay thu quyền rồi về trạng thái nền. Mặc định `release_debounce_s: 0`: pipeline sống tiếp sau khi nhả cò, bóp lại bất cứ lúc nào mà không khởi động lại. Mất tracking tay cầm trái giữa phiên: tay trái được giữ tại chỗ cho tới khi nhả hẳn cò phải (tay cầm vừa có lại không được tự kéo tay khi cò vẫn giữ). Gói lỗi, timestamp nguồn sai hoặc watchdog nguồn: sidecar gửi STOP và chỉ nhận target mới sau khi nhả hẳn cò.
+
+START chỉ arm teleop; chưa bóp cò Quest thì vẫn dùng gesture tay cầm/voice ở R2+X được. Nếu bóp cò giữa một gesture, controller thu tay theo giới hạn return và đợi handover ổn định trước khi cấp quyền H4. Voice tự bật tool `execute` khi integration báo ARMED + LOCOMOTION + remote còn sống; `gesture_control.mode: off` là trạng thái khởi động. Voice-auto khi đang nói vẫn bật/tắt bằng double-click A.
 
 **Camera robot:** nút **A tay phải** trên Quest đổi giữa passthrough và ảnh camera R1 (WebRTC VP8, phục vụ ngay trên robot ở cổng `camera_media_port` 8013, cùng origin HTTPS). Ở passthrough không đọc/giải mã frame. Tắt bằng `camera_enabled: false`. Camera lỗi không chặn teleop tay/đầu.
 

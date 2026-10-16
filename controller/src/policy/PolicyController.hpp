@@ -152,6 +152,10 @@ public:
     // frame 83-D trước khi frame đó được ghi vào history. Tách capability này
     // khỏi SupportsArmOverlay(); teleop H4 có capability riêng bên dưới.
     virtual bool SupportsHistoryGestureOverlay() const { return false; }
+    // Policy chỉ điều khiển chân có thể cho ArmGesturePlayer ghi đè trực tiếp
+    // target tay mà không mask observation. Capability này tách khỏi legacy
+    // overlay để không vô tình bật bù thăng bằng hoặc grant teleop kiểu cũ.
+    virtual bool SupportsDirectArmGestureOverlay() const { return false; }
     // Separate from gestures and legacy 83-D. Never infer teleop compatibility
     // from an observation length or a shared history layout.
     virtual bool SupportsH4TeleopOverlay() const { return false; }

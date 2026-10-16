@@ -1,0 +1,14 @@
+folder       : gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+repo         : unitree_rl_mjlab_meta
+run          : 2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : video1.npz (6570 frames @ 50 Hz)
+audio        : gioithieu2_source_audio_entry1p5s_131p4s.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Gioithieu2 clip-specific foot-yaw correction; Meta 4096 envs; friction 0.8-1.2; inactive pending review and hardware acceptance.

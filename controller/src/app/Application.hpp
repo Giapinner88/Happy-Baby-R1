@@ -152,7 +152,7 @@ private:
         bool legacy_arm = false;    // legacy 83-D arm overlay
         bool h4 = false;            // H4 teleop đã qua artifact gate
         bool history_gesture = false;
-        bool gesture = false;       // legacy_arm || history_gesture
+        bool gesture = false;       // legacy, history-mask hoặc direct-arm gesture
     };
     struct UpperBodyCommand {       // kết quả overlay thân trên cho tick này
         bool  active = false;       // có override tay cho ctx/obs

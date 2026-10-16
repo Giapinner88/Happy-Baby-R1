@@ -11,6 +11,8 @@
 //     is STAND-stable for policy_swap_dwell_s;
 //   * a bundle whose policy.yaml hash differs refuses startup;
 //   * IDLE always returns to walk mode.
+//   * R2+X supports physical/voice gestures, including a second request after
+//     handover, and retracts a gesture before granting H4 ownership.
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -155,6 +157,137 @@ struct ApplicationTestAccess {
         CHECK(a.state_ == s);
     }
     void Press(uint16_t b) { buttons = b; Wait(5); buttons = 0; Wait(5); }
+    void DoubleClick(uint16_t b) { Press(b); Press(b); }
+
+    float ArmOffset() const {
+        float gap = 0.0f;
+        for (int j = 14; j < 24; ++j)
+            gap = std::max(gap, std::fabs(
+                measured_q[spec::MotorIdl(j)] - a.locomotion_->default_q()[j]));
+        return gap;
+    }
+
+    void WaitForGestureIdle() {
+        for (int i = 0; i < 15000 && !a.arm_gesture_.Idle(); ++i) Step();
+        CHECK(a.arm_gesture_.Idle());
+        CHECK(a.state_ == AppState::kLocomotion);
+        CHECK(ArmOffset() < a.tuning_.gesture_handover_measured_position_tol_rad);
+        Wait(5);  // allow the voice owner to clear a completed command
+    }
+
+    std::string VoiceRequest(const std::string& id, const std::string& gesture) {
+        const int fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+        CHECK(fd >= 0);
+        timeval timeout{2, 0};
+        CHECK(::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == 0);
+        sockaddr_un address{};
+        address.sun_family = AF_UNIX;
+        const std::string path = a.proj_dir_ + "/gesture.sock";
+        std::strncpy(address.sun_path, path.c_str(), sizeof(address.sun_path) - 1);
+        CHECK(::connect(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0);
+        const std::string request = "{\"request_id\":\"" + id +
+            "\",\"command\":\"play\",\"gesture_id\":\"" + gesture + "\"}\n";
+        CHECK(::write(fd, request.data(), request.size()) == static_cast<ssize_t>(request.size()));
+        Wait(5);
+        char reply[2048]{};
+        const ssize_t size = ::read(fd, reply, sizeof(reply));
+        CHECK(size > 0);
+        ::close(fd);
+        return std::string(reply, static_cast<size_t>(size));
+    }
+
+    void CheckR2XGestures() {
+        CHECK(a.PolicyCaps().gesture && !a.PolicyCaps().legacy_arm);
+        CHECK(!a.PolicyCaps().history_gesture);
+        CHECK(a.voice_gesture_owner_.Init(a.proj_dir_ + "/gesture.sock"));
+        Wait(600);
+
+        // Real gamepad double-click and emitted LowCmd arm targets.
+        DoubleClick(kUp); Wait(200);
+        CHECK(a.arm_gesture_.ActiveName() == a.gesture_slot_[1]);
+        CHECK(ArmOffset() > 0.02f);
+        DoubleClick(kUp);
+        WaitForGestureIdle();
+
+        // Voice play goes through the real IPC owner, completes and accepts a
+        // second gesture. Movement still rejects the voice request.
+        for (const std::string& gesture : {std::string("wave"), std::string("heart")}) {
+            const std::string reply = VoiceRequest(gesture, gesture);
+            CHECK(reply.find("\"status\":\"accepted\"") != std::string::npos);
+            Wait(200);
+            CHECK(a.voice_command_gesture_active_);
+            CHECK(ArmOffset() > 0.02f);
+            WaitForGestureIdle();
+            CHECK(!a.voice_command_gesture_active_);
+        }
+        ly = 0.8f; Wait(100);
+        CHECK(VoiceRequest("moving", "wave").find("movement_requested") != std::string::npos);
+        ly = 0.0f; Wait(600);
+
+        // Double-click A enables voice-auto; the marker starts/stops it.
+        a.tuning_.gesture_voice_marker = a.proj_dir_ + "/voice_speaking";
+        a.tuning_.gesture_voice_stale_s = 3600.0f;
+        DoubleClick(kA);
+        CHECK(a.voice_gesture_auto_enabled_);
+        std::ofstream(a.tuning_.gesture_voice_marker) << "speaking\n";
+        Wait(300);
+        CHECK(a.arm_gesture_.ActiveName() == a.tuning_.gesture_voice_name);
+        CHECK(ArmOffset() > 0.02f);
+        fs::remove(a.tuning_.gesture_voice_marker);
+        Wait(100);
+        WaitForGestureIdle();
+        DoubleClick(kA);
+        CHECK(!a.voice_gesture_auto_enabled_);
+
+        // H4 must wait for bounded return/handover instead of cancelling the
+        // active gesture. Packets stay loopback and LowCmd stays in the sink.
+        DoubleClick(kUp); Wait(200);
+        CHECK(ArmOffset() > 0.02f);
+        Press(kStart);
+        CHECK(a.teleop_runtime_on_);
+        const int tx = ::socket(AF_INET, SOCK_DGRAM, 0);
+        CHECK(tx >= 0);
+        sockaddr_in dst{};
+        dst.sin_family = AF_INET;
+        dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        CHECK(::bind(tx, reinterpret_cast<sockaddr*>(&dst), sizeof(dst)) == 0);
+        socklen_t size = sizeof(dst);
+        CHECK(::getsockname(tx, reinterpret_cast<sockaddr*>(&dst), &size) == 0);
+        const int port = ntohs(dst.sin_port);
+        ::close(tx);
+        std::array<float, 10> def_arm{};
+        for (int j = 0; j < 10; ++j) def_arm[j] = a.locomotion_->default_q()[14 + j];
+        a.teleop_.Init(def_arm, true, port, 1e9f, 0.4f, 0.5f, 8.0f, 1.0f, 0.6f);
+        const int out = ::socket(AF_INET, SOCK_DGRAM, 0);
+        CHECK(out >= 0);
+        TeleopReceiver::Packet packet{};
+        packet.magic = TeleopReceiver::kMagic;
+        packet.pad = 1;
+        packet.arm_valid = 1;
+        std::copy(def_arm.begin(), def_arm.end(), packet.arm_q);
+        for (int seq = 1; seq <= 2; ++seq) {
+            packet.seq = seq;
+            packet.enable = seq == 2;
+            CHECK(::sendto(out, &packet, sizeof(packet), 0,
+                  reinterpret_cast<sockaddr*>(&dst), sizeof(dst)) == sizeof(packet));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+        CHECK(a.teleop_.H4Authorized());
+        Step();
+        CHECK(!a.arm_gesture_.Idle());
+        CHECK(!a.teleop_.Active());
+        CHECK(ArmOffset() > 0.02f);
+        WaitForGestureIdle();
+        CHECK(a.teleop_.Active());
+        CHECK(VoiceRequest("h4_busy", "wave").find("teleop_owns_upper_body") != std::string::npos);
+        DoubleClick(kUp);
+        CHECK(a.arm_gesture_.Idle());
+        Press(kStart);
+        a.teleop_.Stop();
+        ::close(out);
+        Wait(1000);
+        a.voice_gesture_owner_.Close();
+    }
 
     void Script() {
         CHECK(a.walk_ctrl_ && a.teleop_ctrl_ && a.walk_ctrl_ != a.teleop_ctrl_);
@@ -201,6 +334,8 @@ struct ApplicationTestAccess {
         CHECK((tick - requested) * spec::kLoopDt >= a.tuning_.policy_swap_dwell_s);
         CHECK(a.state_ == AppState::kLocomotion);
         CHECK(a.PolicyCaps().h4);
+
+        CheckR2XGestures();
 
         // R2+X uses teleop_policy: START is accepted while moving and base
         // velocity remains available during the H4 session.

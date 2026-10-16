@@ -1,0 +1,74 @@
+name: gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: '# Gioithieu2 — clip-specific foot-yaw correction
+
+
+  Meta tracking policy trained from the canonical 50 Hz R1 motion created from
+
+  `gioithieu2.mp4`.  The motion uses the GMR W21/W21/W11 post-processing chain
+
+  and an isolated, constant bilateral ankle-yaw bias correction calibrated from
+
+  the 0.5--4.5 s standing reference.  It is not a change to the shared GVHMR or
+
+  GMR pipeline.
+
+
+  Training uses `Unitree-R1-Tracking-No-State-Estimation`, 2,048 environments,
+
+  20,000 iterations, seed 42, and foot-friction domain randomization [0.8, 1.2].
+
+  The package is inactive: it is installed for review and hardware acceptance,
+
+  but does not change any existing HB dance slot.
+
+
+  The MP3 is extracted from the exact source video, delayed 1.5 s to align with
+
+  the canonical entry bridge, and padded to the 131.4 s R1 motion timeline.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Gioithieu2 clip-specific foot-yaw correction; Meta 4096 envs; friction 0.8-1.2;
+    inactive pending review and hardware acceptance.
+motion:
+  file: video1.npz
+  frames: 6570
+  fps: 50.0
+audio: gioithieu2_source_audio_entry1p5s_131p4s.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: video1.npz
+  audio: gioithieu2_source_audio_entry1p5s_131p4s.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: d88038cdb062989c2975ae94e32bd96b61f36b4df28dbb01a47b21390a26b547
+  agent.yaml: b64cc5a7259104bd50e994022b11b62523c3fe93be6b713beade1acd274ceeb9
+  env.yaml: e992477ed0cb35f277d1ae5f53bc0812f04a4bb6be3e7c53f0b22756122d10ad
+  gioithieu2_source_audio_entry1p5s_131p4s.mp3: aab5dc1c8774320c2d41929eb1c9a3176cfe8682518951ad84df6c23faddbe1c
+  model_19999.pt: af2ea31e6259db9d75c5e99208b69fa7007a2186d48cb8a452aae8eb5286596e
+  onnx_metadata.yaml: fca62b38705538e03e900658413da9437192a59ea6f87bea413b8540d726a3a9
+  policy.onnx: f1f830fee7237de940197fd83c92ffefbba155021182f18e6443156ffb047bb0
+  source.txt: 308e6c6a53ec51f3d1a5336f6164068b2cecee61e527daaf9f674dbe7ea3c3e7
+  video1.npz: b1ddd7bad06bb08db94fd5342197525beb73ea1c312643f0fe0d153dfdeeae72

@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -29,6 +30,38 @@ using LowState = unitree_hg::msg::dds_::LowState_;
 using LowCmd = unitree_hg::msg::dds_::LowCmd_;
 
 namespace {
+
+// Stage the frozen replay fixture with ONNX/NPZ only. The full motor replay
+// must match the same golden even when every dance audio file is absent.
+struct SilentDanceFixture {
+    std::filesystem::path root;
+    SilentDanceFixture() {
+        namespace fs = std::filesystem;
+        char path[] = "/tmp/hb-dance-no-audio.XXXXXX";
+        const char* dir = ::mkdtemp(path);
+        if (!dir) std::abort();
+        root = dir;
+        const fs::path source(HB_REPLAY_FIXTURE);
+        fs::copy(source / "config", root / "config");
+        fs::create_directory_symlink(source / "motions", root / "motions");
+        fs::create_directories(root / "policies/dance");
+        for (const auto& entry : fs::directory_iterator(source / "policies")) {
+            if (entry.path().filename() == "dance") continue;
+            fs::create_symlink(entry.path(), root / "policies" / entry.path().filename());
+        }
+        for (const auto& bundle : fs::directory_iterator(source / "policies/dance")) {
+            if (!bundle.is_directory()) continue;
+            const fs::path target = root / "policies/dance" / bundle.path().filename();
+            fs::create_directory(target);
+            for (const auto& asset : fs::directory_iterator(bundle.path())) {
+                const std::string ext = asset.path().extension();
+                if (asset.is_regular_file() && (ext == ".onnx" || ext == ".npz"))
+                    fs::create_symlink(asset.path(), target / asset.path().filename());
+            }
+        }
+    }
+    ~SilentDanceFixture() { std::filesystem::remove_all(root); }
+};
 
 std::vector<LowCmd> g_packets;
 
@@ -92,6 +125,13 @@ struct ApplicationTestAccess {
         LowCmdSenderTestAccess::Configure(a.sender_, t);
         a.armed_ = true;
         a.state_ = AppState::kWaitingForState;
+    }
+
+    void CheckSilentDanceLoaded() {
+        if (a.mimics_.empty() || !a.music_files_.empty()) {
+            std::cerr << "silent fixture must load dance policies without any audio\n";
+            std::abort();
+        }
     }
 
     LowState Packet() const {
@@ -218,15 +258,20 @@ struct ApplicationTestAccess {
     }
 };
 
-int main() {
+int main(int argc, char** argv) {
+    const bool silent = argc == 2 && std::string(argv[1]) == "--without-dance-audio";
+    if (argc > 1 && !silent) return 2;
+    std::unique_ptr<SilentDanceFixture> fixture;
+    if (silent) fixture = std::make_unique<SilentDanceFixture>();
     setenv("HB_INTEGRATION_SOCKET", "/tmp/hb-application-replay-test-no-listener/socket", 1);
-    Application app(HB_REPLAY_FIXTURE, "lo");
+    Application app(silent ? fixture->root.string() : HB_REPLAY_FIXTURE, "lo");
     ApplicationTestAccess r{app};
     r.Configure();
+    if (silent) r.CheckSilentDanceLoaded();
     r.Script();
     const std::string got = r.log.str();
 
-    if (const char* update = std::getenv("HB_REPLAY_UPDATE"); update && *update == '1') {
+    if (const char* update = std::getenv("HB_REPLAY_UPDATE"); !silent && update && *update == '1') {
         std::ofstream(HB_REPLAY_GOLDEN) << got;
         std::cout << "APPLICATION_REPLAY_GOLDEN_UPDATED " << HB_REPLAY_GOLDEN << '\n';
         return 0;
@@ -236,7 +281,7 @@ int main() {
     std::stringstream want;
     want << in.rdbuf();
     if (got == want.str()) {
-        std::cout << "APPLICATION_REPLAY_OK\n";
+        std::cout << (silent ? "APPLICATION_DANCE_NO_AUDIO_OK\n" : "APPLICATION_REPLAY_OK\n");
         return 0;
     }
     std::istringstream gs(got), ws(want.str());

@@ -218,9 +218,10 @@ void Application::InitControllers() {
 
         std::string onnx, npz, music;
         ScanDanceFolder(dir, std::to_string(key), onnx, npz, music);
+        // Audio is optional: only policy and reference motion gate the dance.
         if (onnx.empty() || npz.empty()) {
             std::cerr << "[Application] Dance " << key << " (" << tuning_.dance_folder[i]
-                      << ") missing required files, skipping.\n";
+                      << ") missing required files (ONNX/NPZ), skipping.\n";
             continue;
         }
 
@@ -292,7 +293,9 @@ void Application::InitControllers() {
             mimics_[key] = std::move(mimic);
             if (!music.empty()) music_files_[key] = dir + "/" + music;
             std::cout << "[Application] Loaded Mimic " << key << " ("
-                      << tuning_.dance_folder[i] << ")\n";
+                      << tuning_.dance_folder[i] << ")"
+                      << (music.empty() ? " — no audio; dance runs without music" : "")
+                      << "\n";
         } catch (const std::exception& e) {
             disabled_dance_reasons_[key] = e.what();
             std::cerr << "[Application] Dance " << key << " (" << tuning_.dance_folder[i]

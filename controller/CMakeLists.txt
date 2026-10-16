@@ -112,6 +112,8 @@ if(BUILD_TESTING)
     target_link_libraries(application_replay_test unitree_sdk2 ${ONNXRUNTIME_LIB}
         ZLIB::ZLIB ${X11_LIBRARIES} pthread)
     add_test(NAME application_replay_test COMMAND application_replay_test)
+    add_test(NAME application_dance_no_audio_test
+        COMMAND application_replay_test --without-dance-audio)
     endif()
 
     # Walk <-> teleop locomotion modes with two bundles (R2+A / R2+X, START gate).
