@@ -15,6 +15,9 @@ DEFAULT_PROMPT_PATH = VOICE_ROOT / "config" / "prompt.txt"
 DEFAULT_BRIDGE_PATH = VOICE_ROOT / "unitree_bridge" / "build" / "r1_bridge"
 DEFAULT_GATE_SOCKET = Path("/run/hb/voice_gate.sock")
 DEFAULT_GESTURE_SOCKET = Path("/run/hb/gesture_owner.sock")
+DEFAULT_CAMERA_PROBE = Path(
+    "/home/unitree/Foundation_Unitree/tools/r1_video_rpc_probe.py"
+)
 
 SUPPORTED_VOICES = frozenset(
     {
@@ -61,7 +64,8 @@ class VoiceConfig:
     elevenlabs_use_speaker_boost: bool
     response_volume_percent: int
     response_gain: float
-    echo_tail_s: float
+    echo_tail_external_s: float
+    echo_tail_robot_s: float
     input_gain_db: float
     min_speech_peak: int
     noise_reduction: str
@@ -96,6 +100,12 @@ class VoiceConfig:
     gesture_mode: str
     gesture_socket: Path
     gesture_timeout_s: float
+    camera_probe: Path
+    camera_python: Path
+    camera_timeout_s: float
+    camera_attempts: int
+    camera_process_timeout_s: float
+    camera_max_jpeg_bytes: int
     gate_socket: Path = DEFAULT_GATE_SOCKET
 
     @classmethod
@@ -121,6 +131,7 @@ class VoiceConfig:
         activation = _section(raw, "activation", path)
         resilience = _section(raw, "resilience", path)
         conversation = _section(raw, "conversation", path)
+        camera = _section(raw, "camera", path)
         gesture_control = raw.get("gesture_control", {})
         if not isinstance(gesture_control, dict):
             raise VoiceConfigError(f"gesture_control must be a mapping in {path}")
@@ -195,8 +206,14 @@ class VoiceConfig:
         _range("audio.response_volume_percent", response_volume_percent, 0, 100)
         response_gain = _number(audio, "response_gain", path)
         _range("audio.response_gain", response_gain, 0.0, 1.0)
-        echo_tail_s = _number(audio, "echo_tail_s", path)
-        _range("audio.echo_tail_s", echo_tail_s, 0.0, 3.0)
+        echo_tail_external_s = _number(audio, "echo_tail_external_s", path)
+        echo_tail_robot_s = _number(audio, "echo_tail_robot_s", path)
+        _range("audio.echo_tail_external_s", echo_tail_external_s, 0.0, 3.0)
+        _range("audio.echo_tail_robot_s", echo_tail_robot_s, 0.0, 3.0)
+        if echo_tail_robot_s < echo_tail_external_s:
+            raise VoiceConfigError(
+                "audio.echo_tail_robot_s must be >= audio.echo_tail_external_s"
+            )
         input_gain_db = _number(input_config, "gain_db", path)
         _range("input.gain_db", input_gain_db, -12.0, 12.0)
         min_speech_peak = _integer(input_config, "min_speech_peak", path)
@@ -298,6 +315,20 @@ class VoiceConfig:
                 "conversation.fallback_vad_eagerness="
                 f"{conversation_fallback_vad_eagerness!r} is unsupported; choose: {choices}"
             )
+        camera_probe = Path(_text(camera, "probe", path)).expanduser()
+        camera_python = Path(_text(camera, "python", path)).expanduser()
+        if not camera_probe.is_absolute():
+            raise VoiceConfigError("camera.probe must be an absolute path")
+        if not camera_python.is_absolute():
+            raise VoiceConfigError("camera.python must be an absolute path")
+        camera_timeout_s = _number(camera, "capture_timeout_s", path)
+        camera_attempts = _integer(camera, "attempts", path)
+        camera_process_timeout_s = _number(camera, "process_timeout_s", path)
+        camera_max_jpeg_bytes = _integer(camera, "max_jpeg_bytes", path)
+        _range("camera.capture_timeout_s", camera_timeout_s, 0.05, 5.0)
+        _range("camera.attempts", camera_attempts, 1, 10)
+        _range("camera.process_timeout_s", camera_process_timeout_s, 0.1, 30.0)
+        _range("camera.max_jpeg_bytes", camera_max_jpeg_bytes, 4, 20_000_000)
         network_interface = os.getenv("UNITREE_NETWORK_INTERFACE", "eth10").strip()
         if not network_interface:
             raise VoiceConfigError("UNITREE_NETWORK_INTERFACE cannot be empty")
@@ -351,7 +382,8 @@ class VoiceConfig:
             elevenlabs_use_speaker_boost=elevenlabs_use_speaker_boost,
             response_volume_percent=response_volume_percent,
             response_gain=response_gain,
-            echo_tail_s=echo_tail_s,
+            echo_tail_external_s=echo_tail_external_s,
+            echo_tail_robot_s=echo_tail_robot_s,
             input_gain_db=input_gain_db,
             min_speech_peak=min_speech_peak,
             noise_reduction=noise_reduction,
@@ -386,6 +418,12 @@ class VoiceConfig:
             gesture_mode=gesture_mode,
             gesture_socket=gesture_socket,
             gesture_timeout_s=gesture_timeout_s,
+            camera_probe=camera_probe,
+            camera_python=camera_python,
+            camera_timeout_s=camera_timeout_s,
+            camera_attempts=camera_attempts,
+            camera_process_timeout_s=camera_process_timeout_s,
+            camera_max_jpeg_bytes=camera_max_jpeg_bytes,
         )
 
     @property
@@ -420,6 +458,14 @@ class VoiceConfig:
             self.mic_fallback_gain_db
             if mic_source == "r1_multicast"
             else self.input_gain_db
+        )
+
+    def echo_tail_for(self, mic_source: str) -> float:
+        """Playback tail follows the live mic's acoustic echo exposure."""
+        return (
+            self.echo_tail_robot_s
+            if mic_source == "r1_multicast"
+            else self.echo_tail_external_s
         )
 
     def load_prompt(self) -> str:

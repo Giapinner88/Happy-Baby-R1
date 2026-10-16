@@ -12,8 +12,11 @@ from loguru import logger
 class GestureResponseGuard:
     """Mixin for Pipecat's Realtime service, enabled only for external TTS."""
 
-    def __init__(self, *args, guard_gesture_text: bool = False, **kwargs):
+    def __init__(
+        self, *args, guard_gesture_text: bool = False, latency_tracker=None, **kwargs
+    ):
         self._guard_gesture_text = guard_gesture_text
+        self._latency_tracker = latency_tracker
         self._gesture_response_text = {}
         self._discarded_gesture_responses = set()
         super().__init__(*args, **kwargs)
@@ -30,6 +33,8 @@ class GestureResponseGuard:
             self._gesture_response_text.clear()
 
     async def _handle_evt_text_delta(self, evt):
+        if self._latency_tracker:
+            self._latency_tracker.mark("first_model_text")
         if not self._guard_gesture_text:
             await super()._handle_evt_text_delta(evt)
             return
@@ -53,6 +58,14 @@ class GestureResponseGuard:
                 await super()._handle_evt_text_delta(chunk)
         # Flush before Pipecat emits LLMFullResponseEndFrame (TTS/aggregation).
         await super()._handle_evt_response_done(evt)
+
+    def set_turn_gesture_guard(self, enabled: bool) -> None:
+        """Select buffering for the current user turn, not the whole Dev session."""
+        self.set_gesture_text_guard(enabled)
+
+    @property
+    def turn_gesture_guard_enabled(self) -> bool:
+        return self._guard_gesture_text
 
     async def _handle_interruption(self):
         self._discarded_gesture_responses.update(self._gesture_response_text)

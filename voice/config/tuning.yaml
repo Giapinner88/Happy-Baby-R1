@@ -148,7 +148,19 @@ audio:
   # Hạ 0.6 -> 0.3 ngày 2026-08-05 khi tắt fallback: mic đeo ở gần miệng người nói
   # chứ không nằm cạnh loa như mic thân, nên gần như không bị vọng. Nếu bật lại
   # fallback_to_robot_mic thì PHẢI nâng lại 0.6+.
-  echo_tail_s: 0.6
+  # Mic ngoài ở gần người nói nên có thể mở lại sớm hơn. Mic thân robot ở sát
+  # loa phải giữ tail dài để tránh robot tự nghe chính mình.
+  echo_tail_external_s: 0.35
+  echo_tail_robot_s: 0.8
+
+# Camera chỉ đọc ảnh; mọi tham số vận hành nằm ở đây để không phải sửa source.
+camera:
+  probe: "/home/unitree/Foundation_Unitree/tools/r1_video_rpc_probe.py"
+  python: "/usr/bin/python3"
+  capture_timeout_s: 0.5
+  attempts: 3
+  process_timeout_s: 5.0
+  max_jpeg_bytes: 5000000
 
 activation:
   # both | high_disarmed | high_armed

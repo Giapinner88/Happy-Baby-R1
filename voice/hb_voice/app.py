@@ -46,6 +46,10 @@ from .gate import AudioGate, GateSnapshot
 from .gesture_tools import GESTURE_TOOL_INSTRUCTIONS, GestureToolController
 from .gesture_response import GestureResponseGuard
 from .input import AlsaMicBridge, RobotMicFallback, UnitreeMicBridge
+from .latency import (
+    GestureTurnGuardProcessor,
+    TurnLatencyTracker,
+)
 from .output import UnitreeSpeakerBridge
 from .resilience import (
     VoiceRuntimeStatus,
@@ -234,10 +238,12 @@ async def run_bot(
     # Gesture availability is a runtime Dev-state decision from integration,
     # never a boot-time voice setting. This keeps normal conversation free of
     # motor tools until run_r1 owns LOCOMOTION.
+    latency_tracker = TurnLatencyTracker()
     gesture_controller = GestureToolController(
         mode="off",
         socket_path=config.gesture_socket,
         timeout_s=config.gesture_timeout_s,
+        latency_tracker=latency_tracker,
     )
     if config.gesture_mode != "off":
         logger.warning(
@@ -246,6 +252,13 @@ async def run_bot(
         )
     vision_controller = VisionToolController(
         network_interface=config.network_interface,
+        camera_probe=config.camera_probe,
+        python_executable=config.camera_python,
+        camera_timeout_s=config.camera_timeout_s,
+        camera_attempts=config.camera_attempts,
+        process_timeout_s=config.camera_process_timeout_s,
+        max_jpeg_bytes=config.camera_max_jpeg_bytes,
+        latency_tracker=latency_tracker,
     )
     vision_tools = vision_controller.tools
     session_tools = list(vision_tools)
@@ -257,6 +270,7 @@ async def run_bot(
 
     llm = ServerTurnRealtimeLLMService(
         guard_gesture_text=False,
+        latency_tracker=latency_tracker,
         api_key=config.api_key,
         settings=OpenAIRealtimeLLMService.Settings(
             model=config.model,
@@ -349,6 +363,7 @@ async def run_bot(
                 "log but the robot will not hear anything until it is fixed"
             )
 
+    active_mic_source = config.mic_source
     speaker_processor = UnitreeSpeakerBridge(
         bridge_path=config.bridge_path,
         network_interface=config.network_interface,
@@ -356,10 +371,10 @@ async def run_bot(
         response_gain=config.response_gain,
         audio_debug=config.audio_debug,
         gate=gate,
-        playback_tail_s=config.echo_tail_s,
+        playback_tail_s=config.echo_tail_for(active_mic_source),
+        latency_tracker=latency_tracker,
     )
     vad_ready = False
-    active_mic_source = config.mic_source
     runtime_status.set_mic_source(active_mic_source)
     realtime_settings_lock = asyncio.Lock()
     gesture_session_enabled = False
@@ -467,9 +482,9 @@ async def run_bot(
                 if next_gesture_tools
                 else vision_system_instruction
             )
-            llm.set_gesture_text_guard(
-                bool(next_gesture_tools) and config.tts_provider == "elevenlabs"
-            )
+            # Tool availability is session-wide, but text buffering is selected
+            # per transcript below. Regular chat must keep streaming in Dev.
+            llm.set_turn_gesture_guard(False)
             try:
                 await llm.process_frame(
                     LLMUpdateSettingsFrame(
@@ -496,7 +511,7 @@ async def run_bot(
                 session_tools = list(vision_tools)
                 context.set_tools(vision_tools)
                 system_instruction = vision_system_instruction
-                llm.set_gesture_text_guard(False)
+                llm.set_turn_gesture_guard(False)
                 try:
                     await llm.process_frame(
                         LLMUpdateSettingsFrame(
@@ -540,6 +555,7 @@ async def run_bot(
             return
         active_mic_source = source
         runtime_status.set_mic_source(source)
+        speaker_processor.set_playback_tail_s(config.echo_tail_for(source))
         logger.warning(
             "Voice input switched to {} (vad_eagerness={}, noise_reduction={})",
             source,
@@ -555,9 +571,20 @@ async def run_bot(
     if isinstance(mic_processor, AlsaMicBridge):
         mic_processor.set_source_change_callback(on_mic_source_changed)
 
+    def select_turn_gesture_guard(gesture_hint: bool) -> None:
+        guard_this_turn = (
+            gesture_session_enabled
+            and config.tts_provider == "elevenlabs"
+            and gesture_hint
+        )
+        llm.set_turn_gesture_guard(guard_this_turn)
+
+    gesture_guard_processor = GestureTurnGuardProcessor(select_turn_gesture_guard)
+
     pipeline_steps = [
         transport.input(),
         mic_processor,
+        gesture_guard_processor,
         user_aggregator,
         llm,
     ]
@@ -695,6 +722,7 @@ async def run_bot(
         strategy: BaseUserTurnStopStrategy,
         message: UserTurnStoppedMessage,
     ):
+        latency_tracker.start_turn()
         logger.info(f"User turn stopped at {message.timestamp}")
 
     @user_aggregator.event_handler("on_user_turn_message_added")
@@ -702,6 +730,13 @@ async def run_bot(
         aggregator,
         message: UserTurnMessageAddedMessage,
     ):
+        latency_tracker.set_transcript(message.content)
+        guard_this_turn = llm.turn_gesture_guard_enabled
+        logger.info(
+            "Gesture response guard for current turn={} transcript_hint={}",
+            guard_this_turn,
+            "gesture" if guard_this_turn else "chat",
+        )
         timestamp = f"[{message.timestamp}] " if message.timestamp else ""
         logger.info(f"Transcript: {timestamp}user: {message.content}")
 
@@ -710,6 +745,8 @@ async def run_bot(
         aggregator,
         message: AssistantTurnStoppedMessage,
     ):
+        llm.set_turn_gesture_guard(False)
+        gesture_guard_processor.reset_turn()
         timestamp = f"[{message.timestamp}] " if message.timestamp else ""
         logger.info(f"Transcript: {timestamp}assistant: {message.content}")
 

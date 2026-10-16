@@ -46,6 +46,7 @@ class CameraCapture:
     jpeg: bytes
     elapsed_ms: float
     sha256: str
+    subprocess_ms: float = 0.0
 
 
 class VisionToolController:
@@ -63,6 +64,7 @@ class VisionToolController:
         camera_attempts: int = 3,
         process_timeout_s: float = 5.0,
         max_jpeg_bytes: int = 5_000_000,
+        latency_tracker=None,
     ) -> None:
         if not network_interface.strip():
             raise ValueError("network_interface must not be empty")
@@ -78,6 +80,7 @@ class VisionToolController:
         self.process_timeout_s = process_timeout_s
         self.max_jpeg_bytes = max_jpeg_bytes
         self._capture_lock = asyncio.Lock()
+        self._latency_tracker = latency_tracker
 
     @property
     def tools(self) -> list:
@@ -102,8 +105,15 @@ class VisionToolController:
     async def inspect_camera(self, params) -> None:
         """Append a fresh JPEG before returning the result that resumes the model."""
         try:
+            if self._latency_tracker:
+                self._latency_tracker.mark_tool("camera")
             async with self._capture_lock:
                 capture = await asyncio.to_thread(self._capture_frame)
+            if self._latency_tracker:
+                self._latency_tracker.camera_capture(
+                    subprocess_ms=capture.subprocess_ms,
+                    total_ms=capture.elapsed_ms,
+                )
             encoded = base64.b64encode(capture.jpeg).decode("ascii")
             item = events.ConversationItem(
                 type="message",
@@ -119,6 +129,8 @@ class VisionToolController:
             await params.llm.send_client_event(
                 events.ConversationItemCreateEvent(item=item)
             )
+            if self._latency_tracker:
+                self._latency_tracker.mark("image_attached")
             result: dict[str, Any] = {
                 "ok": True,
                 "status": "image_attached",
@@ -168,6 +180,7 @@ class VisionToolController:
                 "--save-dir",
                 str(output_dir),
             ]
+            subprocess_started = time.monotonic()
             completed = subprocess.run(
                 command,
                 stdin=subprocess.DEVNULL,
@@ -177,6 +190,7 @@ class VisionToolController:
                 timeout=self.process_timeout_s,
                 check=False,
             )
+            subprocess_ms = (time.monotonic() - subprocess_started) * 1000.0
             if completed.returncode != 0:
                 tail = completed.stdout[-800:].replace("\n", " | ")
                 raise RuntimeError(
@@ -199,4 +213,5 @@ class VisionToolController:
             jpeg=jpeg,
             elapsed_ms=(time.monotonic() - started) * 1000.0,
             sha256=hashlib.sha256(jpeg).hexdigest(),
+            subprocess_ms=subprocess_ms,
         )

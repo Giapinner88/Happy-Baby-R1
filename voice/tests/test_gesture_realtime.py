@@ -185,6 +185,18 @@ class GestureRealtimeTest(unittest.IsolatedAsyncioTestCase):
         await service._handle_evt_text_delta(self.delta("chat", "Chào bạn!"))
         self.assertEqual(self.spoken_text(service), "Chào bạn!")
 
+    async def test_guard_can_be_selected_per_turn_in_dev(self):
+        service = self.service(guard=False)
+        service.set_turn_gesture_guard(False)
+        await service._handle_evt_text_delta(self.delta("chat", "Trả lời ngay."))
+        self.assertEqual(self.spoken_text(service), "Trả lời ngay.")
+
+        service.set_turn_gesture_guard(True)
+        await service._handle_evt_text_delta(self.delta("gesture", "Không đọc trước."))
+        self.assertEqual(self.spoken_text(service), "Trả lời ngay.")
+        await service._handle_evt_response_done(self.done("gesture", tool=True))
+        self.assertEqual(self.spoken_text(service), "Trả lời ngay.")
+
     async def test_turn_buffered_before_dev_exit_is_not_spoken_after_exit(self):
         service = self.service(guard=True)
         await service._handle_evt_text_delta(self.delta("old", "Không được đọc."))

@@ -367,10 +367,11 @@ class StaticSafetyTest(unittest.TestCase):
         tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
         output = (HB_ROOT / "voice" / "hb_voice" / "output.py").read_text()
         app = (HB_ROOT / "voice" / "hb_voice" / "app.py").read_text()
-        self.assertIn("echo_tail_s:", tuning)
+        self.assertIn("echo_tail_external_s:", tuning)
+        self.assertIn("echo_tail_robot_s:", tuning)
         # Tunable, because the DDS hop to PC1 is not observable from here.
         self.assertIn("self._playback_tail_s = playback_tail_s", output)
-        self.assertIn("playback_tail_s=config.echo_tail_s", app)
+        self.assertIn("playback_tail_s=config.echo_tail_for(active_mic_source)", app)
 
     def test_mic_bridge_arguments_cannot_shift_and_abort_the_bridge(self):
         """`r1_bridge mic` is positional; a gap used to kill it silently.

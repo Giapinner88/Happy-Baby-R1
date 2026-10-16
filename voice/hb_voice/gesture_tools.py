@@ -82,6 +82,7 @@ class GestureToolController:
         socket_path: Path,
         timeout_s: float,
         cache_size: int = 128,
+        latency_tracker=None,
     ) -> None:
         if mode not in SUPPORTED_MODES:
             raise ValueError(f"Unsupported gesture mode: {mode}")
@@ -95,6 +96,7 @@ class GestureToolController:
         self.cache_size = cache_size
         self._results: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._voice_owned_active = False
+        self._latency_tracker = latency_tracker
         self._dev_exit_sequence = 0
 
     def set_mode(self, mode: str) -> None:
@@ -179,6 +181,8 @@ class GestureToolController:
         command: str,
         gesture_id: str | None = None,
     ) -> dict[str, Any]:
+        if self._latency_tracker:
+            self._latency_tracker.mark_tool("gesture")
         if not self._valid_call_id(call_id):
             return {"ok": False, "status": "rejected", "reason": "invalid_request_id"}
 

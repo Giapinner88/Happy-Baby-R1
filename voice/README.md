@@ -87,6 +87,26 @@ Nếu probe hoặc camera không sẵn sàng, tool trả `camera_unavailable`; v
 mic, TTS và service vẫn tiếp tục chạy. Việc có file probe mới chỉ xác nhận
 interface phần mềm, chưa thay thế kiểm tra camera thật trên robot.
 
+Các timeout, số lần thử, đường dẫn probe/Python và giới hạn JPEG nằm trong
+`camera` của `config/tuning.yaml`. Log `VOICE_LATENCY` tách
+`camera_subprocess_ms` khỏi thời gian đến audio đầu tiên; chỉ triển khai camera
+worker thường trú nếu số đo trên robot cho thấy cold-start chiếm phần chính.
+
+Trong Dev locomotion, text chỉ bị buffer đối với lượt có dấu hiệu yêu cầu
+gesture. Câu hỏi thường và camera vẫn stream sang ElevenLabs ngay; function call
+gesture vẫn chờ `response.done` để không đọc lời xác nhận trước khi controller
+chấp nhận.
+
+Để so sánh tối thiểu 20 lượt thường với 20 lượt gesture:
+
+```bash
+./hb ssh 'journalctl -u hb_voice --since "-30 min" --no-pager' > /tmp/hb-voice-latency.log
+python3 voice/tools/analyze_latency.py /tmp/hb-voice-latency.log --minimum 20
+```
+
+Giữ cố định model, mic, mạng, prompt và câu thử; báo cáo median cùng p95, không
+kết luận từ một lượt thuận lợi.
+
 Entry point duy nhất:
 
 ```bash
@@ -132,7 +152,8 @@ input:
 audio:
   response_volume_percent: 100
   response_gain: 1.0
-  echo_tail_s: 0.6
+  echo_tail_external_s: 0.35
+  echo_tail_robot_s: 0.8
 
 activation:
   mode: "both"
@@ -166,8 +187,9 @@ resilience:
   `0-100`; hiện đặt `100`. Voice áp dụng lại mỗi khi giành quyền loa.
 - `response_gain`: chỉ cho phép `0.0-1.0` để giảm PCM, tránh khuếch đại gây vỡ
   tiếng.
-- `audio.echo_tail_s` (`0.0-3.0`, mặc định `0.6`): đẩy xong PCM cuối thì đợi
-  thêm chừng này giây mới mở lại mic. Bù phần voice không quan sát được:
+- `audio.echo_tail_external_s` / `audio.echo_tail_robot_s` (`0.0-3.0`): đẩy
+  xong PCM cuối thì đợi thêm chừng này giây mới mở lại mic. Runtime chọn theo
+  nguồn mic đang chạy để bù phần voice không quan sát được:
   chặng DDS sang PC1, bộ đệm của loa, tiếng dội phòng. Quá ngắn thì ở chế độ
   auto robot nghe đuôi tiếng của chính mình rồi tự trả lời tiếp. Robot hay nói
   nối đuôi -> nâng `0.9-1.2`; thấy phản hồi chậm -> hạ về `0.4`.

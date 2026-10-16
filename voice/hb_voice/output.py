@@ -128,6 +128,7 @@ class UnitreeSpeakerBridge(FrameProcessor):
         gate: AudioGate | None = None,
         speaking_marker_path: str | Path = "/run/hb/voice_speaking",
         playback_tail_s: float = 0.6,
+        latency_tracker=None,
     ):
         super().__init__()
         self._bridge_path = Path(bridge_path)
@@ -166,6 +167,7 @@ class UnitreeSpeakerBridge(FrameProcessor):
         # reopens while the robot is still audible, which in hands-free mode
         # lets the robot answer itself.
         self._playback_tail_s = playback_tail_s
+        self._latency_tracker = latency_tracker
         self._bot_speaking = False
         if self._gate:
             self._gate.add_callback(self._on_gate_change)
@@ -201,9 +203,15 @@ class UnitreeSpeakerBridge(FrameProcessor):
             self._voice_idle_task = self.create_task(self._clear_voice_after_idle())
         if not self._bot_speaking:
             self._bot_speaking = True
+            if self._latency_tracker:
+                self._latency_tracker.mark("turn_to_first_audio_ms")
             await self.broadcast_frame(BotStartedSpeakingFrame)
         if self._gate:
             await self._gate.set_voice_speaking(True)
+
+    def set_playback_tail_s(self, seconds: float) -> None:
+        """Update echo protection when the operator changes the live mic."""
+        self._playback_tail_s = seconds
 
     async def _clear_voice_after_idle(self):
         # Refresh mtime while the speaker bridge drains queued PCM.  run_r1

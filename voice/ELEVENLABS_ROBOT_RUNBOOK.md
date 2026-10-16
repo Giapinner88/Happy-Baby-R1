@@ -265,7 +265,8 @@ khi đang chạy **mic thân robot** (`mic_source=r1_multicast` trong
 Xử lý theo thứ tự:
 
 1. Sạc/cắm lại mic ngoài — mic thân robot chỉ là lưới cứu, không phải cấu hình chạy.
-2. Nâng `audio.echo_tail_s` (`0.6` -> `0.9-1.2`) nếu robot hay nói nối đuôi ngay
+2. Nâng `audio.echo_tail_external_s` nếu dùng mic ngoài, hoặc
+   `audio.echo_tail_robot_s` nếu dùng mic thân, khi robot hay nói nối đuôi ngay
    sau khi vừa dứt câu.
 3. Nâng `input.min_speech_peak` nếu nó đáp cả tiếng ồn xung quanh.
 4. Giọng lệch giữa các câu (chứ không chồng tiếng) thì nâng `tts.stability`.

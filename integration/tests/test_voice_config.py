@@ -70,21 +70,39 @@ class VoiceConfigTest(unittest.TestCase):
         # only the pairing is invariant: the robot mic sits beside the speaker,
         # so running it needs a tail long enough to outlast the DDS hop.  The
         # external mic sits at the speaker's mouth and barely echoes at all.
-        if config.mic_fallback_enabled:
-            self.assertGreaterEqual(config.echo_tail_s, 0.5)
-        else:
-            self.assertGreater(config.echo_tail_s, 0.0)
+        self.assertGreater(config.echo_tail_external_s, 0.0)
+        self.assertGreaterEqual(config.echo_tail_robot_s, 0.5)
+        self.assertGreaterEqual(config.echo_tail_robot_s, config.echo_tail_external_s)
+        self.assertEqual(config.echo_tail_external_s, config.echo_tail_for("alsa_usb"))
+        self.assertEqual(config.echo_tail_robot_s, config.echo_tail_for("r1_multicast"))
+        self.assertTrue(config.camera_probe.is_absolute())
+        self.assertTrue(config.camera_python.is_absolute())
+        self.assertEqual(3, config.camera_attempts)
         # A drifting clone voice reads as the robot swapping speakers.
         self.assertGreaterEqual(config.elevenlabs_stability, 0.7)
         self.assertTrue(config.load_prompt())
 
     def test_absurd_echo_tail_is_rejected(self):
         tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
-        tuning = re.sub(r"echo_tail_s: [0-9.]+", "echo_tail_s: 9.0", tuning, count=1)
+        tuning = re.sub(
+            r"echo_tail_external_s: [0-9.]+",
+            "echo_tail_external_s: 9.0",
+            tuning,
+            count=1,
+        )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tuning.yaml"
             path.write_text(tuning)
-            with self.assertRaisesRegex(VoiceConfigError, "audio.echo_tail_s"):
+            with self.assertRaisesRegex(VoiceConfigError, "audio.echo_tail_external_s"):
+                self.load_path(path)
+
+    def test_camera_attempts_must_be_bounded(self):
+        tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
+        tuning = re.sub(r"attempts: [0-9]+", "attempts: 0", tuning, count=1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tuning.yaml"
+            path.write_text(tuning)
+            with self.assertRaisesRegex(VoiceConfigError, "camera.attempts"):
                 self.load_path(path)
 
     def test_runtime_settings_follow_the_live_microphone(self):
