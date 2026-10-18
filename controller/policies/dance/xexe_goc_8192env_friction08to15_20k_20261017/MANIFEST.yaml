@@ -1,0 +1,48 @@
+name: xexe_goc_8192env_friction08to15_20k_20261017
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-17_22-56-11_xexe_pipeline_goc_8192env_friction08to15_20k_after_doremon_20261017
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-17_22-56-11_xexe_pipeline_goc_8192env_friction08to15_20k_after_doremon_20261017/2026-10-17_22-56-11_xexe_pipeline_goc_8192env_friction08to15_20k_after_doremon_20261017.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Fresh training from video-derived 50Hz NPZ; 8192 env, foot friction 0.8-1.5,
+    seed 42.
+motion:
+  file: xexe.npz
+  frames: 5109
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: c22a4fe5cfb563fe8c1f249314ba0483c38db8cf7ae2d034b5d7174706ae8563
+  env.yaml: b5e29f368e340a75eef0ada3321dd70625215d05826d6d3c77f17c93f9950e9a
+  model_19999.pt: 124540e1388001740f9e30e0ff00e7fbef763817c0c6ce1f581326615d6e8cca
+  onnx_metadata.yaml: 360e98c0c162689b3738f51c5be821793b16d77973eebfc336b5750860d42875
+  policy.onnx: 4d357021f762bc3d28427c65064e63aebef646098e31719107f8144ebd253d61
+  source.txt: 57311cfed4da30f0697ecf76aea66cd485b33b974566594c6a94e3c01d9abff0
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe.npz: 1ecdc97d85f1ce371cc605f112167b975972d9cdc1d643b26c2c6cfe318361f8

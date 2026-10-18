@@ -1,4 +1,4 @@
-dance_2: xexe_trimmed_20260921_meta_19999
+dance_2: xexe_trimmed_goc_8192env_friction08to15_20k_20261013
 dance_speed_2: 1.0
 dance_volume_2: 1.0
 dance_trim_deg_2: 0.0
@@ -6,22 +6,22 @@ dance_3: doremon_meta_new_pipeline_20260924_20k
 dance_speed_3: 1.0
 dance_volume_3: 1.0
 dance_trim_deg_3: 0.0
-dance_4: gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+dance_4: r1nhayngan_3_meta_4096env_17k_20261007
 dance_speed_4: 1.0
 dance_volume_4: 1.0
 dance_trim_deg_4: 0.0
 
-dance_5: r1nhayngan_3_meta_4096env_17k_20261007
+dance_5: gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
 dance_speed_5: 1.0
 dance_volume_5: 1.0
 dance_trim_deg_5: 0.0
 
-dance_6: xexe_trimmed_meta_8192env_friction08to15_20k_20261013
+dance_6: doremon_hbnpz_meta_friction08to14_20k_8192_20261016
 dance_speed_6: 1.0
 dance_volume_6: 1.0
 dance_trim_deg_6: 0.0
 
-dance_7: xexe_trimmed_goc_8192env_friction08to15_20k_20261013
+dance_7: gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
 dance_speed_7: 1.0
 dance_volume_7: 1.0
 dance_trim_deg_7: 0.0

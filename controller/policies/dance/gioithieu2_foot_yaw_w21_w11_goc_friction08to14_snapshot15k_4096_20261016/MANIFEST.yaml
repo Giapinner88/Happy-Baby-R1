@@ -1,0 +1,69 @@
+name: gioithieu2_foot_yaw_w21_w11_goc_friction08to14_snapshot15k_4096_20261016
+kind: r1_mimic_dance
+status: training_in_progress_or_iteration_count_unverified
+description: '# Gioithieu2 — GOC snapshot at iteration 15,000
+
+
+  This inactive HB dance package is a test snapshot from the still-running
+
+  Gioithieu2 GOC training run. It is not the final 20,000-iteration policy.
+
+
+  The motion is the isolated Gioithieu2 clip-specific foot-yaw correction:
+
+  canonical W21/W21/W11 postprocessing at 50 Hz, 6,570 frames. Training uses
+
+  4,096 scene and terrain environments, seed 42, and randomized foot friction
+
+  in [0.8, 1.4]. Tracking covers the pelvis, both leg chains, torso, and both arm
+
+  chains; end-effector termination covers both ankles and wrists.
+
+
+  The package remains inactive so it can be reviewed before replacing an active
+
+  HB dance slot.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-16_06-47-22_gioithieu2_foot_yaw_w21_w11_goc_friction08to14_20k_4096_20261016
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-16_06-47-22_gioithieu2_foot_yaw_w21_w11_goc_friction08to14_20k_4096_20261016/2026-10-16_06-47-22_gioithieu2_foot_yaw_w21_w11_goc_friction08to14_20k_4096_20261016.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 15000
+  iterations_target: 20000
+  checkpoint: model_15000.pt
+  notes: Test snapshot packaged while training continued; do not treat as final.
+motion:
+  file: video1.npz
+  frames: 6570
+  fps: 50.0
+audio: gioithieu2_source_audio_entry1p5s_131p4s.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: video1.npz
+  audio: gioithieu2_source_audio_entry1p5s_131p4s.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_15000.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 5eedfb638c9e922d2a0c51ed58e76e3090c8c729d6e59090cc60373d9e8bab17
+  agent.yaml: 04a886a08c12c4b35b7e33d94afe302c830eac70674b9e0205215b6fe6fba14c
+  env.yaml: 5df5c80a221f1accf03786fcf748f4297d7d6e261577764009d4c9611108e433
+  gioithieu2_source_audio_entry1p5s_131p4s.mp3: aab5dc1c8774320c2d41929eb1c9a3176cfe8682518951ad84df6c23faddbe1c
+  model_15000.pt: 472476cf9013850314f1649dec9aa9d48dbf1083b7e44fc9d6994f68080c0c5a
+  onnx_metadata.yaml: 70713ec91d7d307aba68e4c0cc4b13ae2821d3cca5a125658a2e9fc135d15202
+  policy.onnx: 1b837f3cb9d91b4bf98441ef39863e9e22d010886bc2545b73c356d0b6ea1577
+  source.txt: ce41dad5338870aa9cec6c3ac4713d09295a836ea031cde29564b476ef3ad5f9
+  video1.npz: b1ddd7bad06bb08db94fd5342197525beb73ea1c312643f0fe0d153dfdeeae72
