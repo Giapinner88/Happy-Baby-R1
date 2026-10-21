@@ -16,7 +16,7 @@ Nhánh này chỉ nhận **kết quả** (ONNX/NPZ, cấu hình, motion) từ c�
   - `teleop_policy: <tên>` — policy chạy khi chọn R2+X; bỏ trống = dùng chung `walk_policy`. Khi H4 được bật, cả hai bundle phải có `teleop_h4: true` và contract hỗ trợ H4. R2+A yêu cầu lệnh vận tốc về 0 trước START; R2+X cho phép vừa đi vừa teleop.
   - Hai bundle khác nhau phải trùng `default_joint_pos` của tay; chân + eo được lệch ≤ 0.10 rad (đổi chế độ blend `blend_time_s`), lệch hơn thì run_r1 từ chối khởi động. `./hb policy list` cho biết bundle nào đang được chọn.
 - Route cũ `flat_model` + `flat_policy_contract` vẫn chạy được để rollback/so sánh (đọc từ `policies/flat/` hoặc `policies/locomotion/_archive/flat_plus/`); không được khai cùng lúc với `walk_policy`.
-- Nhảy: `controller/config/dance.yaml` → `dance_2` … `dance_8` (slot ứng với nút trong [controls.md](controls.md)).
+- Nhảy: `controller/config/dance.yaml` → `dance_1` … `dance_7` (slot ứng với nút trong [controls.md](controls.md)).
 - Toàn vẹn: `run_r1` kiểm `sha256` trong `policy.yaml` của cả hai bundle lúc khởi động; test `policy_artifact_manifest_test` kiểm mọi bundle và `_archive/flat_plus/SHA256SUMS`. `integration/config/model_manifest.conf` ghi SHA của walk policy; `./hb deploy policy` cập nhật file này.
 
 ## 2. Hợp đồng locomotion
@@ -55,4 +55,32 @@ Mỗi file `locomotion_*.example.yaml` trong `controller/config/` là một bộ
 
 MP3/audio là tùy chọn: thiếu nhạc vẫn nạp và chạy dance bằng ONNX + NPZ, log ghi `no audio; dance runs without music`. Khi có nhạc, runtime phát sau warmup như thường. Thiếu ONNX/NPZ hoặc model/motion không hợp lệ vẫn làm dance bị từ chối.
 
-**Hiện trạng (2026-10-09, gộp từ HB):** slot 3–7 dùng các thư mục ngày 2026-09-04 → 2026-10-08 (`xexe_trimmed_129obs_goc…`, `xexe_r1motion_goc_fric11to17…`, `xexe_r1motion_meta…`, `nhay3_20260904_trimmed_after_bilateral_tilt_f084`, `r1nhayngan_3_meta…`), đều có trong repo; `dance_8` để trống. `xexe_meta_129obs_fresh…` và `xexe_trimmed_129obs_meta…` có trong repo nhưng chưa gán slot. Các điệu này chưa có log chạy trên robot trong repo này. `make dance-list` liệt kê thư mục đang dùng; `make dance-prune` xem trước (thêm `ARGS=--apply` để chuyển thư mục không tham chiếu sang `_archive/dance/`, `make dance-restore ARGS=<tên>` để đưa lại).
+Dance được đánh số 1–7; đổi từ schema 2–8 bằng cách giảm mọi hậu tố slot (dance, speed, volume, trim, voice_mimic) đi 1 và giữ nguyên thứ tự folder. Config active và replay fixture đã được chuyển đổi. Config cũ bên ngoài repo cần migrate trước khi dùng binary mới.
+
+Config hiện tại dùng `state_motion_guard: true`: tất cả dance tự kiểm tra nghiêng
+so với **torso reference vừa phát cho actor**, gồm warmup/clip/cooldown. Lệch
+`dance_tracking_error_deg: 45` độ liên tục `dance_tracking_debounce_s: 0.10` giây
+thì chốt ngắt toàn bộ motor. Góc so sánh dựa trên hướng trọng lực trong cùng torso,
+có tính waist và yaw alignment; quay yaw toàn cục không tự gây ngắt.
+Locomotion/RETURNING/stand-up/stand-lock dùng nghiêng tuyệt đối và fast-flip theo
+`fall_*`. Tư thế ngồi/nằm/getup không áp yêu cầu luôn đứng thẳng; vẫn kiểm tra
+dữ liệu, tốc độ khớp và tiến triển LowState. `motion_safety_state_timeout_s: 0.10`
+chặn cả mất gói lẫn gói lặp tick cũ. Tốc độ khớp dùng dữ liệu thô, gồm cả đầu.
+
+Không cần `dance_tilt_guard_N` nữa khi mode này bật; parser vẫn nhận khóa cũ cho
+cấu hình legacy (`state_motion_guard: false`). Preflight hiện
+`mode=state_reference` và `DANCE slot=N tilt_guard=reference`. Guard đưa robot về
+IDLE/damping như L2+B, vẫn armed; không tự tiếp tục khi dựng thẳng hoặc có lại
+dữ liệu. Nhả điều khiển rồi ra lệnh mới theo trình tự cũ, không cần DISARM hay
+restart. Xem [phục hồi sau guard](safety.md#8-guard-theo-trạng-thái-và-reference).
+
+`dance_home_exit_N: on` cho bài có đoạn cuối HOME (tư thế đứng), độc lập với
+guard. Mặc định `off`: đường cooldown hiện tại được giữ nguyên.
+Khi bật, runtime chỉ bỏ cooldown sau khi clip chạy hết và đã ổn định liên tục
+0,15 s trong 25 frame cuối: tham chiếu cách default locomotion tối đa 0,10 rad,
+khớp thật cách default tối đa 0,30 rad, nghiêng <=0,15 rad, gyro <=0,5 rad/s,
+max |dq| <=0,6 rad/s. Sau đó reset history locomotion, blend từ target vừa gửi
+trong `mimic_home_exit_blend_s` (mặc định 0,25 s, cho phép 0,05–1 s).
+Không đạt gate hoặc hủy giữa bài vẫn dùng cooldown; không cắt ngắn clip.
+Khi thay ONNX/NPZ cần kiểm lại cả bài và đoạn trả locomotion trước khi bật cờ.
+Kết quả MuJoCo và test ứng dụng chưa phải nghiệm thu trên robot thật.

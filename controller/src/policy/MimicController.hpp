@@ -7,6 +7,7 @@
 #include "../motion/MotionData.hpp"
 #include "../motion/MimicTransition.hpp"
 #include "PolicyController.hpp"
+#include "../safety/DanceUprightWindow.hpp"
 
 // Controller thực thi động tác nhảy (Mimic / Dance policy)
 class MimicController : public PolicyController {
@@ -16,7 +17,8 @@ public:
         : motion_(motion),
           start_frame_(std::clamp(start_frame, 0, std::max(0, motion.num_frames() - 1))),
           speed_(std::clamp(speed, 0.1f, 2.0f)),
-          warmup_s_(std::max(0.0f, warmup_s)) {}
+          warmup_s_(std::max(0.0f, warmup_s)),
+          upright_terminal_frame_(motion_safety::UprightWindow::StartFrame(motion)) {}
 
     int ObsSize() const override { return spec::kMimicObsSize; }
     std::string Name() const override { return "Mimic"; }
@@ -28,6 +30,22 @@ public:
         return motion_.joint_pos(start_frame_);
     }
     int StartFrame() const { return start_frame_; }
+    // Exactly the torso/reference pair used by the actor, including yaw alignment
+    // and the last interpolated warmup/cooldown command; never a future NPZ frame.
+    Eigen::Quaternionf SafetyActualTorsoWorld(const RobotState& state) const {
+        return TorsoQuat(state);
+    }
+    float RemainingFrames() const {
+        return static_cast<float>(std::max(0.0, motion_.num_frames() - 1.0 - phase_));
+    }
+
+    bool SafetyUprightExpected() const {
+        if (cooling_) return cool_started_upright_ ||
+            (CooldownDone() && motion_safety::UprightWindow::QuietReference(
+                TelemetryReferenceTorsoWorld(), last_ref_dq_));
+        return WarmupDone() && telemetry_ref_phase_ >= upright_terminal_frame_ &&
+               upright_terminal_frame_ < motion_.num_frames();
+    }
 
     // Soft-start đã xong -> clip bắt đầu chạy (đây là lúc bật nhạc)
     bool WarmupDone() const { return warmup_t_ >= warmup_s_; }
@@ -54,6 +72,7 @@ public:
     void BeginCooldown(const std::array<float, spec::kNumJoints>& stand_q,
                        float cooldown_s, const RobotState& state) {
         if (cooling_) return;
+        cool_started_upright_ = SafetyUprightExpected();
         cooling_ = true;
         cool_s_ = std::max(0.05f, cooldown_s);
         cool_t_ = 0.0f;
@@ -145,6 +164,7 @@ public:
         warmup_t_ = 0.0f;
         clip_ramp_t_ = 0.0f;
         cooling_ = false;
+        cool_started_upright_ = false;
         cool_t_  = 0.0f;
         warm_q0_ = state.q;
         warm_dq0_ = state.dq;
@@ -298,6 +318,7 @@ private:
     }
 
     const MotionData& motion_;
+    bool cool_started_upright_ = false;
     int start_frame_ = 0;
     float speed_ = 1.0f;
     double phase_ = 0.0;
@@ -307,6 +328,7 @@ private:
 
     // Soft-start: đưa robot vào tư thế mở màn bằng CHÍNH policy (xem Reset)
     float warmup_s_ = 1.2f;
+    int upright_terminal_frame_;
     float warmup_t_ = 0.0f;
     std::array<float, spec::kNumJoints> warm_q0_{};
     std::array<float, spec::kNumJoints> warm_dq0_{};

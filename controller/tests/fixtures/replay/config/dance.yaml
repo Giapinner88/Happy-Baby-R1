@@ -1,35 +1,44 @@
-dance_2: doremon_v8
+# dance_tilt_guard_N: on = detect tilt/fast flips; off = allow intended inversion.
+# Joint-speed, invalid-data, watchdog and E-stop guards remain active.
+dance_1: doremon_v8
+dance_tilt_guard_1: on
+dance_speed_1: 1.0
+dance_volume_1: 1.0
+dance_trim_deg_1: 0.0
+dance_2:
+dance_tilt_guard_2: on
 dance_speed_2: 1.0
 dance_volume_2: 1.0
 dance_trim_deg_2: 0.0
-dance_3: 
+dance_3:
+dance_tilt_guard_3: on
 dance_speed_3: 1.0
 dance_volume_3: 1.0
 dance_trim_deg_3: 0.0
-dance_4: 
+
+dance_4:
+dance_tilt_guard_4: on
 dance_speed_4: 1.0
 dance_volume_4: 1.0
 dance_trim_deg_4: 0.0
 
-dance_5: 
+dance_5:
+dance_tilt_guard_5: on
 dance_speed_5: 1.0
 dance_volume_5: 1.0
 dance_trim_deg_5: 0.0
 
-dance_6: 
+dance_6:
+dance_tilt_guard_6: on
 dance_speed_6: 1.0
 dance_volume_6: 1.0
 dance_trim_deg_6: 0.0
 
-dance_7: 
+dance_7:
+dance_tilt_guard_7: on
 dance_speed_7: 1.0
 dance_volume_7: 1.0
 dance_trim_deg_7: 0.0
-
-dance_8: 
-dance_speed_8: 1.0
-dance_volume_8: 1.0
-dance_trim_deg_8: 0.0
 
 
 # start_frame=-1: tự tìm frame mở đầu mượt. Handover diễn ra khi robot đủ tĩnh hoặc hết max_s.

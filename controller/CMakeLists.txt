@@ -62,6 +62,7 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 # Everything run_r1 links except main.cpp; Application tests reuse the list.
 set(HB_APP_SOURCES
     src/app/Application.cpp
+    src/app/ApplicationMotionSafety.cpp
     src/app/ApplicationArming.cpp
     src/app/ApplicationInit.cpp
     src/app/ApplicationPolicy.cpp
@@ -89,6 +90,15 @@ target_link_libraries(run_r1
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(state_motion_guard_test tests/state_motion_guard_test.cpp)
+    add_test(NAME state_motion_guard_test COMMAND state_motion_guard_test)
+    add_executable(application_motion_safety_test
+        tests/application_motion_safety_test.cpp ${HB_APP_SOURCES})
+    target_compile_definitions(application_motion_safety_test PRIVATE
+        HB_TEST_PACKET_SINK HB_PROJECT_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
+    target_link_libraries(application_motion_safety_test unitree_sdk2 ${ONNXRUNTIME_LIB}
+        ZLIB::ZLIB ${X11_LIBRARIES} pthread)
+    add_test(NAME application_motion_safety_test COMMAND application_motion_safety_test)
     add_executable(teleop_h4_policy_gate_test tests/teleop_h4_policy_gate_test.cpp)
     add_test(NAME teleop_h4_policy_gate_test COMMAND teleop_h4_policy_gate_test)
     add_executable(application_safety_test
@@ -188,6 +198,9 @@ if(BUILD_TESTING)
 
     add_executable(voice_gesture_owner_test tests/voice_gesture_owner_test.cpp)
     add_test(NAME voice_gesture_owner_test COMMAND voice_gesture_owner_test)
+
+    add_executable(home_dance_exit_test tests/home_dance_exit_test.cpp)
+    add_test(NAME home_dance_exit_test COMMAND home_dance_exit_test)
 
     add_executable(gesture_handover_guard_test tests/gesture_handover_guard_test.cpp)
     add_test(NAME gesture_handover_guard_test COMMAND gesture_handover_guard_test)

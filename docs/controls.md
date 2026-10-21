@@ -33,8 +33,8 @@ Từ STAND LOCK, R2+A / R2+X vào thẳng chế độ tương ứng. Đang đi b
 
 | Việc | Tay cầm R3 | Bàn phím |
 | --- | --- | --- |
-| Nhảy slot 2 / 3 / 4 / 5 | **R1+Lên / Phải / Xuống / Trái** | 2–5 |
-| Nhảy slot 6 / 7 / 8 | **R1+Y / R1+B / R1+A** | 6 / 7 / 8 |
+| Nhảy slot 1 / 2 / 3 / 4 | **R1+Lên / Phải / Xuống / Trái** | 2–5 |
+| Nhảy slot 5 / 6 / 7 | **R1+Y / R1+B / R1+A** | 6 / 7 / 8 |
 
 **Nút trần — tay, teleop, voice**
 
@@ -48,7 +48,7 @@ Từ STAND LOCK, R2+A / R2+X vào thẳng chế độ tương ứng. Đang đi b
 
 Ở R2+X, gesture double-click và gesture gọi bằng voice vẫn dùng được khi H4 chưa chiếm quyền. Bật START nhưng chưa bóp cò Quest vẫn dùng gesture được. Khi H4 nhận quyền giữa một gesture, tay thu về và hoàn tất handover trước khi H4 chạy. Voice gesture chỉ bắt đầu khi robot không có lệnh di chuyển.
 
-Tên điệu ở mỗi slot nằm trong `controller/config/dance.yaml` (`dance_2` … `dance_8`); slot không có artifact sẽ bị bỏ qua lúc khởi động (xem [policies.md](policies.md) §4).
+Tên điệu ở mỗi slot nằm trong `controller/config/dance.yaml` (`dance_1` … `dance_7`); slot không có artifact sẽ bị bỏ qua lúc khởi động (xem [policies.md](policies.md) §4).
 Không gán chức năng mới lên **L2+R2**, **L1+L2** (của hãng) hay **SELECT/F1/F2** (của voice). Thêm chức năng mới thì đặt vào đúng nhóm modifier ở trên.
 
 ## 2. Cổng và giao diện

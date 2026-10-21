@@ -230,7 +230,7 @@ struct ApplicationTestAccess {
         Wait(1000);                                 // gait settles, gesture stand dwell
         DoubleClick(kDown); Wait(2500);             // gesture slot 2
         Stick(0.5f, 0.0f, 300); Wait(1500);         // movement retracts the gesture
-        Press(kR1 | kUp);                           // announce dance 2
+        Press(kR1 | kUp);                           // announce dance 1
         WaitFor(AppState::kReturningToDefault, 3000);
         WaitFor(AppState::kMimic, 5000); Wait(2500);
         Press(kL2 | kUp);                           // abort -> soft-stop -> LOCOMOTION

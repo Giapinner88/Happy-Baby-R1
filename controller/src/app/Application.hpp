@@ -111,6 +111,11 @@ private:
     void SyncUpperBodyOwnership();
     void RunActiveState(const InputCommand& cmd);
     void CheckOutputFaults();
+    bool CheckMotionSensor(const unitree_hg::msg::dds_::LowState_& low);
+    bool CheckMotionPose();
+    bool TryRecoverMotion(const unitree_hg::msg::dds_::LowState_& low,
+                          const InputCommand& cmd, bool state_ok);
+    void StopForMotionFault(const char* reason);
     bool TickDisarmed(const InputCommand& cmd);   // P0-1: chờ arm, KHÔNG publish
     void EnterConflict();                          // P0-1: built-in quay lại -> nhả quyền
     bool TryDisarm(const InputCommand& cmd, const unitree_hg::msg::dds_::LowState_& low);
@@ -244,6 +249,11 @@ private:
     StateEstimator estimator_;
     GaitScheduler gait_;
     FallDetector fall_detector_;
+    motion_safety::Guard motion_guard_;
+    motion_safety::Guard motion_recovery_guard_;
+    bool motion_guard_monitoring_ = false;
+    bool motion_recovery_sample_seen_ = false;
+    bool motion_recovery_released_ = false;
     InputManager input_;
     LowCmdSender sender_;
 
@@ -379,6 +389,8 @@ private:
     bool  lying_ = false;   // robot đang nằm (sau khi nằm xuống + damping) -> L2+Lên = chuẩn bị đứng dậy
 
     // Blend tư thế khi bật policy
+    float home_exit_quiet_s_ = 0.0f;
+    float blend_duration_s_ = 0.5f;
     float blend_alpha_ = 1.0f;
     std::array<float, spec::kNumJoints> blend_start_q_{};
 

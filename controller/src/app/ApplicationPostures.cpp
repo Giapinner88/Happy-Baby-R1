@@ -60,7 +60,8 @@ void Application::RunReturning() {
     int worst_j = -1;
     float max_dq = MaxJointSpeed(rs, worst_j);
     std::vector<std::string> reasons;
-    if (fall_detector_.Check(rs.projected_gravity, rs.gyro, max_dq, worst_j, reasons)) {
+    if (!CheckMotionPose()) return;
+    if (!tuning_.state_motion_guard && fall_detector_.Check(rs.projected_gravity, rs.gyro, max_dq, worst_j, reasons)) {
         std::cout << "\n[Application] Fall detected while returning to default pose!\n";
         for (const auto& r : reasons) std::cout << "  - " << r << "\n";
         EnterIdle("Fall detected - triggering damping");

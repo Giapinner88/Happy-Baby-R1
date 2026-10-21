@@ -1,0 +1,50 @@
+name: roll_xexe_contact_fixed_goc_4096env_friction08to15_25k_20261021
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: Roll — train mới từ đầu với NPZ xexe_contact_fixed; 4096 envs, friction
+  0.8–1.5, 25.000 iterations, seed 42. Giữ đúng metadata của run; không có audio như
+  gói roll trước.
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 25000
+  iterations_target: 25000
+  checkpoint: model_24999.pt
+  notes: Completed final checkpoint; matching same-run motion and metadata; inactive
+    pending slot selection.
+motion:
+  file: roll_xexe_contact_fixed_50hz.npz
+  frames: 308
+  fps: 50.0
+audio: null
+audio_omission: omitted at user request
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: roll_xexe_contact_fixed_50hz.npz
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_24999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 5919c1aa7613a86314bb772a480261038724afd96fa39ebeaa48205e869ab08f
+  agent.yaml: cf2d6b8e1153601e487e0fdf655a9bdb007796f0827ba4a11cac5ecebfca4b41
+  env.yaml: ff0cce030ccdd1428d966bbef035a6ab05937fe65d288640491f7cc9866ad6d2
+  model_24999.pt: 0aa3de3f52db1b4190ee8afafdf2d9d065c8e11f99e0b5bb5683fa95c7ad949d
+  onnx_metadata.yaml: 9bf1f306e7f9917e1f294b634e0ecbb6e74533cc4ec9df8a5f23ec6a4ac2b15f
+  policy.onnx: 30be5cfc2f0062b523bec94248c5c7d15bca06d7f9b22d00c1f15142452919cc
+  roll_xexe_contact_fixed_50hz.npz: dac3380516214f8962de5bdfec60fdaf9a8a9ad72c6c2312450a76d0e6567b21
+  source.txt: 257c055cdafcae006ba27ccdf5a2e0a03db5e82320cfbe88389522d504138efe

@@ -1,0 +1,48 @@
+name: doremon_goc_8192env_friction08to15_20k_20261017
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-17_07-23-42_doremon_xexe_goc_8192env_friction08to15_20k_20261017
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-17_07-23-42_doremon_xexe_goc_8192env_friction08to15_20k_20261017/2026-10-17_07-23-42_doremon_xexe_goc_8192env_friction08to15_20k_20261017.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Fresh training from video-derived 50Hz NPZ; 8192 env, foot friction 0.8-1.5,
+    seed 42.
+motion:
+  file: doremon.npz
+  frames: 4572
+  fps: 50.0
+audio: doremon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon.npz
+  audio: doremon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: bb0e365bb1303343b338dfa05959c9714d8b88ea467eed4911eea55f07b66e18
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon.npz: d9d5bfa7b601f6243f6545ce64b658a3538d780998b3c0811d5ab94c708a7e78
+  env.yaml: 8bd22f45db1392d3b403018910608c394e65e5775c6edd503a918a23536feac1
+  model_19999.pt: ae73267fa43ef1588e765c70357a4b5e0da0b7cae1af0c27fe737ef6f77b7e5e
+  onnx_metadata.yaml: db06e515a0b6f7f63f110eb5542ea1109905452494408b33630bfd4e228a1f1a
+  policy.onnx: b7710d0e477796646e8ea892261d306615b4324d01ef1da4eee47d8926e29c39
+  source.txt: 9597f1cebaf9d666625fec38561637c3499bd24a21f671e9e225321ae1dbd30b

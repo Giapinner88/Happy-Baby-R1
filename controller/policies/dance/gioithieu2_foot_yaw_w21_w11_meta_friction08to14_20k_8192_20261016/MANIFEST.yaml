@@ -1,0 +1,65 @@
+name: gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: '# Gioithieu2 — Meta, friction 0.8–1.4, 8,192 environments
+
+
+  Final 20,000-iteration Meta policy trained from the clip-specific Gioithieu2
+
+  foot-yaw-corrected motion at 50 Hz (6,570 frames).
+
+
+  Training uses 8,192 scene and terrain environments, seed 42, and randomized
+
+  foot friction in [0.8, 1.4]. Tracking covers the pelvis, both leg chains,
+
+  torso, and both arm chains; end-effector termination covers both ankles and
+
+  wrists.
+
+
+  This package is installed inactive pending visual review and hardware testing.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Final Meta 8192-environment retrain; inactive pending review.
+motion:
+  file: video1.npz
+  frames: 6570
+  fps: 50.0
+audio: gioithieu2_source_audio_entry1p5s_131p4s.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: video1.npz
+  audio: gioithieu2_source_audio_entry1p5s_131p4s.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 073ceda3f70c3d059c2be4fe27bbf4428b9df743603cdff07efa2478f349be88
+  agent.yaml: 76b3f05d4c4e9f3211c6c82c77db7e5ec608e3a89a6a53d44de68b143d3a5e25
+  env.yaml: 0d5c2212098591dae6204c5cccfaaf6488ff0129ec1ea9aeb7a23d8654822ea0
+  gioithieu2_source_audio_entry1p5s_131p4s.mp3: aab5dc1c8774320c2d41929eb1c9a3176cfe8682518951ad84df6c23faddbe1c
+  model_19999.pt: 9a83b7f00e061f6b479e8f661f6494f169596c9fd4b735bd082d00b726ff406b
+  onnx_metadata.yaml: 28723b7d6fdee93c09f0df258e3d3af6fd631abf49b818cff29b0861c97468e5
+  policy.onnx: 896d955dcb39ba82109e97c1d62a278b7618f1b8ecd572b99a4b41d0fdf41a69
+  source.txt: b31ad8a37cb5343c74cb7c1b662d1fc541cda8d0fbfab723506c598de9989aa3
+  video1.npz: b1ddd7bad06bb08db94fd5342197525beb73ea1c312643f0fe0d153dfdeeae72

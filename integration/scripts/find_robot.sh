@@ -49,8 +49,8 @@ _robot_ssh_ok() {
         "${multiplex_opts[@]}" \
         -o ConnectionAttempts=1 \
         -o ConnectTimeout="$probe_timeout" \
-        -o StrictHostKeyChecking=no \
-        "$1" true 2>/dev/null
+        -o StrictHostKeyChecking=accept-new \
+        "$1" true 2>"${2:-/dev/null}"
 }
 
 _robot_direct_link() {
@@ -80,7 +80,7 @@ _robot_open_interactive_master() {
 }
 
 _robot_probe_candidates() {
-    local ip candidate probe_dir idx pid
+    local ip candidate probe_dir idx pid reason
     local -a direct_candidates=()
     local -a other_candidates=()
     local -a ordered_candidates=()
@@ -104,11 +104,12 @@ _robot_probe_candidates() {
 
     # Probe every candidate in parallel. Sequential SSH timeouts made a newly
     # plugged LAN invisible for tens of seconds while old addresses were tried.
+    echo "🔍 Quét ${#ordered_candidates[@]} địa chỉ SSH (song song): ${ordered_candidates[*]}"
     idx=0
     for ip in "${ordered_candidates[@]}"; do
         candidate="unitree@$ip"
         (
-            if _robot_ssh_ok "$candidate"; then
+            if _robot_ssh_ok "$candidate" "$probe_dir/$idx.err"; then
                 : > "$probe_dir/$idx.ok"
             fi
         ) &
@@ -118,6 +119,22 @@ _robot_probe_candidates() {
 
     for pid in "${probe_pids[@]}"; do
         wait "$pid" || true
+    done
+
+    idx=0
+    for ip in "${ordered_candidates[@]}"; do
+        if [[ -f "$probe_dir/$idx.ok" ]]; then
+            echo "  ✅ $ip — SSH OK"
+        elif grep -Eqi 'REMOTE HOST IDENTIFICATION HAS CHANGED|Host key verification failed|Offending .*key' "$probe_dir/$idx.err"; then
+            echo "  ❌ $ip — host key không khớp; cần xác minh danh tính"
+        elif grep -Eqi 'Permission denied|Authentication failed|Too many authentication failures' "$probe_dir/$idx.err"; then
+            echo "  🔑 $ip — SSH trả lời, cần xác thực key/mật khẩu"
+            : > "$probe_dir/$idx.auth"
+        else
+            reason="$(head -n 1 "$probe_dir/$idx.err")"
+            echo "  ⏳ $ip — ${reason:-không có kết quả SSH trong thời hạn probe}"
+        fi
+        idx=$((idx + 1))
     done
 
     idx=0
@@ -134,6 +151,19 @@ _robot_probe_candidates() {
         fi
         idx=$((idx + 1))
     done
+    if [[ "${HB_DEPLOY_INTERACTIVE_SSH:-1}" == "1" ]]; then
+        idx=0
+        for ip in "${ordered_candidates[@]}"; do
+            candidate="unitree@$ip"
+            if [[ -f "$probe_dir/$idx.auth" ]] && _robot_open_interactive_master "$candidate"; then
+                ROBOT="$candidate"
+                echo "✅ Xác thực robot ở: $ip"
+                rm -rf "$probe_dir"
+                return 0
+            fi
+            idx=$((idx + 1))
+        done
+    fi
     rm -rf "$probe_dir"
     return 1
 }

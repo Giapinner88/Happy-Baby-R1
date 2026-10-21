@@ -1,0 +1,14 @@
+folder       : pokemonplus_goc_8192env_friction08to15_20k_20261018
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : pokemon_plus.npz (3614 frames @ 50 Hz)
+audio        : pokemon.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Completed 20k; reference from xexe_pipeline_5videos_20261017; inactive pending slot selection.

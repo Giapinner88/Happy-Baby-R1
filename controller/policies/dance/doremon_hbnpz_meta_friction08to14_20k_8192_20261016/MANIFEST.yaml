@@ -1,0 +1,67 @@
+name: doremon_hbnpz_meta_friction08to14_20k_8192_20261016
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: '# Doremon — Meta retrain, friction 0.8–1.4, 8,192 environments
+
+
+  Final 20,000-iteration Meta policy retrained from the `video1.npz` motion in
+
+  the existing `doremon_meta_new_pipeline_20260924_20k` HB package. The motion
+
+  contains 4,560 frames at 50 Hz.
+
+
+  Training uses 8,192 scene and terrain environments, seed 42, and randomized
+
+  foot friction in [0.8, 1.4]. Tracking covers the pelvis, both leg chains,
+
+  torso, and both arm chains; end-effector termination covers both ankles and
+
+  wrists.
+
+
+  This package is installed inactive pending visual review and hardware testing.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-55-14_doremon_hbnpz_meta_friction08to14_20k_8192_20261016
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-55-14_doremon_hbnpz_meta_friction08to14_20k_8192_20261016/2026-10-16_12-55-14_doremon_hbnpz_meta_friction08to14_20k_8192_20261016.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Final Meta 8192-environment retrain; inactive pending review.
+motion:
+  file: video1.npz
+  frames: 4560
+  fps: 50.0
+audio: doremon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: video1.npz
+  audio: doremon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 0909c8a717bcb565633968a5ef9dad464570bc0e5220d9d31a53fd628cfab842
+  agent.yaml: 6fb11c9157f8a8b38e21277e25954e2b2dd5726405bff8afdb5c5b816bbbbd10
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  env.yaml: 31b702eb9ad4afe1139385a80dcfc68b8b4d57581d9f5d9301f585e3e952c40e
+  model_19999.pt: 82af4661a33c8c27e5a2e719151e64f4141452be70d18849b4a2dcb67f178a05
+  onnx_metadata.yaml: 00b264249fb806095482e5f8ac0b6f3f3ade20519e1dff7b8e3635ffe46de60c
+  policy.onnx: 1f91880462adad6f124569f48bb353f028bbce241404ab737ea952959f2727ad
+  source.txt: 603225cbf5aba6ed3d191b26c964d212b6a4637d2ddc5812dd6723c679915f3c
+  video1.npz: 4d98823edfc75af91d7ebed3b58dedb3e52610b63ee3914bba9f7796b521bc34

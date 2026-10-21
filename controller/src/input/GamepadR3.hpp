@@ -183,13 +183,13 @@ public:
         if (cur.R2 && cur.A && !last.A)       cmd.want_locomotion = true;
         if (cur.R2 && cur.X && !last.X)       cmd.want_teleop_locomotion = true;
 
-        if (cur.R1 && cur.up && !last.up)       cmd.want_mimic_key = 2;
-        if (cur.R1 && cur.right && !last.right) cmd.want_mimic_key = 3;
-        if (cur.R1 && cur.down && !last.down)   cmd.want_mimic_key = 4;
-        if (cur.R1 && cur.left && !last.left)   cmd.want_mimic_key = 5;
-        if (cur.R1 && cur.Y && !last.Y)         cmd.want_mimic_key = 6;
-        if (cur.R1 && cur.B && !last.B)         cmd.want_mimic_key = 7;
-        if (cur.R1 && cur.A && !last.A)         cmd.want_mimic_key = 8;
+        if (cur.R1 && cur.up && !last.up)       cmd.want_mimic_key = 1;
+        if (cur.R1 && cur.right && !last.right) cmd.want_mimic_key = 2;
+        if (cur.R1 && cur.down && !last.down)   cmd.want_mimic_key = 3;
+        if (cur.R1 && cur.left && !last.left)   cmd.want_mimic_key = 4;
+        if (cur.R1 && cur.Y && !last.Y)         cmd.want_mimic_key = 5;
+        if (cur.R1 && cur.B && !last.B)         cmd.want_mimic_key = 6;
+        if (cur.R1 && cur.A && !last.A)         cmd.want_mimic_key = 7;
 
         if (cur.R2 && cur.up && !last.up)     cmd.want_fast_speed = true;
         if (cur.R2 && cur.down && !last.down) cmd.want_slow_speed = true;

@@ -1,0 +1,14 @@
+folder       : chacha_support_fixed_goc_4096env_friction08to15_25k_20261021
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 25000/25000
+checkpoint   : model_24999.pt
+motion       : chacha_support_fixed_50hz.npz (2910 frames @ 50 Hz)
+audio        : omitted at user request
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Final fresh 25k run completed with exit code 0; exact training NPZ and same-run metadata. No audio as in previous ChaCha HOME package. Inactive pending slot selection.

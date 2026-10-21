@@ -94,6 +94,10 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "settle_time_s")      settle_time_s = f();
     else if (key == "settle_gyro_max")    settle_gyro_max = f();
     else if (key == "policy_rate_limit")  policy_rate_limit = f();
+    else if (key == "state_motion_guard") state_motion_guard = ToBool(value);
+    else if (key == "dance_tracking_error_deg") dance_tracking_error_deg = f();
+    else if (key == "dance_tracking_debounce_s") dance_tracking_debounce_s = f();
+    else if (key == "motion_safety_state_timeout_s") motion_safety_state_timeout_s = f();
     else if (key == "fall_enabled")       fall_enabled = ToBool(value);
     else if (key == "fall_tilt_deg")      fall_tilt_deg = f();
     else if (key == "fall_flip_tilt_deg") fall_flip_tilt_deg = f();
@@ -182,8 +186,9 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "voice_teleop_on")        voice_teleop_on = value;
     else if (key == "voice_teleop_off")       voice_teleop_off = value;
     else if (key.size() > 12 && key.substr(0, 12) == "voice_mimic_") {
-        int idx = std::stoi(key.substr(12)) - 2; // voice_mimic_2 -> idx 0
-        if (idx >= 0 && idx < kMaxDances) voice_mimic[idx] = value;
+        int idx = std::stoi(key.substr(12)) - 1; // voice_mimic_1 -> idx 0
+        if (idx < 0 || idx >= kMaxDances) throw std::runtime_error("dance/voice slot must be 1..7; migrate old 2..8 config");
+        voice_mimic[idx] = value;
     }
     else if (key == "hold_to_trigger_s")  hold_to_trigger_s = f();
     else if (key == "gesture_enabled")        gesture_enabled = ToBool(value);
@@ -322,30 +327,56 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "gait_w2s_timeout_s") gait_w2s_timeout_s = f();
     else if (key == "gait_stability_filter_tau_s") gait_stability_filter_tau_s = f();
     else if (key.size() > 12 && key.substr(0, 12) == "dance_speed_") {
-        int idx = std::stoi(key.substr(12)) - 2;
-        if (idx >= 0 && idx < kMaxDances) dance_speed[idx] = f();
+        int idx = std::stoi(key.substr(12)) - 1;
+        if (idx < 0 || idx >= kMaxDances) throw std::runtime_error("dance/voice slot must be 1..7; migrate old 2..8 config");
+        dance_speed[idx] = f();
     }
     else if (key.size() > 13 && key.substr(0, 13) == "dance_volume_") {
-        int idx = std::stoi(key.substr(13)) - 2;
-        if (idx >= 0 && idx < kMaxDances) dance_volume[idx] = f();
+        int idx = std::stoi(key.substr(13)) - 1;
+        if (idx < 0 || idx >= kMaxDances) throw std::runtime_error("dance/voice slot must be 1..7; migrate old 2..8 config");
+        dance_volume[idx] = f();
     }
     else if (key.size() > 15 && key.substr(0, 15) == "dance_trim_deg_") {
-        int idx = std::stoi(key.substr(15)) - 2;
-        if (idx >= 0 && idx < kMaxDances) {
+        int idx = std::stoi(key.substr(15)) - 1;
+        if (idx < 0 || idx >= kMaxDances) throw std::runtime_error("dance trim slot must be 1..7");
+        {
             dance_trim_deg[idx] = f();
             dance_trim_configured[idx] = true;
         }
     }
+    else if (key == "mimic_home_exit_blend_s") mimic_home_exit_blend_s = f();
+    else if (key.rfind("dance_home_exit_", 0) == 0) {
+        const std::string suffix = key.substr(16);
+        if (suffix.empty() || suffix.find_first_not_of("0123456789") != std::string::npos)
+            throw std::runtime_error("dance_home_exit needs a numeric slot");
+        const int idx = std::stoi(suffix) - 1;
+        if (idx < 0 || idx >= kMaxDances)
+            throw std::runtime_error("dance_home_exit slot must be 1..7");
+        dance_home_exit[idx] = ToBool(value);
+    }
+    else if (key.rfind("dance_tilt_guard_", 0) == 0) {
+        const std::string suffix = key.substr(17);
+        if (suffix.empty() || suffix.find_first_not_of("0123456789") != std::string::npos)
+            throw std::runtime_error("dance_tilt_guard needs a numeric slot");
+        const int idx = std::stoi(suffix) - 1;
+        if (idx < 0 || idx >= kMaxDances)
+            throw std::runtime_error("dance_tilt_guard slot must be 1..7");
+        dance_tilt_guard[idx] = ToBool(value);
+    }
     // Parse dance_N folder name
     else if (key.size() > 6 && key.substr(0, 6) == "dance_" &&
              key.find_first_not_of("0123456789", 6) == std::string::npos) {
-        int idx = std::stoi(key.substr(6)) - 2;
-        if (idx >= 0 && idx < kMaxDances) dance_folder[idx] = value;
+        int idx = std::stoi(key.substr(6)) - 1;
+        if (idx < 0 || idx >= kMaxDances) throw std::runtime_error("dance/voice slot must be 1..7; migrate old 2..8 config");
+        dance_folder[idx] = value;
     }
     else if (key == "head_yaw_kp")        head_yaw_kp = f();
     else if (key == "head_yaw_kd")        head_yaw_kd = f();
     else if (key == "head_pitch_kp")      head_pitch_kp = f();
     else if (key == "head_pitch_kd")      head_pitch_kd = f();
+    else if (key.rfind("state_motion_", 0) == 0 || key.rfind("dance_tracking_", 0) == 0 ||
+             key.rfind("motion_safety_", 0) == 0)
+        throw std::runtime_error("unknown motion safety key: " + key);
     else known = false;
 }
 
@@ -365,6 +396,19 @@ bool Tuning::Validate() const {
             ok = false;
         }
     };
+
+    if (state_motion_guard) {
+        require(fall_enabled && joint_speed_guard_enabled,
+                "state_motion_guard requires fall_enabled and joint_speed_guard_enabled");
+        try { MotionSafetyConfig().Validate(); }
+        catch (const std::exception& e) { require(false, e.what()); }
+    }
+    require(finite_in(dance_tracking_error_deg, 1, 90),
+            "dance_tracking_error_deg must be finite and in [1,90]");
+    require(finite_in(dance_tracking_debounce_s, .02f, .5f),
+            "dance_tracking_debounce_s must be finite and in [.02,.5]");
+    require(finite_in(motion_safety_state_timeout_s, .04f, .5f),
+            "motion_safety_state_timeout_s must be finite and in [.04,.5]");
 
     const bool bundle_route = !walk_policy.empty();
     require(!bundle_route || !flat_model_configured,
@@ -413,6 +457,8 @@ bool Tuning::Validate() const {
     }
     // Sàn 100: dưới 84 thì 2 cổ chân không thắng nổi m*g*h=168 Nm/rad của robot ->
     // kReturningToDefault (không có policy đỡ) sẽ đổ. Xem chú thích ở Tuning.hpp.
+    require(finite_in(mimic_home_exit_blend_s, 0.05f, 1.0f),
+            "mimic_home_exit_blend_s must be finite and in [0.05, 1.0]");
     require(finite_in(return_kp_ankle, 100.0f, 400.0f),
             "return_kp_ankle must be finite and in [100, 400] "
             "(duoi 84 = robot do trong kReturningToDefault vi khong co policy do)");

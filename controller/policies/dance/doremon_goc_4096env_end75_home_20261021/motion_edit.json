@@ -1,0 +1,16 @@
+{
+  "source": "/home/ubuntu22/train_mujoco/artifacts/doremon_goc4096_review_20261021/doremon_reference.npz",
+  "source_sha256": "d9d5bfa7b601f6243f6545ce64b658a3538d780998b3c0811d5ab94c708a7e78",
+  "keep_frames": 3740,
+  "cut_from_seconds": 74.8,
+  "original_duration_s": 91.44,
+  "exit_bridge_seconds": 1.5,
+  "hold_seconds": 0.5,
+  "new_frames": 3840,
+  "new_duration_s": 76.8,
+  "max_bridge_floor_correction_m": 0.014491908581293289,
+  "retained_joint_poses_unchanged": true,
+  "terminal_hold_static": true,
+  "audio_changed": false,
+  "hb_changed": false
+}

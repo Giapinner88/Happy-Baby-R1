@@ -20,7 +20,7 @@ using namespace app_internal;
 void Application::StartMimicTelemetry(int dance_key) {
     if (!tuning_.mimic_telemetry_enabled) return;
 
-    const int idx = dance_key - 2;
+    const int idx = dance_key - 1;
     const std::string label = (idx >= 0 && idx < Tuning::kMaxDances)
                                 ? tuning_.dance_folder[idx]
                                 : "unknown";

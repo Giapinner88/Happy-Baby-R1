@@ -1,0 +1,48 @@
+name: pokemonplus_goc_8192env_friction08to15_20k_20261018
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Completed 20k; reference from xexe_pipeline_5videos_20261017; inactive pending
+    slot selection.
+motion:
+  file: pokemon_plus.npz
+  frames: 3614
+  fps: 50.0
+audio: pokemon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: pokemon_plus.npz
+  audio: pokemon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 9afd5a9f2be0d24dac5b5a15e2fff9fa3c95b2221ee321a96a0a2e71a0f504a0
+  env.yaml: 898a23948fc0815bad3f145e369055d11b9a1ece516ef42390fc2f555f43757b
+  model_19999.pt: 0fc1faadeece5f6c93fd1b75a75c1f6aaf59b7c7668ad95070e0c02e0455e9a8
+  onnx_metadata.yaml: 1c58ca5b56d1129812746e7a748009d4da098b1b1269c0f21e8d25dac6ba2b5c
+  pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
+  pokemon_plus.npz: 44dde9aa5ac02ec1aafc7d5d73621e31d3aea42c67ff8f25083769e66aa44516
+  policy.onnx: 6f1d1beb67547e4019a0260e09203827b8ae7d75551ac4c60cc0e1b733bbf071
+  source.txt: 7dc0a34c1455c08ffd1cdd06d9658f43a98013f8358d8ab9bbcf7ab7e8a7e32e

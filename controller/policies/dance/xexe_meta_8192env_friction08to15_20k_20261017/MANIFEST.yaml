@@ -1,0 +1,48 @@
+name: xexe_meta_8192env_friction08to15_20k_20261017
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-17_23-35-43_xexe_pipeline_meta_8192env_friction08to15_20k_after_doremon_20261017
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-17_23-35-43_xexe_pipeline_meta_8192env_friction08to15_20k_after_doremon_20261017/2026-10-17_23-35-43_xexe_pipeline_meta_8192env_friction08to15_20k_after_doremon_20261017.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Fresh training from video-derived 50Hz NPZ; 8192 env, foot friction 0.8-1.5,
+    seed 42.
+motion:
+  file: xexe.npz
+  frames: 5109
+  fps: 50.0
+audio: xexe.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: xexe.npz
+  audio: xexe.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: 1316e691fb9d3fd8a0e6a050047a79481f3ffc9a40d992503110503c734780d3
+  env.yaml: a1b4385b2a2487e952a42f0072494ee56998f77987b96c9e032e3d1cae649127
+  model_19999.pt: 1da28b2a7b4eaef1796706d8c3548086e5cf3c0dda6a9f72a7334e0461d77798
+  onnx_metadata.yaml: 56a5efa59f375f14298a2f5d17a103965b9307af5fa54497ab8329b3203ad112
+  policy.onnx: 42755f98433e2d31f153c57c84152641746e02e08a2a79470b3172ffeda59054
+  source.txt: 62678df2f111fd48b9d664cd95f2d8335d85c455c932e75cd414924492b686cd
+  xexe.mp3: 85ba42cff9de61fb0da0922160eaebdf1272029de59279517125f13018d60b5d
+  xexe.npz: 1ecdc97d85f1ce371cc605f112167b975972d9cdc1d643b26c2c6cfe318361f8

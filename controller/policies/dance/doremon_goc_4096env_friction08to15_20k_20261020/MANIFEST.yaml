@@ -1,0 +1,51 @@
+name: doremon_goc_4096env_friction08to15_20k_20261020
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: Doremon GOC — train mới 4096 envs, friction 0.8–1.5, 20.000 iterations,
+  seed 42. Dùng đúng NPZ và metadata từ run train; đóng gói checkpoint cuối.
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Completed final checkpoint; matching same-run motion and metadata; inactive
+    pending slot selection.
+motion:
+  file: doremon.npz
+  frames: 4572
+  fps: 50.0
+audio: doremon.mp3
+audio_omission: null
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon.npz
+  onnx_metadata: onnx_metadata.yaml
+  audio: doremon.mp3
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 647791d50dd551f13f0ba65712e5ef91a4c2a68e274b22f7689c1fa815b984e1
+  agent.yaml: 397c1d35bb4b8f07acaf00eaba2974f6352219ca4af6c5f59e5fbb816dfd28fd
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon.npz: d9d5bfa7b601f6243f6545ce64b658a3538d780998b3c0811d5ab94c708a7e78
+  env.yaml: 898844bd06d0a0db65efb0acdbe858fb3656d482f3101450033870044b263e15
+  model_19999.pt: 4a212165b7fe10fbdca01c76c3863f0ac4219712893917ba033aba2559249dfc
+  onnx_metadata.yaml: 8668924d4d6d58ef160bc2a15f79cbb2cf2fe62ecc3f496e3231335a9fc52d83
+  policy.onnx: 952e985e58ee68f41c4f96267277c56469dd1a7537fc6d332fbfb7a6332f3942
+  source.txt: 3b4f2f38926a1f6a954cd58cb831ad160996e90ef77e39ca7879e48835480371

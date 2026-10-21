@@ -18,6 +18,22 @@ struct LowCmdSenderTestAccess {
     }
 };
 
+class HomeExitProbe : public MimicController {
+public:
+    using MimicController::MimicController;
+    using MimicController::BuildObservation;
+};
+class HomeExitLocomotion : public PolicyController {
+public:
+    explicit HomeExitLocomotion(const std::array<float, spec::kNumJoints>& home) { default_q_ = home; }
+    int ObsSize() const override { return 1; }
+    std::string Name() const override { return "HOME-test"; }
+    void Reset(const RobotState& rs) override { PolicyController::Reset(rs); ++resets; }
+    int resets = 0;
+protected:
+    void BuildObservation(const ControlContext&, std::vector<float>&) override {}
+};
+
 struct ApplicationTestAccess {
     static LowState Packet(uint16_t btn = 0, float dq = 0) {
         LowState low;
@@ -31,6 +47,7 @@ struct ApplicationTestAccess {
         return low;
     }
     static void Setup(Application& a) {
+        a.tuning_.state_motion_guard=false; // legacy regression; new route has its own packet-sink test
         a.tuning_.remote_recover_ms=0;
         a.tuning_.arm_hold_s=0.5f;
         a.tuning_.state_timeout_ms=50;
@@ -61,6 +78,71 @@ struct ApplicationTestAccess {
         a.input_.Update(low,true,new_sample,a.input_sample_dt_s_);
         return a.TryDisarm(a.input_.GetMergedCommand(), low);
     }
+    static void HomeExit(Application& a) {
+        MotionData motion;
+        motion.Load(std::string(HB_PROJECT_PATH) +
+            "/tests/fixtures/replay/policies/dance/doremon_meta_8192env_friction08to15_20k_20261017/doremon.npz");
+        const auto home = motion.joint_pos(motion.num_frames() - 1);
+        HomeExitLocomotion locomotion(home);
+        a.locomotion_ = &locomotion;
+        RobotState rs{};
+        rs.q = home;
+        rs.projected_gravity = Eigen::Vector3f(0, 0, -1);
+        rs.gyro.setZero();
+        a.pending_dance_key_ = 1;
+        a.music_started_ = true;
+        auto begin = [&]() {
+            auto probe = std::make_unique<HomeExitProbe>(motion, motion.num_frames() - 25, 1.0f, 0.0f);
+            auto* ptr = probe.get();
+            a.mimics_[1] = std::move(probe);
+            a.active_ = ptr;
+            a.state_ = AppState::kMimic;
+            a.dance_stopping_ = false;
+            a.home_exit_quiet_s_ = 0;
+            ptr->Reset(rs);
+            return ptr;
+        };
+        auto advance = [&](HomeExitProbe* mimic, bool interrupt_quiet = false) {
+            ControlContext ctx{rs, 0, 0, 0, {0, 1}};
+            std::vector<float> obs(mimic->ObsSize());
+            for (int frame = 0; frame < 25 && a.state_ == AppState::kMimic && !a.dance_stopping_; ++frame) {
+                if (interrupt_quiet && frame == 20) rs.dq[0] = 0.8f;
+                if (interrupt_quiet && frame == 21) rs.dq[0] = 0.0f;
+                mimic->BuildObservation(ctx, obs);
+                for (int tick = 0; tick < spec::kPolicyDecimation && a.state_ == AppState::kMimic; ++tick)
+                    a.UpdateMimicLifecycle(mimic, rs);
+                if (frame < 20) CHECK(a.state_ == AppState::kMimic); // never truncate the clip
+            }
+        };
+        a.tuning_.dance_home_exit[0] = true;
+        auto* mimic = begin();
+        advance(mimic);
+        CHECK(a.state_ == AppState::kLocomotion && !a.dance_stopping_);
+        CHECK(a.active_ == &locomotion && locomotion.resets == 1);
+        CHECK(a.blend_alpha_ == 0 && a.blend_duration_s_ == 0.25f);
+        CHECK(a.home_exit_quiet_s_ == 0);
+
+        // A disabled slot retains the legacy cooldown even with a HOME ending.
+        a.tuning_.dance_home_exit[0] = false;
+        mimic = begin(); advance(mimic);
+        CHECK(a.state_ == AppState::kMimic && a.dance_stopping_);
+        // Too much real joint motion must fail the gate and use cooldown.
+        a.tuning_.dance_home_exit[0] = true;
+        rs.dq[0] = 0.8f;
+        mimic = begin(); advance(mimic);
+        CHECK(a.state_ == AppState::kMimic && a.dance_stopping_);
+        rs.dq[0] = 0;
+        // Separated quiet intervals cannot accumulate across a moving sample.
+        mimic = begin(); advance(mimic, true);
+        CHECK(a.state_ == AppState::kMimic && a.dance_stopping_);
+        // Explicit cancellation never takes the terminal HOME shortcut.
+        mimic = begin(); a.BeginSoftStop("HOME test cancellation");
+        for (int tick = 0; tick < 100; ++tick) a.UpdateMimicLifecycle(mimic, rs);
+        CHECK(a.state_ == AppState::kMimic && a.dance_stopping_);
+        CHECK(locomotion.resets == 1);
+        a.mimics_.clear(); a.locomotion_ = nullptr; a.active_ = nullptr;
+    }
+
     static void Run(Application& a) {
         Setup(a);
         // Cannot disarm from powered posture, nor by bringing a held combo into Z.
@@ -132,5 +214,6 @@ int main() {
     setenv("HB_INTEGRATION_SOCKET", "/tmp/hb-application-safety-test-no-listener/socket", 1);
     Application app(HB_PROJECT_PATH, "lo");
     ApplicationTestAccess::Run(app);
+    ApplicationTestAccess::HomeExit(app);
     std::cout << "APPLICATION_SAFETY_OK\n";
 }

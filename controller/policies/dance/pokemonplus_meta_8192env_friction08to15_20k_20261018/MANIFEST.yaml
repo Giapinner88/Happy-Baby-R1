@@ -1,0 +1,48 @@
+name: pokemonplus_meta_8192env_friction08to15_20k_20261018
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: null
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Completed 20k; reference from xexe_pipeline_5videos_20261017; inactive pending
+    slot selection.
+motion:
+  file: pokemon_plus.npz
+  frames: 3614
+  fps: 50.0
+audio: pokemon.mp3
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: pokemon_plus.npz
+  audio: pokemon.mp3
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  agent.yaml: c228c154bcba04edf7803338d0dac59d45d15b91131ef67dba15f43288e0d2bf
+  env.yaml: 6bc8868f5960b8dfcbc1636b5d640a9cf5df41cba3ffccc0058452da4e8d0430
+  model_19999.pt: 1abfef8a5afad56fb0656579c12c10d4a913569ad306d771920b59f1dcfa4519
+  onnx_metadata.yaml: 31577ebbb34482ea44825981a97e15759233f372d044ecf54822c68d1cffb50c
+  pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
+  pokemon_plus.npz: 44dde9aa5ac02ec1aafc7d5d73621e31d3aea42c67ff8f25083769e66aa44516
+  policy.onnx: 23e7d39f01fe49837b9dad6727da35bbe97fcc35171840770bfdea2cd14b6eb4
+  source.txt: 092fb8520fccca0ceeb85d6fa7cb47276bf66e6b85028f02b8bb7c6bf4c976d1

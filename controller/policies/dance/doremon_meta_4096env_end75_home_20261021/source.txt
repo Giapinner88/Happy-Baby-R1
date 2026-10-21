@@ -1,0 +1,14 @@
+folder       : doremon_meta_4096env_end75_home_20261021
+repo         : unitree_rl_mjlab_meta
+run          : 2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : doremon.npz (3840 frames @ 50 Hz)
+audio        : doremon.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Runtime reference edited after training: stop source at 74.8s, append 1.5s HOME bridge + 0.5s hold; 76.8s total. Actor/checkpoint/audio unchanged; no retraining. Original training motion SHA256 d9d5bfa7b601f6243f6545ce64b658a3538d780998b3c0811d5ab94c708a7e78. Inactive.

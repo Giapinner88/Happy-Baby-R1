@@ -103,6 +103,10 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
 }
 
 void Application::InitControllers() {
+    std::cout << "[MotionSafety] mode=" << (tuning_.state_motion_guard ? "state_reference" : "legacy")
+              << " dance_error_deg=" << tuning_.dance_tracking_error_deg
+              << " debounce_s=" << tuning_.dance_tracking_debounce_s
+              << " state_timeout_s=" << tuning_.motion_safety_state_timeout_s << "\n";
     // Hợp đồng máy-đọc cho chuỗi deploy. preflight.sh, deploy_policy.sh và
     // update_model_manifest.sh đọc dòng "[Preflight] MODEL" (walk policy, luôn in
     // ĐẦU TIÊN) thay vì tự suy ra đường dẫn + số chiều theo contract: các script
@@ -213,7 +217,11 @@ void Application::InitControllers() {
 
     for (int i = 0; i < Tuning::kMaxDances; ++i) {
         if (tuning_.dance_folder[i].empty()) continue;
-        int key = i + 2; // keys 2-8
+        int key = i + 1; // dance slots 1-7
+        std::cout << "[Preflight] DANCE slot=" << key
+                  << " tilt_guard=" << (tuning_.state_motion_guard ? "reference" :
+                                        (tuning_.DanceTiltGuard(key) ? "on" : "off"))
+                  << " home_exit=" << (tuning_.DanceHomeExit(key) ? "on" : "off") << "\n";
         std::string dir = proj_dir_ + "/policies/dance/" + tuning_.dance_folder[i];
 
         std::string onnx, npz, music;

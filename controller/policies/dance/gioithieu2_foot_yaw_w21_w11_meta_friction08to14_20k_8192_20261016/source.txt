@@ -1,0 +1,14 @@
+folder       : gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
+repo         : unitree_rl_mjlab_meta
+run          : 2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : video1.npz (6570 frames @ 50 Hz)
+audio        : gioithieu2_source_audio_entry1p5s_131p4s.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Final Meta 8192-environment retrain; inactive pending review.

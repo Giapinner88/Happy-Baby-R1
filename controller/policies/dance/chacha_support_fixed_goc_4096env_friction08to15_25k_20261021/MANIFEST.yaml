@@ -1,0 +1,54 @@
+name: chacha_support_fixed_goc_4096env_friction08to15_25k_20261021
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: 'Cha Cha Cha — support fixed, final 25k
+
+
+  Train mới từ đầu: 4096 envs, friction 0.8–1.5, seed 42, 25.000 iterations. Reference
+  đã bỏ bước IK ép bàn chân theo từng frame và có hiệu chỉnh sàn mượt. NPZ, policy
+  và metadata lấy đúng từ cùng run đã hoàn tất, checkpoint model_24999.pt. Không audio,
+  giống gói Cha Cha Cha HOME trước.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 25000
+  iterations_target: 25000
+  checkpoint: model_24999.pt
+  notes: Final fresh 25k run completed with exit code 0; exact training NPZ and same-run
+    metadata. No audio as in previous ChaCha HOME package. Inactive pending slot selection.
+motion:
+  file: chacha_support_fixed_50hz.npz
+  frames: 2910
+  fps: 50.0
+audio: null
+audio_omission: omitted at user request
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: chacha_support_fixed_50hz.npz
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_24999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 3a48dbf6575ce45cc65438de06f4f35d2e56e4e6fc7ff336b6234e280382a695
+  agent.yaml: bde5fef83b30052336e68e48c6ef9cefd708fc177fcf1573e49919cae99e01c4
+  chacha_support_fixed_50hz.npz: 8e87b4036d01d7613f45de5c8b8de61c92c9426529654460af916827b9901afa
+  env.yaml: df6a58e787efbf2420350178640d22fa2369c3f9fac802a75ecc0cd188ed403e
+  model_24999.pt: 502f67e4972a875bddc7a361f8ec71fe6ef640c0ca1d4f82b837723fba4a411c
+  onnx_metadata.yaml: 4d0af51f1ca98a442a7d7ef9bbf366a852bd2003be3a55c0da62632d04b97e1c
+  policy.onnx: 59233acc5207fcec486bae4dd0a8091c8b375b6426d66fc486088c03cb0e2626
+  source.txt: 22353cc4410811c5431b50e9929a25f5c327973f76c873839f9868d1356068dd

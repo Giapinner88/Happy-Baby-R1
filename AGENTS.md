@@ -30,8 +30,12 @@ running robot risks two `run_r1` instances.
 the `teleop` branch's sidecar/bridge lack the H4 contract the controller requires,
 so they are not merged (a static test pins the runtime's CLI contract). `loco` U2a (`u2a_seed42`, contract `r1_wb_legs_v1_blind`; U1 `u1_seed42` kept for rollback)
 is wired as `teleop_policy` (R2+X) with simulation-only evidence; no `loco` policy is
-accepted for hardware. Dance slots 3–7 in `controller/config/dance.yaml` reference artifacts
-in the repo (merged from HB 2026-10-09, no robot run log here); slot 8 is empty.
+accepted for hardware. Dance slots 1–7 in `controller/config/dance.yaml` reference artifacts
+in the repo; active `state_motion_guard: true` automatically selects upright
+checks for locomotion/entry and torso-reference tracking for all MIMIC stages.
+Motion faults return to IDLE/damping like L2+B, still armed; a new explicit
+command after control release and valid feedback restores normal operation.
+See `docs/safety.md`.
 `test/` is the single exception to the runtime-only rule: a non-deployed lab
 snapshot (teleop experiments, controller captures/plans) kept for later use. No evidence authorizes teleop on the floor.
 

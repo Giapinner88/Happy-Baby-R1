@@ -1,0 +1,7 @@
+{
+  "retained_joint_pos_exact": true,
+  "retained_body_pos_max_error_m": 1.1920928955078125e-07,
+  "last_hold_max_joint_vel": 0.0,
+  "last_hold_max_body_lin_vel": 0.0,
+  "last_hold_max_body_ang_vel": 0.0
+}

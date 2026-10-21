@@ -2,6 +2,7 @@
 // Application is split across src/app/Application*.cpp; see Application.hpp.
 #include "Application.hpp"
 #include "ApplicationInternal.hpp"
+#include "motion/HomeDanceExit.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -186,7 +187,9 @@ void Application::RunPolicy(const InputCommand& cmd) {
     int worst_j = -1;
     float max_dq = MaxJointSpeed(rs, worst_j);
     std::vector<std::string> reasons;
-    if (fall_detector_.Check(rs.projected_gravity, rs.gyro, max_dq, worst_j, reasons)) {
+    if (!CheckMotionPose()) return;
+    if (!tuning_.state_motion_guard && fall_detector_.Check(rs.projected_gravity, rs.gyro, max_dq, worst_j, reasons,
+                             state_ != AppState::kMimic || tuning_.DanceTiltGuard(pending_dance_key_))) {
         std::cout << "\n[Application] Fall detected!\n";
         for (const auto& r : reasons) std::cout << "  - " << r << "\n";
         EnterIdle("Fall detected - triggering damping");
@@ -242,6 +245,16 @@ void Application::RunPolicy(const InputCommand& cmd) {
     if (ub.active && (caps.gesture || caps.h4)) {
         if (ub.use_teleop) teleop_.BlendInto(send_q);
         else               arm_gesture_.BlendInto(send_q);
+    }
+    if (tuning_.state_motion_guard) {
+        const auto finite = [](const auto& values) {
+            return std::all_of(values.begin(), values.end(), [](float x) { return std::isfinite(x); });
+        };
+        if (!finite(send_q) || !finite(kp_eff) || !finite(kd_eff) ||
+            (ub.head.valid && (!std::isfinite(ub.head.yaw) || !std::isfinite(ub.head.pitch) ||
+                               !std::isfinite(ub.head.max_rate_rad_s)))) {
+            StopForMotionFault("invalid_command"); return;
+        }
     }
     sender_.Send(send_q, kp_eff, kd_eff,
                  tuning_.policy_rate_limit, rs.mode_machine, ub.head);
@@ -547,17 +560,32 @@ bool Application::StepPolicy(const RobotState& rs, const PolicyOverlayCaps& caps
     } catch (const std::exception& e) {
         std::cerr << "\n[FATAL] ONNX inference failed in " << active_->Name() << ": "
                   << e.what() << "\n";
-        EnterIdle("ONNX inference failure - triggering damping");
+        if (tuning_.state_motion_guard) StopForMotionFault("inference_failure");
+        else EnterIdle("ONNX inference failure - triggering damping");
         return false;
     } catch (...) {
         std::cerr << "\n[FATAL] Unknown ONNX inference failure in " << active_->Name()
                   << "\n";
-        EnterIdle("Unknown ONNX inference failure - triggering damping");
+        if (tuning_.state_motion_guard) StopForMotionFault("inference_failure");
+        else EnterIdle("Unknown ONNX inference failure - triggering damping");
         return false;
     }
 
+    if (tuning_.state_motion_guard) {
+        if (active_->infer_fault()) { StopForMotionFault("invalid_action"); return false; }
+        if (!std::all_of(ai_target_q_.begin(), ai_target_q_.end(), [](float x) { return std::isfinite(x); })) {
+            StopForMotionFault("invalid_command"); return false;
+        }
+        // Reference validity must be checked before publishing, but orientation
+        // debounce uses the previous commanded reference, as in the simulator.
+        if (const auto* mimic = dynamic_cast<const MimicController*>(active_)) {
+            if (!motion_safety::ValidQuat(mimic->TelemetryReferenceTorsoWorld())) {
+                StopForMotionFault("invalid_reference"); return false;
+            }
+        }
+    }
     if (blend_alpha_ < 1.0f) {
-        blend_alpha_ = std::min(1.0f, blend_alpha_ + spec::kPolicyDt / tuning_.blend_time_s);
+        blend_alpha_ = std::min(1.0f, blend_alpha_ + spec::kPolicyDt / blend_duration_s_);
         for (int i = 0; i < spec::kNumJoints; ++i) {
             ai_target_q_[i] = (1.0f - blend_alpha_) * blend_start_q_[i] +
                                blend_alpha_ * ai_target_q_[i];
@@ -680,8 +708,47 @@ void Application::UpdateMimicLifecycle(MimicController* mimic, const RobotState&
         music_started_ = true;
         auto it = music_files_.find(pending_dance_key_);
         if (it != music_files_.end())
-            music_.Play(it->second, tuning_.dance_volume[pending_dance_key_ - 2]);
+            music_.Play(it->second, tuning_.dance_volume[pending_dance_key_ - 1]);
         std::cout << "[Application] Soft-start done - DANCE " << pending_dance_key_ << " running.\n";
+    }
+
+    // A natural terminal HOME hold already does the return. Keep the legacy
+    // cooldown for aborts, non-HOME references and any failed measured-state gate.
+    if (mimic && !dance_stopping_ && tuning_.DanceHomeExit(pending_dance_key_)) {
+        float reference_gap = 0.0f, measured_gap = 0.0f, max_dq = 0.0f;
+        const auto& home = locomotion_->default_q();
+        const auto& reference = mimic->TelemetryReferenceQ();
+        for (int i = 0; i < spec::kNumJoints; ++i) {
+            if (!std::isfinite(reference[i]) || !std::isfinite(rs.q[i]) ||
+                !std::isfinite(rs.dq[i])) {
+                measured_gap = std::numeric_limits<float>::infinity();
+                break;
+            }
+            reference_gap = std::max(reference_gap, std::fabs(reference[i] - home[i]));
+            measured_gap = std::max(measured_gap, std::fabs(rs.q[i] - home[i]));
+            max_dq = std::max(max_dq, std::fabs(rs.dq[i]));
+        }
+        const float tilt_rad = std::acos(std::clamp(-rs.projected_gravity.z(), -1.0f, 1.0f));
+        const bool quiet = HomeDanceExitReady(mimic->RemainingFrames(), reference_gap,
+                                             measured_gap, tilt_rad, rs.gyro.norm(), max_dq);
+        home_exit_quiet_s_ = quiet ? home_exit_quiet_s_ + spec::kLoopDt : 0.0f;
+        if (mimic->IsFinished() && home_exit_quiet_s_ >= 0.15f) {
+            std::cout << "[HomeExit] dance=" << pending_dance_key_
+                      << " phase=" << mimic->TelemetryPhase()
+                      << " quiet_s=" << home_exit_quiet_s_
+                      << " ref_gap=" << reference_gap << " measured_gap=" << measured_gap
+                      << " blend_s=" << tuning_.mimic_home_exit_blend_s
+                      << "; handing over to LOCOMOTION.\n";
+            music_.Stop();
+            announcing_ = false;
+            ActivatePolicy(locomotion_); // reset history and blend from the last sent target
+            blend_duration_s_ = tuning_.mimic_home_exit_blend_s;
+            state_ = AppState::kLocomotion;
+            lock_block_timer_ = std::max(0.0f, tuning_.dance_abort_lock_block_s);
+            return;
+        }
+    } else {
+        home_exit_quiet_s_ = 0.0f;
     }
 
     // Soft-stop khi kết thúc điệu nhảy.

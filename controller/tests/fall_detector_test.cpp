@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -95,6 +96,25 @@ int main() {
     REQUIRE(!detector.is_fallen());
     REQUIRE(!detector.Check(GravityAtTiltDeg(0.0f), {0.0f, 0.0f, 0.0f},
                             0.0f, -1, reasons));
+
+    // Per-dance off bypasses tilt + rapid inversion, not speed or bad data.
+    detector.Reset();
+    reasons.clear();
+    for (int i = 0; i < fall_ticks * 3; ++i)
+        REQUIRE(!detector.Check(GravityAtTiltDeg(170.0f), {8.0f, 0.0f, 0.0f}, 0.0f, -1, reasons, false));
+    REQUIRE(reasons.empty());
+    // Re-enable: the original protection resumes after its normal debounce.
+    for (int i = 0; i < fall_ticks - 1; ++i)
+        REQUIRE(!detector.Check(GravityAtTiltDeg(170.0f), {0.0f, 0.0f, 0.0f}, 0.0f, -1, reasons));
+    REQUIRE(detector.Check(GravityAtTiltDeg(170.0f), {0.0f, 0.0f, 0.0f}, 0.0f, -1, reasons));
+    detector.Reset();
+    reasons.clear();
+    for (int i = 0; i < joint_ticks - 1; ++i)
+        REQUIRE(!detector.Check(GravityAtTiltDeg(170.0f), {8.0f, 0.0f, 0.0f}, tuning.joint_speed_limit + 1, 3, reasons, false));
+    REQUIRE(detector.Check(GravityAtTiltDeg(170.0f), {8.0f, 0.0f, 0.0f}, tuning.joint_speed_limit + 1, 3, reasons, false));
+    detector.Reset();
+    reasons.clear();
+    REQUIRE(detector.Check({0.0f, 0.0f, std::numeric_limits<float>::quiet_NaN()}, {0.0f, 0.0f, 0.0f}, 0.0f, -1, reasons, false));
 
     std::cout << "HB_FALL_DETECTOR_OK"
               << " tilt_deg=" << tuning.fall_tilt_deg
