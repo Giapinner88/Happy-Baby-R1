@@ -4,7 +4,7 @@ Nhánh này chỉ nhận **kết quả** (ONNX/NPZ, cấu hình, motion) từ c�
 
 | Nguồn | Đưa vào đâu | Trạng thái |
 | --- | --- | --- |
-| `loco` (đi bộ) | `controller/policies/locomotion/<tên>/` (bundle) + `controller/config/locomotion.yaml` | `u1_seed42` (U1) là `teleop_policy`; chỉ có bằng chứng mô phỏng Isaac, chưa chạy robot (xem README trong bundle) |
+| `loco` (đi bộ) | `controller/policies/locomotion/<tên>/` (bundle) + `controller/config/locomotion.yaml` | `u2a_seed42` (U2a, HB pose) là `teleop_policy` từ 2026-10-16, thay `u1_seed42` (U1, còn trong repo để rollback); chưa có đánh giá nào cho run này (E1/E2/E3/push lỗi hoặc chưa xong), chưa chạy robot (xem README trong bundle) |
 | dance / mimic (GMR) | `controller/policies/dance/<tên>/` + `controller/config/dance.yaml` | Đang dùng; xem §4 |
 | `teleop` | `teleop/` | Dùng đường chạy trên robot (H4). Mã của nhánh teleop chưa hỗ trợ H4 nên chưa đưa vào |
 | `vla` (dataset/LeRobot) | — | Chưa tích hợp |
