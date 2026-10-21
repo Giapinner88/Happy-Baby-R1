@@ -38,7 +38,7 @@ public:
     bool Check(const Eigen::Vector3f& projected_gravity,
                const Eigen::Vector3f& gyro,
                float max_joint_speed, int worst_joint,
-               std::vector<std::string>& reasons) {
+               std::vector<std::string>& reasons, bool tilt_guard_enabled = true) {
         // Fail-closed TRƯỚC cả cờ enabled_: đây là kiểm tra toàn vẹn dữ liệu, không
         // phải một luật phát hiện ngã. Mọi so sánh bên dưới đều trả false khi gặp
         // NaN (NaN > x là false), nên dữ liệu hỏng sẽ TẮT ÂM THẦM bộ phát hiện ngã
@@ -54,8 +54,8 @@ public:
 
         float gz = projected_gravity.z();
 
-        tilt_count_ = (gz > tilt_thresh_) ? tilt_count_ + 1 : 0;
-        bool flip_now = (gz > flip_tilt_thresh_) && (gyro.norm() > flip_gyro_thresh_);
+        tilt_count_ = (tilt_guard_enabled && gz > tilt_thresh_) ? tilt_count_ + 1 : 0;
+        bool flip_now = tilt_guard_enabled && (gz > flip_tilt_thresh_) && (gyro.norm() > flip_gyro_thresh_);
         flip_count_ = flip_now ? flip_count_ + 1 : 0;
         jspeed_count_ = (jspeed_enabled_ && max_joint_speed > jspeed_thresh_)
                             ? jspeed_count_ + 1 : 0;

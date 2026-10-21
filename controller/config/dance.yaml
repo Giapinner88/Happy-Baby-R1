@@ -1,35 +1,55 @@
-dance_2: xexe_trimmed_goc_8192env_friction08to15_20k_20261013
+# Automatic guard for every dance; no per-policy tilt on/off.
+# Locomotion/entry: upright tilt. MIMIC (warmup/clip/cooldown): torso vs reference.
+# Quiet upright tail/cooldown also gets fast upright protection automatically (fall_*).
+# A sustained deviation returns to IDLE/damping (L2+B); resume by a new safe command.
+state_motion_guard: true
+dance_tracking_error_deg: 45.0
+dance_tracking_debounce_s: 0.10
+motion_safety_state_timeout_s: 0.10
+
+# dance_home_exit_N: skip redundant cooldown only after a quiet terminal HOME hold.
+# Default off; re-test when changing the ONNX/NPZ package.
+dance_1: xexe_goc_cut_20261021
+dance_home_exit_1: off
+dance_speed_1: 1.0
+dance_volume_1: 0.7
+dance_trim_deg_1: 0.0
+
+dance_2: doremon_meta_4096env_end75_home_20261021
+dance_home_exit_2: on
 dance_speed_2: 1.0
-dance_volume_2: 1.0
+dance_volume_2: 0.7
 dance_trim_deg_2: 0.0
-dance_3: doremon_meta_new_pipeline_20260924_20k
+
+dance_3: doremon_goc_4096env_end75_home_20261021
+dance_home_exit_3: on
 dance_speed_3: 1.0
-dance_volume_3: 1.0
+dance_volume_3: 0.7
 dance_trim_deg_3: 0.0
-dance_4: r1nhayngan_3_meta_4096env_17k_20261007
+
+dance_4: pokemonplus_goc_no_spin_no_lean_20261021
+dance_home_exit_4: on
 dance_speed_4: 1.0
-dance_volume_4: 1.0
+dance_volume_4: 0.7
 dance_trim_deg_4: 0.0
 
-dance_5: gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
+dance_5: pokemonplus_meta_no_spin_no_lean_20261021
+dance_home_exit_5: off
 dance_speed_5: 1.0
-dance_volume_5: 1.0
+dance_volume_5: 0.7
 dance_trim_deg_5: 0.0
 
-dance_6: doremon_hbnpz_meta_friction08to14_20k_8192_20261016
-dance_speed_6: 1.0
-dance_volume_6: 1.0
+dance_6: 
+dance_home_exit_6: off
+dance_speed_6: 0.7
+dance_volume_6: 0.7
 dance_trim_deg_6: 0.0
 
-dance_7: gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+dance_7: roll_xexe_contact_fixed_goc_4096env_friction08to15_25k_20261021
+dance_home_exit_7: on
 dance_speed_7: 1.0
-dance_volume_7: 1.0
+dance_volume_7: 0.7
 dance_trim_deg_7: 0.0
-
-dance_8: doremon_ab_w21_final11_meta_friction08to12_20k_8192_20261013
-dance_speed_8: 1.0
-dance_volume_8: 1.0
-dance_trim_deg_8: 0.0
 
 
 # start_frame=-1: tự tìm frame mở đầu mượt. Handover diễn ra khi robot đủ tĩnh hoặc hết max_s.
@@ -45,6 +65,7 @@ mimic_entry_gyro_max: 0.5
 mimic_entry_dq_max: 0.6
 mimic_warmup_s: 1.5
 mimic_cooldown_s: 1.8
+mimic_home_exit_blend_s: 0.25
 mimic_handover_tilt: 0.15
 mimic_handover_gyro: 0.5
 mimic_handover_min_s: 0.3

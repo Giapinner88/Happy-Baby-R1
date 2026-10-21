@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <iostream>
@@ -105,6 +106,8 @@ public:
     const std::array<float, spec::kNumJoints>& Step(const ControlContext& ctx) {
         std::vector<float> obs(ObsSize(), 0.0f);
         BuildObservation(ctx, obs);
+        if (!std::all_of(obs.begin(), obs.end(), [](float x) { return std::isfinite(x); }))
+            throw std::runtime_error("Non-finite policy observation: " + Name());
         std::vector<float> action = policy_.Infer(obs);
         const int n = ActionSize();
 

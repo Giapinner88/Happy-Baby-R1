@@ -1,0 +1,89 @@
+name: chacha_v10_home_v1_goc_4096env_20261020
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: '# ChaCha V10 HOME V1 — completed training export
+
+
+  This is the ChaCha HOME V1 fine-tune from original ChaCha V10 model_19999.pt,
+
+  not the original no-HOME policy. Source: NUS 0008_ChaCha001, V10 arm-smoothed
+
+  whole-body retargeting, with the same HOME bridge method as roll HOME V1.
+
+
+  Motion: v10_home_entry_exit_20261020_v1/chacha_v10_home_entry_exit_50hz.npz.
+
+  2910 frames at 50 Hz, fps float32. HOME bridges are 1.5 seconds at each end,
+
+  with 0.3-second holds. Central source poses/timing are preserved; source
+
+  boundaries are eased. Quintic joint transitions use ankle-midpoint XY
+
+  anchoring and collision grounding. V1 does not lock individual stance feet.
+
+
+  Training: Unitree-R1-Tracking-No-State-Estimation, GOC, 4096 environments,
+
+  GPU 1, 10k additional iterations toward approximately 30k total.
+
+  Training completed with final checkpoint model_29998.pt (approximately 30k
+
+  total). This is the completed run export, NOT a hardware-validated policy.
+
+  Metadata and gains come verbatim from this same run''s framework ONNX.
+
+  No MP3, as requested. Existing user selection dance_6, speed/volume/trim and
+
+  dance.yaml are preserved.
+
+
+  Stable package name: chacha_v10_home_v1_goc_4096env_20261020.
+
+  This folder replaces the earlier model_25000.pt snapshot with final
+
+  checkpoint and matching same-run exports; the training motion is unchanged.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 29999
+  iterations_target: 29999
+  checkpoint: model_29998.pt
+  notes: Completed scheduled HOME V1 fine-tune. Final saved iteration index 29998;
+    endpoint 29999 exclusive, approximately 30k total. No head-trajectory or V4 reference
+    change. Hardware acceptance pending.
+motion:
+  file: chacha_v10_home_entry_exit_50hz.npz
+  frames: 2910
+  fps: 50.0
+audio: null
+audio_omission: omitted at user request
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: configured
+  slot: dance_6
+  speed: 1.0
+  volume: 1.0
+  trim_deg: 0.0
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: chacha_v10_home_entry_exit_50hz.npz
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_29998.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 54a155fed886de2d3b538076d2ad3a9c6ce7c71efcd9ddc6cd6aef587aaaeaf2
+  agent.yaml: 81ca6dd1f30fe5f4e098ba8fd0a340e96f42bf8a5f39be47dddbee949bf7325e
+  chacha_v10_home_entry_exit_50hz.npz: a4cb218797eccaf0d702027b3c2b3382492211af1b0c3e697ebe0d47e4a31ae7
+  env.yaml: 2e7240e40a39b20b4a51f2c4a5e538e827220df7c0a0b9f89c12034d5ae1adbd
+  model_29998.pt: 6af4ce38c49626392400e1203f3b8099e302ac78fd074e8107b1e551cc238f72
+  onnx_metadata.yaml: b520db22608611949fa4b706fbf08c6a3827a4660d92ecb5ddc500c5cf37de3f
+  policy.onnx: 0626598d817d792d3427c3fdf58c5c3f4685e3567b3c615fbf87079d9ccec55c
+  source.txt: bc1a59436f03bba488da2ef6510f6daebe69ae0f2f72c169acf4814733e4a653

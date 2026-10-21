@@ -5,7 +5,7 @@ struct InputCommand {
     bool want_stand_lock = false;
     bool want_locomotion = false;         // R2+A: chọn walk_policy
     bool want_teleop_locomotion = false;  // R2+X: chọn teleop_policy
-    int  want_mimic_key = 0; // 0 = none; dance keys 2-8: R1+Up/Right/Down/Left/Y/B/A
+    int  want_mimic_key = 0; // 0 = none; dance slots 1-7: R1+Up/Right/Down/Left/Y/B/A
     bool want_reset = false;
     bool want_safe_shutdown = false;  // giữ L2+Trái (hoặc phím 9): ngồi ghế
     bool want_get_up_down = false;  // L2+X: Đứng lên hoặc nằm xuống tùy trạng thái

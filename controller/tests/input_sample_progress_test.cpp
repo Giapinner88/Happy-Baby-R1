@@ -42,5 +42,17 @@ int main() {
     Require(!pad.packet_valid());
     // Long scheduler pause even without intervening Update calls adds no hold time.
     Require(progress.Update(true,At(4000))==0.0);
+    // Physical buttons keep their order, while dance IDs become 1..7.
+    const std::array<uint16_t, 7> dance_buttons = {0x1001, 0x2001, 0x4001, 0x8001, 0x0801, 0x0201, 0x0101};
+    for (int i = 0; i < 7; ++i) {
+        GamepadR3 dance_pad;
+        dance_pad.ConfigureAt(tuning, At(0));
+        dance_pad.UpdateAt(Packet(0), At(0), true, true, 0.0f);
+        dance_pad.UpdateAt(Packet(0), At(10), true, true, 0.01f);
+        dance_pad.UpdateAt(Packet(dance_buttons[i]), At(20), true, true, 0.01f);
+        const auto command = dance_pad.GetCommandAt(At(20));
+        Require(command.want_mimic_key == i + 1);
+        Require(!command.want_locomotion);
+    }
     std::cout << "INPUT_SAMPLE_PROGRESS_OK\n";
 }

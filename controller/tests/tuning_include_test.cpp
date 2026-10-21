@@ -64,6 +64,10 @@ int main() {
     assert(tuning.GestureVoiceSlot("unknown") == 0);
     assert(tuning.state_timeout_ms == 1000.0f);
     assert(tuning.remote_state_timeout_ms == 1000.0f);
+    assert(tuning.state_motion_guard);
+    assert(tuning.dance_tracking_error_deg == 45.0f);
+    assert(tuning.dance_tracking_debounce_s == 0.10f);
+    assert(tuning.motion_safety_state_timeout_s == 0.10f);
 
     const auto invalid_path = std::filesystem::temp_directory_path() /
                               "hb_high_level_invalid_tuning.yaml";
@@ -87,6 +91,30 @@ int main() {
     }
     Tuning invalid_hold;
     assert(!invalid_hold.LoadFromFile(invalid_path.string()));
+
+    {
+        std::ofstream dance_config(invalid_path);
+        dance_config << "dance_1: first\ndance_7: last\ndance_tilt_guard_1: off\ndance_tilt_guard_7: on\ndance_home_exit_1: on\ndance_home_exit_7: off\nmimic_home_exit_blend_s: 0.25\n";
+    }
+    Tuning per_dance;
+    assert(per_dance.LoadFromFile(invalid_path.string()));
+    assert(per_dance.dance_folder[0] == "first");
+    assert(per_dance.dance_folder[6] == "last");
+    assert(!per_dance.DanceTiltGuard(1));
+    assert(per_dance.DanceTiltGuard(2));
+    assert(per_dance.DanceTiltGuard(7));
+    assert(per_dance.DanceTiltGuard(0));
+    assert(per_dance.DanceHomeExit(1));
+    assert(!per_dance.DanceHomeExit(2));
+    assert(!per_dance.DanceHomeExit(7));
+    assert(!per_dance.DanceHomeExit(0));
+    assert(!per_dance.DanceHomeExit(8));
+    assert(per_dance.mimic_home_exit_blend_s == 0.25f);
+    for (const char* entry : {"dance_home_exit_1: offf\n", "dance_home_exit_8: on\n", "mimic_home_exit_blend_s: nan\n", "mimic_home_exit_blend_s: 0\n", "dance_tilt_guard_1: offf\n", "dance_tilt_guard_8: off\n", "dance_8: old_schema\n"}) {
+        { std::ofstream file(invalid_path); file << entry; }
+        Tuning bad_dance;
+        assert(!bad_dance.LoadFromFile(invalid_path.string()));
+    }
 
     // ─── Parser fail-closed ───────────────────────────────────────────────
     // Mọi trường hợp dưới đây TRƯỚC ĐÂY chỉ in cảnh báo rồi chạy tiếp, nên

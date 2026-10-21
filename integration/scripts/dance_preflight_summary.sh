@@ -6,7 +6,7 @@ hb_summarize_dance_preflight() {
     HB_DANCE_FAIL=0
     HB_DANCE_TOTAL=0
 
-    for slot in 2 3 4 5 6 7 8; do
+    for slot in 1 2 3 4 5 6 7; do
         folder="$(sed -n "s/^dance_${slot}:[[:space:]]*\\([^[:space:]#]*\\).*/\\1/p" "$config" | head -n 1)"
         [[ -n "$folder" && "$folder" != "\"\"" && "$folder" != "''" ]] || continue
         ((HB_DANCE_TOTAL += 1))

@@ -6,6 +6,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include "../safety/StateMotionGuard.hpp"
 
 // Struct chứa các tham số có thể tune (load từ tuning.yaml)
 struct Tuning {
@@ -122,6 +123,25 @@ struct Tuning {
     float policy_rate_limit = 40.0f;
 
     // Bộ phát hiện ngã
+    // Legacy route remains available for old configurations; the active config
+    // selects automatic upright/reference tracking for the whole session.
+    bool state_motion_guard = false;
+    float dance_tracking_error_deg = 45.0f;
+    float dance_tracking_debounce_s = 0.10f;
+    float motion_safety_state_timeout_s = 0.10f;
+    motion_safety::Config MotionSafetyConfig() const {
+        motion_safety::Config c;
+        c.dance_deg = dance_tracking_error_deg;
+        c.dance_dwell_s = dance_tracking_debounce_s;
+        c.upright_deg = fall_tilt_deg;
+        c.upright_dwell_s = fall_debounce_ms * .001f;
+        c.flip_deg = fall_flip_tilt_deg;
+        c.flip_gyro = fall_flip_gyro;
+        c.joint_speed = joint_speed_limit;
+        c.joint_dwell_s = joint_speed_debounce_ms * .001f;
+        c.timeout_s = motion_safety_state_timeout_s;
+        return c;
+    }
     bool  fall_enabled        = true;
     float fall_tilt_deg       = 50.0f;
     float fall_flip_tilt_deg  = 30.0f;
@@ -414,11 +434,25 @@ struct Tuning {
     bool  dance_trim_configured[kMaxDances] = {};
 
     float DanceTrimDeg(int dance_key) const {
-        const int idx = dance_key - 2;
+        const int idx = dance_key - 1;
         return (idx >= 0 && idx < kMaxDances && dance_trim_configured[idx])
                    ? dance_trim_deg[idx]
                    : imu_pitch_trim_deg;
     }
+
+    bool dance_tilt_guard[kMaxDances] = {true, true, true, true, true, true, true};
+    bool DanceTiltGuard(int key) const {
+        const int idx = key - 1;
+        return idx < 0 || idx >= kMaxDances || dance_tilt_guard[idx];
+    }
+
+    // Opt in only for qualified clips ending with a quiet HOME hold.
+    bool dance_home_exit[kMaxDances] = {};
+    bool DanceHomeExit(int key) const {
+        const int idx = key - 1;
+        return idx >= 0 && idx < kMaxDances && dance_home_exit[idx];
+    }
+    float mimic_home_exit_blend_s = 0.25f;
 
     int   dance_start_frame = -1;
     int   dance_start_search_frames = 200;

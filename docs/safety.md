@@ -61,3 +61,51 @@ Làm tròn vào trong từ 66 774 frame encoder đã ghi; **chưa** phải giớ
 ## 7. Chưa được nghiệm thu trên phần cứng
 
 Kiểm thử local (CTest, test hợp đồng) chỉ bao phủ hợp đồng phần mềm, không phải thăng bằng vật lý hay firmware động cơ. Còn mở: thời gian thực trên PC2, bàn giao khi robot được đỡ, tầm/tải khớp đầu, nghiệm thu E-stop phần cứng, hành vi mất tay cầm trong Mimic/đứng dậy/nằm xuống, đổi nóng giữa hai policy đi bộ khác nhau (chỉ có test hợp đồng với plant lý tưởng).
+
+## 8. Guard theo trạng thái và reference
+
+`controller/config/dance.yaml` bật chung `state_motion_guard: true`. Dance so
+torso thực với reference đang phát (warmup, clip, cooldown); mặc định lệch trên
+45° liên tục 100 ms thì ngắt. Locomotion/RETURNING/stand-up/stand-lock kiểm tra
+nghiêng so với đứng thẳng theo `fall_*`. Không cần bật/tắt nghiêng theo từng bài.
+
+Đoạn cuối đã về đứng được nhận diện tự động từ NPZ: phần reference liên tục
+đến hết bài có torso nghiêng ≤10°, tốc độ chân/waist ≤0.6 rad/s, tốc độ đổi
+hướng nghiêng ≤0.5 rad/s và dài ít nhất 0.3 s. Chỉ đoạn cuối này được thêm
+kiểm tra upright theo `fall_*` (mặc định nghiêng >50°/30 ms, hoặc >30° kèm
+gyro >4 rad/s/30 ms), bên cạnh kiểm tra lệch reference. Giữ kiểm tra nhanh
+qua cooldown nếu bắt đầu từ đoạn đó; cooldown từ tư thế khác chỉ thêm kiểm
+tra này sau khi reference hoàn tất về đứng và đạt điều kiện tĩnh.
+Log mới: `dance_upright_tilt`, `dance_upright_fast_flip`. Không áp luật upright
+cho đoạn roll/flip chủ động hoặc khoảng đứng nghỉ trước động tác lộn tiếp theo;
+không cần bật/tắt theo từng policy. Các ca đẩy đã thử dừng trước tiếp xúc sàn
+ngoài bàn chân; đó là bằng chứng trong sim, không bảo đảm mọi kiểu ngã hoặc
+hành vi firmware trên robot.
+
+Khi lỗi: log `[MotionSafety] STOP reason=...`, về **IDLE/damping đúng như L2+B**,
+vẫn armed; dùng nguyên gói damping hiện tại (`mode=0`, `q=dq=kp=kd=tau=0`), không
+thêm Kd/gain mới. Hủy bài và các yêu cầu đang chờ, không tự tiếp tục bài vừa ngắt.
+Dữ liệu thô NaN/Inf/quaternion hỏng, tốc độ khớp quá mức và LowState không tiến
+triển quá 100 ms được kiểm độc lập với góc nghiêng. Lệnh mục tiêu/observation
+không hữu hạn hoặc lỗi inference cũng chốt ngắt.
+
+**Không cần DISARM/restart để hoạt động lại.** Khi robot đã được đỡ/ổn định,
+nhả điều khiển rồi ra lệnh mới theo trình tự có sẵn: L2+Lên để chuẩn bị đứng;
+STAND LOCK → R2+A/R2+X để vào locomotion → chọn dance. Đang nằm thì lệnh đứng
+vẫn vào trình tự GET UP cũ nếu có clip hợp lệ, không ép thẳng về thế đứng.
+Từ IDLE không nhảy thẳng vào locomotion/dance.
+
+Trước khi nhận lại lệnh, phải có LowState hợp lệ và tick vật lý tiến triển;
+gyro/tốc độ khớp (kể cả đầu) phải qua ngưỡng tĩnh hiện có `mimic_entry_gyro_max`
+và `mimic_entry_dq_max`. Chỉ nhận lệnh mới sau khi đã nhả điều khiển; lệnh bị
+từ chối không xếp hàng chờ robot tự ổn định để chạy. Dựng thẳng, nối lại cảm
+biến hoặc nhả nút đơn thuần đều không tự khởi động policy. Guard vẫn hoạt động
+ở lần chạy tiếp theo. Nếu muốn DISARM/dừng service, giữ quy trình mục 3 như cũ;
+không còn đường DISARM đặc biệt từ guard-IDLE.
+
+Ngắt lệnh không bảo đảm hạ người an toàn. Guard chỉ bắt sai lệch vượt ngưỡng;
+robot vẫn có thể chạm sàn hoặc rơi khi bám đúng reference. Process điều khiển
+chết/treo hoàn toàn cần watchdog riêng ở bên nhận lệnh. Bằng chứng 19/19 ca
+fault-response trong MuJoCo và kiểm thử packet-sink runtime không phải nghiệm
+thu firmware hay robot thật. Tích hợp này không đổi policy, gains hoặc logic
+nội suy/thoát bài.

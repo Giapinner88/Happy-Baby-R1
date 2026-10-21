@@ -318,7 +318,7 @@ void Application::StartDanceAnnounce(const InputCommand& cmd) {
         mimic_entry_quiet_s_ = 0.0f;
         mimic_entry_wait_logged_ = false;
         input_.ZeroVelocity();
-        int vidx = cmd.want_mimic_key - 2;
+        int vidx = cmd.want_mimic_key - 1;
         announce_has_voice_ = (vidx >= 0 && vidx < Tuning::kMaxDances
                                && !tuning_.voice_mimic[vidx].empty()
                                && music_.ready());

@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "gates": {
+    "finite_motion_arrays": true,
+    "schema": true,
+    "joint_limits": true,
+    "quaternions_unit": true,
+    "fk_matches_training_model": true,
+    "joint_velocity_consistent": true,
+    "root_angular_velocity_consistent": true,
+    "no_steps_over_15deg": true,
+    "no_floor_overlap_over_1mm": true,
+    "no_subframe_floor_overlap_over_5mm": true,
+    "no_self_overlap_over_1mm": true,
+    "no_subframe_self_overlap_over_1mm": true
+  },
+  "frames": 105,
+  "fps": 50.0,
+  "max_joint_step_deg": 3.603771448135376,
+  "max_joint_speed_rad_s": 3.08984375,
+  "fk_max_error_m": 8.534028506090863e-08,
+  "joint_velocity_error_rad_s": 2.8908252716064453e-06,
+  "root_angular_velocity_error_rad_s": 2.602186799371964e-08,
+  "collision_z_range_m": [
+    5.979869118501527e-05,
+    0.00451221082320814
+  ],
+  "subframe_min_collision_z_m": 5.979869118501527e-05,
+  "subframe_max_self_collision_depth_m": 0.0,
+  "max_self_collision_depth_m": 0.0,
+  "sha256": "90c06a77fc47aa8a1165ec3b0abf77eb5b6ee4dc446c6bdc3dd5eb7379ada084"
+}

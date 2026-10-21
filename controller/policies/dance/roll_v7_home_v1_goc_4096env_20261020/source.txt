@@ -1,0 +1,14 @@
+folder       : roll_v7_home_v1_goc_4096env_20261020
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 29999/29999
+checkpoint   : model_29998.pt
+motion       : roll_v7_home_entry_exit_50hz.npz (308 frames @ 50 Hz)
+audio        : omitted at user request
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Completed scheduled HOME V1 fine-tune. Final saved iteration index 29998; endpoint 29999 exclusive, approximately 30k total. No head-trajectory or V4 reference change. Hardware acceptance pending.

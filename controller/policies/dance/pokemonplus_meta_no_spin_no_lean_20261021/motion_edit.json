@@ -1,0 +1,59 @@
+{
+  "spin_edit": {
+    "source": "/home/ubuntu22/train_mujoco/RETARGETING/GMR/motion_data/xexe_pipeline_5videos_20261017/npz/pokemon_plus.npz",
+    "source_sha256": "44dde9aa5ac02ec1aafc7d5d73621e31d3aea42c67ff8f25083769e66aa44516",
+    "target_seconds": [
+      42.5,
+      52.0
+    ],
+    "donor_seconds": [
+      8.2,
+      17.7
+    ],
+    "blend_seconds": 1,
+    "frames": 3614,
+    "duration_s": 72.28,
+    "max_splice_floor_lift_m": 0.010571030723851554,
+    "top_donors": [
+      [
+        0.41711312342462903,
+        8.2
+      ],
+      [
+        0.422052907135319,
+        8.3
+      ],
+      [
+        0.42325063434245,
+        8.1
+      ],
+      [
+        0.430857438718795,
+        8.4
+      ],
+      [
+        0.4372938182078886,
+        8.0
+      ]
+    ],
+    "output_sha256": "5a8d1600d8282183afe27bed433ebccbf3a4cc9dd3b50b670e7ddc035c3447e4",
+    "note": "Candidate NPZ for review; both existing policies unchanged. New imitation reference requires retraining."
+  },
+  "lean_cut": {
+    "source": "/home/ubuntu22/train_mujoco/artifacts/pokemon_remove_spin_20261021/pokemon_plus_no_spin_candidate.npz",
+    "source_sha256": "5a8d1600d8282183afe27bed433ebccbf3a4cc9dd3b50b670e7ddc035c3447e4",
+    "removed_source_span_s": [
+      50.3,
+      55.1
+    ],
+    "replacement_transition_s": 0.8,
+    "frames_before": 3614,
+    "frames_after": 3414,
+    "duration_before_s": 72.28,
+    "duration_after_s": 68.28,
+    "max_transition_floor_lift_m": 0.0010647324467966688,
+    "time_mapping": "After new 51.1s, source time = new time + 4.0s",
+    "audio_note": "Audio not edited in this candidate. To preserve sync, matching audio needs the same time edit.",
+    "existing_hb_packages_unchanged": true
+  }
+}

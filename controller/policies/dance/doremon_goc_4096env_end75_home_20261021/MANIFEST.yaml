@@ -1,0 +1,79 @@
+name: doremon_goc_4096env_end75_home_20261021
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: 'Doremon — kết thúc sớm và về HOME
+
+
+  Giữ nguyên policy và checkpoint model_19999.pt của run 4096 envs, friction 0.8–1.5,
+  20k iterations ngày 20/10/2026. Không train lại. Reference runtime giữ 3740 frame
+  đầu (74,8 giây), bỏ toàn bộ phần nhảy sau đó, nối về HOME 1,5 giây và giữ yên 0,5
+  giây. NPZ mới: 3840 frame, 50 Hz, 76,8 giây.
+
+
+  Policy, checkpoint, metadata và MP3 giữ nguyên từ đúng run/gói gốc. env.yaml ghi
+  cấu hình train gốc; MANIFEST ghi riêng reference thay đổi sau train. Các góc khớp
+  trước điểm cắt giữ nguyên. Đoạn nối và kết thúc đạt QA archive/geometry; chưa đánh
+  giá tracking policy với reference mới. Audio được giữ nguyên, không cắt.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: 'Runtime reference edited after training: stop source at 74.8s, append 1.5s
+    HOME bridge + 0.5s hold; 76.8s total. Actor/checkpoint/audio unchanged; no retraining.
+    Original training motion SHA256 d9d5bfa7b601f6243f6545ce64b658a3538d780998b3c0811d5ab94c708a7e78.
+    Inactive.'
+motion:
+  file: doremon.npz
+  frames: 3840
+  fps: 50.0
+audio: doremon.mp3
+audio_omission: null
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: doremon.npz
+  onnx_metadata: onnx_metadata.yaml
+  audio: doremon.mp3
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 3316062da438b981fc293bae41a9deaae972f59f8d076c5f6955cf24e29310e1
+  agent.yaml: 397c1d35bb4b8f07acaf00eaba2974f6352219ca4af6c5f59e5fbb816dfd28fd
+  doremon.mp3: 39b05352e3b3bd855825e1e81c59f8848d2d5d8c7530f399c6764326bc312e63
+  doremon.npz: 0916a23efb143f66f97334d4a9a4cb75343f0bb0f1ec8f2fcd3accff963f0b07
+  ending_validation.json: e7155d96cc109ce674aee771a85f938ee1a420b54ece54e54fbedaee6b20c1de
+  env.yaml: 898844bd06d0a0db65efb0acdbe858fb3656d482f3101450033870044b263e15
+  model_19999.pt: 4a212165b7fe10fbdca01c76c3863f0ac4219712893917ba033aba2559249dfc
+  motion_edit.json: e480d053d014c950571354d12197772c2f4ea241ff0be2350e5a774c471f643e
+  onnx_metadata.yaml: 8668924d4d6d58ef160bc2a15f79cbb2cf2fe62ecc3f496e3231335a9fc52d83
+  policy.onnx: 952e985e58ee68f41c4f96267277c56469dd1a7537fc6d332fbfb7a6332f3942
+  preservation_check.json: 288c137e3bd81f3948c6242159579d662207bfecf734db94be97dfa98379972e
+  source.txt: 248c21ff5d7a1fd762d76bb59d160f590f6bd72474e0aec49e17be336e2704b6
+runtime_reference_override:
+  edited_after_training: true
+  policy_retrained: false
+  training_motion_sha256: d9d5bfa7b601f6243f6545ce64b658a3538d780998b3c0811d5ab94c708a7e78
+  runtime_motion_sha256: 0916a23efb143f66f97334d4a9a4cb75343f0bb0f1ec8f2fcd3accff963f0b07
+  cut_source_from_s: 74.8
+  home_bridge_s: 1.5
+  final_hold_s: 0.5
+  audio_unchanged: true
+  edit_record: motion_edit.json
+  validation_scope: Ending and adjacent frames only; ending_validation.json
+  tracking_evaluation: not_run

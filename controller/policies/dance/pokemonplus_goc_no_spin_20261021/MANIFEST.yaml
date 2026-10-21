@@ -1,0 +1,70 @@
+name: pokemonplus_goc_no_spin_20261021
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: 'Pokémon Plus — bỏ nhảy xoay
+
+
+  Giữ nguyên policy/checkpoint đã train ngày 18/10/2026. Reference chạy trong HB là
+  NPZ đã sửa ngày 21/10/2026: thay vùng 42,5–52 giây bằng đoạn 8,2–17,7 giây trong
+  cùng bài, nối 1 giây ở mỗi đầu; giữ 3614 frame, 50 Hz, 72,28 giây và audio cũ.
+
+
+  Đây là thay đổi reference khi chạy, không phải policy được train lại trên NPZ mới.
+  File env.yaml giữ nguyên cấu hình train gốc; MANIFEST ghi riêng provenance của reference
+  đã sửa.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Runtime reference edited to remove spin; actor unchanged. Training used original
+    pokemon_plus.npz SHA256 44dde9aa5ac02ec1aafc7d5d73621e31d3aea42c67ff8f25083769e66aa44516;
+    no retraining. Inactive.
+motion:
+  file: pokemon_plus.npz
+  frames: 3614
+  fps: 50.0
+audio: pokemon.mp3
+audio_omission: null
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: pokemon_plus.npz
+  onnx_metadata: onnx_metadata.yaml
+  audio: pokemon.mp3
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: 2e2e4a30a9f04742a29c8e395b602716ab1d942464f9ba7cbdf9d1108e16a0ab
+  agent.yaml: 9afd5a9f2be0d24dac5b5a15e2fff9fa3c95b2221ee321a96a0a2e71a0f504a0
+  env.yaml: 898a23948fc0815bad3f145e369055d11b9a1ece516ef42390fc2f555f43757b
+  model_19999.pt: 0fc1faadeece5f6c93fd1b75a75c1f6aaf59b7c7668ad95070e0c02e0455e9a8
+  motion_edit.json: 65332d4ab7e6f20aa28351ed1d794731e696a038fb6ed3eb428bcc965cb43e81
+  onnx_metadata.yaml: 1c58ca5b56d1129812746e7a748009d4da098b1b1269c0f21e8d25dac6ba2b5c
+  pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
+  pokemon_plus.npz: 5a8d1600d8282183afe27bed433ebccbf3a4cc9dd3b50b670e7ddc035c3447e4
+  policy.onnx: 6f1d1beb67547e4019a0260e09203827b8ae7d75551ac4c60cc0e1b733bbf071
+  source.txt: 3c9418fde3133a801462cea834e8adf8ffa18123cf6433f3d0f57c62e6a7d1ca
+runtime_reference_override:
+  edited_after_training: true
+  policy_retrained: false
+  training_motion_sha256: 44dde9aa5ac02ec1aafc7d5d73621e31d3aea42c67ff8f25083769e66aa44516
+  runtime_motion_sha256: 5a8d1600d8282183afe27bed433ebccbf3a4cc9dd3b50b670e7ddc035c3447e4
+  edit_record: motion_edit.json
+  validation_scope: Edited span 42.5–52.0 seconds passed archive/geometry QA; existing
+    actor tracking has not been evaluated.
