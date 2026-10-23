@@ -1,0 +1,14 @@
+folder       : roll_stance_pm3cm_goc_8192env_friction08to15_20k_20261022
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021
+run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021
+metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021.onnx
+task         : Unitree-R1-Tracking-Roll-Random-Stance
+iterations   : 20000/20000
+checkpoint   : model_19999.pt
+motion       : roll_xexe_contact_fixed_50hz.npz (308 frames @ 50 Hz)
+audio        : omitted at user request
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : packaged; hardware_acceptance_pending
+notes        : Completed fresh 20k. Reset frame zero with validated stance width +/-3cm; actor observation remains 129-D. Correct same-run NPZ/metadata. No audio as in earlier roll packages. Inactive.

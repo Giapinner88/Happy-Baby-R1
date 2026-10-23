@@ -1,0 +1,75 @@
+name: roll_stance_pm3cm_goc_8192env_friction08to15_20k_20261022
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+description: 'Roll — random stance ±3 cm, final 20k
+
+
+  Train mới từ đầu với 8192 envs, friction 0.8–1.5, seed 42, 20.000 iterations. Task
+  Unitree-R1-Tracking-Roll-Random-Stance: mỗi reset bắt đầu frame 0; chọn ngẫu nhiên
+  trong 121 tư thế IK hợp lệ. Bề rộng giữa tâm hai chân 13,43–19,43 cm, quanh gốc
+  16,43 cm (±3 cm tổng bề rộng).
+
+
+  Checkpoint cuối model_19999.pt; ONNX actor 129→24 và metadata lấy đúng cùng run.
+  Runtime reference giữ đúng NPZ roll_xexe_contact_fixed_50hz.npz đã train, 308 frame/50
+  Hz/6,16 giây. Ngân hàng s0 chỉ dùng khi train, lưu trong training_reset/ để truy
+  xuất provenance; không cần để chạy HB policy. Không audio như các gói roll trước.'
+source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021
+metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-Roll-Random-Stance
+  iterations_completed: 20000
+  iterations_target: 20000
+  checkpoint: model_19999.pt
+  notes: Completed fresh 20k. Reset frame zero with validated stance width +/-3cm;
+    actor observation remains 129-D. Correct same-run NPZ/metadata. No audio as in
+    earlier roll packages. Inactive.
+motion:
+  file: roll_xexe_contact_fixed_50hz.npz
+  frames: 308
+  fps: 50.0
+audio: null
+audio_omission: omitted at user request
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  speed: null
+  volume: null
+  trim_deg: null
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+  hardware_acceptance: pending
+artifacts:
+  policy: policy.onnx
+  motion: roll_xexe_contact_fixed_50hz.npz
+  onnx_metadata: onnx_metadata.yaml
+  checkpoint: model_19999.pt
+  agent: agent.yaml
+  env: env.yaml
+sha256:
+  DESCRIPTION.md: eddae1f4673e5d21d3ae132c8156ef4562f4f4200236cfe964d7abfe6e00774f
+  agent.yaml: 7b3efa65bf46864abac32cb1a818f04354fba54cbf3d3fa997144ca0bedf56b6
+  env.yaml: 49743c0bf92759d43e1dfa74e45e07e895445782973d03b18f243ecb6a75af8e
+  model_19999.pt: e78b4fc63085d5450c267888d7f954f1eaceaf1cbc3d89a131b41ba26cd72af2
+  onnx_metadata.yaml: 6a765f6ab6e14e1a6a6e02ff06c73aa16b6d5bfd93bf8767083890523473700d
+  policy.onnx: 2fc7599a87073f7a00caf64a872a97bda7095d4a3c5201ce9110a576d7acbe87
+  roll_xexe_contact_fixed_50hz.npz: dac3380516214f8962de5bdfec60fdaf9a8a9ad72c6c2312450a76d0e6567b21
+  source.txt: 4fcb02d5dff3ebf28faebd8837b7baf2ccd385471d6481a57e62c9ef085b3a6f
+  training_reset/bank_validation.json: 6980145af09d31f12ad30f513b94e1387717f83ad69f8095508e31887a0732a2
+  training_reset/launch.json: 27fc8db2524e5f73e8dc2944a98303fe415f67b679c8a21116bcab36f6ecd88e
+  training_reset/preflight.json: 93aa944df0971dbf93990212558499684f7dff7c5ee232d36d338e57f27e2d27
+  training_reset/roll_stance_cfg.py: a9589f786ec9dde51785682f9f9ce66b3be41e872cbc23ec3da61a1196566bf5
+  training_reset/s0_stance_width_pm3cm.npz: 04a5ed0db335e2e4ed27618f2f74b3df520da9de234ada4589e1f249871983f3
+training_reset:
+  frame: 0
+  sampling_mode: start
+  total_stance_width_delta_m:
+  - -0.03
+  - 0.03
+  bank: training_reset/s0_stance_width_pm3cm.npz
+  validation: training_reset/bank_validation.json
+  required_by_hb_runtime: false

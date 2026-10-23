@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "reset_envs": 32,
+  "reset_width_range_m": [
+    0.13478071348643925,
+    0.19378071299893745
+  ],
+  "max_runtime_width_error_m": 7.2349797819448725e-09,
+  "subset_reset_preserves_other_envs": true,
+  "steps_smoke": 5,
+  "actor_observation_dimension": [
+    129
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "samples": 121,
+  "base_width_m": 0.1642807127353903,
+  "width_range_m": [
+    0.1342807126057646,
+    0.1942807137668122
+  ],
+  "max_width_error_m": 1.473740712798488e-09,
+  "min_collision_z_m": 0.006000008900836953,
+  "max_self_penetration_m": 0,
+  "motion_file": "/home/ubuntu22/train_mujoco/RETARGETING/GMR/motion_data/nus_0012_jump_and_roll/xexe_contact_fixed_20261020/roll_xexe_contact_fixed_50hz.npz",
+  "robot_xml": "/home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/src/assets/robots/unitree_r1/xmls/r1.xml",
+  "bank": "/home/ubuntu22/train_mujoco/artifacts/roll_stance8192_20k_20261021/s0_stance_width_pm3cm.npz",
+  "sha256": "04a5ed0db335e2e4ed27618f2f74b3df520da9de234ada4589e1f249871983f3"
+}

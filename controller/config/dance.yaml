@@ -39,9 +39,9 @@ dance_speed_5: 1.0
 dance_volume_5: 0.7
 dance_trim_deg_5: 0.0
 
-dance_6: 
+dance_6: roll_stance_pm3cm_goc_8192env_friction08to15_20k_20261022
 dance_home_exit_6: off
-dance_speed_6: 0.7
+dance_speed_6: 1.0
 dance_volume_6: 0.7
 dance_trim_deg_6: 0.0
 
