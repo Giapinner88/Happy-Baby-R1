@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
-from pipecat.frames.frames import TTSStoppedFrame
+from pipecat.frames.frames import OutputAudioRawFrame, TTSStoppedFrame
 from pipecat.processors.frame_processor import FrameDirection
 
 HB_ROOT = Path(__file__).resolve().parents[2]
@@ -172,6 +172,31 @@ class UnitreeSpeakerBridgeTest(unittest.IsolatedAsyncioTestCase):
         gate.snapshot = GateSnapshot(coordinator_speaker=False)
         self.assertFalse(await speaker.play_mode_cue(False))
         speaker._write_audio.assert_awaited_once()
+
+    async def test_high_level_speaker_reservation_defers_and_resumes_tts(self):
+        gate = Mock()
+        gate.add_callback = Mock()
+        gate.snapshot = GateSnapshot(coordinator_speaker=False)
+        speaker = UnitreeSpeakerBridge(
+            bridge_path="/does/not/matter",
+            network_interface="eth10",
+            response_volume_percent=100,
+            response_gain=1.0,
+            gate=gate,
+        )
+        frame = OutputAudioRawFrame(audio=b"\x00" * 320, sample_rate=16000, num_channels=1)
+
+        await speaker._write_audio(frame)
+        self.assertEqual([frame], list(speaker._deferred_audio))
+
+        speaker._write_audio_locked = AsyncMock()
+        gate.snapshot = GateSnapshot(coordinator_speaker=True)
+        await speaker._on_gate_change(
+            GateSnapshot(coordinator_speaker=False), gate.snapshot
+        )
+
+        speaker._write_audio_locked.assert_awaited_once_with(frame)
+        self.assertFalse(speaker._deferred_audio)
 
 
 if __name__ == "__main__":

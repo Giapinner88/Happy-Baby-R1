@@ -92,10 +92,16 @@ Các timeout, số lần thử, đường dẫn probe/Python và giới hạn JP
 `camera_subprocess_ms` khỏi thời gian đến audio đầu tiên; chỉ triển khai camera
 worker thường trú nếu số đo trên robot cho thấy cold-start chiếm phần chính.
 
-Trong Dev locomotion, text chỉ bị buffer đối với lượt có dấu hiệu yêu cầu
-gesture. Câu hỏi thường và camera vẫn stream sang ElevenLabs ngay; function call
-gesture vẫn chờ `response.done` để không đọc lời xác nhận trước khi controller
-chấp nhận.
+Khi transcript có dấu hiệu hỏi về cảnh hiện tại, runtime bắt đầu chụp đón trước
+một ảnh và giữ tối đa `camera.prefetch_ttl_s`. Nếu `inspect_camera` đến trong
+khoảng này, tool dùng đúng ảnh đã bắt đầu chụp trong lượt nói thay vì chờ model
+chọn tool rồi mới mở camera. Ảnh chưa được tool dùng sẽ bị bỏ khi lượt trả lời
+kết thúc; không có camera loop chạy liên tục.
+
+Text chỉ bị buffer trong phản hồi chọn tool của lượt có dấu hiệu camera/gesture,
+để lời đệm như “để mình kiểm tra” không lọt ra loa trước function call. Ngay khi
+tool call được xác nhận, guard mở lại; câu trả lời sau kết quả vẫn stream sang
+ElevenLabs bình thường. Câu hỏi thường không đi qua guard này.
 
 Để so sánh tối thiểu 20 lượt thường với 20 lượt gesture:
 
@@ -181,8 +187,20 @@ resilience:
 - `tts.similarity_boost`: mức bám giọng mẫu. Mức quá cao có thể làm lộ noise
   hoặc lỗi từ bản thu clone.
 - `tts.speed`: hợp lệ `0.7-1.2`.
+- Nếu receive loop ElevenLabs hết lượt retry nội bộ, voice tạo lại riêng kết
+  nối TTS tối đa ba lần với backoff `resilience.reconnect_initial_s`; phiên
+  OpenAI và lịch sử hội thoại không bị hủy. Chỉ khi cả ba lần đều thất bại thì
+  supervisor mới dựng lại toàn bộ voice session.
+- Lỗi trong một lần retry nội bộ chưa kích hoạt reconnect thứ hai; chỉ sau khi
+  Pipecat báo đã hết lượt retry mới chạy vòng phục hồi của voice.
+- Context TTS đã hoàn tất hoặc bị interruption được đánh dấu retired. Audio
+  đến muộn của context đó bị bỏ, còn deletion sentinel vẫn được xử lý để không
+  rò task/context sang lượt sau.
 - `openai.voice` và `openai.speed` chỉ có hiệu lực khi đặt
   `tts.provider: "openai"`.
+- `config/prompt.txt` giữ bối cảnh sự kiện như thông tin tham khảo. Câu hỏi
+  thường và yêu cầu kể chuyện được trả lời theo chủ đề khách đưa ra, không tự
+  kéo về nhãn hàng hoặc giới hạn cứng hai câu.
 - `response_volume_percent`: volume phần cứng riêng cho câu trả lời voice,
   `0-100`; hiện đặt `100`. Voice áp dụng lại mỗi khi giành quyền loa.
 - `response_gain`: chỉ cho phép `0.0-1.0` để giảm PCM, tránh khuếch đại gây vỡ
@@ -371,11 +389,13 @@ là yêu cầu thực hiện. Câu không rõ động tác phải hỏi lại, k
 Sau khi owner chấp nhận, robot dùng lời giao tiếp như “Rất vui được gặp bạn
 nha!”, không tường thuật “đang thực hiện lệnh” hay hứa đã hoàn thành.
 
-Với ElevenLabs và gesture bật, văn bản được giữ đến `response.done`: nếu
-phản hồi chứa tool call thì bỏ phần văn bản đi kèm, tránh đọc lời xác nhận
-trước khi biết kết quả. Phản hồi hội thoại và phản hồi sau kết quả tool vẫn
-được phát theo thứ tự. Đổi lại, TTS bắt đầu sau khi Realtime viết xong phản
-hồi. Native OpenAI audio chỉ dùng hướng dẫn lời thoại, không qua bộ đệm này.
+Với ElevenLabs và gesture bật, chỉ response đang quyết định tool được giữ đến
+`response.done`: nếu có tool call thì bỏ phần văn bản đi kèm, tránh đọc lời
+xác nhận trước khi biết kết quả. Ngay khi tool call được xác nhận, phản hồi sau
+kết quả tool lại stream bình thường. Gesture chạy trong Dev không giành quyền
+loa; nếu high-level thật sự thu hồi loa thì bridge dừng phát cục bộ để an toàn,
+nhưng không hủy response hoặc phiên OpenAI. Native OpenAI audio chỉ dùng hướng
+dẫn lời thoại, không qua bộ đệm này.
 
 Khi mọi gesture đều không chạy, đọc log **trên robot**:
 

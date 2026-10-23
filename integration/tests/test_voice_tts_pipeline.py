@@ -5,12 +5,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 HB_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(HB_ROOT / "voice"))
 
 from pipecat.services.openai.realtime.llm import OpenAIRealtimeLLMService  # noqa: E402
+from pipecat.services.elevenlabs.tts import ElevenLabsTTSService  # noqa: E402
 
 from hb_voice.app import (  # noqa: E402
     ServerTurnRealtimeLLMService,
@@ -19,6 +20,7 @@ from hb_voice.app import (  # noqa: E402
 )
 from hb_voice.config import VoiceConfig  # noqa: E402
 from hb_voice.gesture_tools import GestureToolController  # noqa: E402
+from hb_voice.tts import ResilientElevenLabsTTSService  # noqa: E402
 
 
 class VoiceTtsPipelineTest(unittest.TestCase):
@@ -43,6 +45,7 @@ class VoiceTtsPipelineTest(unittest.TestCase):
         self.assertEqual(["text"], session.output_modalities)
         self.assertIsNone(session.audio.output)
         self.assertIsNotNone(tts)
+        self.assertIsInstance(tts, ResilientElevenLabsTTSService)
         self.assertEqual("voice-test-only", tts._settings.voice)
         self.assertEqual("eleven_flash_v2_5", tts._settings.model)
         self.assertEqual("vi", tts._settings.language)
@@ -179,6 +182,65 @@ class DuplicateAnswerTest(unittest.IsolatedAsyncioTestCase):
 
         create_response.assert_awaited_once()
 
+
+class ElevenLabsRecoveryTest(unittest.IsolatedAsyncioTestCase):
+    def _service(self) -> ResilientElevenLabsTTSService:
+        return ResilientElevenLabsTTSService(
+            api_key="test",
+            settings=ResilientElevenLabsTTSService.Settings(voice="voice"),
+            reconnect_attempts=3,
+            reconnect_initial_s=0,
+        )
+
+    async def test_late_audio_for_interrupted_context_is_discarded(self):
+        service = self._service()
+        service._retire_context("old-turn")
+        with patch.object(
+            ElevenLabsTTSService,
+            "append_to_audio_context",
+            new_callable=AsyncMock,
+        ) as append:
+            await service.append_to_audio_context("old-turn", object())
+            await service.append_to_audio_context("old-turn", None)
+            await service.append_to_audio_context("current-turn", object())
+
+        self.assertEqual(2, append.await_count)
+        self.assertEqual(("old-turn", None), append.await_args_list[0].args)
+        self.assertEqual("current-turn", append.await_args_list[1].args[0])
+
+    async def test_fresh_reconnect_retries_without_replacing_pipeline(self):
+        service = self._service()
+        service._disconnect = AsyncMock()
+        attempts = 0
+
+        async def connect():
+            nonlocal attempts
+            attempts += 1
+            service._websocket = object() if attempts == 3 else None
+
+        service._connect = AsyncMock(side_effect=connect)
+
+        self.assertTrue(await service.recover_connection())
+        self.assertEqual(3, attempts)
+        self.assertEqual(3, service._disconnect.await_count)
+
+    def test_builtin_reconnect_is_not_interrupted_by_second_recovery(self):
+        service = self._service()
+        service._reconnect_in_progress = True
+        intermediate = Mock(error="reconnection attempt 1 failed: ping timeout")
+        exhausted = Mock(error="failed to reconnect after 3 attempts")
+
+        self.assertFalse(service.should_recover_after_error(intermediate))
+        self.assertTrue(service.should_recover_after_error(exhausted))
+
+    def test_high_level_preempt_does_not_cancel_generated_response(self):
+        app = (HB_ROOT / "voice" / "hb_voice" / "app.py").read_text()
+        handler = app.split("async def on_high_level_preempt", 1)[1].split(
+            "async def on_double_tap_interrupt", 1
+        )[0]
+        self.assertIn("preserving the voice response", handler)
+        self.assertNotIn("ResponseCancelEvent", handler)
+        self.assertNotIn("broadcast_interruption", handler)
 
 if __name__ == "__main__":
     unittest.main()

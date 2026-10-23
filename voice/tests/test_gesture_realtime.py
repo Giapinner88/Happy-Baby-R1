@@ -46,14 +46,14 @@ class GestureRealtimeTest(unittest.IsolatedAsyncioTestCase):
             content_index=0, delta=text,
         )
 
-    def done(self, response_id, *, tool=False, status="completed"):
+    def done(self, response_id, *, tool=False, tool_name="perform_gesture", status="completed"):
         return events.ResponseDone(
             type="response.done", event_id="event-done",
             response=events.Response(
                 id=response_id, object="realtime.response", status=status,
                 status_details=None,
                 output=[events.ConversationItem(
-                    id="item-tool", type="function_call", name="perform_gesture",
+                    id="item-tool", type="function_call", name=tool_name,
                     call_id="call-wave", arguments='{"gesture_id":"wave"}',
                 )] if tool else [],
                 usage=events.Usage(
@@ -162,6 +162,7 @@ class GestureRealtimeTest(unittest.IsolatedAsyncioTestCase):
         await service._handle_evt_response_done(self.done("r1", tool=True))
         self.assertEqual(self.spoken_text(service), "")
         await service._handle_evt_text_delta(self.delta("r2", "Chào cả nhà nha!"))
+        self.assertEqual(self.spoken_text(service), "Chào cả nhà nha!")
         await service._handle_evt_response_done(self.done("r2"))
         self.assertEqual(self.spoken_text(service), "Chào cả nhà nha!")
         self.assertIsInstance(service.push_frame.await_args.args[0], LLMFullResponseEndFrame)
@@ -196,6 +197,21 @@ class GestureRealtimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.spoken_text(service), "Trả lời ngay.")
         await service._handle_evt_response_done(self.done("gesture", tool=True))
         self.assertEqual(self.spoken_text(service), "Trả lời ngay.")
+
+    async def test_camera_preamble_is_silent_and_post_image_reply_streams(self):
+        service = self.service()
+        await service._handle_evt_text_delta(
+            self.delta("camera-tool", "Để mình kiểm tra ảnh nhé.")
+        )
+        self.assertEqual(self.spoken_text(service), "")
+        await service._handle_evt_response_done(
+            self.done("camera-tool", tool=True, tool_name="inspect_camera")
+        )
+        self.assertEqual(self.spoken_text(service), "")
+        await service._handle_evt_text_delta(
+            self.delta("camera-answer", "Bạn đang giơ ba ngón tay nha!")
+        )
+        self.assertEqual(self.spoken_text(service), "Bạn đang giơ ba ngón tay nha!")
 
     async def test_turn_buffered_before_dev_exit_is_not_spoken_after_exit(self):
         service = self.service(guard=True)

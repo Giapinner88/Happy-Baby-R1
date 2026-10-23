@@ -1,6 +1,7 @@
 """Pipecat processor that mirrors assistant audio to the Unitree R1 speaker bridge."""
 
 import asyncio
+from collections import deque
 import math
 import os
 import sys
@@ -151,6 +152,13 @@ class UnitreeSpeakerBridge(FrameProcessor):
         # Chốt cờ này lúc bị ngắt và chỉ nhả ở TTSStartedFrame kế tiếp (mốc mở đầu
         # của lượt MỚI), để đuôi lượt cũ bị vứt thay vì phát đè.
         self._drop_until_next_tts = False
+        # A high-level action may temporarily own the speaker.  Keep the TTS
+        # frames in a bounded turn-local queue instead of killing the bridge or
+        # dropping the response.  A real interruption (double-tap Select) clears
+        # this queue explicitly.
+        self._deferred_audio: deque[OutputAudioRawFrame] = deque()
+        self._deferred_audio_bytes = 0
+        self._deferred_audio_limit_bytes = 4 * 1024 * 1024
         # Hai nguồn cùng gọi _write_audio (pipeline TTS và cue F1/F2) mà chung một
         # stream resampler có trạng thái + chung một stdin: không tuần tự hoá thì các
         # mẩu PCM xen kẽ nhau, đúng thứ tạo ra cảm giác "lật giọng".
@@ -173,14 +181,44 @@ class UnitreeSpeakerBridge(FrameProcessor):
             self._gate.add_callback(self._on_gate_change)
 
     async def _on_gate_change(self, old: GateSnapshot, new: GateSnapshot):
-        if (
-            old.speaker_allowed and not new.speaker_allowed
-        ) or (new.interrupt and not old.interrupt):
+        if new.interrupt and not old.interrupt:
             # Double Select is an unconditional emergency stop for the voice
             # channel.  Killing the local speaker bridge flushes PCM that was
             # already queued, which a Realtime response cancellation alone
             # cannot retract.
+            self._clear_deferred_audio()
             await self._preempt_process()
+        elif not old.speaker_allowed and new.speaker_allowed:
+            await self._flush_deferred_audio()
+
+    def _clear_deferred_audio(self) -> None:
+        self._deferred_audio.clear()
+        self._deferred_audio_bytes = 0
+
+    def _defer_audio(self, frame: OutputAudioRawFrame) -> None:
+        frame_bytes = len(frame.audio)
+        if frame_bytes > self._deferred_audio_limit_bytes:
+            logger.warning("Dropping oversized deferred TTS frame while speaker is busy")
+            return
+        while (
+            self._deferred_audio
+            and self._deferred_audio_bytes + frame_bytes > self._deferred_audio_limit_bytes
+        ):
+            dropped = self._deferred_audio.popleft()
+            self._deferred_audio_bytes -= len(dropped.audio)
+        self._deferred_audio.append(frame)
+        self._deferred_audio_bytes += frame_bytes
+
+    async def _flush_deferred_audio(self) -> None:
+        if not self._deferred_audio:
+            return
+        async with self._write_lock:
+            while self._deferred_audio and self._gate and self._gate.snapshot.speaker_allowed:
+                frame = self._deferred_audio.popleft()
+                self._deferred_audio_bytes -= len(frame.audio)
+                await self._write_audio_locked(frame)
+            if not self._deferred_audio:
+                self._deferred_audio_bytes = 0
 
     def _extend_playback_deadline(self, audio_bytes: int):
         """Estimate when PCM already handed to the bridge will finish playing.
@@ -335,10 +373,16 @@ class UnitreeSpeakerBridge(FrameProcessor):
         self._stderr_task = self.create_task(self._read_stderr(self._process))
         return self._process
 
-    async def _write_audio(self, frame: OutputAudioRawFrame):
+    async def _write_audio(
+        self, frame: OutputAudioRawFrame, *, defer_if_blocked: bool = True
+    ):
         if self._gate:
             snapshot = self._gate.snapshot
             if not snapshot.speaker_allowed or snapshot.interrupt:
+                if snapshot.interrupt:
+                    return
+                if defer_if_blocked:
+                    self._defer_audio(frame)
                 return
         # Giữ khoá quanh CẢ resample lẫn ghi: resampler là bộ lọc có trạng thái nên
         # hai lời gọi đan nhau vừa làm hỏng trạng thái lọc vừa trộn PCM trong ống.
@@ -389,7 +433,8 @@ class UnitreeSpeakerBridge(FrameProcessor):
                 audio=mode_cue_pcm(enabled, sample_rate=self._sample_rate),
                 sample_rate=self._sample_rate,
                 num_channels=1,
-            )
+            ),
+            defer_if_blocked=False,
         )
         return True
 
@@ -403,7 +448,8 @@ class UnitreeSpeakerBridge(FrameProcessor):
                 audio=mic_source_cue_pcm(external, sample_rate=self._sample_rate),
                 sample_rate=self._sample_rate,
                 num_channels=1,
-            )
+            ),
+            defer_if_blocked=False,
         )
         return True
 
@@ -473,12 +519,16 @@ class UnitreeSpeakerBridge(FrameProcessor):
             # hàng; nó không chặn được frame đến muộn — những frame đó sẽ được ghi
             # thẳng vào tiến trình bridge mới và phát đè lên câu trả lời mới.
             self._drop_until_next_tts = True
+            self._clear_deferred_audio()
             # Trạng thái bộ lọc thuộc về luồng vừa bị bỏ; mang sang lượt sau là méo.
             # Tráo dưới khoá: cue F1/F2 có thể đang resample ngay lúc này.
             async with self._write_lock:
                 self._resampler = create_stream_resampler(quality="QQ")
         elif isinstance(frame, TTSStartedFrame):
             self._drop_until_next_tts = False
+            # A new response supersedes any old response that was waiting for
+            # the high-level speaker reservation to end.
+            self._clear_deferred_audio()
 
         if direction is FrameDirection.DOWNSTREAM and isinstance(frame, OutputAudioRawFrame):
             if not self._drop_until_next_tts:

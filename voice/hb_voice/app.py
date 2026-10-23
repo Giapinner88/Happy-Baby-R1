@@ -23,7 +23,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from pipecat.frames.frames import LLMUpdateSettingsFrame
 from pipecat.processors.frame_processor import FrameDirection
-from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.services.openai.realtime.events import (
     AudioConfiguration,
     AudioInput,
@@ -56,6 +55,7 @@ from .resilience import (
     is_realtime_connection_error,
     realtime_service_state,
 )
+from .tts import ResilientElevenLabsTTSService
 from .vision_tools import VISION_TOOL_INSTRUCTIONS, VisionToolController
 
 
@@ -199,16 +199,18 @@ class ToolResultSafeAssistantAggregator(LLMAssistantAggregator):
         return aggregation
 
 
-def _create_external_tts(config: VoiceConfig) -> ElevenLabsTTSService | None:
+def _create_external_tts(config: VoiceConfig) -> ResilientElevenLabsTTSService | None:
     """Khởi tạo dịch vụ ElevenLabs streaming TTS nếu nhà cung cấp giọng clone được chọn."""
     if config.tts_provider != "elevenlabs":
         return None
 
     assert config.elevenlabs_api_key
     assert config.elevenlabs_voice_id
-    return ElevenLabsTTSService(
+    return ResilientElevenLabsTTSService(
         api_key=config.elevenlabs_api_key,
-        settings=ElevenLabsTTSService.Settings(
+        reconnect_attempts=3,
+        reconnect_initial_s=config.reconnect_initial_s,
+        settings=ResilientElevenLabsTTSService.Settings(
             voice=config.elevenlabs_voice_id,
             model=config.elevenlabs_model,
             language=Language(config.elevenlabs_language),
@@ -258,6 +260,7 @@ async def run_bot(
         camera_attempts=config.camera_attempts,
         process_timeout_s=config.camera_process_timeout_s,
         max_jpeg_bytes=config.camera_max_jpeg_bytes,
+        prefetch_ttl_s=config.camera_prefetch_ttl_s,
         latency_tracker=latency_tracker,
     )
     vision_tools = vision_controller.tools
@@ -579,7 +582,18 @@ async def run_bot(
         )
         llm.set_turn_gesture_guard(guard_this_turn)
 
-    gesture_guard_processor = GestureTurnGuardProcessor(select_turn_gesture_guard)
+    def prefetch_camera_turn() -> None:
+        # Camera preambles must be silent too. The guard drops any speculative
+        # text in the tool-call response and opens again as soon as that call is
+        # known, so the post-image answer still streams to ElevenLabs normally.
+        should_guard = vision_controller.prefetch()
+        if should_guard and config.tts_provider == "elevenlabs":
+            llm.set_turn_gesture_guard(True)
+
+    gesture_guard_processor = GestureTurnGuardProcessor(
+        select_turn_gesture_guard,
+        camera_prefetch=prefetch_camera_turn,
+    )
 
     pipeline_steps = [
         transport.input(),
@@ -614,14 +628,32 @@ async def run_bot(
             provider = "elevenlabs"
         if provider is None:
             return
+        if provider == "elevenlabs" and external_tts:
+            if not external_tts.should_recover_after_error(frame):
+                logger.warning("ElevenLabs is retrying its own connection; waiting")
+                return
         runtime_status.update(
             "reconnecting",
             mic_ready=mic_processor.health_ready,
             attempt=attempt,
             reason=f"{provider}_transport_error",
         )
+        if provider == "elevenlabs" and external_tts:
+            logger.warning(
+                "ElevenLabs transport retries were exhausted; reconnecting TTS "
+                "without cancelling the OpenAI conversation"
+            )
+            if await external_tts.recover_connection():
+                runtime_status.update(
+                    "running",
+                    openai_ready=True,
+                    mic_ready=mic_processor.health_ready,
+                    attempt=attempt,
+                    reason="elevenlabs_recovered",
+                )
+                return
         logger.error(
-            f"{provider} connection is unusable; ending this session "
+            f"{provider} connection is unusable after recovery; ending this session "
             "so the supervisor can reconnect"
         )
         await worker.cancel(reason=f"{provider}_connection_lost")
@@ -665,14 +697,9 @@ async def run_bot(
     async def on_high_level_preempt(old: GateSnapshot, new: GateSnapshot):
         if not old.speaker_allowed or new.speaker_allowed:
             return
-        logger.warning("High-level audio preempted voice; clearing input and response")
-        try:
-            await llm.send_client_event(InputAudioBufferClearEvent())
-            if old.voice_speaking:
-                await llm.send_client_event(ResponseCancelEvent())
-            await llm.broadcast_interruption()
-        except Exception as error:
-            logger.warning(f"Voice preempt request was not active/connected: {error}")
+        logger.warning(
+            "High-level reserved the speaker; preserving the voice response for resume"
+        )
 
     @gate.add_callback
     async def on_double_tap_interrupt(old: GateSnapshot, new: GateSnapshot):
@@ -733,9 +760,9 @@ async def run_bot(
         latency_tracker.set_transcript(message.content)
         guard_this_turn = llm.turn_gesture_guard_enabled
         logger.info(
-            "Gesture response guard for current turn={} transcript_hint={}",
+            "Tool response guard for current turn={} transcript_hint={}",
             guard_this_turn,
-            "gesture" if guard_this_turn else "chat",
+            "tool" if guard_this_turn else "chat",
         )
         timestamp = f"[{message.timestamp}] " if message.timestamp else ""
         logger.info(f"Transcript: {timestamp}user: {message.content}")
@@ -747,6 +774,7 @@ async def run_bot(
     ):
         llm.set_turn_gesture_guard(False)
         gesture_guard_processor.reset_turn()
+        vision_controller.discard_prefetch()
         timestamp = f"[{message.timestamp}] " if message.timestamp else ""
         logger.info(f"Transcript: {timestamp}assistant: {message.content}")
 

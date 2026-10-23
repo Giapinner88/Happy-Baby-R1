@@ -53,6 +53,11 @@ class GestureResponseGuard:
                 "Realtime tool response={} tools={} suppressed_text_chunks={}",
                 evt.response.id, tool_names, len(chunks),
             )
+            # The controller/camera result will create a second response. Its
+            # text is safe to stream because the tool decision has already
+            # completed; keeping the guard enabled here delays the real reply
+            # until response.done and makes Dev conversations sound sluggish.
+            self.set_gesture_text_guard(False)
         elif evt.response.status == "completed":
             for chunk in chunks:
                 await super()._handle_evt_text_delta(chunk)

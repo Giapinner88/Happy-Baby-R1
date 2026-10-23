@@ -59,6 +59,10 @@ GESTURE_TOOL_INSTRUCTIONS = """
   Không nói “đang thực hiện lệnh”, “đã thực hiện lệnh”, “nhận được lệnh”, “đang xử lý yêu cầu”,
   “robot sẽ gửi lệnh”,
   “em sẽ gửi lệnh”, “đang gửi lệnh”, “robot sẽ thực hiện” hoặc “mình sẽ thực hiện”.
+- Không tự gọi get_gesture_status sau khi perform_gesture được chấp nhận. Chỉ kiểm tra
+  trạng thái khi người dùng hỏi rõ cử chỉ còn chạy hay đã xong. Khi người dùng hỏi một
+  chuyện khác trong lúc cử chỉ đang chạy, trả lời thẳng chuyện mới; tuyệt đối không nói
+  “để tôi/mình kiểm tra trạng thái”, “tôi/mình đang thực hiện hành động” hoặc câu tương tự.
 - Kết quả accepted chỉ xác nhận high-level đã bắt đầu lệnh, không xác nhận cử chỉ đã hoàn thành.
   Sau khi được chấp nhận, trả lời ngắn ở thì hiện tại, ví dụ “Dạ, mình vẫy tay chào bạn nè!”;
   không nói accepted, tên hàm, ID, socket, lý do nội bộ hoặc mô tả việc gửi lệnh. Không nói đã
@@ -154,7 +158,10 @@ class GestureToolController:
             ),
             FunctionSchema(
                 name="get_gesture_status",
-                description="Kiểm tra cử chỉ đang chạy hay đã kết thúc khi người dùng hỏi trạng thái.",
+                description=(
+                    "CHỈ kiểm tra khi người dùng hỏi rõ cử chỉ còn chạy hay đã kết thúc. "
+                    "Không tự gọi sau perform_gesture và không gọi để trả lời câu hỏi khác."
+                ),
                 properties={}, required=[], handler=self.get_gesture_status,
             ),
         ]
@@ -251,8 +258,9 @@ class GestureToolController:
             **result,
             "response_language": "vi",
             "response_guidance": (
-                "Chỉ trả lời người dùng bằng tiếng Việt tự nhiên; không đọc tên hàm, "
-                "gesture_id, status, reason hoặc cơ chế nội bộ."
+                "Trả lời thẳng người dùng bằng một câu tiếng Việt tự nhiên phù hợp với "
+                "kết quả; không nói đang kiểm tra trạng thái, đang thực hiện hành động, "
+                "đang xử lý, không đọc tên hàm, gesture_id, status, reason hoặc cơ chế nội bộ."
             ),
         }
 

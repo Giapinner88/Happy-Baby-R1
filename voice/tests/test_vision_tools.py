@@ -30,6 +30,8 @@ class VisionToolControllerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("đây là số mấy", tool.description)
         self.assertIn("không dùng lại ảnh", VISION_TOOL_INSTRUCTIONS)
         self.assertIn("không nói câu đệm", VISION_TOOL_INSTRUCTIONS)
+        self.assertIn("để mình kiểm tra ảnh", VISION_TOOL_INSTRUCTIONS)
+        self.assertIn("không nói rằng họ chưa hề giơ", VISION_TOOL_INSTRUCTIONS)
         self.assertIn("phải bằng tiếng Việt", VISION_TOOL_INSTRUCTIONS)
 
     async def test_image_is_attached_before_success_result(self):
@@ -57,6 +59,61 @@ class VisionToolControllerTest(unittest.IsolatedAsyncioTestCase):
         await controller.inspect_camera(params)
         self.assertEqual(order, ["image", "result"])
 
+    async def test_prefetch_is_reused_by_next_camera_tool_call(self):
+        controller = self.controller()
+        captures = 0
+
+        def capture():
+            nonlocal captures
+            captures += 1
+            return CameraCapture(
+                jpeg=b"\xff\xd8prefetched\xff\xd9",
+                elapsed_ms=8.0,
+                sha256="prefetched",
+            )
+
+        controller._capture_frame = capture
+        controller.prefetch()
+        params = FakeParams()
+        await controller.inspect_camera(params)
+
+        self.assertEqual(captures, 1)
+        self.assertTrue(params.result_callback.await_args.args[0]["ok"])
+
+    async def test_discarded_prefetch_is_not_reused(self):
+        controller = self.controller()
+        captures = 0
+
+        def capture():
+            nonlocal captures
+            captures += 1
+            return CameraCapture(
+                jpeg=b"\xff\xd8frame\xff\xd9",
+                elapsed_ms=8.0,
+                sha256=str(captures),
+            )
+
+        controller._capture_frame = capture
+        controller.prefetch()
+        await controller._prefetch_task
+        controller.discard_prefetch()
+        await controller.inspect_camera(FakeParams())
+
+        self.assertEqual(captures, 2)
+
+    async def test_late_transcript_does_not_prefetch_again_after_tool_call(self):
+        controller = self.controller()
+        controller._capture_frame = lambda: CameraCapture(
+            jpeg=b"\xff\xd8frame\xff\xd9", elapsed_ms=8.0, sha256="one"
+        )
+        await controller.inspect_camera(FakeParams())
+
+        self.assertFalse(controller.prefetch())
+        self.assertIsNone(controller._prefetch_task)
+        controller.discard_prefetch()
+        self.assertTrue(controller.prefetch())
+        await controller._prefetch_task
+
     async def test_capture_failure_returns_safe_result_without_image(self):
         controller = self.controller()
 
@@ -79,6 +136,8 @@ class VisionToolControllerTest(unittest.IsolatedAsyncioTestCase):
             VisionToolController(network_interface="")
         with self.assertRaises(ValueError):
             VisionToolController(network_interface="eth10", camera_attempts=0)
+        with self.assertRaises(ValueError):
+            VisionToolController(network_interface="eth10", prefetch_ttl_s=0)
         with tempfile.TemporaryDirectory() as directory:
             missing = Path(directory) / "missing.py"
             controller = VisionToolController(

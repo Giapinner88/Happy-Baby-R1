@@ -79,12 +79,15 @@ class VoiceConfigTest(unittest.TestCase):
         self.assertTrue(config.camera_probe.is_absolute())
         self.assertTrue(config.camera_python.is_absolute())
         self.assertEqual(3, config.camera_attempts)
+        self.assertEqual(15.0, config.camera_prefetch_ttl_s)
         # A drifting clone voice reads as the robot swapping speakers.
         self.assertGreaterEqual(config.elevenlabs_stability, 0.7)
         prompt = config.load_prompt()
         self.assertTrue(prompt)
         self.assertIn("Luôn trả lời và nói ra loa bằng tiếng Việt", prompt)
         self.assertIn("không chuyển sang câu hoặc cụm từ tiếng Anh", prompt)
+        self.assertIn("đang thực hiện hành động", prompt)
+        self.assertIn("Gọi công cụ trước trong im lặng", prompt)
 
     def test_absurd_echo_tail_is_rejected(self):
         tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
@@ -129,6 +132,17 @@ class VoiceConfigTest(unittest.TestCase):
             path = Path(directory) / "tuning.yaml"
             path.write_text(tuning)
             with self.assertRaisesRegex(VoiceConfigError, "camera.attempts"):
+                self.load_path(path)
+
+    def test_camera_prefetch_ttl_must_be_bounded(self):
+        tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
+        tuning = re.sub(
+            r"prefetch_ttl_s: [0-9.]+", "prefetch_ttl_s: 60.0", tuning, count=1
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tuning.yaml"
+            path.write_text(tuning)
+            with self.assertRaisesRegex(VoiceConfigError, "camera.prefetch_ttl_s"):
                 self.load_path(path)
 
     def test_runtime_settings_follow_the_live_microphone(self):

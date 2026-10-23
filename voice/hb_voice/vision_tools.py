@@ -25,9 +25,11 @@ VISION_TOOL_INSTRUCTIONS = """
 - Không gọi inspect_camera cho câu hỏi kiến thức chung hoặc khi người dùng không
   hỏi về cảnh hiện tại trước camera.
 - Phản hồi đầu tiên của lượt quan sát phải là đúng một tool call inspect_camera,
-  không nói câu đệm như “để mình nhìn” trước tool. Sau khi tool trả ok=true, hãy
-  quan sát ảnh vừa được thêm vào cuộc hội thoại và trả lời trực tiếp, tự nhiên,
-  tối đa 2 câu. Nếu ảnh mờ, khuất hoặc không đủ rõ, hãy nói rõ mức độ không chắc chắn.
+  không nói câu đệm như “để mình nhìn”, “để mình kiểm tra ảnh” hoặc “mình sẽ chụp
+  ảnh” trước tool. Sau khi tool trả ok=true, hãy trả lời thẳng câu hỏi như điều vừa
+  nhìn thấy, tự nhiên, tối đa 2 câu; không kể lại thao tác chụp/kiểm tra ảnh. Nếu
+  ảnh mờ, khuất hoặc không đủ rõ, nói ngắn gọn điều còn chưa chắc và mời người dùng
+  giữ vật/cử chỉ trước mặt thêm một chút, không nói rằng họ chưa hề giơ hay đưa ra.
 - Chỉ mô tả biểu hiện nhìn thấy được như đang cười, mặt trung tính hoặc không rõ;
   không khẳng định cảm xúc nội tâm, danh tính, tuổi, tình trạng sức khỏe hay ý định.
 - Không ước lượng khoảng cách theo mét và không dùng ảnh này để quyết định an toàn
@@ -66,11 +68,17 @@ class VisionToolController:
         camera_attempts: int = 3,
         process_timeout_s: float = 5.0,
         max_jpeg_bytes: int = 5_000_000,
+        prefetch_ttl_s: float = 15.0,
         latency_tracker=None,
     ) -> None:
         if not network_interface.strip():
             raise ValueError("network_interface must not be empty")
-        if camera_timeout_s <= 0 or camera_attempts < 1 or process_timeout_s <= 0:
+        if (
+            camera_timeout_s <= 0
+            or camera_attempts < 1
+            or process_timeout_s <= 0
+            or prefetch_ttl_s <= 0
+        ):
             raise ValueError("camera timeouts and attempts must be positive")
         if max_jpeg_bytes < 4:
             raise ValueError("max_jpeg_bytes is too small")
@@ -81,8 +89,60 @@ class VisionToolController:
         self.camera_attempts = camera_attempts
         self.process_timeout_s = process_timeout_s
         self.max_jpeg_bytes = max_jpeg_bytes
+        self.prefetch_ttl_s = prefetch_ttl_s
         self._capture_lock = asyncio.Lock()
+        self._prefetch_task: asyncio.Task[CameraCapture] | None = None
+        self._prefetch_started_at = 0.0
+        self._tool_capture_active = False
+        self._camera_tool_consumed = False
         self._latency_tracker = latency_tracker
+
+    def prefetch(self) -> bool:
+        """Start one bounded capture when transcript hints at a visual question."""
+        if self._tool_capture_active or self._camera_tool_consumed:
+            return False
+        now = time.monotonic()
+        task = self._prefetch_task
+        if task is not None:
+            age_s = now - self._prefetch_started_at
+            if not task.done() or age_s <= self.prefetch_ttl_s:
+                return True
+        self._prefetch_started_at = now
+        self._prefetch_task = asyncio.create_task(self._capture_serialized())
+        self._prefetch_task.add_done_callback(self._observe_prefetch_result)
+        logger.info("Vision prefetch started from transcript hint")
+        return True
+
+    def discard_prefetch(self) -> None:
+        """Prevent an unused image from leaking into a later conversation turn."""
+        self._prefetch_task = None
+        self._prefetch_started_at = 0.0
+        self._camera_tool_consumed = False
+
+    def _observe_prefetch_result(self, task: asyncio.Task[CameraCapture]) -> None:
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            logger.warning("Vision prefetch failed; tool will retry normally: {}", error)
+
+    async def _capture_serialized(self) -> CameraCapture:
+        async with self._capture_lock:
+            return await asyncio.to_thread(self._capture_frame)
+
+    async def _capture_for_tool(self) -> tuple[CameraCapture, bool, float]:
+        task = self._prefetch_task
+        age_s = time.monotonic() - self._prefetch_started_at
+        prefetch_hit = task is not None and age_s <= self.prefetch_ttl_s
+        self._prefetch_task = None
+        self._prefetch_started_at = 0.0
+        if prefetch_hit:
+            wait_started = time.monotonic()
+            try:
+                return await task, True, (time.monotonic() - wait_started) * 1000.0
+            except Exception as error:
+                logger.warning("Vision prefetch was unusable; retrying capture: {}", error)
+        return await self._capture_serialized(), False, 0.0
 
     @property
     def tools(self) -> list:
@@ -107,10 +167,11 @@ class VisionToolController:
     async def inspect_camera(self, params) -> None:
         """Append a fresh JPEG before returning the result that resumes the model."""
         try:
+            self._tool_capture_active = True
+            self._camera_tool_consumed = True
             if self._latency_tracker:
                 self._latency_tracker.mark_tool("camera")
-            async with self._capture_lock:
-                capture = await asyncio.to_thread(self._capture_frame)
+            capture, prefetched, prefetch_wait_ms = await self._capture_for_tool()
             if self._latency_tracker:
                 self._latency_tracker.camera_capture(
                     subprocess_ms=capture.subprocess_ms,
@@ -141,14 +202,18 @@ class VisionToolController:
                 "jpeg_bytes": len(capture.jpeg),
                 "sha256": capture.sha256,
                 "guidance": (
-                    "Quan sát ảnh mới trong cuộc hội thoại rồi trả lời câu hỏi của người dùng."
+                    "Trả lời thẳng câu hỏi bằng tiếng Việt tự nhiên dựa trên ảnh mới. "
+                    "Không nói đang chụp, đang xem, đang kiểm tra ảnh hay đang xử lý."
                 ),
                 "response_language": "vi",
             }
             logger.info(
-                "Vision tool attached camera frame bytes={} capture_ms={:.1f} sha256={}",
+                "Vision tool attached camera frame bytes={} capture_ms={:.1f} "
+                "prefetched={} prefetch_wait_ms={:.1f} sha256={}",
                 len(capture.jpeg),
                 capture.elapsed_ms,
+                prefetched,
+                prefetch_wait_ms,
                 capture.sha256[:16],
             )
         except Exception as error:
@@ -157,10 +222,13 @@ class VisionToolController:
                 "ok": False,
                 "status": "camera_unavailable",
                 "guidance": (
-                    "Nói ngắn gọn rằng hiện tại chưa nhìn được camera và mời người dùng thử lại."
+                    "Nói tự nhiên rằng mình chưa nhìn rõ và mời người dùng giữ vật/cử chỉ "
+                    "trước mặt thêm một chút; không nói về tool, ảnh chụp hay thao tác kiểm tra."
                 ),
                 "response_language": "vi",
             }
+        finally:
+            self._tool_capture_active = False
         await params.result_callback(result)
 
     def _capture_frame(self) -> CameraCapture:

@@ -161,6 +161,9 @@ camera:
   attempts: 3
   process_timeout_s: 5.0
   max_jpeg_bytes: 5000000
+  # Giữ ảnh chụp ngay khi transcript nhận ra câu hỏi thị giác. Tool dùng ảnh
+  # đúng lượt này thay vì chờ model quyết định xong mới bắt đầu chụp.
+  prefetch_ttl_s: 15.0
 
 activation:
   # both | high_disarmed | high_armed

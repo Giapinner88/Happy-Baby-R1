@@ -36,6 +36,12 @@ class GestureToolControllerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("lời khen dành cho robot ánh xạ heart", perform_gesture.description)
         self.assertIn("'rất vui được gặp bạn' ánh xạ handshake", perform_gesture.description)
         self.assertIn("bắt buộc bằng tiếng Việt", GESTURE_TOOL_INSTRUCTIONS)
+        self.assertIn("Không tự gọi get_gesture_status", GESTURE_TOOL_INSTRUCTIONS)
+        self.assertIn("để tôi/mình kiểm tra trạng thái", GESTURE_TOOL_INSTRUCTIONS)
+        status_tool = next(
+            tool for tool in controller.tools if tool.name == "get_gesture_status"
+        )
+        self.assertIn("CHỈ kiểm tra", status_tool.description)
 
     async def test_off_mode_advertises_no_tools(self):
         controller = GestureToolController(

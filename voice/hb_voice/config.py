@@ -106,6 +106,7 @@ class VoiceConfig:
     camera_attempts: int
     camera_process_timeout_s: float
     camera_max_jpeg_bytes: int
+    camera_prefetch_ttl_s: float
     gate_socket: Path = DEFAULT_GATE_SOCKET
 
     @classmethod
@@ -333,10 +334,12 @@ class VoiceConfig:
         camera_attempts = _integer(camera, "attempts", path)
         camera_process_timeout_s = _number(camera, "process_timeout_s", path)
         camera_max_jpeg_bytes = _integer(camera, "max_jpeg_bytes", path)
+        camera_prefetch_ttl_s = _number(camera, "prefetch_ttl_s", path)
         _range("camera.capture_timeout_s", camera_timeout_s, 0.05, 5.0)
         _range("camera.attempts", camera_attempts, 1, 10)
         _range("camera.process_timeout_s", camera_process_timeout_s, 0.1, 30.0)
         _range("camera.max_jpeg_bytes", camera_max_jpeg_bytes, 4, 20_000_000)
+        _range("camera.prefetch_ttl_s", camera_prefetch_ttl_s, 0.5, 30.0)
         network_interface = os.getenv("UNITREE_NETWORK_INTERFACE", "eth10").strip()
         if not network_interface:
             raise VoiceConfigError("UNITREE_NETWORK_INTERFACE cannot be empty")
@@ -432,6 +435,7 @@ class VoiceConfig:
             camera_attempts=camera_attempts,
             camera_process_timeout_s=camera_process_timeout_s,
             camera_max_jpeg_bytes=camera_max_jpeg_bytes,
+            camera_prefetch_ttl_s=camera_prefetch_ttl_s,
         )
 
     @property

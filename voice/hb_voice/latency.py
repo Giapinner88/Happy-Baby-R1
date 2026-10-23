@@ -7,7 +7,12 @@ import time
 from collections.abc import Callable
 
 from loguru import logger
-from pipecat.frames.frames import Frame, TranscriptionFrame, UserStartedSpeakingFrame
+from pipecat.frames.frames import (
+    Frame,
+    InterimTranscriptionFrame,
+    TranscriptionFrame,
+    UserStartedSpeakingFrame,
+)
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 
@@ -20,35 +25,69 @@ _GESTURE_HINT = re.compile(
     re.IGNORECASE,
 )
 
+_CAMERA_HINT = re.compile(
+    r"\b(đây\s+là\s+(?:gì|cái\s+gì|số\s+mấy|màu\s+gì)|"
+    r"(?:cái|vật)\s+gì\s+(?:đây|này)|số\s+mấy|màu\s+gì|"
+    r"(?:bạn|robot|mình)\s+(?:nhìn|thấy|xem)\s+(?:được\s+)?gì|"
+    r"(?:nhìn|xem)\s+(?:giúp|hộ)|trước\s+(?:camera|mặt)|"
+    r"(?:tôi|mình|con|bé)\s+đang\s+(?:cầm|giơ|đưa)|"
+    r"camera|ảnh\s+(?:này|đây)|hình\s+(?:này|đây))\b",
+    re.IGNORECASE,
+)
+
 
 def looks_like_gesture_request(text: str) -> bool:
     """Conservative hint used only to decide whether spoken text is buffered."""
     return bool(_GESTURE_HINT.search(text))
 
 
-class GestureTurnGuardProcessor(FrameProcessor):
-    """Select the per-turn guard before the user context reaches Realtime."""
+def looks_like_camera_request(text: str) -> bool:
+    """Conservative hint for starting one camera capture before the tool call."""
+    return bool(_CAMERA_HINT.search(text))
 
-    def __init__(self, callback: Callable[[bool], None]) -> None:
+
+class GestureTurnGuardProcessor(FrameProcessor):
+    """Select the gesture guard and prefetch camera from Realtime transcripts."""
+
+    def __init__(
+        self,
+        callback: Callable[[bool], None],
+        camera_prefetch: Callable[[], None] | None = None,
+    ) -> None:
         super().__init__()
         self._callback = callback
+        self._camera_prefetch = camera_prefetch
         self._gesture_hint = False
+        self._transcript_hint = ""
 
     def reset_turn(self) -> None:
         self._gesture_hint = False
+        self._transcript_hint = ""
         self._callback(False)
+
+    def _apply_transcript_hint(self, text: str) -> None:
+        self._gesture_hint = self._gesture_hint or looks_like_gesture_request(text)
+        self._callback(self._gesture_hint)
+        if self._camera_prefetch and looks_like_camera_request(text):
+            self._camera_prefetch()
+
+    def observe_transcript(self, text: str, *, incremental: bool) -> None:
+        """Apply one Realtime transcript delta or final transcript."""
+        self._transcript_hint = (
+            self._transcript_hint + text if incremental else text
+        )
+        self._apply_transcript_hint(self._transcript_hint)
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
         if isinstance(frame, UserStartedSpeakingFrame):
             self.reset_turn()
+        elif isinstance(frame, InterimTranscriptionFrame) and frame.text.strip():
+            # Realtime emits incremental deltas upstream. Accumulate them so a
+            # phrase split as "số " + "mấy" can still start capture early.
+            self.observe_transcript(frame.text, incremental=True)
         elif isinstance(frame, TranscriptionFrame) and frame.text.strip():
-            # Transcription can arrive in several fragments. Once any fragment
-            # looks gesture-like, keep the guard for the remainder of the turn.
-            self._gesture_hint = self._gesture_hint or looks_like_gesture_request(
-                frame.text
-            )
-            self._callback(self._gesture_hint)
+            self.observe_transcript(frame.text, incremental=False)
         await self.push_frame(frame, direction)
 
 
