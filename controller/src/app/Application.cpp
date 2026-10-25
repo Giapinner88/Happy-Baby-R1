@@ -438,26 +438,27 @@ void Application::HandleTeleopToggle(const InputCommand& cmd) {
     if (cmd.want_teleop_toggle) {
         if (!tuning_.teleop_enabled) {
             std::cout << "[Teleop] START bị bỏ qua — teleop_enabled=false trong gestures.yaml.\n";
-        } else if (locomotion_ && !locomotion_->SupportsArmOverlay() && !h4_teleop_approved_) {
-            std::cout << "[Teleop] START bi tu choi — contract hien tai "
-                         "khong ho tro arm overlay va H4 chua qua artifact gate.\n";
+        } else if (state_ == AppState::kLocomotion && locomotion_ &&
+                   !locomotion_->SupportsArmOverlay() && !PolicyCaps().h4) {
+            std::cout << "[Teleop] START bi tu choi — policy " << LocoModeName(loco_mode_)
+                      << " khong ho tro arm overlay/H4 (hoac teleop_h4_enabled=false).\n";
         } else if (teleop_runtime_on_) {
             SetTeleopArmed(false, "START");
         } else if (state_ == AppState::kLocomotion && loco_swap_pending_) {
             std::cout << "[Teleop] START bi tu choi — dang doi policy locomotion; "
                          "cho robot dung yen va doi xong.\n";
-        } else if (state_ == AppState::kLocomotion && loco_mode_ == LocoMode::kWalk &&
+        } else if (state_ == AppState::kLocomotion && tuning_.teleop_lock_base &&
                    (std::fabs(cmd.vx) > 1e-4f || std::fabs(cmd.vy) > 1e-4f ||
                     std::fabs(cmd.yaw) > 1e-4f)) {
-            // R2+A dùng walk_policy: chỉ cấp quyền từ trạng thái dừng hẳn và
-            // UpdateBaseCommand khóa base suốt phiên teleop.
-            std::cout << "[Teleop] START bi tu choi — R2+A yeu cau nha can dieu khien "
-                         "ve 0, cho robot dung yen roi nhan START.\n";
+            // teleop_lock_base: chỉ cấp quyền từ trạng thái dừng hẳn và
+            // UpdateBaseCommand khóa base suốt phiên teleop (cả R2+A lẫn R2+X).
+            std::cout << "[Teleop] START bi tu choi — teleop_lock_base yeu cau nha can "
+                         "dieu khien ve 0, cho robot dung yen roi nhan START.\n";
         } else if (state_ != AppState::kLocomotion &&
                    !(h4_teleop_approved_ && state_ == AppState::kZeroTorque)) {
             // Teleop là overlay TRÊN policy đi bộ: chân phải đang được policy giữ.
             // Từ chối có tiếng chứ không im lặng, để không bị hiểu là hỏng nút.
-            std::cout << "[Teleop] START bi tu choi — phai dang LOCOMOTION (R2+A) "
+            std::cout << "[Teleop] START bi tu choi — phai dang LOCOMOTION (R2+A/R2+X) "
                          "hoac H4 ZERO TORQUE. Trang thai hien tai: " << StateName() << "\n";
         } else {
             SetTeleopArmed(!teleop_runtime_on_, "START");
@@ -578,6 +579,8 @@ void Application::UpdateSafeStop(InputCommand& cmd) {
     int need = std::max(1, static_cast<int>(
                    tuning_.safe_stop_debounce_ms / 1000.0f / spec::kLoopDt));
     bool lost = input_lost_count_ >= need;
+    // Trước Say(): CancelReturningToLocomotion dừng audio.
+    if (lost) CancelDanceEntryOnControlLost();
 
     if (lost && !input_lost_) {
         std::cout << "\n[Application] CONTROL_LOST source=all_input remote_state="
@@ -594,6 +597,23 @@ void Application::UpdateSafeStop(InputCommand& cmd) {
 
     if (input_lost_) {
         cmd.vx = cmd.vy = cmd.yaw = 0.0f;
+    }
+}
+
+// Mất tay cầm = mất L2+B: không BẮT ĐẦU bài nhảy mới. Bài đang ở MIMIC chạy tới
+// hết (guard tư thế vẫn ngắt khi ngã). Đi đúng đường hủy của người lái (L2+Lên);
+// gọi mỗi tick khi còn mất nên idempotent.
+void Application::CancelDanceEntryOnControlLost() {
+    if (state_ == AppState::kReturningToDefault) {
+        CancelReturningToLocomotion("CONTROL_LOST");
+    } else if (announcing_) {
+        std::cout << "[Application] CONTROL_LOST khi doc ten DANCE " << pending_dance_key_
+                  << " -> huy, giu LOCOMOTION.\n";
+        announcing_ = false;
+        announce_saw_busy_ = false;
+        announce_has_voice_ = false;
+        mimic_entry_quiet_s_ = 0.0f;
+        mimic_entry_wait_logged_ = false;
     }
 }
 
@@ -770,9 +790,9 @@ void Application::UpdateHud() {
                          (loco_swap_pending_ ? std::string(" -> ") + LocoModeName(loco_swap_target_) +
                                                    " (dung yen...)"
                                              : std::string()) +
-                         (loco_mode_ == LocoMode::kTeleop
-                              ? " | START: tay teleop + di chuyen"
-                              : " | START: tay teleop (can dieu khien = 0)"),
+                         (tuning_.teleop_lock_base
+                              ? " | START: tay teleop (can dieu khien = 0)"
+                              : " | START: tay teleop + di chuyen"),
                      "W/S/A/D : Move | Q/E : Yaw | 1/T : doi che do",
                      "Tab : speed | R : Reset policy",
                      dance_keys + "0 : STAND LOCK | 9 : Sit down",

@@ -1,5 +1,4 @@
 # Locomotion policy bundle — selected as teleop_policy in locomotion.yaml.
-# Runtime checks contract and SHA-256; H4 arm overlay remains unapproved.
+# Runtime checks contract and SHA-256.
 contract: r1_wb_legs_v1_blind
 sha256: a57b64b4b8f299e392174ffc89aa300f54cde642e3fd577f5e004488a6eeccc8
-teleop_h4: false

@@ -107,7 +107,7 @@ void Application::InitControllers() {
               << " dance_error_deg=" << tuning_.dance_tracking_error_deg
               << " debounce_s=" << tuning_.dance_tracking_debounce_s
               << " state_timeout_s=" << tuning_.motion_safety_state_timeout_s << "\n";
-    // Hợp đồng máy-đọc cho chuỗi deploy. preflight.sh, deploy_policy.sh và
+    // Hợp đồng máy-đọc cho chuỗi deploy. preflight.sh, deploy_stack.sh và
     // update_model_manifest.sh đọc dòng "[Preflight] MODEL" (walk policy, luôn in
     // ĐẦU TIÊN) thay vì tự suy ra đường dẫn + số chiều theo contract: các script
     // đó từng có bảng contract riêng, lệch với runtime cả hai chiều. Thêm contract
@@ -163,16 +163,17 @@ void Application::InitControllers() {
         PolicyController& teleop_ctrl = teleop_ctrl_ ? *teleop_ctrl_ : *walk_ctrl_;
         print_model("TELEOP_MODEL", teleop.contract, teleop.rel_path, teleop_ctrl);
 
-        if (tuning_.teleop_h4_enabled) {
-            const bool walk_h4_approved = walk.teleop_h4 &&
-                walk_ctrl_->SupportsH4TeleopOverlay();
-            const bool teleop_h4_approved = teleop.teleop_h4 &&
-                teleop_ctrl.SupportsH4TeleopOverlay();
-            h4_teleop_approved_ = walk_h4_approved && teleop_h4_approved;
-            if (!h4_teleop_approved_)
-                throw std::runtime_error("H4 teleop denied: walk_policy '" + walk.name +
-                                         "' and teleop_policy '" + teleop.name +
-                                         "' must both be teleop_h4 bundles with teleop-capable contracts");
+        // R2+A/R2+X chỉ chọn policy. H4 bật theo teleop_h4_enabled và dùng được ở
+        // mọi policy có contract hỗ trợ overlay; policy không hỗ trợ thì START bị
+        // từ chối ở chế độ đó, không chặn khởi động.
+        h4_teleop_approved_ = tuning_.teleop_h4_enabled;
+        if (h4_teleop_approved_) {
+            if (!walk_ctrl_->SupportsH4TeleopOverlay())
+                std::cout << "[Teleop] walk_policy '" << walk.name << "' (" << walk.contract
+                          << ") khong ho tro H4 -> START bi tu choi o R2+A.\n";
+            if (!teleop_ctrl.SupportsH4TeleopOverlay())
+                std::cout << "[Teleop] teleop_policy '" << teleop.name << "' (" << teleop.contract
+                          << ") khong ho tro H4 -> START bi tu choi o R2+X.\n";
         }
     } else {
         // Route cũ (rollback/so sánh): flat_model + flat_policy_contract, một policy

@@ -100,7 +100,7 @@ def test_sigterm_cleans_real_logging_mp_child_while_stdin_idle(tmp_path):
 import importlib.util, sys
 spec=importlib.util.spec_from_file_location("ik_shutdown", {str(SCRIPTS / 'run_r1_vendor_ik_stream.py')!r})
 ik=importlib.util.module_from_spec(spec); spec.loader.exec_module(ik)
-def solver():
+def solver(elbow_mode):
     import logging_mp
     logging_mp.getLogger("shutdown-test")
     print("CHILD=" + str(logging_mp._internal_manager._listener_process.pid), flush=True)

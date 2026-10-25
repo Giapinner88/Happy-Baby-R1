@@ -317,12 +317,11 @@ void Application::UpdateBaseCommand(const InputCommand& cmd, const PolicyOverlay
     const bool legacy_arm_overlay_supported = caps.legacy_arm;
     const bool h4_overlay_supported = caps.h4;
     const bool history_gesture_contract = caps.history_gesture;
-    // R2+A dùng walk_policy nên khi teleop ARMED sẽ bỏ qua cần analog. R2+X dùng
-    // teleop_policy và vẫn nhận vận tốc để đi bộ đồng thời với tay + đầu.
+    // teleop_lock_base áp như nhau cho R2+A và R2+X (hai phím chỉ chọn policy):
+    // true = teleop ARMED bỏ qua cần analog; false = vừa đi vừa teleop.
     const bool history_gesture_holds_base = history_gesture_contract &&
         (!arm_gesture_.Idle() || gesture_history_release_s_ > 0.0f);
-    const bool teleop_locks_base = tuning_.teleop_lock_base &&
-        loco_mode_ == LocoMode::kWalk && teleop_runtime_on_ &&
+    const bool teleop_locks_base = tuning_.teleop_lock_base && teleop_runtime_on_ &&
         (legacy_arm_overlay_supported || h4_overlay_supported);
     if (state_ == AppState::kLocomotion && !holding && !teleop_locks_base &&
         !history_gesture_holds_base) {

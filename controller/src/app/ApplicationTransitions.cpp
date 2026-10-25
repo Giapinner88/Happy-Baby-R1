@@ -52,6 +52,31 @@ void Application::BeginSoftStop(const char* why) {
                               estimator_.state());
 }
 
+// Huỷ STAND LOCK đang chờ settle dưới policy (chưa rời LOCOMOTION): ở lại policy
+// đang chạy, cần điều khiển dùng lại được ngay.
+void Application::CancelPendingStandLock(const char* why) {
+    std::cout << "[Application] " << why << ": huy STAND LOCK dang cho -> o lai LOCOMOTION ("
+              << LocoModeName(loco_mode_) << ").\n";
+    pending_action_ = PendingAction::kNone;
+    settle_timer_ = 0.0f;
+    music_.Say(tuning_.voice_locomotion, tuning_.voice_volume, tuning_.voice_speaker_id);
+}
+
+// Huỷ vào dance khi đang RETURNING (gồng PD về default, policy đã tắt): bật lại
+// policy đi bộ đang chọn. Không blend: sim (results/returning_cancel_20261024)
+// cho thấy blend 0.5 s giữ target cũ trong lúc thân đã trôi, nghiêng gấp ~2 lần
+// so với trả quyền ngay cho policy vừa reset.
+void Application::CancelReturningToLocomotion(const char* why) {
+    std::cout << "[Application] " << why << ": huy vao DANCE " << pending_dance_key_
+              << " khi RETURNING -> LOCOMOTION.\n";
+    music_.Stop();
+    ActivatePolicy(locomotion_);
+    blend_alpha_ = 1.0f;
+    state_ = AppState::kLocomotion;
+    // L2+Lên còn giữ sau khi huỷ không được thành "xin STAND LOCK".
+    lock_block_timer_ = std::max(0.0f, tuning_.dance_abort_lock_block_s);
+}
+
 void Application::AbortDance() {
     if (dance_stopping_) return;
     BeginSoftStop("Dance aborted");
@@ -157,6 +182,12 @@ void Application::HandleTransitions(const InputCommand& cmd) {
     if (cmd.want_safe_shutdown && HandleSitRequest(rs)) return;
     if (cmd.want_get_up_down && HandleGetUpDownRequest(rs)) return;
 
+    if (pending_action_ == PendingAction::kToStandLock && state_ == AppState::kLocomotion &&
+        (cmd.want_locomotion || cmd.want_teleop_locomotion)) {
+        // R2+A/R2+X chỉ huỷ, không đổi policy; muốn đổi thì bấm thêm lần nữa.
+        CancelPendingStandLock(cmd.want_teleop_locomotion ? "R2+X" : "R2+A");
+        return;
+    }
     if (pending_action_ != PendingAction::kNone && state_ == AppState::kLocomotion) {
         AdvancePendingAction(rs);
         return;
@@ -195,14 +226,15 @@ bool Application::HandleStandLockRequest(const RobotState& rs) {
         // Đang nhảy: Chỉ hủy điệu nhảy, không gồng cứng ngay.
         AbortDance();
     } else if (state_ == AppState::kReturningToDefault) {
-        // Robot đang gồng về default chờ vào dance: cho phép huỷ bằng tay thay vì
-        // phải đợi hết return_timeout_s hoặc bấm E-stop.
-        std::cout << "[Application] Huỷ vào dance " << pending_dance_key_
-                  << " khi đang RETURNING -> STAND LOCK.\n";
-        BeginStandUp(rs, /*warn_first=*/false);
+        // Robot đang gồng về default chờ vào dance: huỷ bằng tay, trả về
+        // LOCOMOTION thay vì đợi return_timeout_s hoặc bấm E-stop.
+        CancelReturningToLocomotion("L2+Len");
         return true;
     } else if (state_ == AppState::kLocomotion) {
-        if (lock_block_timer_ > 0.0f) {
+        if (pending_action_ == PendingAction::kToStandLock) {
+            // Bấm lại trong lúc chờ: người lái đổi ý / bấm nhầm.
+            CancelPendingStandLock("L2+Len lan nua");
+        } else if (lock_block_timer_ > 0.0f) {
             std::cout << "[Application] Stand-lock blocked for another "
                       << lock_block_timer_ << "s after dance abort.\n";
         } else {

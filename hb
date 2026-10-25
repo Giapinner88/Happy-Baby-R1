@@ -23,21 +23,19 @@ usage() {
     cat <<USAGE
 Usage: ./hb <lệnh> [đối tượng] [tùy chọn]        (đang chạy ở chế độ: $MODE)
 
-HIỆN TRƯỜNG  (qua Tailscale, dùng được ở mọi mạng; HB_ROBOT_TAILSCALE=<ip> để đổi)
-  field [--no-restart]         chờ robot online trên Tailscale -> deploy toàn bộ -> status
-  ssh [lệnh...]                mở shell (hoặc chạy lệnh) trên robot qua Tailscale
-
-DEPLOY  (máy trạm -> robot; robot tự dò, hoặc ROBOT=unitree@<ip>)
-  deploy [all]                 backup + sync + build ARM64 + preflight + restart an toàn + teleop
-  deploy all --no-restart      như trên nhưng không restart service nào
-  deploy policy [--dry-run]    bundle walk/teleop + locomotion.yaml + gestures.yaml, restart high-level khi DISARMED
-  deploy dance  [--dry-run]    policy + dance.yaml + policies/dance, một lần restart
-  deploy high [--no-restart]   controller C++: sync + build + restart (cần DISARMED)
-  deploy voice | integration | presets   từng phần, không đụng high-level
-  deploy teleop                sync teleop + restart runtime Quest (không cần DISARMED)
-  diff                         xem trước thay đổi, không ghi gì
-  rollback                     khôi phục bản backup deploy gần nhất trên robot
+DEPLOY  (máy trạm -> robot; robot tự dò, hoặc ROBOT=unitree@<ip>). Bảng: docs/deploy.md
+  deploy                       tự thấy phần nào đổi, chỉ deploy phần đó (dùng hằng ngày)
+  deploy controller            code C++ + config + policy + dance; restart high-level, cần DISARMED
+  deploy voice                 voice + presets + integration; không đụng high-level
+  deploy teleop                runtime Quest; không cần DISARMED
+  deploy all                   ép làm toàn bộ (lần đầu, sửa systemd, nghi robot lệch)
+    [--no-restart]             chép + build + preflight, chưa restart (./hb deploy sau để kích hoạt)
+    [--dry-run]                chỉ xem kế hoạch
+  diff                         = deploy --dry-run
+  rollback                     trả bản trước lần deploy gần nhất (không gồm dance)
   pull [--dry-run]             kéo cấu hình đã sửa trên robot về máy trạm
+  field [đối tượng] [...]      như deploy nhưng đi qua Tailscale (HB_ROBOT_TAILSCALE=<ip>)
+  ssh [lệnh...]                mở shell (hoặc chạy lệnh) trên robot qua Tailscale
 
 SERVICE  (từ máy trạm: qua SSH; trên robot khi debug: tại chỗ)
   start | stop | restart <all|high|integration|voice|presets|teleop>
@@ -57,7 +55,7 @@ CÀI ĐẶT TRÊN ROBOT (sudo)
 
 KHÁC
   policy list                  liệt kê bundle policy đi bộ, đánh dấu walk (R2+A) / teleop (R2+X)
-  policy add <file.onnx> <tên> [--contract C] [--teleop]
+  policy add <file.onnx> <tên> [--contract C]
                                tạo controller/policies/locomotion/<tên>/ (chọn bằng locomotion.yaml)
   dance list | prune [--apply] | restore <tên>
   find-robot                   dò robot, in ROBOT=...
@@ -159,42 +157,36 @@ cmd_preflight() {
 
 # ----------------------------------------------------------------- deploy ----
 
-require_tmp_space() {
-    # Full deploy runs a local model preflight; it needs room in /tmp.
-    local min_mb="${HB_DEPLOY_MIN_TMP_MB:-2048}" avail_kb
-    avail_kb="$(df -Pk /tmp | awk 'NR == 2 {print $4}')"
-    if [[ ! "$avail_kb" =~ ^[0-9]+$ ]] || (( avail_kb < min_mb * 1024 )); then
-        die "cần ít nhất ${min_mb} MiB trống trong /tmp cho preflight model; dọn /tmp trước"
-    fi
+# In "<đối tượng> [cờ...]" chuẩn hoá; tên cũ là bí danh của lệnh mới.
+deploy_args() {
+    local target=auto
+    case "${1:-}" in
+        ""|--*) ;;
+        *) target="$1"; shift ;;
+    esac
+    case "$target" in
+        auto|all|controller|voice|teleop) ;;
+        policy|dance|high)
+            echo "hb: 'deploy $target' nay là 'deploy controller' (code + config + policy + dance)" >&2
+            target=controller ;;
+        presets|integration)
+            echo "hb: 'deploy $target' nay là 'deploy voice' (voice + presets + integration)" >&2
+            target=voice ;;
+        *) die "không rõ đối tượng deploy '$target' (./hb help)" ;;
+    esac
+    for arg in "$@"; do
+        case "$arg" in
+            --no-restart|--dry-run) ;;
+            *) die "usage: ./hb deploy [auto|controller|voice|teleop|all] [--no-restart] [--dry-run]" ;;
+        esac
+    done
+    DEPLOY_ARGS=("$target" "$@")
 }
 
 cmd_deploy() {
     need_dev deploy
-    local target="${1:-all}"
-    [[ $# -gt 0 ]] && shift
-    case "$target" in
-        all)
-            case "${1:-}" in
-                "")           require_tmp_space; exec "$OPS/deploy_stack.sh" deploy --accept-policy ;;
-                --no-restart) exec "$OPS/deploy_stack.sh" deploy --no-restart ;;
-                *)            die "usage: ./hb deploy [all] [--no-restart]" ;;
-            esac ;;
-        policy|dance)
-            # Local preflight uses the dev build of run_r1; build it when missing.
-            [[ -x "$HIGH_DIR/build/run_r1" ]] || build_dev_controller
-            if [[ "$target" == dance ]]; then
-                exec "$OPS/deploy_policy.sh" --with-dance "$@"
-            fi
-            exec "$OPS/deploy_policy.sh" "$@" ;;
-        high)        exec "$OPS/deploy_stack.sh" deploy-high "$@" ;;
-        voice|integration|presets)
-            [[ $# -eq 0 ]] || die "usage: ./hb deploy $target"
-            exec "$OPS/deploy_stack.sh" "deploy-$target" ;;
-        teleop)
-            [[ $# -eq 0 ]] || die "usage: ./hb deploy teleop"
-            exec "$OPS/deploy_stack.sh" deploy-robot-teleop ;;
-        *) die "không rõ đối tượng deploy '$target' (./hb help)" ;;
-    esac
+    deploy_args "$@"
+    exec "$OPS/deploy_stack.sh" deploy "${DEPLOY_ARGS[@]}"
 }
 
 # ---------------------------------------------------------------- service ----
@@ -255,18 +247,12 @@ tailscale_robot() {
 
 cmd_field() {
     need_dev field
-    case "${1:-}" in ""|--no-restart) ;; *) die "usage: ./hb field [--no-restart]" ;; esac
+    deploy_args "$@"
     tailscale_robot
     # ROBOT là ưu tiên cao nhất của find_robot.sh: deploy đi đúng đường Tailscale,
     # không thử các IP LAN/hotspot cũ trong ~/.config/hb/robot.env.
     export ROBOT="$TS_ROBOT"
-    if [[ "${1:-}" == --no-restart ]]; then
-        "$OPS/deploy_stack.sh" deploy --no-restart
-    else
-        require_tmp_space
-        "$OPS/deploy_stack.sh" deploy --accept-policy
-    fi
-    "$OPS/deploy_stack.sh" status
+    exec "$OPS/deploy_stack.sh" deploy "${DEPLOY_ARGS[@]}"
 }
 
 cmd_ssh() {

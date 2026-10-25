@@ -102,14 +102,14 @@ gesture_voice_cool_pose_slot: 7
 gesture_voice_determined_slot: 8
 gesture_voice_give_gift_slot: 4
 
-# START là toggle cạnh nhấn cho teleop H4/legacy; trong LOCOMOTION có tác dụng ở
-# cả R2+A và R2+X. R2+A yêu cầu vận tốc về 0 và khóa base; R2+X được vừa đi vừa teleop.
+# START là toggle cạnh nhấn cho teleop H4/legacy; trong LOCOMOTION hành xử như nhau
+# ở R2+A và R2+X (hai phím chỉ chọn policy). Xem teleop_lock_base bên dưới.
 # Quest có thể vào trước hoặc sau.
 # teleop_enabled: false = không mở socket teleop.
 teleop_enabled: true
-# H4 overlay: walk_policy và teleop_policy (locomotion.yaml) đều phải là bundle
-# teleop_h4: true có contract hỗ trợ H4; hash nằm trong policy.yaml của bundle. teleop_h4_model_sha256 chỉ
-# dùng cho route cũ flat_model.
+# H4 overlay: dùng được với mọi policy có contract hỗ trợ H4 (flat_plus_gait_h4_v1,
+# r1_wb_legs_v1_blind); policy không hỗ trợ thì START bị từ chối ở phím đó, không chặn
+# khởi động. teleop_h4_model_sha256 chỉ dùng cho route cũ flat_model.
 teleop_h4_enabled: true
 teleop_udp_port: 5560
 teleop_timeout_ms: 300
@@ -126,7 +126,9 @@ teleop_arm_kd: 2.0
 teleop_max_rate_rad_s: 2.0
 # Siết chặt hơn policy_rate_limit — nguồn ngoài mạng phải an toàn ít nhất bằng gesture.
 teleop_head_rate_limit_rad_s: 1.5
-teleop_lock_base: true
+# true = teleop ARMED khoá base (START cần cần điều khiển về 0); false = vừa đi vừa
+# teleop. Áp như nhau cho R2+A và R2+X.
+teleop_lock_base: false
 
 # Chỉ bật khi robot đã treo + có người giữ E-stop (cấp dòng chân+eo, không đỡ trên sàn).
 teleop_lock_others_enabled: false

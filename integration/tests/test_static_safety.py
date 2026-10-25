@@ -203,18 +203,31 @@ class StaticSafetyTest(unittest.TestCase):
         self.assertIn("User=@RUN_USER@", high_level_service)
         self.assertIn("User=@RUN_USER@", voice_service)
 
-    def test_deploy_discovers_robot_and_can_restart_only_voice(self):
+    def test_deploy_discovers_robot_and_writes_manifest_from_runtime_preflight(self):
         deploy = (HB_ROOT / "integration" / "scripts" / "deploy_stack.sh").read_text()
         finder = (HB_ROOT / "integration" / "scripts" / "find_robot.sh").read_text()
         activate = (HB_ROOT / "integration" / "scripts" / "activate_services.sh").read_text()
         self.assertIn('source "$SCRIPT_DIR/find_robot.sh"', deploy)
         self.assertIn("find_robot", deploy)
         self.assertIn("192.168.145.209", finder)
-        self.assertIn("--restart-voice", deploy)
-        self.assertIn("--accept-policy", deploy)
-        self.assertIn('update_model_manifest.sh" --accept', deploy)
-        self.assertIn("systemctl restart hb_integration.service hb_voice.service", deploy)
+        # The walk-policy manifest comes from run_r1 --preflight, never guessed.
+        check = deploy.split("local_controller_check() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn("[Preflight\\] MODEL", check)
+        self.assertIn('cat >"$MANIFEST_TMP"', check)
         self.assertIn('if [[ "$NO_RESTART" == "0" ]]', activate)
+
+    def test_controller_is_not_written_while_armed_and_restart_is_rechecked(self):
+        deploy = (HB_ROOT / "integration" / "scripts" / "deploy_stack.sh").read_text()
+        plan = deploy.split("plan() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('[[ "$(probe high)" == armed ]]', plan)
+        self.assertIn("HELD_BACK=1", plan)
+        apply = deploy.split("apply_controller() {", 1)[1].split("\n}\n", 1)[0]
+        # Robot preflight with the new binary before any restart; restore on failure.
+        self.assertLess(apply.index("robot preflight high"), apply.index("robot restart-high"))
+        self.assertIn("controller_abort", apply)
+        steps = (HB_ROOT / "integration" / "scripts" / "robot_steps.sh").read_text()
+        restart = steps.split("step_restart_high() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertLess(restart.index("return 3"), restart.index("systemctl restart hb_high_level"))
 
     def test_motor_owner_stops_and_restarts_only_when_disarmed(self):
         ctl = (HB_ROOT / "integration" / "scripts" / "stack_ctl.sh").read_text()
@@ -229,14 +242,17 @@ class StaticSafetyTest(unittest.TestCase):
 
     def test_voice_only_deploy_never_pulls_or_restarts_high_level(self):
         deploy = (HB_ROOT / "integration" / "scripts" / "deploy_stack.sh").read_text()
-        voice_case = deploy.split("    deploy-voice)", 1)[1].split(
-            "    deploy-integration)", 1
-        )[0]
-        self.assertIn("sync_voice", voice_case)
-        self.assertIn("build_on_robot.sh' voice", voice_case)
-        self.assertIn("--job-mode=ignore-dependencies restart hb_voice.service", voice_case)
-        self.assertNotIn("sync_high", voice_case)
-        self.assertNotIn("hb_high_level.service", voice_case)
+        voice = deploy.split("apply_voice() {", 1)[1].split("\n}\n", 1)[0]
+        voice += deploy.split("sync_voice_parts() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn("sync_voice", voice)
+        self.assertIn("robot build voice", voice)
+        self.assertIn("robot restart-units", voice)
+        self.assertNotIn("sync_high", voice)
+        self.assertNotIn("hb_high_level", voice)
+        self.assertNotIn("restart-high", voice)
+        steps = (HB_ROOT / "integration" / "scripts" / "robot_steps.sh").read_text()
+        units = steps.split("step_restart_units() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn("--job-mode=ignore-dependencies restart", units)
 
     def test_a_pinned_robot_address_is_verified_not_trusted(self):
         """A stale ROBOT must not abort the deploy.

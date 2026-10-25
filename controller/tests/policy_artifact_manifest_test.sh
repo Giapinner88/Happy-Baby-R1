@@ -36,8 +36,6 @@ for dir in "$loco"/*/; do
     }
     grep -Eq '^contract:[[:space:]]*[a-z0-9_]+' "$dir/policy.yaml" || {
         echo "bundle $name: missing contract" >&2; exit 1; }
-    grep -Eq '^teleop_h4:[[:space:]]*(true|false)[[:space:]]*(#.*)?$' "$dir/policy.yaml" || {
-        echo "bundle $name: teleop_h4 must be true or false" >&2; exit 1; }
     bundles=$((bundles + 1))
 done
 ((bundles > 0)) || { echo "no locomotion bundle found under $loco" >&2; exit 1; }

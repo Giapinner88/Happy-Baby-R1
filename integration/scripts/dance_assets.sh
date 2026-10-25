@@ -58,9 +58,8 @@ case "$sub" in
         done < <(dance_unreferenced)
         if (( ! apply )); then
             echo "$count folder(s). Chạy lại với --apply để chuyển sang _archive/dance/."
-            echo "Lưu ý: lần deploy dance/deploy kế tiếp mirror policies/dance với --delete,"
-            echo "nên các folder này cũng bị xoá khỏi robot. Chỉ './hb deploy' (đầy đủ) tạo"
-            echo "tarball ~/HB_backups trên robot trước khi sync."
+            echo "Lưu ý: lần ./hb deploy kế tiếp mirror policies/dance với --delete (trừ backup/),"
+            echo "nên các folder này cũng bị xoá khỏi robot. Tarball ~/HB_backups KHÔNG chứa dance."
         fi
         ;;
     restore)

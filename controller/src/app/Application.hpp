@@ -147,6 +147,9 @@ private:
     void BeginGetUp(const RobotState& rs);
     void BeginLieDown(const RobotState& rs);
     void UpdateSafeStop(InputCommand& cmd);
+    void CancelDanceEntryOnControlLost();
+    void CancelReturningToLocomotion(const char* why);
+    void CancelPendingStandLock(const char* why);
     void UpdateBattery();                 // P0-3: cảnh báo pin thấp / tự ngồi khi cạn
     void RunStandUp();
     void RunStandLock();

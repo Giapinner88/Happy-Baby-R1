@@ -77,6 +77,10 @@ def load(path: Path) -> dict[str, str]:
         values[env_name] = _scalar(_get(raw, section, key, path=path), path=path)
 
     runtime = raw["robot_runtime"]
+    elbow_mode = _scalar(runtime.get("elbow_mode", "vendor"), path=path)
+    if elbow_mode not in ("swivel", "vendor"):
+        raise ValueError(f"{path}: robot_runtime.elbow_mode must be 'swivel' or 'vendor'")
+    values["HB_TELEOP_RUNTIME_ELBOW_MODE"] = elbow_mode
     for name in ("camera_capture_hz", "camera_startup_timeout_s", "camera_enable_max_age_s", "camera_fallback_max_age_s"):
         value = float(runtime[name])
         if not math.isfinite(value) or value < 0 or (name != "camera_capture_hz" and value == 0):

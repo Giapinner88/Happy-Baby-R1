@@ -3,7 +3,5 @@
 # metadata ONNX (policy_contract, observation_dim, action_dim) trước khi chạy.
 contract: flat_plus_gait_h4_v1
 sha256: 7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ecad815ccb
-# true = artifact được duyệt cho overlay teleop H4 (tay+đầu từ Quest).
-teleop_h4: true
 # Nguồn: controller/policies/locomotion/flat_plus/policy_flat_plus_gait_0917_armfree.onnx
 # (policy đi bộ đang chạy trước khi tách bundle). Repo không giữ provenance huấn luyện.

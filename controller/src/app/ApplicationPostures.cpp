@@ -96,16 +96,17 @@ void Application::RunReturning() {
          max_dq <= tuning_.mimic_transition_exit_dq_tol);
     if (!return_pose_ready) {
         // Trần thời gian: khớp kẹt hoặc lệch calib thì max_err không bao giờ xuống dưới
-        // tol, mà state này KHÔNG nhận nút nào (chỉ E-stop) -> treo vô hạn với stand gains.
+        // tol. Giữ PD cứng trên sàn không tự cân bằng (MuJoCo với gain này đổ sau
+        // ~0.6 s, simulate_cpp/experiments/hb_stability_20261024), nên hết giờ thì trả
+        // về policy đi bộ như L2+Lên, không về STAND LOCK.
         return_timer_ += spec::kLoopDt;
         if (return_timer_ >= std::max(0.5f, tuning_.return_timeout_s)) {
             std::cout << "\n[Application] RETURNING quá " << tuning_.return_timeout_s
                       << "s mà khớp " << worst_err_j << " vẫn lệch " << max_err
                       << " rad (tol " << tuning_.return_pos_tol << ", max dq "
                       << max_dq << ", dq tol " << tuning_.mimic_transition_exit_dq_tol
-                      << ") - HUỶ dance " << pending_dance_key_
-                      << ", về STAND LOCK.\n";
-            BeginStandUp(rs, /*warn_first=*/false);
+                      << ").\n";
+            CancelReturningToLocomotion("RETURNING timeout");
         }
         return;
     }

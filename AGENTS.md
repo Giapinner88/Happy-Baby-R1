@@ -53,8 +53,7 @@ snapshot (teleop experiments, controller captures/plans) kept for later use. No 
 
 ```bash
 ./hb build && ./hb test             # workstation: run_r1 + ctest + pytest; no motor output
-./hb field                          # workstation -> robot over Tailscale: sync, build, preflight, safe restart
-./hb deploy policy|dance|teleop     # partial sync; controller restarts only when DISARMED
+./hb deploy [controller|voice|teleop|all]  # deploys only what changed; controller only when DISARMED (docs/deploy.md)
 ./hb status | logs | ssh            # robot state, logs, shell over SSH
 ./hb restart|stop|start <target>    # over SSH; high/all refuse unless DISARMED
 ```

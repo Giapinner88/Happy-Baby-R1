@@ -3,8 +3,9 @@
 
 This is the online counterpart to `solve_r1_baseline_upstream_ik.py`. It reads
 `R1TeleopCommand` JSON lines on stdin, solves each one with `xr_teleoperate`'s
-`R1_A5_ArmIK` exactly as the vendor ships it, and writes one joint-target JSON
-line per command on stdout.
+`R1_A5_ArmIK` (augmented in memory with 5-DOF elbow-swivel retargeting and dual
+hand+elbow tracking), and writes one joint-target JSON line per command on
+stdout.
 
 Splitting IK away from the robot side is upstream's own arrangement, not an
 invention here: the solver runs beside the headset reader and whatever drives
@@ -77,6 +78,24 @@ HEAD_JOINT_NAMES = ("head_pitch_joint", "head_yaw_joint")
 DEFAULT_URDF = REPO_ROOT / "src" / "assets" / "R1.urdf"
 HEAD_NEUTRAL_CONFIRM_SAMPLES = 3
 VENDOR_HEAD_TO_WAIST_OFFSET_M = np.array([0.15, 0.0, 0.45])
+
+# Exact R1-A5 kinematic geometry from r1_a5.urdf / R1.urdf:
+# - shoulder_roll_joint in waist_yaw_link at q=0: [0.03445, ±0.13790, 0.18490]
+# - shoulder_roll -> elbow_joint local vector at q=0: [-0.018259, ±0.030761, -0.191208]
+# - elbow_joint -> L_ee/R_ee (at +0.20m from wrist_roll_joint): [0.312180, ∓0.030020, -0.011702]
+R1_A5_UPPER_ARM_LEN_M = 0.1945205
+R1_A5_FOREARM_EE_LEN_M = 0.3138396
+R1_A5_NEUTRAL_SWIVEL_RAD = 0.181682
+R1_A5_NEUTRAL_REACH_AZIMUTH_RAD = 0.002480
+# Swivel mode keeps the pinned vendor weights (robot_arm_ik.py R1_A5_ArmIK:
+# 50 / 0.5 / 0.02 / 0.1) and only adds the elbow position term.
+SWIVEL_IK_WEIGHTS = {
+    "translational": 50.0,
+    "elbow": 30.0,
+    "rotation": 0.5,
+    "regularization": 0.02,
+    "smooth": 0.1,
+}
 
 
 class SolveTimingStats:
@@ -240,6 +259,172 @@ def body_relative_wrist_matrix(wrist: np.ndarray, head: np.ndarray,
     return reanchor_wrist_matrix(wrist, head, moving_anchor)
 
 
+def retarget_wrist_for_elbow_swivel(
+    wrist_pose_matrix: np.ndarray,
+    side: str,
+    *,
+    lever_arm_compensation: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Project a 6-DOF Quest wrist pose onto the R1-A5 5-DOF kinematic manifold.
+
+    Each R1-A5 arm has 5 degrees of freedom (3 shoulder + 1 elbow + 1 forearm
+    roll) and no wrist pitch/yaw joints. Consequently, once the 3D end-effector
+    position ``p_ee`` (3 DOF) and the elbow swivel angle ``psi`` around the
+    shoulder-to-EE axis (1 DOF) are chosen, the 3D elbow position ``p_elbow``
+    and the forearm pointing direction ``x_ee`` are geometrically fixed, leaving
+    ``wrist_roll_joint`` as the 5th DOF.
+
+    Upstream's copy-pasted 6-DOF cost (50 * pos_cost + 0.5 * rot_cost, with no
+    elbow constraint) allowed ``wrist_roll_joint`` and ``shoulder_yaw_joint`` to
+    absorb controller roll/tilt while keeping the robot's elbow stationary when
+    the operator held the controller in place and swung their elbow. Even worse,
+    WebXR's ``targetRaySpace`` is pitched downward around the local +Y axis by
+    ~35-40 deg relative to the forearm, so forearm roll rotated the ray's X-axis
+    in the opposite yaw direction.
+
+    Because the second column ``y_h = R_hand[:, 1]`` (the elbow hinge axis) is
+    mathematically invariant to any local Y-axis pitch ``Ry(theta)`` (both
+    ``targetRaySpace`` tilt and human wrist flexion/extension), extracting the
+    arm-plane swivel angle from ``y_h`` in the reach-aligned horizontal frame
+    reconstructs the operator's true elbow swivel ``psi`` across:
+      1. Pure forearm/controller roll (operator bends wrist to keep controller
+         aimed forward while flapping the elbow),
+      2. Rigid-wrist 3D swivel around the shoulder-to-hand axis, and
+      3. Horizontal forearm yaw around a stationary hand,
+    while keeping ``delta_psi == 0`` when the operator keeps their elbow fixed
+    and swings their hand left/right around the elbow.
+    """
+    if side not in ("left", "right"):
+        raise ValueError(f"side must be 'left' or 'right', got {side!r}")
+    sign = 1.0 if side == "left" else -1.0
+    p_shoulder = np.array([0.03445, sign * 0.13790, 0.18490], dtype=float)
+    v_sh_to_el_local = np.array([-0.018259, sign * 0.030761, -0.191208], dtype=float)
+    v_el_to_ee_local = np.array([0.312180, -sign * 0.030020, -0.011702], dtype=float)
+    gamma_0 = sign * R1_A5_NEUTRAL_REACH_AZIMUTH_RAD
+
+    T_in = np.asarray(wrist_pose_matrix, dtype=float)
+    if T_in.shape != (4, 4) or not np.all(np.isfinite(T_in)):
+        raise ValueError(f"invalid {side} wrist pose matrix")
+    p_raw = T_in[:3, 3].copy()
+    R_hand = T_in[:3, :3].copy()
+    y_h = R_hand[:, 1]
+
+    if lever_arm_compensation:
+        palm_to_ray_z = 0.025
+        p_ee = p_raw - np.array(
+            [0.0, -palm_to_ray_z * y_h[2], palm_to_ray_z * (1.0 - y_h[1])],
+            dtype=float,
+        )
+    else:
+        p_ee = p_raw
+
+    v = p_ee - p_shoulder
+    d = float(np.linalg.norm(v))
+    max_reach = 0.96 * (R1_A5_UPPER_ARM_LEN_M + R1_A5_FOREARM_EE_LEN_M)
+    min_reach = abs(R1_A5_UPPER_ARM_LEN_M - R1_A5_FOREARM_EE_LEN_M) + 0.02
+    if d < 1e-6:
+        # Degenerate zero-vector input (e.g. synthetic origin fixture): return
+        # unmodified target pose and neutral elbow position.
+        p_el_neutral = p_shoulder + v_sh_to_el_local
+        return T_in.copy(), p_el_neutral
+    if d > max_reach:
+        p_ee = p_shoulder + (max_reach / d) * v
+        v = p_ee - p_shoulder
+        d = max_reach
+    elif d < min_reach:
+        p_ee = p_shoulder + (min_reach / d) * v
+        v = p_ee - p_shoulder
+        d = min_reach
+    u = v / max(d, 1e-6)
+
+    a = (R1_A5_UPPER_ARM_LEN_M**2 - R1_A5_FOREARM_EE_LEN_M**2 + d**2) / (2.0 * d)
+    h = float(np.sqrt(max(0.0, R1_A5_UPPER_ARM_LEN_M**2 - a**2)))
+
+    down = np.array([0.0, 0.0, -1.0], dtype=float)
+    e_down = down - np.dot(down, u) * u
+    norm_ed = float(np.linalg.norm(e_down))
+    if norm_ed < 1e-5:
+        e_down = np.array([-1.0, 0.0, 0.0], dtype=float) - u[0] * u
+        norm_ed = float(np.linalg.norm(e_down))
+    e_down /= max(norm_ed, 1e-6)
+    e_lat = np.cross(u, e_down)
+
+    horiz_norm = float(np.hypot(v[0], v[1]))
+    if horiz_norm > 0.05:
+        gamma_reach = float(np.arctan2(v[1], v[0])) - gamma_0
+    else:
+        gamma_reach = 0.0
+    c_g, s_g = float(np.cos(gamma_reach)), float(np.sin(gamma_reach))
+    f_horiz = np.array([c_g, s_g, 0.0], dtype=float)
+    l_horiz = np.array([-s_g, c_g, 0.0], dtype=float)
+
+    y_lat = float(y_h[1])
+    y_up = float(y_h[2])
+    psi_roll = float(np.arctan2(y_up, max(y_lat, 1e-4)))
+    alpha_y = float(np.arctan2(float(y_h[0]), max(y_lat, 1e-4)))
+    if alpha_y * gamma_reach < 0.0:
+        psi_yaw = float(np.copysign(max(0.0, abs(alpha_y) - abs(gamma_reach)), alpha_y) + 0.19 * gamma_reach)
+    else:
+        psi_yaw = alpha_y
+    if np.sign(psi_roll) == np.sign(psi_yaw):
+        delta_psi_raw = float(
+            np.copysign(
+                np.hypot(psi_roll, psi_yaw),
+                psi_roll if abs(psi_roll) >= abs(psi_yaw) else psi_yaw,
+            )
+        )
+    else:
+        delta_psi_raw = psi_roll + psi_yaw
+
+    if side == "right":
+        delta_psi = float(np.clip(delta_psi_raw, -np.deg2rad(75.0), np.deg2rad(12.0)))
+    else:
+        delta_psi = float(np.clip(delta_psi_raw, -np.deg2rad(12.0), np.deg2rad(75.0)))
+
+    psi_neutral = sign * R1_A5_NEUTRAL_SWIVEL_RAD
+    psi = psi_neutral + delta_psi
+
+    perp = np.cos(psi) * e_down + np.sin(psi) * e_lat
+    p_elbow = p_shoulder + a * u + h * perp
+
+    vec_el_to_ee = p_ee - p_elbow
+    vec_sh_to_el = p_elbow - p_shoulder
+    x_ee = vec_el_to_ee / max(float(np.linalg.norm(vec_el_to_ee)), 1e-6)
+    y_elbow = l_horiz.copy()
+    for _ in range(4):
+        z_elbow = np.cross(x_ee, y_elbow)
+        z_elbow /= max(float(np.linalg.norm(z_elbow)), 1e-6)
+        upper_z_axis = vec_sh_to_el - v_sh_to_el_local[1] * y_elbow - v_sh_to_el_local[0] * x_ee
+        upper_z_axis /= max(float(np.linalg.norm(upper_z_axis)), 1e-6)
+        y_elbow = np.cross(x_ee, upper_z_axis)
+        norm_ye = float(np.linalg.norm(y_elbow))
+        if norm_ye < 1e-5:
+            y_elbow = l_horiz.copy()
+        else:
+            y_elbow /= norm_ye
+        z_elbow = np.cross(x_ee, y_elbow)
+        x_vec = vec_el_to_ee - v_el_to_ee_local[1] * y_elbow - v_el_to_ee_local[2] * z_elbow
+        x_ee = x_vec / max(float(np.linalg.norm(x_vec)), 1e-6)
+
+    excess_roll = delta_psi_raw - delta_psi
+    y_proj = y_h - np.dot(y_h, x_ee) * x_ee
+    norm_yp = float(np.linalg.norm(y_proj))
+    if norm_yp > 1e-5:
+        y_proj /= norm_yp
+        residual_roll = float(np.arctan2(np.dot(y_proj, z_elbow), np.dot(y_proj, y_elbow)))
+        applied_roll = float(np.clip(excess_roll + 0.20 * (residual_roll - excess_roll), -1.8, 1.8))
+        y_ee = np.cos(applied_roll) * y_elbow + np.sin(applied_roll) * z_elbow
+    else:
+        y_ee = y_elbow
+    z_ee = np.cross(x_ee, y_ee)
+    z_ee /= max(float(np.linalg.norm(z_ee)), 1e-6)
+
+    T_out = np.eye(4, dtype=float)
+    T_out[:3, :3] = np.column_stack([x_ee, y_ee, z_ee])
+    T_out[:3, 3] = p_ee
+    return T_out, p_elbow
+
+
 class HeadNeutralCalibrator:
     """Capture one stable session neutral and hold the head with deadman off."""
 
@@ -295,7 +480,104 @@ def verify_vendor_artifacts() -> None:
         raise SystemExit("vendor R1-A5 mesh tree is missing or changed")
 
 
-def load_solver():
+def configure_elbow_aware_solver(solver, elbow_mode: str = "swivel"):
+    """Augment an in-memory R1_A5_ArmIK instance with 5-DOF elbow swivel tracking.
+
+    The pinned vendor files on disk remain completely unmodified. When
+    ``elbow_mode == "swivel"``, this attaches symbolic elbow position tracking
+    for ``left_elbow_joint`` and ``right_elbow_joint`` to the existing CasADi
+    ``Opti`` problem and wraps ``solver.solve_ik`` so active arms are retargeted
+    onto the 5-DOF R1-A5 manifold before solving. ``vendor`` leaves the solver
+    untouched. The Opti objective can only be patched once, so a second call
+    is rejected instead of silently keeping the first mode.
+    """
+    if elbow_mode not in ("swivel", "vendor"):
+        raise ValueError(f"elbow_mode must be 'swivel' or 'vendor', got {elbow_mode!r}")
+    if getattr(solver, "elbow_mode", None) is not None:
+        raise RuntimeError("solver elbow_mode is already configured; it cannot change after load")
+    solver.elbow_mode = elbow_mode
+    solver.last_elbow_targets = None
+    if elbow_mode != "swivel":
+        return solver
+
+    if not all(
+        hasattr(solver, attr)
+        for attr in (
+            "opti", "reduced_robot", "cdata", "cq", "var_q",
+            "translational_cost", "rotation_cost",
+            "regularization_cost", "smooth_cost",
+        )
+    ):
+        raise SystemExit("vendor R1_A5_ArmIK no longer exposes the Opti cost terms swivel mode patches")
+    import casadi
+
+    model = solver.reduced_robot.model
+    solver.L_elbow_id = model.getFrameId("left_elbow_joint")
+    solver.R_elbow_id = model.getFrameId("right_elbow_joint")
+    solver.param_elbow_l = solver.opti.parameter(3)
+    solver.param_elbow_r = solver.opti.parameter(3)
+    elbow_error = casadi.Function(
+        "elbow_error",
+        [solver.cq, solver.param_elbow_l, solver.param_elbow_r],
+        [
+            casadi.vertcat(
+                solver.cdata.oMf[solver.L_elbow_id].translation - solver.param_elbow_l,
+                solver.cdata.oMf[solver.R_elbow_id].translation - solver.param_elbow_r,
+            )
+        ],
+    )
+    solver.elbow_cost = casadi.sumsqr(
+        elbow_error(solver.var_q, solver.param_elbow_l, solver.param_elbow_r)
+    )
+    w = SWIVEL_IK_WEIGHTS
+    solver.opti.minimize(
+        w["translational"] * solver.translational_cost
+        + w["elbow"] * solver.elbow_cost
+        + w["rotation"] * solver.rotation_cost
+        + w["regularization"] * solver.regularization_cost
+        + w["smooth"] * solver.smooth_cost
+    )
+
+    original_solve_ik = solver.solve_ik
+    solver._inactive_left_elbow = None
+
+    def _set_inactive_left_elbow(data) -> None:
+        solver._inactive_left_elbow = np.asarray(
+            data.oMf[solver.L_elbow_id].translation, dtype=float
+        ).reshape(3).copy()
+
+    def _elbow_aware_solve_ik(
+        left_wrist,
+        right_wrist,
+        current_lr_arm_motor_q=None,
+        current_lr_arm_motor_dq=None,
+    ):
+        inactive_left_el = solver._inactive_left_elbow
+        solver._inactive_left_elbow = None
+        if inactive_left_el is not None:
+            left_target = np.asarray(left_wrist, dtype=float)
+            left_elbow = inactive_left_el
+        else:
+            left_target, left_elbow = retarget_wrist_for_elbow_swivel(left_wrist, "left")
+        right_target, right_elbow = retarget_wrist_for_elbow_swivel(right_wrist, "right")
+        solver.last_elbow_targets = (left_elbow, right_elbow)
+        solver.opti.set_value(solver.param_elbow_l, left_elbow)
+        solver.opti.set_value(solver.param_elbow_r, right_elbow)
+        if current_lr_arm_motor_q is None and current_lr_arm_motor_dq is None:
+            return original_solve_ik(left_target, right_target)
+        return original_solve_ik(
+            left_target,
+            right_target,
+            current_lr_arm_motor_q,
+            current_lr_arm_motor_dq,
+        )
+
+    solver._set_inactive_left_elbow = _set_inactive_left_elbow
+    solver.solve_ik = _elbow_aware_solve_ik
+    return solver
+
+
+def load_solver(elbow_mode: str):
     verify_vendor_artifacts()
     # The vendor cache has no source/URDF signature. Rebuild the model from the
     # checked artifacts for every session so an old pickle cannot bypass them.
@@ -316,7 +598,8 @@ def load_solver():
     sys.modules["teleop"] = vendor_pkg
     from robot_control.robot_arm_ik import R1_A5_ArmIK
 
-    return R1_A5_ArmIK(Unit_Test=True, Visualization=False)
+    solver = R1_A5_ArmIK(Unit_Test=True, Visualization=False)
+    return configure_elbow_aware_solver(solver, elbow_mode=elbow_mode)
 
 
 def compact_live_commands(lines):
@@ -406,6 +689,8 @@ def solve_tracked_arms(solver, left_wrist, right_wrist, tracking):
             raise ValueError('invalid vendor seed for inactive arm')
         pin.framesForwardKinematics(model, data, seed)
         left_wrist = np.asarray(data.oMf[solver.L_hand_id].homogeneous).copy()
+        if hasattr(solver, "_set_inactive_left_elbow"):
+            solver._set_inactive_left_elbow(data)
     solution, torque = solver.solve_ik(left_wrist, right_wrist)
     return solution, torque, left_wrist, right_wrist
 
@@ -465,6 +750,8 @@ def main() -> int:
                         default="initial_head")
     parser.add_argument("--arm-filter", choices=("vendor", "responsive"), default="vendor",
                         help="responsive uses two samples (0.7/0.3) instead of four.")
+    parser.add_argument("--elbow-mode", choices=("swivel", "vendor"), default="vendor",
+                        help="swivel reconstructs 5-DOF elbow swivel targets so elbow motion tracks naturally.")
     args = parser.parse_args()
     if not np.isfinite(args.max_command_age_s) or args.max_command_age_s <= 0:
         raise SystemExit("--max-command-age-s must be finite and positive")
@@ -483,10 +770,10 @@ def main() -> int:
     head_bounds = head_limits_rad(args.urdf_path)
     signal.signal(signal.SIGTERM, terminate_ik)
     atexit.register(shutdown_logging_listener)
-    solver = load_solver()
+    solver = load_solver(args.elbow_mode)
     if args.arm_filter == "responsive":
         solver.smooth_filter = type(solver.smooth_filter)(np.array([0.7, 0.3]), 10)
-    print("[VENDOR IK READY] pinned R1_A5_ArmIK loaded", file=sys.stderr, flush=True)
+    print(f"[VENDOR IK READY] pinned R1_A5_ArmIK loaded (elbow_mode={args.elbow_mode})", file=sys.stderr, flush=True)
     joint_names = list(ARM_JOINT_NAMES) + list(HEAD_JOINT_NAMES)
 
     source = args.input.open("r", encoding="utf-8") if args.input else sys.stdin
@@ -499,6 +786,7 @@ def main() -> int:
     last_sequence_id: int | None = None
     last_arms: np.ndarray | None = None
     last_wrist_targets: tuple[np.ndarray, np.ndarray] | None = None
+    last_elbow_targets: tuple[np.ndarray, np.ndarray] | None = None
     head_calibrator = HeadNeutralCalibrator(head_bounds)
     reset_requires_release = True
 
@@ -567,6 +855,12 @@ def main() -> int:
                 if last_arms.shape != (10,) or not np.all(np.isfinite(last_arms)):
                     raise ValueError("vendor IK returned an invalid 10-joint solution")
                 last_wrist_targets = (left_wrist, right_wrist)
+                elbow_pair = getattr(solver, "last_elbow_targets", None)
+                if elbow_pair is None and args.elbow_mode == "swivel":
+                    _, left_el = retarget_wrist_for_elbow_swivel(left_wrist, "left")
+                    _, right_el = retarget_wrist_for_elbow_swivel(right_wrist, "right")
+                    elbow_pair = (left_el, right_el)
+                last_elbow_targets = elbow_pair
             elif last_arms is None:
                 # Nothing solved yet, so there is no pose to hold and emitting a
                 # zero vector would be a command, not a hold.
@@ -592,9 +886,13 @@ def main() -> int:
                     # input has already been dropped above.
                     record["upstream_solved_timestamp_monotonic_s"] = time.monotonic()
                 record["upstream_wrist_reference_mode"] = args.wrist_reference
+                record["upstream_elbow_mode"] = args.elbow_mode
                 assert last_wrist_targets is not None
                 record["upstream_left_wrist_target_matrix"] = last_wrist_targets[0].tolist()
                 record["upstream_right_wrist_target_matrix"] = last_wrist_targets[1].tolist()
+                if last_elbow_targets is not None:
+                    record["upstream_left_elbow_target_m"] = last_elbow_targets[0].tolist()
+                    record["upstream_right_elbow_target_m"] = last_elbow_targets[1].tolist()
             else:
                 record = {
                     "schema_version": 1,
@@ -655,6 +953,7 @@ def main() -> int:
                         "stale_samples_skipped": int(stale_samples_skipped),
                         "wrist_reference_mode": args.wrist_reference,
                         "arm_filter": args.arm_filter,
+                        "elbow_mode": args.elbow_mode,
                         "solve_ms": solve_summary,
                         "implied_rate_ceiling_hz": implied_rate,
                         "head_neutral_pitch_yaw_rad": (

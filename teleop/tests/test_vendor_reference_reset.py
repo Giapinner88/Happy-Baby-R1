@@ -58,7 +58,7 @@ def test_reset_emits_stop_and_requires_release_before_new_solve(tmp_path, monkey
     class Solver:
         def solve_ik(self, left, right):
             return np.zeros(10), np.zeros(10)
-    monkeypatch.setattr(ik, "load_solver", lambda: Solver())
+    monkeypatch.setattr(ik, "load_solver", lambda elbow_mode: Solver())
     pose = {"position": {"x": 0, "y": 0, "z": 0},
             "orientation": {"x": 0, "y": 0, "z": 0, "w": 1}}
     commands = []

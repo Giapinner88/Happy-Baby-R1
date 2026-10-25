@@ -13,7 +13,8 @@ hb_summarize_dance_preflight() {
 
         if grep -Fq "[Application] Loaded Mimic $slot (" "$log"; then
             ((HB_DANCE_OK += 1))
-            hb_ok "Dance $slot — $folder"
+            # HB_DANCE_SUMMARY_QUIET=1 (deploy): chỉ in slot lỗi và dòng tổng.
+            [[ "${HB_DANCE_SUMMARY_QUIET:-0}" == "1" ]] || hb_ok "Dance $slot — $folder"
             continue
         fi
 

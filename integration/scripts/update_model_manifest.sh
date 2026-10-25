@@ -14,7 +14,6 @@ SELECTED_POLICY="$(hb_selected_policy "$HIGH_DIR/config/tuning.yaml" walk_policy
 }
 read -r SELECTED_REL CONTRACT <<<"$SELECTED_POLICY"
 HIGH_BIN="${HIGH_BIN:-}"
-CHECK_BUILD=""
 PREFLIGHT_LOG=""
 KEEP_PREFLIGHT_LOG=0
 
@@ -22,19 +21,15 @@ cleanup() {
     if [[ -n "$PREFLIGHT_LOG" && "$KEEP_PREFLIGHT_LOG" != "1" ]]; then
         rm -f -- "$PREFLIGHT_LOG"
     fi
-    if [[ -n "$CHECK_BUILD" && -d "$CHECK_BUILD" && \
-          "$CHECK_BUILD" == /tmp/hb-model-check.* ]]; then
-        rm -rf -- "$CHECK_BUILD"
-    fi
 }
 trap cleanup EXIT
 
-
+# Build tăng dần trong build dir chuẩn (không build lại từ đầu trong /tmp).
 if [[ -z "$HIGH_BIN" ]]; then
-    CHECK_BUILD="$(mktemp -d /tmp/hb-model-check.XXXXXX)"
-    cmake -S "$HIGH_DIR" -B "$CHECK_BUILD" -DCMAKE_BUILD_TYPE=Release >/dev/null
-    cmake --build "$CHECK_BUILD" --target run_r1 --parallel "$(nproc)" >/dev/null
-    HIGH_BIN="$CHECK_BUILD/run_r1"
+    [[ -f "$HIGH_DIR/build/CMakeCache.txt" ]] || \
+        cmake -S "$HIGH_DIR" -B "$HIGH_DIR/build" -DCMAKE_BUILD_TYPE=Release >/dev/null
+    cmake --build "$HIGH_DIR/build" --target run_r1 --parallel "$(nproc)" >/dev/null
+    HIGH_BIN="$HIGH_DIR/build/run_r1"
 fi
 
 ARCH="$(uname -m)"

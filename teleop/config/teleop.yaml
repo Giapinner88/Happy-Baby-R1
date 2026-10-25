@@ -12,6 +12,10 @@ robot_runtime:
   hostname: hb-r1.local
   port: 8012
   ik_backend: vendor_r1_a5
+  # `vendor`: unmodified upstream IK, hand pose only, elbow placed by the solver.
+  # `swivel`: also tracks an elbow target estimated from controller orientation
+  # (vendor weights + elbow term). Not yet validated on hardware.
+  elbow_mode: vendor
   cert_file: /etc/hb/teleop/cert.pem
   key_file: /etc/hb/teleop/key.pem
   joint_limits_only: true

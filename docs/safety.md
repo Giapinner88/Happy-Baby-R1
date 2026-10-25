@@ -60,7 +60,7 @@ Làm tròn vào trong từ 66 774 frame encoder đã ghi; **chưa** phải giớ
 
 ## 7. Chưa được nghiệm thu trên phần cứng
 
-Kiểm thử local (CTest, test hợp đồng) chỉ bao phủ hợp đồng phần mềm, không phải thăng bằng vật lý hay firmware động cơ. Còn mở: thời gian thực trên PC2, bàn giao khi robot được đỡ, tầm/tải khớp đầu, nghiệm thu E-stop phần cứng, hành vi mất tay cầm trong Mimic/đứng dậy/nằm xuống, đổi nóng giữa hai policy đi bộ khác nhau (chỉ có test hợp đồng với plant lý tưởng).
+Kiểm thử local (CTest, test hợp đồng) chỉ bao phủ hợp đồng phần mềm, không phải thăng bằng vật lý hay firmware động cơ. Còn mở: thời gian thực trên PC2, bàn giao khi robot được đỡ, tầm/tải khớp đầu, nghiệm thu E-stop phần cứng, hành vi mất tay cầm khi đứng dậy/nằm xuống (Mimic: bài chạy tới hết, chỉ guard tư thế bảo vệ; mất tay cầm lúc đọc tên bài/RETURNING thì hủy vào bài, chỉ có test với plant lý tưởng), đổi nóng giữa hai policy đi bộ khác nhau (chỉ có test hợp đồng với plant lý tưởng).
 
 ## 8. Guard theo trạng thái và reference
 

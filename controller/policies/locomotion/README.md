@@ -5,17 +5,17 @@ Mỗi policy đi bộ chọn được là **một thư mục**:
 ```text
 policies/locomotion/<tên>/
   policy.onnx     model (metadata ONNX phải có policy_contract, observation_dim, action_dim, gains)
-  policy.yaml     contract, sha256, teleop_h4
+  policy.yaml     contract, sha256
 ```
 
 Chọn trong `controller/config/locomotion.yaml`:
 
 ```yaml
 walk_policy: <tên>      # R2+A — đi bộ thường
-teleop_policy: <tên>    # R2+X — đi bộ + teleop tay; bỏ trống = dùng walk_policy
+teleop_policy: <tên>    # R2+X — policy thứ hai; bỏ trống = dùng walk_policy
 ```
 
-Thêm policy mới: `./hb policy add <file.onnx> <tên> [--contract C] [--teleop]`, rồi đổi
+Thêm policy mới: `./hb policy add <file.onnx> <tên> [--contract C]`, rồi đổi
 tên trong `locomotion.yaml`, chạy `./hb build && ./hb preflight` (hoặc `./hb deploy policy`
 từ máy dev). `./hb policy list` liệt kê bundle hiện có. Checklist đầy đủ: `docs/policies.md`.
 

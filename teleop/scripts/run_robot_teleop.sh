@@ -11,6 +11,7 @@ cd "$ROOT"
 
 PYTHON="${HB_TELEOP_RUNTIME_PYTHON:-$HOME/.local/share/hb/teleop/miniforge3/envs/hb_teleop/bin/python}"
 IK_BACKEND="${HB_TELEOP_RUNTIME_IK_BACKEND:-vendor_r1_a5}"
+ELBOW_MODE="${HB_TELEOP_RUNTIME_ELBOW_MODE:-vendor}"
 HOST_INTERFACE="${HB_TELEOP_RUNTIME_HOST_INTERFACE:-wlan0}"
 HOST_IP="${HB_TELEOP_RUNTIME_HOST_IP:-auto}"
 HOSTNAME_ALIAS="${HB_TELEOP_RUNTIME_HOSTNAME:-hb-r1.local}"
@@ -53,6 +54,10 @@ fi
     echo "[RUNTIME] ERROR joint_limits_only must be 0 or 1" >&2
     exit 2
 }
+[[ "$ELBOW_MODE" == "swivel" || "$ELBOW_MODE" == "vendor" ]] || {
+    echo "[RUNTIME] ERROR elbow_mode must be swivel or vendor" >&2
+    exit 2
+}
 [[ "$CAMERA_ENABLED" == "0" || "$CAMERA_ENABLED" == "1" ]] || {
     echo "[RUNTIME] ERROR camera_enabled must be 0 or 1" >&2
     exit 2
@@ -62,7 +67,7 @@ fi
     exit 2
 }
 [[ -r "$CERT_FILE" && -r "$KEY_FILE" ]] || {
-    echo "[RUNTIME] ERROR missing cert/key: $CERT_FILE $KEY_FILE" >&2; exit 2;
+    echo "[RUNTIME] ERROR missing cert/key: $CERT_FILE $KEY_FILE" >&2; exit 2
 }
 if ss -H -ltn "sport = :$PORT" 2>/dev/null | grep -q .; then
     echo "[RUNTIME] ERROR port $PORT is already occupied" >&2
@@ -94,7 +99,7 @@ PY
 [[ "$IK_BACKEND" == "vendor_r1_a5" ]] || { echo "[RUNTIME] ERROR only vendor_r1_a5 is allowed" >&2; exit 2; }
 echo "[RUNTIME] Quest URL: https://$HOST_IP:$PORT/?ws=wss://$HOST_IP:$PORT"
 echo "[RUNTIME] Hostname URL (if mDNS/DHCP reservation resolves): https://$HOSTNAME_ALIAS:$PORT/?ws=wss://$HOSTNAME_ALIAS:$PORT"
-echo "[RUNTIME] H4 IK: vendor_r1_a5 (CasADi/Pinocchio, ARM64); START gates high-level authority"
+echo "[RUNTIME] H4 IK: vendor_r1_a5 (CasADi/Pinocchio, ARM64, elbow_mode=$ELBOW_MODE); START gates high-level authority"
 echo "[RUNTIME] Target limit mode: $(if [[ "$JOINT_LIMITS_ONLY" == "1" ]]; then echo joint-limits-only; else echo velocity-and-acceleration-limited; fi)"
 echo "[RUNTIME] Robot-local pipeline; laptop is not required after this service starts"
 [[ "$CAMERA_ENABLED" == "1" ]] && echo "[RUNTIME] Camera R1 enabled: A phải đổi passthrough/camera"
@@ -192,6 +197,7 @@ run_on_cpus "$BRIDGE_CPUSET" "$PYTHON" teleop/scripts/teleop/quest_bridge.py \
 | "$PYTHON" -m teleop.hardware.stream_io --tee-log "$RUN_DIR/quest_commands.jsonl" \
 | run_on_cpus "$IK_CPUSET" "$PYTHON" teleop/scripts/teleop/run_r1_vendor_ik_stream.py \
     --passthrough --wrist-reference body_relative --arm-filter responsive \
+    --elbow-mode "$ELBOW_MODE" \
     --stats-path "$RUN_DIR/vendor_ik_stats.json" \
     2> >(tee "$RUN_DIR/vendor_ik.log" >&2) \
 | run_on_cpus "$MAPPER_CPUSET" "$PYTHON" teleop/scripts/teleop/run_r1_vendor_targets.py \

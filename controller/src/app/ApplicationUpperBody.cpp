@@ -156,14 +156,15 @@ void Application::InitTeleop() {
               << " (tay+dau). Mode Z san sang trong ZERO TORQUE; co Quest + R3 "
                  "la hai lop deadman. ";
     if (h4_teleop_approved_) {
-        std::cout << "H4: R2+A nha can ve 0 (base khoa), R2+X cho phep di chuyen; "
-                     "nhan START de arm/disarm; "
-                     "ZERO TORQUE: START truc tiep.\n";
+        std::cout << "H4: R2+A va R2+X nhu nhau, "
+                  << (tuning_.teleop_lock_base ? "nha can ve 0 (base khoa); "
+                                               : "vua di vua teleop; ")
+                  << "nhan START de arm/disarm; ZERO TORQUE: START truc tiep.\n";
     } else if (locomotion_->SupportsArmOverlay()) {
         std::cout << "Teleop legacy: nhan START mot lan trong LOCOMOTION.\n";
     } else {
-        std::cout << "Teleop legacy khong ho tro contract locomotion nay; H4 "
-                     "chi duoc phep khi da qua artifact gate.\n";
+        std::cout << "Teleop legacy khong ho tro contract locomotion nay; "
+                     "bat teleop_h4_enabled de dung H4.\n";
     }
 }
 

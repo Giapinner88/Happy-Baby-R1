@@ -44,7 +44,7 @@ dance_home_exit_6: off
 dance_speed_6: 1.0
 dance_volume_6: 0.7
 dance_trim_deg_6: 0.0
-
+  
 dance_7: roll_xexe_contact_fixed_goc_4096env_friction08to15_25k_20261021
 dance_home_exit_7: on
 dance_speed_7: 1.0

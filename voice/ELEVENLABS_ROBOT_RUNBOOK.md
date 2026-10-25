@@ -78,9 +78,9 @@ sửa gì khi copy folder giữa máy dev và máy trạm):
 
 ```bash
 cd <thư-mục-HB-của-bạn>
-./integration/scripts/deploy_stack.sh diff
-./integration/scripts/deploy_stack.sh deploy --restart-voice
-./integration/scripts/deploy_stack.sh status
+./hb diff
+./hb deploy voice
+./hb status
 ```
 
 Địa chỉ robot được giải theo thứ tự: biến `ROBOT` -> file riêng của máy
@@ -93,7 +93,7 @@ cp integration/config/robot.env.example ~/.config/hb/robot.env
 ```
 
 File nằm NGOÀI thư mục HB nên copy folder qua lại không đụng tới nó. Muốn ép
-nhanh một lần: `ROBOT=unitree@<ip> ./integration/scripts/deploy_stack.sh ...`.
+nhanh một lần: `ROBOT=unitree@<ip> ./hb deploy voice`.
 SSH robot máy dev hiện tại: `ssh unitree@10.42.0.33` (mật khẩu `mk123`). Deploy
 tạo môi trường Python và cài dependency ngay trên ARM64; không copy `.venv` từ
 laptop.

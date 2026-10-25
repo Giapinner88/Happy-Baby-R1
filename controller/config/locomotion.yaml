@@ -40,8 +40,8 @@ heading_hold_relatch_gyro: 0.3
 # (policy.onnx + policy.yaml; contract và sha256 nằm trong policy.yaml).
 #   walk_policy   : R2+A — chọn policy đi bộ A
 #   teleop_policy : R2+X — chọn policy đi bộ X; trống = dùng walk_policy
-# Cả hai mode nhận teleop tay qua START. R2+A yêu cầu vận tốc bằng 0 và khóa base;
-# R2+X dùng teleop_policy nên được vừa đi vừa teleop.
+# R2+A/R2+X chỉ chọn policy; teleop (START) hành xử như nhau ở cả hai, xem
+# teleop_lock_base trong gestures.yaml. Policy có contract hỗ trợ H4 là teleop được.
 # Hai policy khác nhau phải cùng default_joint_pos; đổi chế độ khi đang đi chỉ xảy ra
 # khi robot đứng yên (policy_swap_*). `./hb policy list` liệt kê bundle; checklist ở
 # docs/policies.md §3. Đổi xong: ./hb preflight (robot) / ./hb deploy policy (máy dev).
@@ -62,8 +62,10 @@ return_rate_limit: 1.5
 # 0.0 = không dạng chân khi stand-lock (giữ đúng default_joint_pos của policy).
 stand_lock_spread: 0.0
 return_pos_tol: 0.12
-# Hết giờ mà chưa về được default (khớp kẹt/lệch calib) thì huỷ dance về STAND LOCK.
-return_timeout_s: 6.0
+# Hết giờ mà chưa về được default (khớp kẹt/lệch calib) thì huỷ dance về LOCOMOTION.
+# Giữ PD cứng trên sàn chỉ đứng được ~0.5 s trong sim; RETURNING bình thường xong
+# trong 1 tick. Code không cho dưới 0.5 s.
+return_timeout_s: 0.5
 settle_time_s: 1.0
 settle_gyro_max: 0.5
 stand_lock_warn_s: 1.5

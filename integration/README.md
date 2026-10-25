@@ -17,15 +17,8 @@ Lớp điều phối an toàn giữa `controller` và `voice`.
 
 ## Một lệnh deploy
 
-Quy trình đầy đủ, gồm policy acceptance, kiểm tra sau deploy và rollback: [docs/deploy.md](../docs/deploy.md).
-
-```bash
-./hb field         # từ gốc repo trên máy trạm, qua Tailscale (./hb deploy: tự dò địa chỉ)
-```
-
-`./hb deploy` (→ `scripts/deploy_stack.sh deploy --accept-policy`) tự chấp nhận model đang chọn, backup, sync, build ARM64, preflight
-và restart-safe. Deploy không restart high-level nếu không chứng minh được trạng
-thái `DISARMED`; khi đó trả về `PENDING_RESTART`. Script không lưu mật khẩu SSH/API.
+Lệnh deploy: [docs/deploy.md](../docs/deploy.md). `./hb deploy` → `scripts/deploy_stack.sh` (máy trạm) +
+`scripts/robot_steps.sh` (đẩy qua SSH, chạy trên robot: guard DISARMED, backup, restore, restart).
 Dừng/bật service: `./hb status | ./hb start|stop|restart <all|high|integration|voice|presets|teleop>` (từ máy trạm qua SSH, hoặc tại chỗ trên robot khi debug; cả hai đều qua `scripts/stack_ctl.sh`; lệnh dừng/restart controller từ chối khi chưa `DISARMED`).
 
 ## Sau khi bật robot
@@ -71,8 +64,7 @@ decoder/bridge thì retry clip từ đầu. Sau PCM cuối, preset giữ bridge 
 `playback.end_tail_s` (mặc định 0,4 giây) để không cắt đuôi audio còn nằm trong
 bộ đệm loa.
 
-Deploy phần này bằng `./hb deploy presets`;
-lệnh chỉ sync/build coordinator + preset/bridge và không restart high-level.
+Deploy phần này bằng `./hb deploy voice` (không restart high-level).
 Chi tiết cấu hình: [voice_presets/README.md](../voice_presets/README.md).
 
 ## Đổi Wi-Fi

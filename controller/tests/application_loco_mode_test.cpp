@@ -5,20 +5,30 @@
 // (the armfree flat_plus_gait_h4_v1 artifact) and teleop_b (the U1
 // r1_wb_legs_v1_blind artifact, 12 leg actions, leg default differs by 0.048 rad),
 // as in the live config. Checks:
-//   * R2+A accepts START only while stopped and locks base; R2+X accepts it
-//     while moving and preserves base velocity;
+//   * R2+A and R2+X only select the policy: START follows teleop_lock_base the
+//     same way in both (false: accepted while moving, base keeps velocity;
+//     true: needs zero sticks, then locks base);
+//   * a bundle carrying a legacy `teleop_h4: false` line still gets H4;
+//   * losing the remote lets a running dance finish (motion guard still
+//     applies) but never starts one: an announced dance is cancelled and a
+//     RETURNING entry goes back to LOCOMOTION;
+//   * a pending STAND LOCK is cancelled by L2+Up again, R2+A or R2+X (no swap);
+//   * L2+Up during RETURNING cancels the dance into LOCOMOTION (no blend) and a
+//     held L2+Up is not taken as a STAND LOCK request.
 //   * a mode request while walking stops the base and only swaps after the gait
 //     is STAND-stable for policy_swap_dwell_s;
 //   * a bundle whose policy.yaml hash differs refuses startup;
 //   * IDLE always returns to walk mode.
 //   * R2+X supports physical/voice gestures, including a second request after
 //     handover, and retracts a gesture before granting H4 ownership.
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "app/Application.hpp"
 
@@ -34,7 +44,7 @@ void Require(bool ok, int line) {
 #define CHECK(x) Require((x), __LINE__)
 
 enum Btn : uint16_t {
-    kStart = 0x0004, kR2 = 0x0010, kL2 = 0x0020,
+    kR1 = 0x0001, kStart = 0x0004, kR2 = 0x0010, kL2 = 0x0020,
     kA = 0x0100, kB = 0x0200, kX = 0x0400, kUp = 0x1000,
 };
 
@@ -42,12 +52,13 @@ const char* kWalkSha = "7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ec
 const char* kTeleopSha = "9cdf005ef7a7842b630744f298d992ad370ee2320f99d69691fc2db86b9e5fa5";
 
 void WriteBundle(const fs::path& loco, const std::string& name, const std::string& source,
-                 const std::string& contract, const std::string& sha) {
+                 const std::string& contract, const std::string& sha,
+                 const std::string& extra = "") {
     fs::create_directories(loco / name);
     fs::create_symlink(fs::path(HB_PROJECT_PATH) / "policies/locomotion" / source / "policy.onnx",
                        loco / name / "policy.onnx");
     std::ofstream(loco / name / "policy.yaml")
-        << "contract: " << contract << "\nsha256: " << sha << "\nteleop_h4: true\n";
+        << "contract: " << contract << "\nsha256: " << sha << "\n" << extra;
 }
 
 // Temporary project: frozen replay config + two bundles selected as walk/teleop.
@@ -64,8 +75,9 @@ fs::path MakeProject(const std::string& teleop_sha) {
         fs::create_symlink(src / "policies" / sub, root / "policies" / sub);
     WriteBundle(root / "policies/locomotion", "walk_a", "flat_plus_gait_0917_armfree",
                 "flat_plus_gait_h4_v1", kWalkSha);
+    // Legacy per-bundle flag (as in the old u2a_seed42) must not gate H4.
     WriteBundle(root / "policies/locomotion", "teleop_b", "u1_seed42",
-                "r1_wb_legs_v1_blind", teleop_sha);
+                "r1_wb_legs_v1_blind", teleop_sha, "teleop_h4: false\n");
     std::ofstream(root / "config/locomotion.yaml", std::ios::app)
         << "\nwalk_policy: walk_a\nteleop_policy: teleop_b\n"
            "policy_swap_dwell_s: 0.5\npolicy_swap_timeout_s: 6.0\n";
@@ -89,6 +101,7 @@ struct ApplicationTestAccess {
     std::array<float, spec::kNumMotorsIdl> measured_q{};
     uint16_t buttons = 0;
     float ly = 0;
+    bool remote_off = false;   // all-zero wireless_remote, as when the remote is lost
     long tick = 0;
 
     void Configure() {
@@ -99,6 +112,7 @@ struct ApplicationTestAccess {
         t.cmd_accel_vx = t.cmd_accel_vy = t.cmd_accel_yaw = 1e9f;
         t.cmd_decel_vx = t.cmd_decel_vy = t.cmd_decel_yaw = 1e9f;
         t.teleop_enabled = true;      // receiver not started: no socket, weight stays 0
+        t.teleop_lock_base = false;   // production default
         t.safe_stop_enabled = false;
         t.battery_monitor_enabled = false;
         t.mimic_telemetry_enabled = false;
@@ -120,6 +134,7 @@ struct ApplicationTestAccess {
         remote[0] = 0x55; remote[1] = 0x51;
         remote[2] = buttons & 0xff; remote[3] = buttons >> 8;
         std::memcpy(&remote[20], &ly, 4);
+        if (remote_off) remote.fill(0);
         low.wireless_remote(remote);
         low.imu_state().quaternion({1, 0, 0, 0});
         low.imu_state().gyroscope({0, 0, 0});
@@ -289,6 +304,148 @@ struct ApplicationTestAccess {
         a.voice_gesture_owner_.Close();
     }
 
+    // Same START/base rules whichever policy key is active.
+    void CheckStartRules() {
+        a.tuning_.teleop_lock_base = false;
+        ly = 0.8f; Wait(100);
+        Press(kStart);
+        CHECK(a.teleop_runtime_on_);
+        CHECK(std::fabs(a.cmd_vx_) > 1e-4f);
+        ly = 0.0f; Wait(1000);
+        Press(kStart);
+        CHECK(!a.teleop_runtime_on_);
+
+        a.tuning_.teleop_lock_base = true;
+        ly = 0.8f; Wait(100);
+        Press(kStart);
+        CHECK(!a.teleop_runtime_on_);
+        ly = 0.0f; Wait(1000);
+        Press(kStart);
+        CHECK(a.teleop_runtime_on_);
+        ly = 0.8f; Wait(100);
+        CHECK(a.cmd_vx_ == 0.0f);
+        ly = 0.0f; Wait(100);
+        Press(kStart);
+        CHECK(!a.teleop_runtime_on_);
+        a.tuning_.teleop_lock_base = false;
+        Wait(1000);
+    }
+
+    void RemoteOff(bool off) { remote_off = off; buttons = 0; ly = 0.0f; }
+
+    // No remote means no L2+B: a running dance finishes, a new one never starts.
+    void CheckControlLostDance() {
+        a.tuning_.safe_stop_enabled = true;
+        // GamepadR3 declares LOST on the wall clock (remote_timeout_ms), so the
+        // remote-off phase runs at the real 500 Hz pace, as on the robot.
+        const int lost_ticks = static_cast<int>(
+            (a.tuning_.remote_timeout_ms + a.tuning_.safe_stop_debounce_ms) /
+            (1000.0f * spec::kLoopDt)) + 500;
+        const auto paced_until = [&](auto done) {
+            auto next = std::chrono::steady_clock::now();
+            for (int i = 0; i < lost_ticks && !done(); ++i) {
+                Step();
+                next += std::chrono::microseconds(static_cast<int>(spec::kLoopDt * 1e6f));
+                std::this_thread::sleep_until(next);
+            }
+        };
+
+        // Running dance keeps running to its natural end, then LOCOMOTION.
+        Press(kR1 | kUp);
+        WaitFor(AppState::kMimic, 6000);
+        Wait(500);
+        CHECK(a.state_ == AppState::kMimic && !a.dance_stopping_);
+        RemoteOff(true);
+        paced_until([&] { return a.input_lost_; });
+        CHECK(a.input_lost_);
+        CHECK(a.state_ == AppState::kMimic && !a.dance_stopping_);
+        for (int i = 0; i < 60000 && a.state_ == AppState::kMimic; ++i) {
+            const bool was_stopping = a.dance_stopping_;
+            Step();
+            // Soft-stop may only start from the clip's natural end.
+            if (!was_stopping && a.dance_stopping_)
+                CHECK(a.mimics_.at(1)->RemainingFrames() <= 1.0f);
+        }
+        CHECK(a.state_ == AppState::kLocomotion);
+        Wait(500);
+        CHECK(a.state_ == AppState::kLocomotion && a.cmd_vx_ == 0.0f);
+        RemoteOff(false);
+        Wait(1000);
+
+        // RETURNING held (unreachable tolerance) -> back to LOCOMOTION.
+        const float tol = a.tuning_.return_pos_tol, timeout = a.tuning_.return_timeout_s;
+        a.tuning_.return_pos_tol = -1.0f;   // ideal plant reaches default exactly
+        a.tuning_.return_timeout_s = 60.0f;
+        Press(kR1 | kUp);
+        WaitFor(AppState::kReturningToDefault, 3000);
+        RemoteOff(true);
+        paced_until([&] { return a.state_ != AppState::kReturningToDefault; });
+        CHECK(a.state_ == AppState::kLocomotion && a.active_ == a.locomotion_);
+        CHECK(a.blend_alpha_ >= 1.0f);
+        Wait(1000);
+        CHECK(a.state_ == AppState::kLocomotion);
+        RemoteOff(false);
+        Wait(1000);
+        a.tuning_.return_pos_tol = tol;
+        a.tuning_.return_timeout_s = timeout;
+
+        // Announcing dance (long announce) -> cancelled, never reaches RETURNING.
+        a.tuning_.mimic_announce_delay_s = 10.0f;
+        Press(kR1 | kUp);
+        CHECK(a.announcing_);
+        RemoteOff(true);
+        paced_until([&] { return !a.announcing_; });
+        CHECK(!a.announcing_);
+        Wait(5000);
+        CHECK(a.state_ == AppState::kLocomotion);
+        RemoteOff(false);
+        Wait(1000);
+        a.tuning_.mimic_announce_delay_s = 2.0f;
+        a.tuning_.safe_stop_enabled = false;
+    }
+
+    // Pending STAND LOCK can be taken back; L2+Up in RETURNING returns to walking.
+    void CheckStandLockCancelAndReturning() {
+        CHECK(a.state_ == AppState::kLocomotion && a.loco_mode_ == LocoMode::kWalk);
+        // Without a cancel the request still completes (baseline).
+        Press(kL2 | kUp);
+        CHECK(a.pending_action_ == PendingAction::kToStandLock);
+        WaitFor(AppState::kStandLock, 4000);
+        Press(kR2 | kA);
+        CHECK(a.state_ == AppState::kLocomotion);
+        Wait(600);
+
+        for (uint16_t cancel : {uint16_t(kL2 | kUp), uint16_t(kR2 | kA), uint16_t(kR2 | kX)}) {
+            Press(kL2 | kUp);
+            CHECK(a.pending_action_ == PendingAction::kToStandLock);
+            Press(cancel);
+            CHECK(a.pending_action_ == PendingAction::kNone);
+            CHECK(!a.loco_swap_pending_ && a.loco_mode_ == LocoMode::kWalk);
+            Wait(1500);
+            CHECK(a.state_ == AppState::kLocomotion);
+            CHECK(a.pending_action_ == PendingAction::kNone);
+            ly = 0.8f; Wait(100);
+            CHECK(std::fabs(a.cmd_vx_) > 1e-4f);      // sticks work again
+            ly = 0.0f; Wait(600);
+        }
+
+        // L2+Up while RETURNING -> LOCOMOTION, held button ignored.
+        const float tol = a.tuning_.return_pos_tol;
+        a.tuning_.return_pos_tol = -1.0f;   // ideal plant reaches default exactly
+        Press(kR1 | kUp);
+        WaitFor(AppState::kReturningToDefault, 3000);
+        Wait(50);
+        buttons = kL2 | kUp; Wait(5);
+        CHECK(a.state_ == AppState::kLocomotion && a.active_ == a.locomotion_);
+        CHECK(a.blend_alpha_ >= 1.0f);
+        Wait(300); buttons = 0; Wait(5);
+        CHECK(a.pending_action_ == PendingAction::kNone);
+        Wait(1500);
+        CHECK(a.state_ == AppState::kLocomotion);
+        a.tuning_.return_pos_tol = tol;
+        Wait(600);
+    }
+
     void Script() {
         CHECK(a.walk_ctrl_ && a.teleop_ctrl_ && a.walk_ctrl_ != a.teleop_ctrl_);
         CHECK(a.teleop_ctrl_->ActionSize() == 12 && a.walk_ctrl_->ActionSize() == 24);
@@ -306,14 +463,7 @@ struct ApplicationTestAccess {
         CHECK(a.active_ == a.walk_ctrl_.get());
         CHECK(a.PolicyCaps().h4);
         Wait(600);
-        ly = 0.8f; Wait(100);
-        Press(kStart);
-        CHECK(!a.teleop_runtime_on_);
-        ly = 0.0f; Wait(1000);
-        Press(kStart);
-        CHECK(a.teleop_runtime_on_);
-        Press(kStart);
-        CHECK(!a.teleop_runtime_on_);
+        CheckStartRules();
 
         // Request teleop while walking: base stops, swap waits for a stable STAND.
         ly = 0.8f; Wait(800);
@@ -337,16 +487,9 @@ struct ApplicationTestAccess {
 
         CheckR2XGestures();
 
-        // R2+X uses teleop_policy: START is accepted while moving and base
-        // velocity remains available during the H4 session.
+        // R2+X: identical START/base rules with the other policy.
         Wait(100);
-        ly = 0.8f; Wait(100);
-        Press(kStart);
-        CHECK(a.teleop_runtime_on_);
-        CHECK(std::fabs(a.cmd_vx_) > 1e-4f);
-        ly = 0.0f; Wait(1000);
-        Press(kStart);
-        CHECK(!a.teleop_runtime_on_);
+        CheckStartRules();
 
         // Teleop -> walk (armed teleop is released first).
         Press(kStart);
@@ -356,6 +499,10 @@ struct ApplicationTestAccess {
         for (int i = 0; i < 4000 && a.loco_swap_pending_; ++i) Step();
         CHECK(a.loco_mode_ == LocoMode::kWalk && a.locomotion_ == a.walk_ctrl_.get());
         CHECK(a.state_ == AppState::kLocomotion);
+
+        Wait(500);
+        CheckStandLockCancelAndReturning();
+        CheckControlLostDance();
 
         // IDLE resets to walk mode even if teleop was selected.
         Wait(200);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Locomotion policy bundles: controller/policies/locomotion/<name>/{policy.onnx,policy.yaml}.
 #   ./hb policy list
-#   ./hb policy add <file.onnx> <name> [--contract C] [--teleop]
+#   ./hb policy add <file.onnx> <name> [--contract C]
 # `add` only creates the bundle; selecting it stays an explicit edit of
 # walk_policy / teleop_policy in controller/config/locomotion.yaml.
 set -euo pipefail
@@ -17,37 +17,40 @@ usage() {
     cat <<'USAGE'
 Usage:
   ./hb policy list                                       liệt kê bundle, đánh dấu walk/teleop đang chọn
-  ./hb policy add <file.onnx> <tên> [--contract C] [--teleop]
+  ./hb policy add <file.onnx> <tên> [--contract C]
                                                          tạo policies/locomotion/<tên>/ (mặc định
-                                                         contract flat_plus_gait_h4_v1, teleop_h4 false)
+                                                         contract flat_plus_gait_h4_v1)
 USAGE
 }
 
 cmd_list() {
-    local walk teleop dir name contract teleop_h4 mark
+    local walk teleop dir name contract h4 mark
     walk="$(hb_config_get "$CONFIG" walk_policy)"
     teleop="$(hb_config_get "$CONFIG" teleop_policy)"
     [[ -n "$teleop" ]] || teleop="$walk"
     [[ -n "$walk" ]] || echo "(config dang dung route cu flat_model: $(hb_config_get "$CONFIG" flat_model))"
-    printf '%-40s %-24s %-9s %s\n' "BUNDLE" "CONTRACT" "TELEOP_H4" "DANG CHON"
+    printf '%-40s %-24s %-9s %s\n' "BUNDLE" "CONTRACT" "H4" "DANG CHON"
     for dir in "$LOCO_DIR"/*/; do
         name="$(basename "$dir")"
         [[ "$name" == _* ]] && continue
         contract="$(hb_config_get "$dir/policy.yaml" contract 2>/dev/null || echo '?')"
-        teleop_h4="$(hb_config_get "$dir/policy.yaml" teleop_h4 2>/dev/null || echo '?')"
+        # H4 theo contract (SupportsH4TeleopOverlay trong controller), không theo bundle.
+        case "$contract" in
+            flat_plus_gait_h4_v1|r1_wb_legs_v1_blind) h4=yes ;;
+            *) h4=no ;;
+        esac
         mark=""
         [[ "$name" == "$walk" ]] && mark+="walk(R2+A) "
         [[ "$name" == "$teleop" ]] && mark+="teleop(R2+X)"
-        printf '%-40s %-24s %-9s %s\n' "$name" "${contract:-?}" "${teleop_h4:-?}" "$mark"
+        printf '%-40s %-24s %-9s %s\n' "$name" "${contract:-?}" "$h4" "$mark"
     done
 }
 
 cmd_add() {
-    local src="" name="" contract="flat_plus_gait_h4_v1" teleop_h4=false
+    local src="" name="" contract="flat_plus_gait_h4_v1"
     while (( $# )); do
         case "$1" in
             --contract) contract="${2:?--contract needs a value}"; shift 2 ;;
-            --teleop) teleop_h4=true; shift ;;
             -*) usage >&2; exit 2 ;;
             *)
                 if [[ -z "$src" ]]; then src="$1"
@@ -64,9 +67,6 @@ cmd_add() {
         legacy_83|flat_plus_h4_v1|flat_plus_h5_v1|flat_plus_gait_h4_v1|r1_wb_legs_v1_blind) ;;
         *) echo "contract khong ho tro: $contract" >&2; exit 1 ;;
     esac
-    if [[ "$teleop_h4" == true && "$contract" != flat_plus_gait_h4_v1 && "$contract" != r1_wb_legs_v1_blind ]]; then
-        echo "--teleop chi hop le voi flat_plus_gait_h4_v1 hoac r1_wb_legs_v1_blind" >&2; exit 1
-    fi
     local dest="$LOCO_DIR/$name"
     [[ ! -e "$dest" ]] || { echo "da ton tai: $dest" >&2; exit 1; }
 
@@ -79,8 +79,6 @@ cmd_add() {
 # controller/config/locomotion.yaml. run_r1 kiểm sha256 và metadata ONNX lúc khởi động.
 contract: $contract
 sha256: $sha
-# true = artifact được duyệt cho overlay teleop H4 (tay+đầu từ Quest).
-teleop_h4: $teleop_h4
 # Nguồn: $(basename "$src"), thêm ngày $(date +%Y-%m-%d). Ghi provenance huấn luyện
 # (nhánh, run, checkpoint, đánh giá) vào README.md cạnh file này.
 EOF
@@ -88,7 +86,7 @@ EOF
     echo "Tiep theo:"
     echo "  1. Ghi provenance vao $dest/README.md"
     echo "  2. Sua controller/config/locomotion.yaml: walk_policy: $name  (hoac teleop_policy: $name)"
-    echo "  3. ./hb build && ./hb preflight   (robot)  |  ./hb deploy policy  (may dev)"
+    echo "  3. ./hb deploy   (may dev)"
 }
 
 case "${1:-help}" in

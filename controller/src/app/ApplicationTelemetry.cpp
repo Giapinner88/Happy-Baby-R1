@@ -41,6 +41,12 @@ void Application::CaptureMimicTelemetry(const LowState_& low) {
     if (state_ == AppState::kMimic) {
         telemetry_seen_mimic_ = true;
         telemetry_post_ticks_ = -1;
+    } else if (!telemetry_seen_mimic_ && !announcing_ &&
+               state_ != AppState::kReturningToDefault) {
+        // Bài bị hủy trước khi vào MIMIC (announce/RETURNING): đóng phiên ngay,
+        // không ghi 100 Hz tới bài sau.
+        telemetry_.StopAsync();
+        return;
     } else if (telemetry_seen_mimic_) {
         if (telemetry_post_ticks_ < 0) {
             telemetry_post_ticks_ = std::max(1, static_cast<int>(

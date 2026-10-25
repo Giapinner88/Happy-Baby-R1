@@ -12,7 +12,7 @@ Mỗi modifier là một nhóm việc, không chồng chéo: **L2 = an toàn / t
 | Việc | Tay cầm R3 | Bàn phím |
 | --- | --- | --- |
 | **Dừng khẩn cấp** (damping) | **L2+B** (giữ) | ESC (damping rồi thoát) |
-| Khóa đứng; đang nhảy thì huỷ điệu | **L2+Lên** | 0 |
+| Khóa đứng; đang nhảy thì huỷ điệu; đang RETURNING vào điệu thì huỷ về đi bộ. Trong lúc chờ khóa đứng (robot đọc cảnh báo, chưa vào STAND LOCK): bấm lại **L2+Lên**, **R2+A** hoặc **R2+X** để huỷ, ở lại đi bộ với policy đang chạy | **L2+Lên** | 0 |
 | Ngồi ghế (ghế cao 43 cm) | **L2+Trái** (giữ) | 9 |
 | Nằm xuống; đứng dậy (2 bước) | **L2+X** (giữ); **L2+Lên** rồi **L2+X** | — |
 | Zero-torque (chỉ từ IDLE; robot đã nằm hoặc được đỡ) | **L2+Y** | — |
@@ -41,7 +41,7 @@ Từ STAND LOCK, R2+A / R2+X vào thẳng chế độ tương ứng. Đang đi b
 | Việc | Tay cầm R3 |
 | --- | --- |
 | Động tác tay (bấm lại để thu) | double-click: Lên=1, Xuống=2, Trái=3, Phải=4, A=5 (voice-auto), B=6, X=7, Y=8 |
-| Cấp/thu quyền tay teleop | nhấn **START** một lần ở **R2+A, R2+X** hoặc ZERO TORQUE. R2+A: thả cần về 0, base sẽ khóa; R2+X: được vừa đi vừa teleop; xem [teleop.md](teleop.md) |
+| Cấp/thu quyền tay teleop | nhấn **START** một lần ở **R2+A, R2+X** hoặc ZERO TORQUE. Hai phím như nhau: mặc định vừa đi vừa teleop; `teleop_lock_base: true` thì phải thả cần về 0 và base khóa; xem [teleop.md](teleop.md) |
 | Voice: nói (push-to-talk) / ngắt lượt | giữ **SELECT** / double-tap **SELECT** |
 | Voice: rảnh tay / đổi nguồn mic | double-click **F1** / nhấn **F2** một lần |
 | Voice preset | giữ **L1** một mình 3 s để bật/tắt; giữ **L1** + Lên/Phải/Xuống/Trái để phát |
@@ -70,10 +70,9 @@ Chạy từ **máy trạm** ở gốc repo; lệnh service/status/logs tự ch�
 
 | Việc | Lệnh |
 | --- | --- |
-| Đồng bộ toàn bộ (mặc định) | `./hb field` — chờ robot trên Tailscale, sync, build ARM64 trên robot, preflight, restart khi DISARMED |
-| Đồng bộ từng phần | `./hb deploy policy` / `dance` / `high` / `voice` / `integration` / `presets` / `teleop` |
+| Deploy | `./hb deploy` (chỉ phần đổi) · `controller` · `voice` · `teleop` · `all` — bảng ở [deploy.md](deploy.md) |
 | Shell trên robot | `./hb ssh [lệnh]` |
-| Policy đi bộ | `./hb policy list` / `./hb policy add <file.onnx> <tên> [--teleop]` — chọn bằng `locomotion.yaml: walk_policy / teleop_policy` |
+| Policy đi bộ | `./hb policy list` / `./hb policy add <file.onnx> <tên>` — chọn bằng `locomotion.yaml: walk_policy / teleop_policy` |
 | Xem trước / quay lại / kéo về | `./hb diff` / `./hb rollback` / `./hb pull` |
 | Start / stop / restart | `./hb start\|stop\|restart <all\|high\|integration\|voice\|presets\|teleop>` — high/all từ chối nếu chưa DISARMED; teleop lúc nào cũng được |
 | Trạng thái / log | `./hb status` / `./hb logs [high\|voice\|teleop\|…]` |
@@ -81,4 +80,4 @@ Chạy từ **máy trạm** ở gốc repo; lệnh service/status/logs tự ch�
 | Ép địa chỉ robot | `ROBOT=unitree@<ip> ./hb …`, hoặc `HB_ROBOT_TAILSCALE=<ip>` cho `field`/`ssh` |
 | Kiểm không chạy trùng | `./hb ssh pgrep -a run_r1` (phải đúng 1 dòng) |
 
-Trình tự chuẩn: treo/đỡ robot → bật nguồn → **L2+R2**, giữ **R1+R2** → **L2+Lên** → đặt xuống đất → **R2+A** (thả cần về 0) hoặc **R2+X** → **START** nếu teleop → điệu / động tác → **L2+Trái** khi xong. Bấm phím trước, đỡ robot sau.
+Trình tự chuẩn: treo/đỡ robot → bật nguồn → **L2+R2**, giữ **R1+R2** → **L2+Lên** → đặt xuống đất → **R2+A** hoặc **R2+X** → **START** nếu teleop → điệu / động tác → **L2+Trái** khi xong. Bấm phím trước, đỡ robot sau.

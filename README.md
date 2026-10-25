@@ -7,41 +7,30 @@ Nhánh `develop` là **bản tích hợp chuẩn để chạy trên robot Unitre
 ## Mô hình triển khai
 
 ```text
-máy trạm (repo git, sửa code, test)  ──./hb field / ./hb deploy (SSH qua Tailscale)──►  robot: /home/unitree/HB
+máy trạm (repo git, sửa code, test)  ──./hb deploy (SSH, LAN hoặc Tailscale)──►  robot: /home/unitree/HB
 ```
 
 - **Máy trạm là nguồn sự thật duy nhất.** Repo chỉ được clone và sửa trên máy trạm; robot không có git, không clone, không sửa tại chỗ.
-- `./hb field` đồng bộ toàn bộ thư mục hiện tại sang robot qua SSH (Tailscale), build ARM64 **trên robot**, chạy preflight, cài/refresh service rồi restart an toàn (controller chỉ restart khi robot `DISARMED`). Dùng được ở mọi mạng — phòng lab hay hiện trường.
-- Robot giữ bản sao chạy được và backup mỗi lần deploy (`./hb rollback` để quay lại). Lỡ sửa config trên robot thì kéo về bằng `./hb pull` trước khi deploy, nếu không lần deploy sau sẽ ghi đè.
+- `./hb deploy` tự thấy phần nào đổi và chỉ deploy phần đó; controller chỉ được ghi và restart khi robot `DISARMED`. Lệnh và quy tắc: [docs/deploy.md](docs/deploy.md).
+- Lỡ sửa config trên robot thì kéo về bằng `./hb pull` trước khi deploy, nếu không lần deploy sau sẽ ghi đè.
 
 ## Buổi chạy
 
 ```bash
 # 1. Treo robot lên giá, bật nguồn. Chưa bấm L2+R2 / R1+R2 (robot phải DISARMED để controller được restart).
-./hb field          # chờ robot online trên Tailscale -> đồng bộ + build + preflight + restart an toàn -> status
+./hb deploy         # hoặc ./hb field (qua Tailscale); chỉ deploy phần có thay đổi
 # 2. Bật tay cầm R3; thao tác theo docs/controls.md (bàn giao L2+R2 rồi giữ R1+R2, ...)
 ./hb logs high      # theo dõi controller (hoặc ./hb ssh để vào shell robot)
 ```
 
-Không đổi gì từ lần trước thì không cần `./hb field`; robot tự chạy stack khi bật nguồn. Chỉ đổi một phần thì deploy riêng phần đó (bảng dưới). `./hb field` hỏi mật khẩu sudo của `unitree` một lần ở đầu, và có thể in một link xác thực Tailscale SSH — mở link, xác nhận, lệnh tự chạy tiếp.
-
-| Đổi gì                                   | Lệnh từ máy trạm                                    | Restart                                                      |
-| ------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| Bất kỳ / không chắc                     | `./hb field`                                          | controller khi`DISARMED`; voice, integration, teleop luôn |
-| Policy đi bộ (bundle,`locomotion.yaml`) | `./hb deploy policy`                                  | controller khi`DISARMED`                                   |
-| Điệu nhảy                                | `./hb deploy dance`                                   | controller khi`DISARMED`                                   |
-| Teleop Quest                                | `./hb deploy teleop`                                  | chỉ runtime teleop (được cả khi ARMED)                  |
-| Voice / preset / integration                | `./hb deploy voice` · `presets` · `integration` | không đụng controller                                     |
-
-Chi tiết lệnh, xác thực, rollback, sự cố: [docs/deploy.md](docs/deploy.md). Thao tác nút: [docs/controls.md](docs/controls.md).
+Không đổi gì thì không cần deploy; robot tự chạy stack khi bật nguồn. Bảng lệnh: [docs/deploy.md](docs/deploy.md). Thao tác nút: [docs/controls.md](docs/controls.md).
 
 ## Chuẩn bị (một lần)
 
 **Máy trạm** (Ubuntu x86_64):
 
-- Clone repo này; `cmake`, `g++`, `rsync`, `python3`; ≥ 2 GB trống trong `/tmp` (preflight model local).
+- Clone repo này; `cmake`, `g++`, `rsync`, `python3`.
 - Tailscale đăng nhập cùng tailnet với robot (`tailscale status` thấy `robot-r1`). Robot có IP Tailscale cố định `100.82.165.36`; đổi bằng `HB_ROBOT_TAILSCALE=<ip>`.
-- `./hb build` một lần để có `run_r1` local (deploy policy dùng nó để preflight trước khi gửi).
 - Khuyến nghị: `~/.config/hb/robot.env` chứa `ROBOT=unitree@100.82.165.36`, để mọi lệnh `./hb` (không chỉ `field`/`ssh`) đi thẳng Tailscale thay vì thử IP LAN cũ trước.
 
 **Robot** (Ubuntu 20.04 aarch64, DDS nội bộ `eth10`), chỉ cần có sẵn — không clone repo:
@@ -50,7 +39,7 @@ Chi tiết lệnh, xác thực, rollback, sự cố: [docs/deploy.md](docs/deplo
 - Unitree SDK2 C++ cài vào hệ thống (`find_package(unitree_sdk2)`), mã nguồn SDK2 có audio R1 ở `~/unitree_sdk2` hoặc `~/unitree_sdk2-main` (voice bridge), `uv` ở `~/.local/bin/uv`, `cmake`, `g++`, zlib. ONNX Runtime đã có trong `controller/thirdparty/`.
 - Secret (API key) trong `/etc/hb/stack.env` (deploy tạo từ mẫu nếu chưa có, không bao giờ ghi đè hay đồng bộ file này).
 
-Lần deploy đầu tiên lên một robot mới cũng chỉ là `./hb field`: nó tạo `/home/unitree/HB`, cài service systemd, env Python voice và runtime teleop.
+Robot mới: `./hb deploy all` (tạo `/home/unitree/HB`, cài service systemd, env Python voice và runtime teleop).
 
 ## Cấu trúc
 

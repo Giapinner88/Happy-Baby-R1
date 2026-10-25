@@ -3,12 +3,14 @@
 // Locomotion policy bundle: one directory per selectable model.
 //
 //   policies/locomotion/<name>/policy.onnx
-//   policies/locomotion/<name>/policy.yaml   (contract, sha256, teleop_h4)
+//   policies/locomotion/<name>/policy.yaml   (contract, sha256)
 //
 // config/locomotion.yaml selects bundles by name (walk_policy / teleop_policy).
 // The bundle is the single place that records which contract an artifact uses
 // and its SHA-256; the runtime verifies the hash once at startup, outside the
 // 500 Hz loop. ONNX metadata is still checked by PolicyController::Init.
+// H4 teleop availability follows the contract (SupportsH4TeleopOverlay), not
+// a per-bundle flag; a legacy `teleop_h4:` line is accepted and ignored.
 #include <algorithm>
 #include <fstream>
 #include <stdexcept>
@@ -21,7 +23,6 @@ struct PolicyBundle {
     std::string rel_path;       // relative to proj_dir, e.g. policies/locomotion/x/policy.onnx
     std::string contract;
     std::string sha256;
-    bool teleop_h4 = false;     // artifact approved for the H4 teleop overlay
 
     static bool ValidName(const std::string& name) {
         return !name.empty() && name != "." && name != ".." &&
@@ -43,7 +44,6 @@ struct PolicyBundle {
         if (!file.is_open())
             throw std::runtime_error("policy bundle '" + name + "' has no " + yaml_path);
 
-        bool has_teleop = false;
         std::string line;
         while (std::getline(file, line)) {
             const size_t hash = line.find('#');
@@ -56,19 +56,11 @@ struct PolicyBundle {
                 value = value.substr(1, value.size() - 2);
             if (key == "contract") b.contract = value;
             else if (key == "sha256") b.sha256 = value;
-            else if (key == "teleop_h4") {
-                if (value != "true" && value != "false")
-                    throw std::runtime_error("policy bundle '" + name + "': teleop_h4 must be true or false");
-                b.teleop_h4 = value == "true";
-                has_teleop = true;
-            }
         }
         if (b.contract.empty())
             throw std::runtime_error("policy bundle '" + name + "': missing contract");
         if (!teleop_h4::IsLowerSha256(b.sha256))
             throw std::runtime_error("policy bundle '" + name + "': sha256 must be 64 lowercase hex chars");
-        if (!has_teleop)
-            throw std::runtime_error("policy bundle '" + name + "': missing teleop_h4 (true/false)");
 
         const std::string actual = teleop_h4::Sha256File(proj_dir + "/" + b.rel_path);
         if (actual != b.sha256)

@@ -91,7 +91,7 @@ Bảng đầy đủ (tay cầm R3 và bàn phím): [controls.md](controls.md).
 | Bấm khóa đứng / ngồi lúc **đang đi/nhảy** | dừng lại ~1s dưới policy rồi mới làm | `settle_time_s` |
 | Bấm **khóa đứng** | nói *"đã khóa đứng"* **trước**, chờ 1.5s (kịp đưa tay đỡ) rồi mới ép cứng | `stand_lock_warn_s` |
 | Bấm **điệu nhảy** | đứng yên đọc tên điệu ~2s, xong vào **tư thế mở màn** (chân lệch 28–45°) rồi mới bật nhạc | `mimic_announce_delay_s`, `mimic_warmup_s` (1.5), `return_kp_ankle`, xem ↓ |
-| Kẹt ở **RETURNING** (khớp lệch, không về được default) | quá `return_timeout_s` (6s) tự **huỷ dance → STAND LOCK**; bấm `L2+Lên` để huỷ ngay | `return_timeout_s`, `return_pos_tol` |
+| Kẹt ở **RETURNING** (khớp lệch, không về được default) | quá `return_timeout_s` (0.5 s) tự **huỷ dance → LOCOMOTION** (policy bật lại, không blend); `L2+Lên` cũng huỷ về LOCOMOTION. Sim: giữ cứng RETURNING quá ~0.6 s là robot bắt đầu đổ (`simulate_cpp/experiments/hb_stability_20261024`) | `return_timeout_s`, `return_pos_tol` |
 | **Ra khỏi điệu** (bấm `0` / hết điệu / ngồi) | policy nhảy **tự đứng thẳng dậy**, khi đủ yên mới giao cho đi bộ | `mimic_cooldown_s`, xem ↓ |
 
 > ⚙ **Độ cứng cổ chân lúc VÀO điệu** — `return_kp_ankle` (mặc định **120**, ở `config/safety.yaml`). Đoạn robot đứng chờ trước khi vào bài là lúc **không có policy nào chạy**, cổ chân bị gồng cứng bằng PD thuần. Trước đây nó ăn chung `stand_kp_leg` = 200 nên vào bài thấy khựng. Núm này tách riêng: chỉ áp cho **đoạn chờ + đoạn soft-start**, còn khóa đứng / đứng dậy vẫn giữ 200.
@@ -105,7 +105,7 @@ Bảng đầy đủ (tay cầm R3 và bàn phím): [controls.md](controls.md).
 > Thao tác đúng: **bấm phím trước, cầm/đỡ robot sau** — cầm trước rồi bấm thì policy thấy chân lơ lửng.
 
 ### 3.4 Trình tự chuẩn
-Treo/đỡ robot → bật nguồn → **L2+Lên** (đứng dậy) → đặt xuống đất → **R2+A** (thả cần về 0) hoặc **R2+X** (cho phép vừa đi vừa teleop) → **START** nếu cần teleop tay → **R1+D-pad** (nhảy, tự về đi bộ khi xong) → **L2+Trái** (ngồi) khi xong.
+Treo/đỡ robot → bật nguồn → **L2+Lên** (đứng dậy) → đặt xuống đất → **R2+A** hoặc **R2+X** (chọn policy; teleop như nhau ở cả hai) → **START** nếu cần teleop tay → **R1+D-pad** (nhảy, tự về đi bộ khi xong) → **L2+Trái** (ngồi) khi xong.
 
 ### 3.5 Ngồi ghế
 
@@ -202,7 +202,7 @@ Xong test: thoát (ESC) → `./hb start high`. Kiểm không chạy trùng: `pgr
 | **LowState cũ + bất kỳ đường nào còn đòi cấp PD** | **mọi Kp/Kd = 0** ở `LowCmdSender` | backstop cuối, độc lập với watchdog trạng thái: Mode Z tự gate riêng đường PD của nó, nếu gate đó hỏng thì lớp này vẫn chặn. |
 | **Lệnh motor vượt cổng an toàn** (rộng hơn tầm khớp ±0.5 rad) | **Clamp, KHÔNG damp** | đếm + log mỗi 1s: `target khop N ... -> clamp`. Cố ý không damp: dừng giữa lúc robot đang dồn trọng lượng lên một chân còn nguy hơn giá trị bị cắt. |
 | **DDS im nhưng process còn sống** | tay cầm chuyển SUSPECT → LOST sau `remote_timeout_ms`; **không ARM được** | gói LowState cũ vẫn chứa byte tay cầm khác 0; trước đây điều đó giữ remote "healthy" vĩnh viễn và R1+R2 đông cứng vẫn arm được. |
-| **Mất TOÀN BỘ input** (R3-1 + bàn phím), DDS còn | <3s: ngừng nhận lệnh; >3s + debounce: ép vận tốc 0 + cảnh báo 1 lần | còn cảm biến → policy tự cân bằng, KHÔNG damp. Reconnect trung tính 200ms. |
+| **Mất TOÀN BỘ input** (R3-1 + bàn phím), DDS còn | <3s: ngừng nhận lệnh; >3s + debounce: ép vận tốc 0 + cảnh báo 1 lần. Đang **nhảy**: nhảy hết bài rồi về LOCOMOTION như thường (guard tư thế vẫn ngắt nếu ngã); đang **RETURNING** vào bài: về LOCOMOTION; đang **đọc tên bài**: hủy | còn cảm biến → policy tự cân bằng, KHÔNG damp. Mất tay cầm là mất L2+B nên không bắt đầu bài mới (log `CONTROL_LOST khi ...`). Reconnect trung tính 200ms. |
 | **Đứt SSH/wifi** (Auto headless) | **Không ảnh hưởng** | Auto tách khỏi phiên SSH. |
 | **Đứt X11/SSH** (đang chạy Cách B) | **Damping + thoát** | thư viện X ép thoát → damp trước. |
 | **L2+B / ESC** | **Damping** (E-stop thủ công) | luôn thắng mọi thứ. |

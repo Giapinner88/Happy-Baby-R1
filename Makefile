@@ -2,14 +2,15 @@
 # Giữ để `make build`, `make deploy`… cũ vẫn chạy; mọi logic nằm trong ./hb.
 #
 # Robot:   make build && make preflight && make install
-# Máy dev: make deploy | make deploy-policy | make deploy-dance
+# Máy dev: make deploy | make deploy-controller | make deploy-voice | make deploy-teleop | make deploy-all
 
 HB := ./hb
 ARGS ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help build preflight install teleop-runtime teleop-check test test-controller test-python \
-        deploy deploy-policy deploy-dance diff rollback status \
+        deploy deploy-all deploy-controller deploy-voice deploy-teleop deploy-policy deploy-dance \
+        diff rollback status \
         restart-all restart-high stop-all stop-high start-all start-high \
         dance-list dance-prune dance-restore
 
@@ -25,9 +26,13 @@ test:             ; $(HB) test all
 test-controller:  ; $(HB) test cpp
 test-python:      ; $(HB) test py
 
-deploy:           ; $(HB) deploy all $(ARGS)
-deploy-policy:    ; $(HB) deploy policy $(ARGS)
-deploy-dance:     ; $(HB) deploy dance $(ARGS)
+deploy:            ; $(HB) deploy $(ARGS)
+deploy-all:        ; $(HB) deploy all $(ARGS)
+deploy-controller: ; $(HB) deploy controller $(ARGS)
+deploy-voice:      ; $(HB) deploy voice $(ARGS)
+deploy-teleop:     ; $(HB) deploy teleop $(ARGS)
+deploy-policy:     ; $(HB) deploy controller $(ARGS)
+deploy-dance:      ; $(HB) deploy controller $(ARGS)
 diff:             ; $(HB) diff
 rollback:         ; $(HB) rollback
 status:           ; $(HB) status
