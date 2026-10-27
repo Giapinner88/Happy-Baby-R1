@@ -17,8 +17,8 @@ description: '# Xexe R1MotionLab — GOC friction 0.3–0.6
   This policy is packaged inactive and has no assigned HB dance slot. The actor graph
   and deployment metadata are exported from this same GOC training run. Hardware acceptance
   is pending.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795/2026-10-10_10-53-49_xexe_r1motion_goc_fric0p3to0p6_129obs_fresh_20k_8192_gpu1_20261010_105343_348795.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

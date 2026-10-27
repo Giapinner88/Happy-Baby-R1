@@ -1,8 +1,8 @@
 folder       : xexe_r1motion_goc_fric0p8to1p2_8192env_20k_20261011
 repo         : unitree_rl_mjlab_goc
 run          : 2026-10-10_11-09-51_xexe_r1motion_goc_fric0p8to1p2_129obs_fresh_20k_8192_gpu0_20261010_105343_413869
-run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_11-09-51_xexe_r1motion_goc_fric0p8to1p2_129obs_fresh_20k_8192_gpu0_20261010_105343_413869
-metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_11-09-51_xexe_r1motion_goc_fric0p8to1p2_129obs_fresh_20k_8192_gpu0_20261010_105343_413869/2026-10-10_11-09-51_xexe_r1motion_goc_fric0p8to1p2_129obs_fresh_20k_8192_gpu0_20261010_105343_413869.onnx
+run_path     : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_11-09-51_xexe_r1motion_goc_fric0p8to1p2_129obs_fresh_20k_8192_gpu0_20261010_105343_413869
+metadata_onnx: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-10_11-09-51_xexe_r1motion_goc_fric0p8to1p2_129obs_fresh_20k_8192_gpu0_20261010_105343_413869/2026-10-10_11-09-51_xexe_r1motion_goc_fric0p8to1p2_129obs_fresh_20k_8192_gpu0_20261010_105343_413869.onnx
 task         : Unitree-R1-Tracking-No-State-Estimation
 iterations   : 20000/20000
 checkpoint   : model_19999.pt

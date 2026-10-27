@@ -19,6 +19,10 @@ Nhánh này chỉ nhận **kết quả** (ONNX/NPZ, cấu hình, motion) từ c�
 - Nhảy: `controller/config/dance.yaml` → `dance_1` … `dance_7` (slot ứng với nút trong [controls.md](controls.md)).
 - Toàn vẹn: `run_r1` kiểm `sha256` trong `policy.yaml` của cả hai bundle lúc khởi động; test `policy_artifact_manifest_test` kiểm mọi bundle và `_archive/flat_plus/SHA256SUMS`. `integration/config/model_manifest.conf` ghi SHA của walk policy; `./hb deploy` cập nhật file này.
 
+Tên bundle hỗ trợ `nhóm/tên`, ví dụ `walk_policy: armfree/nomirror_d20`; tên phẳng cũ vẫn dùng như trước. Bốn bản ArmFree checkpoint 14999 được gom trong [`controller/policies/locomotion/armfree/`](../controller/policies/locomotion/armfree/README.md): `nomirror_d20`, `nomirror_d25`, `speed20_oldaction_d20`, `speed20_nominal_d20`. `./hb policy list` liệt kê đường dẫn đầy đủ để chép vào config. Việc thêm nhóm này giữ nguyên lựa chọn active và các giá trị tuning.
+
+Bốn bản này yêu cầu FSM `flat_plus_gait_fsm_legs12_stand_recovery_v1`: RMS trên 12 khớp chân, settle 0.5 s; phase `episode_clock_command_gated_v1`: thời gian từ reset, frame đầu t=0, thời gian vẫn chạy ở STAND, sin/cos bằng 0 nếu norm lệnh ba chiều <0.1. Runtime bật từng nhánh bằng metadata; các bundle cũ giữ cách xử lý cũ. Damping/action/default pose lấy từ metadata đúng run, không lấy nhầm của policy khác. Đã có bằng chứng mô phỏng và kiểm tra contract; chưa nghiệm thu trên robot.
+
 ## 2. Hợp đồng locomotion
 
 | Contract | Input | Quan sát |

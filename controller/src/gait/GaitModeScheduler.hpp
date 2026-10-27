@@ -32,6 +32,8 @@ struct GaitModeConfig {
     float push_exit_gyro_immediate = 0.75f;
     float push_exit_gyro_sustained = 0.50f;
     float push_exit_sustain_s = 0.30f;
+    // Explicit metadata opt-in; legacy contracts continue using all 24 joints.
+    bool stability_legs12_only = false;
 };
 
 class GaitModeScheduler {
@@ -224,8 +226,10 @@ private:
         float gyro_sq = 0.0f;
         for (const float value : filtered_gyro_) gyro_sq += value * value;
         float joint_sq = 0.0f;
-        for (const float value : filtered_joint_velocity_) joint_sq += value * value;
-        const float joint_rms = std::sqrt(joint_sq / static_cast<float>(kNumJoints));
+        const std::size_t count = config_.stability_legs12_only ? 12 : kNumJoints;
+        for (std::size_t i = 0; i < count; ++i)
+            joint_sq += filtered_joint_velocity_[i] * filtered_joint_velocity_[i];
+        const float joint_rms = std::sqrt(joint_sq / static_cast<float>(count));
         return std::sqrt(gyro_sq) < config_.settle_gyro_norm
             && joint_rms < config_.settle_joint_velocity_rms;
     }

@@ -86,6 +86,12 @@ hb_config_get() {
     printf '%s\n' "$HB_CONFIG_READER_VALUE"
 }
 
+# Bundle selectors are relative component paths, e.g. u2a_seed42 or
+# armfree/nomirror_d20. Keep in sync with PolicyBundle::ValidName.
+hb_valid_policy_bundle_name() {
+    [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$ ]]
+}
+
 # Print "<rel-path> <contract>" of the locomotion policy selected by ROLE
 # (walk_policy | teleop_policy) in ENTRY-CONFIG, relative to the controller dir.
 # Mirrors Application::InitControllers: bundle route when walk_policy is set
@@ -104,8 +110,8 @@ hb_selected_policy() {
             teleop="$(hb_config_get "$cfg" teleop_policy)" || return 1
             [[ -z "$teleop" ]] || name="$teleop"
         fi
-        [[ "$name" != */* && "$name" != "." && "$name" != ".." ]] || {
-            echo "$role must name a bundle directory: '$name'" >&2
+        hb_valid_policy_bundle_name "$name" || {
+            echo "$role must name a relative bundle or group/name: '$name'" >&2
             return 1
         }
         contract="$(hb_config_get "$high_dir/policies/locomotion/$name/policy.yaml" contract)" || return 1

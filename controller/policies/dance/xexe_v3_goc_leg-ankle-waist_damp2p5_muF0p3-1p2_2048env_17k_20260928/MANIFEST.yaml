@@ -1,8 +1,8 @@
 name: xexe_v3_goc_leg-ankle-waist_damp2p5_muF0p3-1p2_2048env_17k_20260928
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k/2026-09-28_19-11-10_dance_2_xexe_damping25_fresh_2048env_17k.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

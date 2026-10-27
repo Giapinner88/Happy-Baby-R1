@@ -14,8 +14,8 @@ description: 'Pokémon Plus — bỏ nhảy xoay và ngửa lưng
   dùng; audio không bị cắt theo 4 giây motion đã bỏ. Các vùng sửa đã kiểm tra giới
   hạn khớp, FK/vận tốc, xuyên sàn và tự va chạm. Policy chưa được đánh giá tracking
   với reference mới. env.yaml giữ provenance của quá trình train gốc.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_goc_8192env_friction08to15_20k_20261018.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

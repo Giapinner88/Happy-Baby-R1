@@ -2,8 +2,8 @@ name: r1nhayngan1_research_full_goc_hbcompat_20261001
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
 description: null
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-01_20-26-08_r1nhayngan1_research_full_goc_hbcompat_gocsrc_20k_2048_gpu1_jerkfix_20261001
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-01_20-26-08_r1nhayngan1_research_full_goc_hbcompat_gocsrc_20k_2048_gpu1_jerkfix_20261001/2026-10-01_20-26-08_r1nhayngan1_research_full_goc_hbcompat_gocsrc_20k_2048_gpu1_jerkfix_20261001.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-01_20-26-08_r1nhayngan1_research_full_goc_hbcompat_gocsrc_20k_2048_gpu1_jerkfix_20261001
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-01_20-26-08_r1nhayngan1_research_full_goc_hbcompat_gocsrc_20k_2048_gpu1_jerkfix_20261001/2026-10-01_20-26-08_r1nhayngan1_research_full_goc_hbcompat_gocsrc_20k_2048_gpu1_jerkfix_20261001.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

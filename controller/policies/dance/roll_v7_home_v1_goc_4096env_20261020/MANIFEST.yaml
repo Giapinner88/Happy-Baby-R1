@@ -44,8 +44,8 @@ description: '# Roll V7 HOME V1 — completed training export
   This folder replaces the earlier model_25500.pt snapshot, using final
 
   checkpoint and matching same-run exports. The training motion is unchanged.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

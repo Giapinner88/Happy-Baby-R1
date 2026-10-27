@@ -3,8 +3,8 @@ kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
 description: Doremon GOC — train mới 4096 envs, friction 0.8–1.5, 20.000 iterations,
   seed 42. Dùng đúng NPZ và metadata từ run train; đóng gói checkpoint cuối.
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020/2026-10-20_19-09-53_doremon_xexe_goc_4096env_friction08to15_20k_20261020.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

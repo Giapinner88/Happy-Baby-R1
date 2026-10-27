@@ -8,6 +8,12 @@ policies/locomotion/<tên>/
   policy.yaml     contract, sha256
 ```
 
+Có thể gom theo nhóm: `<tên>` là tên phẳng hoặc `nhóm/tên`. Bốn bản ArmFree được
+đặt chung trong [`armfree/`](armfree/README.md); ví dụ chọn
+`walk_policy: armfree/speed20_nominal_d20`. `./hb policy list` in đúng tên để
+chép vào config, bao gồm policy ở trong nhóm. Mỗi thư mục con giữ riêng ONNX,
+hash, metadata và provenance; thư mục nhóm không phải một bundle.
+
 Chọn trong `controller/config/locomotion.yaml`:
 
 ```yaml

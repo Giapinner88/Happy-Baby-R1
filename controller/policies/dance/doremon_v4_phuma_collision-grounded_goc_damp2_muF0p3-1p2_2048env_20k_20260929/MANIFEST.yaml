@@ -1,8 +1,8 @@
 name: doremon_v4_phuma_collision-grounded_goc_damp2_muF0p3-1p2_2048env_20k_20260929
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929/2026-09-29_01-43-49_phuma_doremon_collision_grounded_damping2_2048env_20k_20260929.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

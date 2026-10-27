@@ -2,8 +2,8 @@ name: xexe_trimmed_129obs_goc_4096env_20k_20261007
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
 description: null
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

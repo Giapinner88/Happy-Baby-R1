@@ -55,6 +55,24 @@ int main() {
     Require(one_hot[2] == 1.0f && one_hot[0] == 0.0f && one_hot[1] == 0.0f,
             "one-hot order is Stand Walk W2S");
 
+    // The new legs12 contract ignores upper-body motion, but still gates legs.
+    GaitModeConfig legs_config;
+    legs_config.stability_legs12_only = true;
+    legs_config.settle_dwell_s = 0.5f;
+    GaitModeScheduler legs_only, all_joints;
+    legs_only.Configure(legs_config);
+    std::array<float, spec::kNumJoints> upper_motion{};
+    for (std::size_t i = 12; i < upper_motion.size(); ++i) upper_motion[i] = 8.0f;
+    legs_only.Update(0, 0, gyro, upper_motion, 0.02f);
+    all_joints.Update(0, 0, gyro, upper_motion, 0.02f);
+    Require(legs_only.mode() == GaitMode::Stand, "legs12 ignores arm/waist RMS");
+    Require(all_joints.mode() == GaitMode::W2S, "legacy RMS retains all joints");
+    legs_only.Reset();
+    std::array<float, spec::kNumJoints> moving_legs{};
+    for (std::size_t i = 0; i < 12; ++i) moving_legs[i] = 0.7f;
+    legs_only.Update(0, 0, gyro, moving_legs, 0.02f);
+    Require(legs_only.mode() == GaitMode::W2S, "legs RMS divides by 12, not 24");
+
     // 09/17 is opt-in: gate STAND on uprightness and exit STAND when pushed.
     GaitModeScheduler recovery;
     recovery.Configure({0.10f, 0.10f, 0.15f, 0.15f,

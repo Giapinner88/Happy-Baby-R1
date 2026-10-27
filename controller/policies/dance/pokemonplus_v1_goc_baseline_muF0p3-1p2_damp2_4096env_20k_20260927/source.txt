@@ -1,6 +1,6 @@
 folder       : pokemonplus_v1_goc_baseline_muF0p3-1p2_damp2_4096env_20k_20260927
 variant      : v1 — V1 GOC baseline/default; foot friction 0.3-1.2; leg/ankle/waist damping 2.0, arm 2.0, wrist 1.0; 4096 env; 20000 iterations; resumed to 20k from checkpoints for xexe/doremon; fresh for pokemonplus.
-repo        : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc
+repo        : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc
 run         : 2026-09-27_21-00-01_dance_4_pokemonplus_fixed_20k
 task        : Unitree-R1-Tracking-No-State-Estimation
 initialization: fresh

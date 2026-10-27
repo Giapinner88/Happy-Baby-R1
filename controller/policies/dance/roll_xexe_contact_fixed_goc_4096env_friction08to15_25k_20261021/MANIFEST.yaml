@@ -4,8 +4,8 @@ status: packaged; hardware_acceptance_pending
 description: Roll — train mới từ đầu với NPZ xexe_contact_fixed; 4096 envs, friction
   0.8–1.5, 25.000 iterations, seed 42. Giữ đúng metadata của run; không có audio như
   gói roll trước.
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

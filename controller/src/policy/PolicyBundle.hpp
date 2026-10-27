@@ -5,7 +5,8 @@
 //   policies/locomotion/<name>/policy.onnx
 //   policies/locomotion/<name>/policy.yaml   (contract, sha256)
 //
-// config/locomotion.yaml selects bundles by name (walk_policy / teleop_policy).
+// config/locomotion.yaml selects bundles by relative name, optionally group/name
+// (walk_policy / teleop_policy). Flat names remain supported.
 // The bundle is the single place that records which contract an artifact uses
 // and its SHA-256; the runtime verifies the hash once at startup, outside the
 // 500 Hz loop. ONNX metadata is still checked by PolicyController::Init.
@@ -25,16 +26,31 @@ struct PolicyBundle {
     std::string sha256;
 
     static bool ValidName(const std::string& name) {
-        return !name.empty() && name != "." && name != ".." &&
-               name.find('/') == std::string::npos &&
-               name.find('\\') == std::string::npos;
+        // Same component grammar as hb_valid_policy_bundle_name in the shell
+        // reader. Reject absolute paths, empty components and traversal before IO.
+        if (name.empty()) return false;
+        bool first = true;
+        for (const char ch : name) {
+            const bool alnum = (ch >= 'a' && ch <= 'z') ||
+                               (ch >= 'A' && ch <= 'Z') ||
+                               (ch >= '0' && ch <= '9');
+            if (ch == '/') {
+                if (first) return false;
+                first = true;
+            } else {
+                if (!alnum && (first || (ch != '.' && ch != '_' && ch != '-')))
+                    return false;
+                first = false;
+            }
+        }
+        return !first;
     }
 
     // Throws on a missing/incomplete bundle or a hash mismatch: a wrong
     // artifact must stop startup, never fall back to another model.
     static PolicyBundle Load(const std::string& proj_dir, const std::string& name) {
         if (!ValidName(name))
-            throw std::runtime_error("policy bundle name must be a directory name: '" + name + "'");
+            throw std::runtime_error("policy bundle must be a relative name or group/name: '" + name + "'");
         PolicyBundle b;
         b.name = name;
         const std::string dir_rel = "policies/locomotion/" + name + "/";

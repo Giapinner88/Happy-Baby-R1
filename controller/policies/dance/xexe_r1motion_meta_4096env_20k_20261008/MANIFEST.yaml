@@ -15,8 +15,8 @@ description: '# Xexe R1MotionLab — META 20k
   hoàn tất 20000 iterations. Friction trong training: 1.1–1.5. Model dùng snapshot
   sửa hai tên body collision exclusions, chỉ trong process job. Metadata ONNX lấy
   từ đúng training run. Chất lượng đang được kiểm tra riêng bằng rollout không reset.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007/2026-10-08_04-23-25_xexe_r1motion_meta_candidate_129obs_fresh_20k_4096_gpu0_after_goc_20261007.onnx
 training:
   repo: unitree_rl_mjlab_meta
   task: Unitree-R1-Tracking-No-State-Estimation

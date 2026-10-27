@@ -8,9 +8,9 @@ description: '# Xexe GOC R1MotionLab — [2.0, 3.0]
   zero-based index).
 
 
-  Original training run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708
+  Original training run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708
 
-  Immutable same-run export snapshot: /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric20to30_8192env_30k_20261010/checkpoint_24000/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708
+  Immutable same-run export snapshot: /home/ubuntu22/train_mujoco/outputs/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric20to30_8192env_30k_20261010/checkpoint_24000/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708
 
 
   Fresh training, 8192 envs, target 30000 iterations, seed 42, actor 129 obs / 24
@@ -22,15 +22,15 @@ description: '# Xexe GOC R1MotionLab — [2.0, 3.0]
   Audio preserves the original Xexe motion/audio pairing. Package stored without selecting
   a dance slot. Exact deployment metadata is copied from this run, not from another
   policy.'
-source_run: /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric20to30_8192env_30k_20261010/checkpoint_24000/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708
-metadata_source: /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric20to30_8192env_30k_20261010/checkpoint_24000/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708.onnx
+source_run: /home/ubuntu22/train_mujoco/outputs/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric20to30_8192env_30k_20261010/checkpoint_24000/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708
+metadata_source: /home/ubuntu22/train_mujoco/outputs/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric20to30_8192env_30k_20261010/checkpoint_24000/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation
   iterations_completed: 24001
   iterations_target: 30000
   checkpoint: model_24000.pt
-  notes: 'Original same-run source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708;
+  notes: 'Original same-run source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric20to30_129obs_fresh_30k_8192_gpu1_20261009_160708;
     immutable export copy for packaging'
 motion:
   file: xexe_r1motion_candidate.npz

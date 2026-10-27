@@ -8,8 +8,8 @@ description: 'Cha Cha Cha — support fixed, final 25k
   đã bỏ bước IK ép bàn chân theo từng frame và có hiệu chỉnh sàn mượt. NPZ, policy
   và metadata lấy đúng từ cùng run đã hoàn tất, checkpoint model_24999.pt. Không audio,
   giống gói Cha Cha Cha HOME trước.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020/2026-10-21_10-00-22_chacha_support_fixed_fresh_4096env_friction08to15_25k_after_roll_20261020.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

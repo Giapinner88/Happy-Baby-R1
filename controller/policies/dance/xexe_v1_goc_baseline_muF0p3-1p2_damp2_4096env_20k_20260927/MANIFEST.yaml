@@ -1,7 +1,7 @@
 name: xexe_v1_goc_baseline_muF0p3-1p2_damp2_4096env_20k_20260927
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation
@@ -41,4 +41,4 @@ version: v1
 variant: V1 GOC baseline/default; foot friction 0.3-1.2; leg/ankle/waist damping 2.0,
   arm 2.0, wrist 1.0; 4096 env; 20000 iterations; resumed to 20k from checkpoints
   for xexe/doremon; fresh for pokemonplus.
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k.onnx
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k/2026-09-27_17-31-11_dance_2_xexe_trimmed_resume_to_20k.onnx

@@ -1,0 +1,14 @@
+folder       : pokemonplus_goc_no_spin_no_lean_12288env_friction08to15_ckpt14500_20261027
+repo         : unitree_rl_mjlab_goc
+run          : 2026-10-27_00-01-31_pokemonplus_no_spin_no_lean_goc_12288env_friction08to15_15k_20261027
+run_path     : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-27_00-01-31_pokemonplus_no_spin_no_lean_goc_12288env_friction08to15_15k_20261027
+metadata_onnx: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-27_00-01-31_pokemonplus_no_spin_no_lean_goc_12288env_friction08to15_15k_20261027/2026-10-27_00-01-31_pokemonplus_no_spin_no_lean_goc_12288env_friction08to15_15k_20261027.onnx
+task         : Unitree-R1-Tracking-No-State-Estimation
+iterations   : 14500/15000
+checkpoint   : model_14500.pt
+motion       : pokemon_plus.npz (3414 frames @ 50 Hz)
+audio        : pokemon.mp3
+onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
+HB activation: inactive; dance.yaml unchanged
+status       : snapshot; training_in_progress; hardware_acceptance_pending
+notes        : Checkpoint 14500 snapshot. Exact edited no-spin/no-lean training NPZ; matching MP3 retained unchanged. Actor weights and normalization verified against checkpoint. Canonical runtime: Happy-Baby-R1-develop/controller.

@@ -1,5 +1,5 @@
-source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020.onnx
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020
+source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_01-49-05_roll_xexe_contact_fixed_fresh_4096env_friction08to15_25k_20261020
 required_for_hb:
 - default_joint_pos
 - action_scale

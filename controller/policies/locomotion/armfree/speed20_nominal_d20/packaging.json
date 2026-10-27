@@ -1,0 +1,202 @@
+{
+  "bundle": "armfree_speed20_nominal_d20_15k_20261026",
+  "policy_id": "Speed20_NominalAction",
+  "source_run": "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/logs/armfree_speed20_nominal_20261025/nominal_seed42_4096env_15k",
+  "source_checkpoint": "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/logs/armfree_speed20_nominal_20261025/nominal_seed42_4096env_15k/model_14999.pt",
+  "checkpoint_sha256": "de411066f82367faa2a642f9df89894f805c98c1f7ac89dad9e2d92760bd6221",
+  "source_onnx": "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/logs/armfree_speed20_nominal_20261025/nominal_seed42_4096env_15k/policy.onnx",
+  "source_onnx_sha256": "c06141418b25bd2f092156f36d79db02743f38f5dc0b2b4ec703aab7b71e661b",
+  "packaged_sha256": "11aeb5173ccff6254bbd7caa5feec89e0d1e89cf3e4d074ac0d2ddb0b339f65c",
+  "iteration": 14999,
+  "iterations_completed": 15000,
+  "policy_steps": 360000,
+  "mirror_loss": false,
+  "checkpoint_onnx_max_abs_error": 1.430511474609375e-06,
+  "packaged_source_max_abs_error": 0.0,
+  "actor_graph_identical": true,
+  "exact_resolved_arrays": {
+    "action_scale": [
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.3125,
+      0.3125,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.3125,
+      0.3125,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.375,
+      0.375,
+      0.4124999940395355,
+      0.4124999940395355,
+      0.4124999940395355,
+      0.375,
+      0.375,
+      0.4124999940395355,
+      0.4124999940395355,
+      0.4124999940395355
+    ],
+    "default_joint_pos": [
+      -0.10000000149011612,
+      0.0348999984562397,
+      -0.04769999906420708,
+      0.30000001192092896,
+      -0.20000000298023224,
+      -0.0348999984562397,
+      -0.10000000149011612,
+      -0.0348999984562397,
+      0.04769999906420708,
+      0.30000001192092896,
+      -0.20000000298023224,
+      0.0348999984562397,
+      0.0,
+      0.0,
+      0.3499999940395355,
+      0.18000000715255737,
+      0.0,
+      0.8700000047683716,
+      0.0,
+      0.3499999940395355,
+      -0.18000000715255737,
+      0.0,
+      0.8700000047683716,
+      0.0
+    ],
+    "joint_stiffness": [
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      40.0,
+      40.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      40.0,
+      40.0,
+      100.0,
+      100.0,
+      40.0,
+      40.0,
+      20.0,
+      20.0,
+      20.0,
+      40.0,
+      40.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    "joint_damping": [
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      1.0,
+      1.0,
+      1.0,
+      2.0,
+      2.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "joint_effort_limit": [
+      60.0,
+      60.0,
+      60.0,
+      63.0,
+      52.5,
+      52.5,
+      60.0,
+      60.0,
+      60.0,
+      63.0,
+      52.5,
+      52.5,
+      60.0,
+      60.0,
+      60.0,
+      60.0,
+      33.0,
+      33.0,
+      33.0,
+      60.0,
+      60.0,
+      33.0,
+      33.0,
+      33.0
+    ]
+  },
+  "native_phase": {
+    "source_function": "src.tasks.velocity.mdp.observations.phase",
+    "period_s": 0.6,
+    "clock": "episode_step_float32_times_dt",
+    "zero_mask": "command_3norm_lt_0.1",
+    "reset_alignment": "first_observation_t0"
+  },
+  "metadata_changes": {
+    "gait_phase_contract": {
+      "before": null,
+      "after": "episode_clock_command_gated_v1"
+    },
+    "gait_phase_tick_alignment": {
+      "before": null,
+      "after": "reset_zero_then_increment_after_observation"
+    },
+    "source_checkpoint": {
+      "before": null,
+      "after": "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/logs/armfree_speed20_nominal_20261025/nominal_seed42_4096env_15k/model_14999.pt"
+    },
+    "source_checkpoint_sha256": {
+      "before": null,
+      "after": "de411066f82367faa2a642f9df89894f805c98c1f7ac89dad9e2d92760bd6221"
+    },
+    "source_onnx_sha256": {
+      "before": null,
+      "after": "c06141418b25bd2f092156f36d79db02743f38f5dc0b2b4ec703aab7b71e661b"
+    },
+    "hb_bundle": {
+      "before": null,
+      "after": "armfree_speed20_nominal_d20_15k_20261026"
+    },
+    "hb_validation": {
+      "before": null,
+      "after": "checkpoint_graph_PD_and_native_phase_contract"
+    },
+    "deployment_note": {
+      "before": "legacy episode-clock/command-gated phase; HB must match exact artifact phase contract before use",
+      "after": "Native command-gated phase requires updated HB runtime; hardware validation pending"
+    }
+  },
+  "deduplicated_source_metadata": {},
+  "quality_scope": "completed native-domain simulation and transition diagnostics; hardware not accepted",
+  "evaluation_sources": [
+    "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/artifacts/armfree_full_comparison_20261025/priority_retest_20261025/assessment.json",
+    "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/artifacts/armfree_full_comparison_20261025/selection_20261026/selection.json"
+  ],
+  "installation": {
+    "selector": "armfree/speed20_nominal_d20",
+    "source_bundle_id": "armfree_speed20_nominal_d20_15k_20261026",
+    "actor_bytes_unchanged": true,
+    "reproduction_command": "python scripts/package_armfree_locomotion_hb.py --install-selected-grouped --hb-root /home/ubuntu22/train_mujoco/robot_r1/Happy-Baby-R1-develop"
+  }
+}

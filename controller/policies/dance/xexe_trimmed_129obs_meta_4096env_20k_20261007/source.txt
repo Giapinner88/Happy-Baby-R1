@@ -1,8 +1,8 @@
 folder       : xexe_trimmed_129obs_meta_4096env_20k_20261007
 repo         : unitree_rl_mjlab_meta
 run          : 2026-10-07_00-35-54_xexe_trimmed_129obs_meta_after_goc_20k_4096_gpu1_20261006
-run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-07_00-35-54_xexe_trimmed_129obs_meta_after_goc_20k_4096_gpu1_20261006
-metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-07_00-35-54_xexe_trimmed_129obs_meta_after_goc_20k_4096_gpu1_20261006/2026-10-07_00-35-54_xexe_trimmed_129obs_meta_after_goc_20k_4096_gpu1_20261006.onnx
+run_path     : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-07_00-35-54_xexe_trimmed_129obs_meta_after_goc_20k_4096_gpu1_20261006
+metadata_onnx: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-07_00-35-54_xexe_trimmed_129obs_meta_after_goc_20k_4096_gpu1_20261006/2026-10-07_00-35-54_xexe_trimmed_129obs_meta_after_goc_20k_4096_gpu1_20261006.onnx
 task         : Unitree-R1-Tracking-No-State-Estimation
 iterations   : 20000/20000
 checkpoint   : model_19999.pt

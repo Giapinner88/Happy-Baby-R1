@@ -1,5 +1,5 @@
-source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015.onnx
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
+source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-15_23-47-53_gioithieu2_foot_yaw_w21_w11_meta_friction08to12_20k_4096_20261015
 required_for_hb:
 - default_joint_pos
 - action_scale

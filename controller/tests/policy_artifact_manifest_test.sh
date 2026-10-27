@@ -23,9 +23,8 @@ test -f "$manifest"
 # Bundle: mỗi thư mục chọn được có policy.onnx + policy.yaml, và sha256 trong
 # policy.yaml khớp file, để một model mới/đổi không lên robot mà thiếu hash.
 bundles=0
-for dir in "$loco"/*/; do
-    name="$(basename "$dir")"
-    [[ "$name" == _* ]] && continue
+while IFS= read -r -d '' dir; do
+    name="${dir#"$loco/"}"
     [[ -s "$dir/policy.onnx" ]] || { echo "bundle $name: missing policy.onnx" >&2; exit 1; }
     [[ -s "$dir/policy.yaml" ]] || { echo "bundle $name: missing policy.yaml" >&2; exit 1; }
     expected="$(sed -n 's/^sha256:[[:space:]]*"\{0,1\}\([0-9a-f]\{64\}\)"\{0,1\}[[:space:]]*\(#.*\)\{0,1\}$/\1/p' "$dir/policy.yaml")"
@@ -37,6 +36,6 @@ for dir in "$loco"/*/; do
     grep -Eq '^contract:[[:space:]]*[a-z0-9_]+' "$dir/policy.yaml" || {
         echo "bundle $name: missing contract" >&2; exit 1; }
     bundles=$((bundles + 1))
-done
+done < <(find "$loco" -type d -name '_*' -prune -o -type f \( -name policy.yaml -o -name policy.onnx \) -printf '%h\0' | sort -zu)
 ((bundles > 0)) || { echo "no locomotion bundle found under $loco" >&2; exit 1; }
 echo "policy_artifact_manifest_test: PASS ($bundles bundle)"

@@ -14,8 +14,8 @@ description: 'Roll — random stance ±3 cm, final 20k
   Runtime reference giữ đúng NPZ roll_xexe_contact_fixed_50hz.npz đã train, 308 frame/50
   Hz/6,16 giây. Ngân hàng s0 chỉ dùng khi train, lưu trong training_reset/ để truy
   xuất provenance; không cần để chạy HB policy. Không audio như các gói roll trước.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021/2026-10-21_19-49-54_roll_stance_pm3cm_fresh_8192env_friction08to15_20k_20261021.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-Roll-Random-Stance

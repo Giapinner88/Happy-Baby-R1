@@ -1,8 +1,8 @@
 folder       : roll_v7_home_v1_goc_4096env_20261020
 repo         : unitree_rl_mjlab_goc
 run          : 2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020
-run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020
-metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020.onnx
+run_path     : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020
+metadata_onnx: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020/2026-10-20_15-39-32_roll_v7_home_resume21k_to30k_4096env_gpu0_20261020.onnx
 task         : Unitree-R1-Tracking-No-State-Estimation
 iterations   : 29999/29999
 checkpoint   : model_29998.pt

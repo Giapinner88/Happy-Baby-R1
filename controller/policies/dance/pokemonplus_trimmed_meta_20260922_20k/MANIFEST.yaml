@@ -1,9 +1,9 @@
 name: pokemonplus_trimmed_meta_20260922_20k
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-22_09-01-54_pokemonplus_trimmed_meta_resume_10k_to_20k_gpu0_20260922
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-22_09-01-54_pokemonplus_trimmed_meta_resume_10k_to_20k_gpu0_20260922
 training:
-  repo: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta
+  repo: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta
   task: Unitree-R1-Tracking-No-State-Estimation
   motion: pokemonplus_r1_robot_feasible_trimmed.npz
   gpu: 0

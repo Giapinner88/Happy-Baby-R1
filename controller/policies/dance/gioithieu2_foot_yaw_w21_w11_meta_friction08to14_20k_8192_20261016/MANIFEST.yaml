@@ -19,8 +19,8 @@ description: '# Gioithieu2 — Meta, friction 0.8–1.4, 8,192 environments
 
 
   This package is installed inactive pending visual review and hardware testing.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016/2026-10-16_12-52-22_gioithieu2_foot_yaw_w21_w11_meta_friction08to14_20k_8192_20261016.onnx
 training:
   repo: unitree_rl_mjlab_meta
   task: Unitree-R1-Tracking-No-State-Estimation

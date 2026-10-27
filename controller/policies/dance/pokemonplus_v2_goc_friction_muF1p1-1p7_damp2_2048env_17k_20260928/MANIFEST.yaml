@@ -1,8 +1,8 @@
 name: pokemonplus_v2_goc_friction_muF1p1-1p7_damp2_2048env_17k_20260928
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k/2026-09-28_15-17-33_dance_4_pokemonplus_fixed_friction117_fresh_2048env_17k.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

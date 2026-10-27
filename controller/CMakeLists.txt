@@ -159,6 +159,9 @@ if(BUILD_TESTING)
         add_test(NAME onnx_file_contract_test COMMAND "${HB_TEST_PYTHON}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/onnx_file_contract_test.py"
             $<TARGET_FILE:onnx_file_contract_test>)
+        add_test(NAME armfree_native_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/armfree_native_bundle_contract_test.py"
+            ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
     endif()
     add_executable(remote_health_test tests/remote_health_test.cpp)
     target_link_libraries(remote_health_test unitree_sdk2 pthread)
@@ -231,6 +234,19 @@ if(BUILD_TESTING)
 
     add_executable(gait_mode_scheduler_test tests/gait_mode_scheduler_test.cpp)
     add_test(NAME gait_mode_scheduler_test COMMAND gait_mode_scheduler_test)
+
+    add_executable(command_gated_phase_test tests/command_gated_phase_test.cpp)
+    add_test(NAME command_gated_phase_test COMMAND command_gated_phase_test
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/command_gated_phase_trace.txt)
+
+    add_executable(armfree_native_phase_inference_test
+        tests/armfree_native_phase_inference_test.cpp src/policy/OnnxPolicy.cpp)
+    target_link_libraries(armfree_native_phase_inference_test ${ONNXRUNTIME_LIB} unitree_sdk2 pthread)
+    add_test(NAME armfree_native_phase_inference_test COMMAND armfree_native_phase_inference_test
+        ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/command_gated_phase_trace.txt)
+
+    add_executable(policy_bundle_test tests/policy_bundle_test.cpp)
+    add_test(NAME policy_bundle_test COMMAND policy_bundle_test ${CMAKE_CURRENT_SOURCE_DIR})
 
     add_executable(gait_golden_trace_test tests/gait_golden_trace_test.cpp)
     add_test(

@@ -1,5 +1,5 @@
-source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012.onnx
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012
+source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-13_00-46-14_doremon_raw_w21w11_goc_friction11to17_resume_gpu1_20k_8192_20261012
 required_for_hb:
 - default_joint_pos
 - action_scale

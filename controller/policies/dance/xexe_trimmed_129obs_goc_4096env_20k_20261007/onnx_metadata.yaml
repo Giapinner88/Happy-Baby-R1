@@ -1,5 +1,5 @@
-source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007.onnx
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007
+source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-07_09-32-11_xexe_trimmed_129obs_goc_after_meta_20k_4096_gpu1_20261007
 required_for_hb:
 - default_joint_pos
 - action_scale

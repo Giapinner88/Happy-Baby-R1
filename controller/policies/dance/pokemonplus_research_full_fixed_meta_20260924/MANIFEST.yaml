@@ -1,7 +1,7 @@
 name: pokemonplus_research_full_fixed_meta_20260924
 kind: r1_mimic_dance
 status: packaged; hardware_acceptance_pending
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-24_04-14-14_pokemonplus_research_full_fixed_meta_20k_2048_gpu0_20260924
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-09-24_04-14-14_pokemonplus_research_full_fixed_meta_20k_2048_gpu0_20260924
 training:
   repo: unitree_rl_mjlab_meta
   task: Unitree-R1-Tracking-No-State-Estimation

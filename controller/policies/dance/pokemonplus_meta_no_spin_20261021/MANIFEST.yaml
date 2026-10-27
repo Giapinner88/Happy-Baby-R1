@@ -12,8 +12,8 @@ description: 'Pokémon Plus — bỏ nhảy xoay
   Đây là thay đổi reference khi chạy, không phải policy được train lại trên NPZ mới.
   File env.yaml giữ nguyên cấu hình train gốc; MANIFEST ghi riêng provenance của reference
   đã sửa.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018/2026-10-18_16-46-43_pokemon_plus_meta_8192env_friction08to15_20k_20261018.onnx
 training:
   repo: unitree_rl_mjlab_meta
   task: Unitree-R1-Tracking-No-State-Estimation

@@ -1,5 +1,5 @@
 {
-  "source": "/home/ubuntu22/train_mujoco/artifacts/doremon_goc4096_review_20261021/doremon_reference.npz",
+  "source": "/home/ubuntu22/train_mujoco/outputs/artifacts/doremon_goc4096_review_20261021/doremon_reference.npz",
   "source_sha256": "d9d5bfa7b601f6243f6545ce64b658a3538d780998b3c0811d5ab94c708a7e78",
   "keep_frames": 3740,
   "cut_from_seconds": 74.8,

@@ -1,8 +1,8 @@
 folder       : xexe_r1motion_goc_fric11to17_8192env_30k_20261010
 repo         : unitree_rl_mjlab_goc
 run          : 2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708
-run_path     : /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric11to17_8192env_30k_20261010/checkpoint_18500/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708
-metadata_onnx: /home/ubuntu22/train_mujoco/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric11to17_8192env_30k_20261010/checkpoint_18500/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708.onnx
+run_path     : /home/ubuntu22/train_mujoco/outputs/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric11to17_8192env_30k_20261010/checkpoint_18500/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708
+metadata_onnx: /home/ubuntu22/train_mujoco/outputs/artifacts/hb_r1_dance_packaging/xexe_goc_8192_30k_20261010/update_20261010_101634/xexe_r1motion_goc_fric11to17_8192env_30k_20261010/checkpoint_18500/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708.onnx
 task         : Unitree-R1-Tracking-No-State-Estimation
 iterations   : 18501/30000
 checkpoint   : model_18500.pt
@@ -11,4 +11,4 @@ audio        : xexe.mp3
 onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
 HB activation: inactive; dance.yaml unchanged
 status       : training_in_progress_or_iteration_count_unverified
-notes        : Original same-run source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708; immutable export copy for packaging
+notes        : Original same-run source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-09_16-07-16_xexe_r1motion_goc_fric11to17_129obs_fresh_30k_8192_gpu0_20261009_160708; immutable export copy for packaging

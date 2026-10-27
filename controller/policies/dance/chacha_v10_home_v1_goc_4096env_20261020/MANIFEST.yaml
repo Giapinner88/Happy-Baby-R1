@@ -42,8 +42,8 @@ description: '# ChaCha V10 HOME V1 — completed training export
   This folder replaces the earlier model_25000.pt snapshot with final
 
   checkpoint and matching same-run exports; the training motion is unchanged.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020/2026-10-20_15-41-04_chacha_v10_home_finetune_plus10k_4096env_gpu1_20261020.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

@@ -1,8 +1,8 @@
 folder       : doremon_ab_w21_final11_meta_friction08to12_20k_8192_20261013
 repo         : unitree_rl_mjlab_meta
 run          : 2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012
-run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012
-metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012.onnx
+run_path     : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012
+metadata_onnx: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012/2026-10-13_06-11-18_doremon_ab_w21_final11_meta_friction08to12_20k_8192_gpu1_20261012.onnx
 task         : Unitree-R1-Tracking-No-State-Estimation
 iterations   : 20000/20000
 checkpoint   : model_19999.pt

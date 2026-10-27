@@ -38,6 +38,13 @@ heading_hold_relatch_gyro: 0.3
 # ============================================================================
 # CHỌN POLICY ĐI BỘ — tên thư mục bundle dưới controller/policies/locomotion/<tên>/
 # (policy.onnx + policy.yaml; contract và sha256 nằm trong policy.yaml).
+# Nhóm ArmFree đã train xong (checkpoint 14999, no mirror):
+#   armfree/nomirror_d20            — baseline, vx tối đa train 1.5 m/s
+#   armfree/nomirror_d25            — baseline, damping gối/cổ chân 2.5
+#   armfree/speed20_oldaction_d20   — vx tối đa train 2.0 m/s, action cũ
+#   armfree/speed20_nominal_d20     — vx tối đa train 2.0 m/s, action nominal
+# Chi tiết: controller/policies/locomotion/armfree/README.md. Chỉ sửa tên bên dưới
+# để chọn; giới hạn tốc độ HB vẫn do slow_*/fast_* ở đầu file này quyết định.
 #   walk_policy   : R2+A — chọn policy đi bộ A
 #   teleop_policy : R2+X — chọn policy đi bộ X; trống = dùng walk_policy
 # R2+A/R2+X chỉ chọn policy; teleop (START) hành xử như nhau ở cả hai, xem

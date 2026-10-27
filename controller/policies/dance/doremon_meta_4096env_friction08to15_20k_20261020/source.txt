@@ -1,8 +1,8 @@
 folder       : doremon_meta_4096env_friction08to15_20k_20261020
 repo         : unitree_rl_mjlab_meta
 run          : 2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020
-run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020
-metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020.onnx
+run_path     : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020
+metadata_onnx: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020/2026-10-20_19-09-53_doremon_xexe_meta_4096env_friction08to15_20k_20261020.onnx
 task         : Unitree-R1-Tracking-No-State-Estimation
 iterations   : 20000/20000
 checkpoint   : model_19999.pt

@@ -16,8 +16,8 @@ description: '# Xexe R1MotionLab — GOC snapshot checkpoint 15500
   tới index 15842 nhưng phần sau lần lưu 15500 không có trong package. Đây là snapshot
   chưa hoàn tất 20k. Metadata ONNX lấy từ đúng run. Chất lượng đang được kiểm tra
   riêng bằng rollout không reset.'
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008
-metadata_source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008/2026-10-08_16-49-02_xexe_r1motion_goc_fric11to17_129obs_resume_to20k_4096_gpu0_after_meta_20261008.onnx
 training:
   repo: unitree_rl_mjlab_goc
   task: Unitree-R1-Tracking-No-State-Estimation

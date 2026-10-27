@@ -6,6 +6,7 @@
 #include "FlatHistoryController.hpp"
 #include "../gait/GaitModeScheduler.hpp"
 #include "../gait/GaitScheduler.hpp"
+#include "../gait/CommandGatedPhase.hpp"
 
 // H4 history plus current STAND/WALK/W2S one-hot: 332 + 3 = 335D.
 class FlatPlusGaitController final : public FlatHistoryController {
@@ -26,6 +27,7 @@ public:
         gait_config_ = config;
         gait_.Configure(config);
         gait_phase_.Configure(gait_period_s);
+        command_phase_.Configure(gait_period_s);
     }
 
     const GaitModeScheduler& gait() const { return gait_; }
@@ -37,6 +39,7 @@ protected:
     void ResetVariant() override {
         gait_.Reset();
         gait_phase_.Reset();
+        command_phase_.Reset();
     }
 
     void PrepareObservationContext(ControlContext& ctx) override {
@@ -56,9 +59,14 @@ protected:
                          ctx.state.dq_raw, projected_gravity, spec::kPolicyDt);
             const bool previous_stand = previous_mode == GaitMode::Stand;
             const bool current_stand = gait_.mode() == GaitMode::Stand;
-            gait_phase_.UpdateStandRecovery(
-                previous_stand, current_stand, spec::kPolicyDt);
-            ctx.gait_phase = gait_phase_.PhaseObsStandRecovery(current_stand);
+            if (command_phase_enabled_) {
+                ctx.gait_phase = command_phase_.Next(
+                    ctx.cmd_vx, ctx.cmd_vy, ctx.cmd_yaw);
+            } else {
+                gait_phase_.UpdateStandRecovery(
+                    previous_stand, current_stand, spec::kPolicyDt);
+                ctx.gait_phase = gait_phase_.PhaseObsStandRecovery(current_stand);
+            }
         } else {
             gait_.Update(command_linear_norm, command_yaw_abs, gyro,
                          ctx.state.dq_raw, spec::kPolicyDt);
@@ -74,6 +82,8 @@ protected:
     void ValidateVariantMetadata() override {
         // Metadata, not the shared 335-D profile name, opts into recovery.
         stand_recovery_enabled_ = false;
+        command_phase_enabled_ = false;
+        gait_config_.stability_legs12_only = false;
         gait_config_.stand_upright_enabled = false;
         gait_config_.stand_push_exit_enabled = false;
         RequireMetadata(model_path_, "actor_obs_groups", "actor,gait");
@@ -93,7 +103,8 @@ protected:
         std::string gait_fsm;
         if (!policy_.ReadMetadataString("gait_fsm_contract", gait_fsm) ||
             (gait_fsm != "flat_plus_gait_fsm_v1" &&
-             gait_fsm != "flat_plus_gait_fsm_v1_stand_recovery_v1")) {
+             gait_fsm != "flat_plus_gait_fsm_v1_stand_recovery_v1" &&
+             gait_fsm != "flat_plus_gait_fsm_legs12_stand_recovery_v1")) {
             throw std::runtime_error(
                 "ONNX metadata mismatch: gait_fsm_contract expected one of "
                 "'flat_plus_gait_fsm_v1', "
@@ -101,12 +112,26 @@ protected:
                 (gait_fsm.empty() ? std::string("<missing>") : gait_fsm) +
                 "' in " + model_path_);
         }
-        if (gait_fsm == "flat_plus_gait_fsm_v1_stand_recovery_v1") {
+        const bool legs12 = gait_fsm == "flat_plus_gait_fsm_legs12_stand_recovery_v1";
+        std::string phase_contract;
+        if (policy_.ReadMetadataString("gait_phase_contract", phase_contract)) {
+            if (!legs12 || phase_contract != "episode_clock_command_gated_v1")
+                throw std::runtime_error("ONNX metadata mismatch: unsupported gait_phase_contract in " + model_path_);
+            RequireMetadata(model_path_, "training_phase_clock",
+                            "episode_time_continuous_legacy_0909");
+            RequireMetadata(model_path_, "training_phase_zero_mask",
+                            "command_3norm_lt_0.1");
+            RequireMetadata(model_path_, "gait_phase_tick_alignment",
+                            "reset_zero_then_increment_after_observation");
+            command_phase_enabled_ = true;
+        }
+        if (gait_fsm == "flat_plus_gait_fsm_v1_stand_recovery_v1" || legs12) {
             std::string task_variant;
             if (!policy_.ReadMetadataString("gait_task_variant", task_variant) ||
                 (task_variant != "0917" && task_variant != "0917V3" &&
                  task_variant != "0917V4" && task_variant != "0917V5A1" &&
-                 task_variant != "0917V5A2A")) {
+                 task_variant != "0917V5A2A" &&
+                 !(legs12 && task_variant == "armfree_ab_20261023"))) {
                 throw std::runtime_error(
                     "ONNX metadata mismatch: gait_task_variant expected '0917' "
                     "or '0917V3'/'0917V4'/'0917V5A1'/'0917V5A2A' "
@@ -143,8 +168,27 @@ protected:
             gait_config_.stand_push_exit_enabled = true;
             stand_recovery_enabled_ = true;
         }
-        RequireMetadata(model_path_, "gait_stability_predicate",
-                        "filtered_imu_ang_vel_norm_and_joint_vel_rms_v2");
+        if (legs12) {
+            RequireMetadata(model_path_, "gait_task_variant", "armfree_ab_20261023");
+            RequireMetadata(model_path_, "gait_stability_predicate",
+                            "filtered_imu_and_legs12_joint_rms_v1");
+            const std::string leg_names =
+                "left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,"
+                "left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,"
+                "right_hip_pitch_joint,right_hip_roll_joint,right_hip_yaw_joint,"
+                "right_knee_joint,right_ankle_pitch_joint,right_ankle_roll_joint";
+            RequireMetadata(model_path_, "gait_stability_joint_names", leg_names);
+            RequireMetadata(model_path_, "joint_names", leg_names +
+                ",waist_roll_joint,waist_yaw_joint,left_shoulder_pitch_joint,"
+                "left_shoulder_roll_joint,left_shoulder_yaw_joint,left_elbow_joint,"
+                "left_wrist_roll_joint,right_shoulder_pitch_joint,right_shoulder_roll_joint,"
+                "right_shoulder_yaw_joint,right_elbow_joint,right_wrist_roll_joint");
+            RequireMetadataFloat(model_path_, "gait_t_settle_s", gait_config_.settle_dwell_s);
+            gait_config_.stability_legs12_only = true;
+        } else {
+            RequireMetadata(model_path_, "gait_stability_predicate",
+                            "filtered_imu_ang_vel_norm_and_joint_vel_rms_v2");
+        }
 
         RequireMetadataFloat(model_path_, "gait_stop_request_lin",
                              gait_config_.stop_request_lin);
@@ -176,5 +220,7 @@ private:
     GaitModeConfig gait_config_{};
     GaitModeScheduler gait_{};
     GaitScheduler gait_phase_{};
+    CommandGatedPhase command_phase_{};
+    bool command_phase_enabled_ = false;
     bool stand_recovery_enabled_ = false;
 };

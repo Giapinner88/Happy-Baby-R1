@@ -1,8 +1,8 @@
 folder       : doremon_ab_w21_final11_goc_20k_8192_20261011
 repo         : unitree_rl_mjlab_goc
 run          : 2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011
-run_path     : /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011
-metadata_onnx: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011.onnx
+run_path     : /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011
+metadata_onnx: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011/2026-10-11_11-12-28_doremon_ab_w21_final11_goc_20k_8192_gpu1_20261011.onnx
 task         : Unitree-R1-Tracking-No-State-Estimation
 iterations   : 20000/20000
 checkpoint   : model_19999.pt

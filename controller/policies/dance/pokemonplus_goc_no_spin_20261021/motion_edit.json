@@ -1,5 +1,5 @@
 {
-  "source": "/home/ubuntu22/train_mujoco/RETARGETING/GMR/motion_data/xexe_pipeline_5videos_20261017/npz/pokemon_plus.npz",
+  "source": "/home/ubuntu22/train_mujoco/robot_r1/RETARGETING/GMR/motion_data/xexe_pipeline_5videos_20261017/npz/pokemon_plus.npz",
   "source_sha256": "44dde9aa5ac02ec1aafc7d5d73621e31d3aea42c67ff8f25083769e66aa44516",
   "target_seconds": [
     42.5,

@@ -1,5 +1,5 @@
-source: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k.onnx
-source_run: /home/ubuntu22/train_mujoco/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k
+source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k.onnx
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-09-28_22-45-50_dance_4_pokemonplus_fixed_damping25_fresh_2048env_17k
 required_for_hb:
 - default_joint_pos
 - action_scale

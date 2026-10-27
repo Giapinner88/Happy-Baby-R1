@@ -1,5 +1,5 @@
 {
-  "source": "/home/ubuntu22/train_mujoco/artifacts/xexe_trimmed_review_20261021/xexe_reference.npz",
+  "source": "/home/ubuntu22/train_mujoco/outputs/artifacts/xexe_trimmed_review_20261021/xexe_reference.npz",
   "source_sha256": "229d99c61057e7e1ce345c26fcc7b6f416f78c0ccaf8c61010d83525e23a55a4",
   "cut_seconds": [
     72.8,
