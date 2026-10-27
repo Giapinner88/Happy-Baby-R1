@@ -9,6 +9,6 @@ checkpoint   : model_14500.pt
 motion       : pokemon_plus.npz (3414 frames @ 50 Hz)
 audio        : pokemon.mp3
 onnx         : policy.onnx (obs 129 -> action 24; framework metadata copied from this same run)
-HB activation: inactive; dance.yaml unchanged
+HB activation: dance_4
 status       : snapshot; training_in_progress; hardware_acceptance_pending
 notes        : Checkpoint 14500 snapshot. Exact edited no-spin/no-lean training NPZ; matching MP3 retained unchanged. Actor weights and normalization verified against checkpoint. Canonical runtime: Happy-Baby-R1-develop/controller.

@@ -15,7 +15,7 @@ description: 'Pokémon Plus GOC — no spin, no backward lean
   epsilon 0.01.
 
 
-  Installed inactive in Happy-Baby-R1-develop/controller/policies/dance. Hardware
+  Configured as dance_4 in Happy-Baby-R1-develop/controller/policies/dance. Hardware
   acceptance pending.'
 source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-27_00-01-31_pokemonplus_no_spin_no_lean_goc_12288env_friction08to15_15k_20261027
 metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-27_00-01-31_pokemonplus_no_spin_no_lean_goc_12288env_friction08to15_15k_20261027/2026-10-27_00-01-31_pokemonplus_no_spin_no_lean_goc_12288env_friction08to15_15k_20261027.onnx
@@ -39,11 +39,11 @@ dimensions:
   action: 24
   policy_hz: 50.0
 hb:
-  activation: inactive
-  slot: null
-  speed: null
-  volume: null
-  trim_deg: null
+  activation: configured
+  slot: dance_4
+  speed: 1.0
+  volume: 0.7
+  trim_deg: 0.0
   scanner_contract: exactly one root-level .onnx and one root-level .npz
   hardware_acceptance: pending
 artifacts:
@@ -55,7 +55,7 @@ artifacts:
   agent: agent.yaml
   env: env.yaml
 sha256:
-  DESCRIPTION.md: 1cd9b3a6fe0e31cbedd8f7ca4ff6a6d09a59461e517570de6611de7b6c92b9d1
+  DESCRIPTION.md: 01f6aaa356eeeef2ea3b1a90bdadb3b5e3949bce205517b9270d3d7b2b749b6d
   agent.yaml: 0db8af4cd30e9493c9d9a8b2d45bbddb9a5654d2c4bc819cfd792a9b951928a0
   env.yaml: 8fe9450f26e4f895b7d61f7ec42fd1d30e510cd6d29694774d25712f53ade5dc
   model_14500.pt: e04c8e7d067a5df513f9909d245e0ad4fd5e57124080afada756fcf037598ae2
@@ -63,4 +63,4 @@ sha256:
   pokemon.mp3: 377f2b77b46c0448b59ce22012914072cefbe58542bff583c536982f65fc9f38
   pokemon_plus.npz: ad5cdd25acc932e8b20c69e3b2d64e8e433ccff8c38358a133096b44173c08fa
   policy.onnx: cfe4af51241393b5e3abb03e59dcbec439bfca2bce1d352828672d7eed414eaf
-  source.txt: d21e77ad8ab43de51cea87a72608c7e4ce62cdc5aa770cfa56a2f2e610bb9c2b
+  source.txt: e28af0490f7193eea40ce6626d78de7eb15ed1be4ae47aefec26f2c7e5c15951

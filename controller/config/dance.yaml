@@ -10,7 +10,7 @@ motion_safety_state_timeout_s: 0.10
 # dance_home_exit_N: skip redundant cooldown only after a quiet terminal HOME hold.
 # Default off; re-test when changing the ONNX/NPZ package.
 dance_1: xexe_goc_cut_20261021
-dance_home_exit_1: off
+dance_home_exit_1: on
 dance_speed_1: 1.0
 dance_volume_1: 0.7
 dance_trim_deg_1: 0.0
@@ -27,20 +27,20 @@ dance_speed_3: 1.0
 dance_volume_3: 0.7
 dance_trim_deg_3: 0.0
 
-dance_4: pokemonplus_goc_no_spin_no_lean_20261021
+dance_4: pokemonplus_goc_no_spin_no_lean_12288env_friction08to15_ckpt14500_20261027
 dance_home_exit_4: on
 dance_speed_4: 1.0
 dance_volume_4: 0.7
 dance_trim_deg_4: 0.0
 
 dance_5: pokemonplus_meta_no_spin_no_lean_20261021
-dance_home_exit_5: off
+dance_home_exit_5: on
 dance_speed_5: 1.0
 dance_volume_5: 0.7
 dance_trim_deg_5: 0.0
 
 dance_6: roll_stance_pm3cm_goc_8192env_friction08to15_20k_20261022
-dance_home_exit_6: off
+dance_home_exit_6: on
 dance_speed_6: 1.0
 dance_volume_6: 0.7
 dance_trim_deg_6: 0.0
