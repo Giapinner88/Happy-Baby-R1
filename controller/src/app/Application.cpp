@@ -122,10 +122,14 @@ void Application::ClearVoiceCommandGesture() {
 
 void Application::OnLowState(const void* msg) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    shared_low_state_ = *static_cast<const LowState_*>(msg);
+    const auto now = std::chrono::steady_clock::now();
+    const auto& incoming = *static_cast<const LowState_*>(msg);
+    if (!got_state_ || incoming.tick() != shared_low_state_.tick())
+        last_state_progress_time_ = now;
+    shared_low_state_ = incoming;
     got_state_ = true;
     ++state_sequence_;
-    last_state_time_ = std::chrono::steady_clock::now();
+    last_state_time_ = now;
 }
 
 /**
@@ -230,6 +234,7 @@ bool Application::Tick() {
         // mutex (watchdog cũ) là data race thật sự — tính tuổi ngay tại đây.
         std::lock_guard<std::mutex> lock(state_mutex_);
         low = shared_low_state_;
+        sampled_state_progress_time_ = last_state_progress_time_;
         got = got_state_;
         new_state_sample_ = got && state_sequence_ != consumed_state_sequence_;
         consumed_state_sequence_ = state_sequence_;

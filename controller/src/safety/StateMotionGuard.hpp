@@ -48,14 +48,25 @@ public:
     float PoseDt() const { return pose_dt_; }
     float ErrorDeg() const { return error_deg_; }
     float BadSeconds() const { return std::max({orientation_bad_, flip_bad_, upright_bad_}); }
-    // Call before any sim-clock wait or controller reset. Wall time catches a
-    // publisher that disappears OR keeps repeating an old physical sample.
+    double ProgressAgeSeconds() const { return progress_age_s_; }
+    double ObservationGapSeconds() const { return observation_gap_s_; }
+    uint32_t TickAdvance() const { return tick_advance_; }
+    // Runtime supplies the receive timestamp of the last changed physical tick,
+    // captured with this sample. Without it, retain the conservative sync guard.
     bool Sensor(uint32_t tick, double wall_s, const Eigen::Quaternionf& root,
-                const Eigen::Vector3f& gyro, bool joints_finite, float max_dq) {
+                const Eigen::Vector3f& gyro, bool joints_finite, float max_dq, double received_progress_s = -1) {
         sample_dt_=0;
         if (Latched()) return true;
         if (!std::isfinite(wall_s)||!ValidQuat(root)||!gyro.allFinite()||
             !joints_finite||!std::isfinite(max_dq)) return Trip("invalid_state");
+        observation_gap_s_ = initialized_ ? wall_s-wall_ : 0;
+        tick_advance_ = initialized_ ? tick-tick_ : 0;
+        const bool receive_clock = received_progress_s != -1;
+        if (receive_clock && (!std::isfinite(received_progress_s) || received_progress_s < 0 ||
+                              received_progress_s > wall_s)) return Trip("invalid_state");
+        progress_age_s_ = receive_clock ? wall_s-received_progress_s :
+                          initialized_ ? wall_s-progress_wall_ : 0;
+        if (receive_clock && progress_age_s_ > c_.timeout_s+1e-7) return Trip("stale_state");
         if (!initialized_) {
             initialized_=true; tick_=tick; wall_=progress_wall_=wall_s; sample_dt_=.02f;
         } else {
@@ -63,8 +74,9 @@ public:
             wall_=wall_s;
             const uint32_t advance=tick-tick_;
             if (advance>=0x80000000u) return Trip("state_clock_reversed");
-            // Test freshness BEFORE accepting a late new packet.
-            if (wall_s-progress_wall_>c_.timeout_s+1e-7) return Trip("stale_state");
+            // A delayed consumer may resume with feedback that remained fresh
+            // in the DDS callback. Do not confuse its scheduling gap with age.
+            if (!receive_clock && progress_age_s_>c_.timeout_s+1e-7) return Trip("stale_state");
             if (advance>0) {
                 sample_dt_=std::min(.02f,advance*.001f);
                 tick_=tick; progress_wall_=wall_s;
@@ -122,6 +134,8 @@ private:
     bool have_pose_tick_=false;
     uint32_t tick_=0, pose_tick_=0;
     double wall_=0,progress_wall_=0;
+    double progress_age_s_=0,observation_gap_s_=0;
+    uint32_t tick_advance_=0;
     Mode mode_=Mode::Upright;
     float pose_dt_=0,sample_dt_=0,speed_bad_=0,orientation_bad_=0,flip_bad_=0,upright_bad_=0,error_deg_=0;
 };

@@ -13,7 +13,7 @@ gait_settle_dwell_s: 0.5
 # Slow is the in-distribution operator envelope. Fast vx remains 1.5 m/s by
 # operator choice and therefore requires separate simulation/hardware evidence.
 slow_vx: 0.6
-slow_vy: 0.6
+slow_vy: 0.8
 slow_yaw: 1.0
 slow_vx_back: 0.6
 fast_vx: 1.5

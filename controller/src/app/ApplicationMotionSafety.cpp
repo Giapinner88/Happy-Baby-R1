@@ -7,7 +7,8 @@
 
 namespace {
 bool CheckRawSample(motion_safety::Guard& guard,
-                    const unitree_hg::msg::dds_::LowState_& low, float& max_dq) {
+                    const unitree_hg::msg::dds_::LowState_& low, float& max_dq,
+                    std::chrono::steady_clock::time_point progress_time) {
     const auto& imu = low.imu_state();
     const Eigen::Quaternionf root(imu.quaternion()[0], imu.quaternion()[1],
                                    imu.quaternion()[2], imu.quaternion()[3]);
@@ -25,7 +26,8 @@ bool CheckRawSample(motion_safety::Guard& guard,
     for (float a : imu.accelerometer()) finite = finite && std::isfinite(a);
     const double wall = std::chrono::duration<double>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
-    return !guard.Sensor(low.tick(), wall, root, gyro, finite, max_dq);
+    const double progress = std::chrono::duration<double>(progress_time.time_since_epoch()).count();
+    return !guard.Sensor(low.tick(), wall, root, gyro, finite, max_dq, progress);
 }
 }
 
@@ -40,7 +42,7 @@ bool Application::CheckMotionSensor(const unitree_hg::msg::dds_::LowState_& low)
         motion_guard_monitoring_ = true;
     }
     float max_dq = 0;
-    if (!CheckRawSample(motion_guard_, low, max_dq)) {
+    if (!CheckRawSample(motion_guard_, low, max_dq, sampled_state_progress_time_)) {
         StopForMotionFault(motion_guard_.Reason());
         return false;
     }
@@ -51,7 +53,7 @@ bool Application::TryRecoverMotion(const unitree_hg::msg::dds_::LowState_& low,
                                    const InputCommand& cmd, bool state_ok) {
     float max_dq = 0;
     if (!state_ok || !estimator_.sample_valid() || !state_fresh_ || !remote_state_fresh_ ||
-        !CheckRawSample(motion_recovery_guard_, low, max_dq)) {
+        !CheckRawSample(motion_recovery_guard_, low, max_dq, sampled_state_progress_time_)) {
         motion_recovery_guard_ = motion_safety::Guard(tuning_.MotionSafetyConfig());
         motion_recovery_sample_seen_ = motion_recovery_released_ = false;
         return false;
@@ -131,6 +133,9 @@ void Application::StopForMotionFault(const char* reason) {
                   << " state=" << StateName() << " dance=" << pending_dance_key_
                   << " error_deg=" << motion_guard_.ErrorDeg()
                   << " bad_s=" << motion_guard_.BadSeconds()
+                  << " progress_age_ms=" << motion_guard_.ProgressAgeSeconds()*1000
+                  << " observation_gap_ms=" << motion_guard_.ObservationGapSeconds()*1000
+                  << " tick_advance=" << motion_guard_.TickAdvance()
                   << "; IDLE/damping, release controls then issue a new command\n";
     }
     EnterIdle(std::string("Motion safety: ") + motion_guard_.Reason());

@@ -69,6 +69,15 @@ torso thực với reference đang phát (warmup, clip, cooldown); mặc định
 45° liên tục 100 ms thì ngắt. Locomotion/RETURNING/stand-up/stand-lock kiểm tra
 nghiêng so với đứng thẳng theo `fall_*`. Không cần bật/tắt nghiêng theo từng bài.
 
+Guard dữ liệu dùng mốc `steady_clock` do DDS callback ghi khi `LowState.tick`
+thay đổi; mốc được chụp cùng gói dưới mutex. Tick đứng hoặc ngừng nhận quá
+`motion_safety_state_timeout_s` (100 ms) vẫn dừng, kể cả gói lặp liên tục.
+Vòng điều khiển đọc chậm rồi nhận một mẫu còn mới không tự gây `stale_state`.
+Đây là tuổi tiến triển quan sát tại callback, không phải phép đo độ trễ vật lý
+đầu cuối. Watchdog tuổi gói `state_timeout_ms` vẫn độc lập. Log STOP thêm
+`progress_age_ms`, `observation_gap_ms`, `tick_advance` để phân biệt dữ liệu cũ
+với consumer bị trễ.
+
 Đoạn cuối đã về đứng được nhận diện tự động từ NPZ: phần reference liên tục
 đến hết bài có torso nghiêng ≤10°, tốc độ chân/waist ≤0.6 rad/s, tốc độ đổi
 hướng nghiêng ≤0.5 rad/s và dài ít nhất 0.3 s. Chỉ đoạn cuối này được thêm

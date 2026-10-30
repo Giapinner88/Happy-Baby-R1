@@ -238,6 +238,8 @@ private:
     std::mutex state_mutex_;
     bool got_state_ = false;
     std::chrono::steady_clock::time_point last_state_time_;   // chỉ đọc/ghi trong state_mutex_
+    std::chrono::steady_clock::time_point last_state_progress_time_; // state_mutex_
+    std::chrono::steady_clock::time_point sampled_state_progress_time_; // Tick snapshot
     // Gói LowState của tick này còn mới hơn state_timeout_ms hay không.
     bool state_fresh_ = false;
     bool remote_state_fresh_ = false;

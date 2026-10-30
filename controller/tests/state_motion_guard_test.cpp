@@ -45,6 +45,19 @@ int main(){
     {Driver d;Check(!d.Step(Mode::Dance,170,170,26));Check(!d.Step(Mode::Dance,170,170,26));Check(d.Step(Mode::Dance,170,170,26));Check(std::string(d.guard.Reason())=="joint_speed");}
     {Guard g;Check(!g.Sensor(0,0,I,Z,true,0));Check(g.Sensor(0,.101,I,Z,true,0));Check(std::string(g.Reason())=="stale_state");Check(g.Sensor(200,.102,I,Z,true,0));}
     {Guard g;Check(!g.Sensor(0,0,I,Z,true,0));Check(g.Sensor(20,.101,I,Z,true,0));}
+    // Consumer paused for 200 ms, but DDS observed a changed tick 2 ms ago.
+    {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));
+      Check(!g.Sensor(300,1.2,I,Z,true,0,1.198));
+      Check(g.ObservationGapSeconds()>.19);Check(g.ProgressAgeSeconds()<.003);}
+    // Repeated DDS packets do not refresh physical progression, even on entry.
+    {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));
+      Check(g.Sensor(100,1.101,I,Z,true,0,1));Check(std::string(g.Reason())=="stale_state");}
+    {Guard g;Check(g.Sensor(100,1.101,I,Z,true,0,1));}
+    // A newer tick in an old received snapshot still expires.
+    {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));Check(g.Sensor(200,1.3,I,Z,true,0,1.1));}
+    {Guard g;Check(!g.Sensor(UINT32_MAX-5,1,I,Z,true,0,1));Check(!g.Sensor(14,1.2,I,Z,true,0,1.199));}
+    {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));Check(g.Sensor(98,1.002,I,Z,true,0,1.002));
+      Check(std::string(g.Reason())=="state_clock_reversed");}
     {Guard g;Check(!g.Sensor(100,0,I,Z,true,0));Check(g.Sensor(0,.02,I,Z,true,0));}
     {Guard g;Check(!g.Sensor(UINT32_MAX-5,0,I,Z,true,0));Check(!g.Sensor(14,.02,I,Z,true,0));}
     {Guard g;Check(!g.Sensor(0,0,I,Z,true,0));Check(g.Sensor(20,-1,I,Z,true,0));}
