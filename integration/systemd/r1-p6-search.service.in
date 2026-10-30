@@ -1,0 +1,19 @@
+[Unit]
+Description=HB onboard OpenAI object search
+After=network-online.target r1-p5-agent.service
+Wants=network-online.target
+Requires=r1-p5-agent.service
+
+[Service]
+Type=simple
+User=unitree
+WorkingDirectory=@HB_ROOT@/object_search
+EnvironmentFile=/etc/hb/stack.env
+ExecStartPre=@HB_ROOT@/object_search/.venv/bin/python @HB_ROOT@/object_search/experiments/r1_object_grounding/p6_onboard/preflight.py
+ExecStart=@HB_ROOT@/object_search/.venv/bin/python @HB_ROOT@/object_search/experiments/r1_object_grounding/p5_voice_search/server.py --adapter-argv @HB_ROOT@/object_search/adapter_argv.json --runtime-root @HB_ROOT@ --bbox-config @HB_ROOT@/object_search/experiments/r1_object_grounding/p2_bbox_baseline/config.json --vision-config @HB_ROOT@/object_search/experiments/r1_target_control/vision_config.json --body-turns 1 --body-step-deg 180 --batch-head-capture --port 5591 --output-root @HB_ROOT@/object_search_runs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=hb-stack.target

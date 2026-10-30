@@ -565,7 +565,9 @@ void Application::CheckOutputFaults() {
 void Application::PublishIntegrationStatus(bool force) {
     if (!force && tick_ - integration_last_tick_ < 100) return;
     integration_last_tick_ = tick_;
-    integration_notifier_.Send(audio_busy_.load(), armed_.load(), StateName());
+    integration_notifier_.Send(audio_busy_.load(), armed_.load(), StateName(),
+        state_ == AppState::kLocomotion ?
+            (loco_mode_ == LocoMode::kWalk ? "walk" : "teleop") : "none");
 }
 
 void Application::UpdateSafeStop(InputCommand& cmd) {

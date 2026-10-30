@@ -8,6 +8,7 @@ Type=simple
 User=@RUN_USER@
 WorkingDirectory=@HB_ROOT@/controller/build
 Environment=DISPLAY=
+Environment=P4_YAW_PORT=5571
 Environment=HB_ROOT=@HB_ROOT@
 Environment=HB_INTEGRATION_SOCKET=/run/hb/integration.sock
 EnvironmentFile=-/etc/hb/stack.env

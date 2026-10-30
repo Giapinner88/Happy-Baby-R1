@@ -170,6 +170,17 @@ File ghi chỉ nằm trên robot: kéo về máy trạm (`./hb pull`) rồi comm
 ./hb field                         # sửa config trên máy trạm rồi đồng bộ + nạp lại (restart khi DISARMED)
 ```
 
+Ghi dữ liệu mọi motor + cảm biến ra CSV (chỉ nghe DDS, chạy song song `run_r1` được, không cần DISARMED):
+```bash
+./hb record                        # tới khi Ctrl-C; kéo về ~/hb_logs/sensors_<ngày_giờ>.csv (+ .meta.json)
+./hb record --duration 60 --decimate 10   # 60 s, ~100 Hz thay vì ~1 kHz
+./hb record --all-motors           # thêm 9 slot IDL không gắn khớp (mặc định: 24 khớp + 2 khớp đầu)
+```
+Mỗi dòng = một mẫu `rt/lowstate`: IMU (quat/gyro/acc/rpy/nhiệt), tay cầm, từng motor (`mode,q,dq,ddq,tau_est,temp0,temp1,vol,sensor0,sensor1,motorstate`),
+lệnh `rt/lowcmd` mới nhất (`cmd_*`, `cmd_age_ms`) và pin `rt/lf/bmsstate` (`bms_*`, `bms_age_ms`; −1 = chưa nhận). Một dòng mỗi mẫu `rt/lowstate`, trên R1 ≈ 1 kHz (đo 2026-10-29: `tick` tăng 1 mỗi dòng) ≈ 2.3 MB/s.
+Khoảng 5 % dòng có `tick` bằng dòng trước nhưng dữ liệu khác và cách ~1 ms (bộ đếm `tick` đôi khi không tăng): đó là mẫu thật, **không** lọc theo `tick`; dùng `t_s` làm trục thời gian.
+Tool: `controller/tools/sensor_log.cpp`; robot build nó lần đầu gọi lệnh và chạy với `nice -n 10`.
+
 ---
 
 ## 4. CÁCH B — Chạy tay có bàn phím (dev/test)

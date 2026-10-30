@@ -1,0 +1,16 @@
+{
+  "reports": 24,
+  "trials": 3040,
+  "all_checkpoint_iterations": 14999,
+  "all_policy_steps": 360000,
+  "all_hashes_match": true,
+  "no_post_reset_samples": true,
+  "seeds": [
+    20261024,
+    7341
+  ],
+  "reps_per_seed": 4,
+  "device": "cuda:0 per worker; physical GPU0/1",
+  "native_pd": true,
+  "fresh_retest_all_four": true
+}

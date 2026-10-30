@@ -193,8 +193,8 @@ void SendDatagram(int fd, const std::string& path, const std::string& message) {
 
 void WriteStatus(const Options& options, const GateInputs& in,
                  const GateOutputs& out, bool high_armed,
-                 const std::string& high_state, bool gesture_dev_ready,
-                 bool preset_busy) {
+                 const std::string& high_state, const std::string& high_mode,
+                 bool gesture_dev_ready, bool preset_busy) {
   const std::string tmp = options.status_file + ".tmp";
   std::ofstream file(tmp, std::ios::trunc);
   if (!file.good()) return;
@@ -203,6 +203,7 @@ void WriteStatus(const Options& options, const GateInputs& in,
        << "high_busy=" << in.high_busy << "\n"
        << "high_armed=" << high_armed << "\n"
        << "high_state=" << high_state << "\n"
+       << "high_mode=" << high_mode << "\n"
        << "gesture_dev_ready=" << gesture_dev_ready << "\n"
        << "remote_alive=" << in.remote_alive << "\n"
        << "ptt=" << in.ptt << "\n"
@@ -502,6 +503,7 @@ int main(int argc, char** argv) {
     bool high_armed = false;
     bool require_release = false;
     std::string high_state = "UNKNOWN";
+    std::string high_mode = "none";
     std::string previous_message;
     std::string previous_preset_message;
     uint64_t sequence = 0;
@@ -525,7 +527,13 @@ int main(int argc, char** argv) {
         const std::string message(buffer);
         high_busy = ParseBoolToken(message, "busy", true);
         high_armed = ParseBoolToken(message, "armed", false);
-        high_state = ParseStringToken(message, "state", "UNKNOWN");
+        // Audio-only notifier messages omit state; preserve the last
+        // controller heartbeat instead of briefly dropping search ownership.
+        if (message.find(" state=") != std::string::npos) {
+          high_state = ParseStringToken(message, "state", "UNKNOWN");
+          high_mode = high_state == "LOCOMOTION" ?
+              ParseStringToken(message, "mode", "none") : "none";
+        }
         last_high_ms = NowMs();
       }
 
@@ -621,7 +629,7 @@ int main(int argc, char** argv) {
         last_preset_send_ms = now;
       }
       if (now - last_status_ms >= 250) {
-        WriteStatus(options, in, out, high_armed, high_state,
+        WriteStatus(options, in, out, high_armed, high_state, high_mode,
                     gesture_dev_ready, in.preset_busy);
         last_status_ms = now;
       }

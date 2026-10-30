@@ -20,6 +20,13 @@ using namespace app_internal;
 
 namespace {
 
+// FSM STAND/WALK/W2S của controller đang chạy, nếu contract có FSM.
+const GaitModeScheduler* GaitFsmOf(const PolicyController* ctrl) {
+    if (const auto* g = dynamic_cast<const FlatPlusGaitController*>(ctrl)) return &g->gait();
+    if (const auto* g = dynamic_cast<const WholeBodyLegsGaitController*>(ctrl)) return &g->gait();
+    return nullptr;
+}
+
 float JointVelocityRms(const RobotState& state) {
     float sum_sq = 0.0f;
     for (const float value : state.dq) sum_sq += value * value;
@@ -140,7 +147,7 @@ void Application::CancelLocoModeSwap(const char* why) {
 
 // Đổi nóng chỉ khi: thân trên đã nhả hết (gesture/teleop/history H4), và — nếu hai
 // chế độ dùng hai policy khác nhau — robot đứng yên ổn định liên tục
-// policy_swap_dwell_s (gait STAND + stable với gait-H4). Policy mới được Reset
+// policy_swap_dwell_s (gait STAND + stable với armfree gait-H4; chỉ stable với U4/U5). Policy mới được Reset
 // (history sạch) và blend từ target vừa gửi như mọi lần ActivatePolicy.
 void Application::AdvanceLocoModeSwap(const RobotState& rs) {
     loco_swap_timer_s_ += spec::kLoopDt;
@@ -158,8 +165,13 @@ void Application::AdvanceLocoModeSwap(const RobotState& rs) {
                             h4_head_release_s_ <= 0.0f;
     bool stable = rs.gyro.norm() <= tuning_.gait_stability_gyro_norm &&
                   JointVelocityRms(rs) <= tuning_.gait_stability_joint_velocity_rms;
-    if (const auto* gait = dynamic_cast<const FlatPlusGaitController*>(locomotion_)) {
-        stable = stable && gait->gait().mode() == GaitMode::Stand && gait->gait().stable();
+    if (const GaitModeScheduler* fsm = GaitFsmOf(locomotion_)) {
+        // Flat-Plus gait (armfree) swaps from STAND as designed. A WB-legs gait policy
+        // (U4/U5) only needs its stability filter: its STAND also requires tilt <= 5 deg
+        // (training contract of the one-hot), and U5 stood still at 6-10 deg pitch on
+        // hardware (2026-10-29), so the way back to the walk policy never opened.
+        const bool needs_stand = dynamic_cast<const FlatPlusGaitController*>(locomotion_) != nullptr;
+        stable = stable && fsm->stable() && (!needs_stand || fsm->mode() == GaitMode::Stand);
     }
     const bool ready = upper_idle && (same_ctrl || stable);
     loco_swap_still_s_ = ready ? loco_swap_still_s_ + spec::kLoopDt : 0.0f;
@@ -285,8 +297,8 @@ bool Application::UpdateHistoryGestureDwell(const RobotState& rs,
     if (history_gesture_contract) {
         bool stable = rs.gyro.norm() <= tuning_.gait_stability_gyro_norm &&
                       JointVelocityRms(rs) <= tuning_.gait_stability_joint_velocity_rms;
-        if (const auto* gait = dynamic_cast<const FlatPlusGaitController*>(locomotion_)) {
-            stable = stable && gait->gait().mode() == GaitMode::Stand && gait->gait().stable();
+        if (const GaitModeScheduler* fsm = GaitFsmOf(locomotion_)) {
+            stable = stable && fsm->mode() == GaitMode::Stand && fsm->stable();
         }
         const bool still = !history_gesture_move_requested && stable;
         gesture_history_still_s_ = still
@@ -317,17 +329,26 @@ void Application::UpdateBaseCommand(const InputCommand& cmd, const PolicyOverlay
     const bool legacy_arm_overlay_supported = caps.legacy_arm;
     const bool h4_overlay_supported = caps.h4;
     const bool history_gesture_contract = caps.history_gesture;
-    // teleop_lock_base áp như nhau cho R2+A và R2+X (hai phím chỉ chọn policy):
-    // true = teleop ARMED bỏ qua cần analog; false = vừa đi vừa teleop.
+    // Manual walking has priority over search yaw while START is active.
     const bool history_gesture_holds_base = history_gesture_contract &&
         (!arm_gesture_.Idle() || gesture_history_release_s_ > 0.0f);
+    float requested_vx = cmd.vx, requested_vy = cmd.vy, requested_yaw = cmd.yaw;
+    const bool manual_motion = std::abs(cmd.vx) > .05f || std::abs(cmd.vy) > .05f ||
+                               std::abs(cmd.yaw) > .05f;
+    // Keep the R2+X policy and Quest stream untouched. Drain the search socket
+    // even in X so a queued packet cannot be replayed after switching to A.
+    search_yaw_.Apply(
+        requested_vx, requested_vy, requested_yaw, manual_motion,
+        cmd.is_active && state_ == AppState::kLocomotion &&
+            loco_mode_ == LocoMode::kWalk && !holding,
+        cmd.want_emergency_stop);
     const bool teleop_locks_base = tuning_.teleop_lock_base && teleop_runtime_on_ &&
         (legacy_arm_overlay_supported || h4_overlay_supported);
     if (state_ == AppState::kLocomotion && !holding && !teleop_locks_base &&
         !history_gesture_holds_base) {
-        cmd_vx_ = cmd.vx;
-        cmd_vy_ = cmd.vy;
-        cmd_yaw_ = cmd.yaw;
+        cmd_vx_ = requested_vx;
+        cmd_vy_ = requested_vy;
+        cmd_yaw_ = requested_yaw;
     } else {
         cmd_vx_ = cmd_vy_ = cmd_yaw_ = 0.0f;
     }

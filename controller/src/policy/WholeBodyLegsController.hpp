@@ -43,18 +43,31 @@ public:
 
 protected:
     void BuildObservation(const ControlContext& ctx, std::vector<float>& obs) override {
-        frame_.assign(r1::obs83::kDim, 0.0f);
-        r1::obs83::Build(ctx, default_q_, last_action_, frame_);
-        std::copy(frame_.begin(), frame_.begin() + r1::obs83::kActionsOffset, obs.begin());
-        for (int i = 0; i < kActionDim; ++i)
-            obs[r1::obs83::kActionsOffset + i] = last_action_[i];
+        BuildFrame71(ctx, obs.begin());
     }
 
     void ValidateExtraMetadata(const std::string& model_path) override {
-        RequireMetadata(model_path, "policy_contract", kContract);
-        RequireMetadata(model_path, "observation_layout",
-                        "base_ang_vel,projected_gravity,command,phase,"
-                        "joint_pos[24],joint_vel[24],actions[12]");
+        ValidateWholeBodyMetadata(model_path, kContract, kFrameLayout);
+    }
+
+    static constexpr const char* kFrameLayout =
+        "base_ang_vel,projected_gravity,command,phase,"
+        "joint_pos[24],joint_vel[24],actions[12]";
+
+    // Một frame 71-D (dùng chung với contract history r1_wb_legs_gait_h4_v1_blind).
+    template <typename It>
+    void BuildFrame71(const ControlContext& ctx, It out) {
+        frame_.assign(r1::obs83::kDim, 0.0f);
+        r1::obs83::Build(ctx, default_q_, last_action_, frame_);
+        std::copy(frame_.begin(), frame_.begin() + r1::obs83::kActionsOffset, out);
+        for (int i = 0; i < kActionDim; ++i)
+            out[r1::obs83::kActionsOffset + i] = last_action_[i];
+    }
+
+    void ValidateWholeBodyMetadata(const std::string& model_path, const char* contract,
+                                   const std::string& layout) {
+        RequireMetadata(model_path, "policy_contract", contract);
+        RequireMetadata(model_path, "observation_layout", layout);
         RequireMetadata(model_path, "joint_names",
                         "left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,"
                         "left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,"

@@ -11,6 +11,7 @@ Deploy chép đúng thư mục máy trạm, kể cả thay đổi chưa commit.
 | Code C++, config, policy, dance | `./hb deploy controller` | `hb_high_level` | có |
 | Voice, preset giọng, integration (PTT) | `./hb deploy voice` | voice / presets / integration | không |
 | Teleop Quest | `./hb deploy teleop` | runtime teleop | không |
+| Mã tìm vật | `./hb deploy object-search` | không restart service | không |
 | Lần đầu, sửa systemd, nghi robot lệch | `./hb deploy all` | tất cả | có |
 | Chép + build + preflight, chưa chạy | thêm `--no-restart` | không | không |
 | Xem trước | `./hb diff` (= `--dry-run`) | không | không |

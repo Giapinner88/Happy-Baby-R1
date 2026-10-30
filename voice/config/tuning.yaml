@@ -17,7 +17,7 @@ openai:
 tts:
   # elevenlabs: OpenAI Realtime sinh text, ElevenLabs phát giọng clone.
   # openai: rollback về audio trực tiếp bằng openai.voice ở trên.
-  provider: "elevenlabs"
+  provider: "openai"
 
   # Model streaming độ trễ thấp, hỗ trợ language_code=vi.
   model: "eleven_flash_v2_5"

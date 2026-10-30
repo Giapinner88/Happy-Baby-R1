@@ -19,6 +19,9 @@
 //     is STAND-stable for policy_swap_dwell_s;
 //   * a bundle whose policy.yaml hash differs refuses startup;
 //   * IDLE always returns to walk mode.
+//   * with a gait-FSM teleop bundle (U5, r1_wb_legs_gait_h4_v1_blind) standing
+//     still but tilted 9 deg — its FSM never reaches STAND (entry <= 5 deg) — R2+A
+//     still swaps back to walk (hardware 2026-10-29: swap timed out every time).
 //   * R2+X supports physical/voice gestures, including a second request after
 //     handover, and retracts a gesture before granting H4 ownership.
 #include <chrono>
@@ -50,6 +53,7 @@ enum Btn : uint16_t {
 
 const char* kWalkSha = "7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ecad815ccb";
 const char* kTeleopSha = "9cdf005ef7a7842b630744f298d992ad370ee2320f99d69691fc2db86b9e5fa5";
+const char* kU5Sha = "c2ef27766e15f30539bda177787ba8ab05a7e70e2a2a32feac975cee39ed894e";
 
 void WriteBundle(const fs::path& loco, const std::string& name, const std::string& source,
                  const std::string& contract, const std::string& sha,
@@ -62,7 +66,8 @@ void WriteBundle(const fs::path& loco, const std::string& name, const std::strin
 }
 
 // Temporary project: frozen replay config + two bundles selected as walk/teleop.
-fs::path MakeProject(const std::string& teleop_sha) {
+fs::path MakeProject(const std::string& teleop_sha, const std::string& teleop_source = "u1_seed42",
+                     const std::string& teleop_contract = "r1_wb_legs_v1_blind") {
     char tmpl[] = "/tmp/hb-loco-mode-test.XXXXXX";
     const char* dir = mkdtemp(tmpl);
     if (!dir) std::abort();
@@ -75,9 +80,8 @@ fs::path MakeProject(const std::string& teleop_sha) {
         fs::create_symlink(src / "policies" / sub, root / "policies" / sub);
     WriteBundle(root / "policies/locomotion", "walk_a", "flat_plus_gait_0917_armfree",
                 "flat_plus_gait_h4_v1", kWalkSha);
-    // Legacy per-bundle flag (as in the old u2a_seed42) must not gate H4.
-    WriteBundle(root / "policies/locomotion", "teleop_b", "u1_seed42",
-                "r1_wb_legs_v1_blind", teleop_sha, "teleop_h4: false\n");
+    WriteBundle(root / "policies/locomotion", "teleop_b", teleop_source,
+                teleop_contract, teleop_sha);
     std::ofstream(root / "config/locomotion.yaml", std::ios::app)
         << "\nwalk_policy: walk_a\nteleop_policy: teleop_b\n"
            "policy_swap_dwell_s: 0.5\npolicy_swap_timeout_s: 6.0\n";
@@ -102,6 +106,7 @@ struct ApplicationTestAccess {
     uint16_t buttons = 0;
     float ly = 0;
     bool remote_off = false;   // all-zero wireless_remote, as when the remote is lost
+    float pitch_rad = 0;  // IMU pitch of the ideal plant (still, upright by default)
     long tick = 0;
 
     void Configure() {
@@ -136,7 +141,7 @@ struct ApplicationTestAccess {
         std::memcpy(&remote[20], &ly, 4);
         if (remote_off) remote.fill(0);
         low.wireless_remote(remote);
-        low.imu_state().quaternion({1, 0, 0, 0});
+        low.imu_state().quaternion({std::cos(0.5f * pitch_rad), 0, std::sin(0.5f * pitch_rad), 0});
         low.imu_state().gyroscope({0, 0, 0});
         low.imu_state().accelerometer({0, 0, -9.81f});
         for (int m = 0; m < spec::kNumMotorsIdl; ++m) {
@@ -513,6 +518,35 @@ struct ApplicationTestAccess {
         CHECK(a.state_ == AppState::kIdle);
         CHECK(a.loco_mode_ == LocoMode::kWalk && a.locomotion_ == a.walk_ctrl_.get());
     }
+
+    // R2+X on a gait-FSM leg policy standing still but tilted beyond its STAND entry
+    // limit: the operator must still be able to return to the walk policy.
+    void ScriptTiltedSwapBack() {
+        const auto* gait = dynamic_cast<const WholeBodyLegsGaitController*>(a.teleop_ctrl_.get());
+        CHECK(gait != nullptr);
+        WaitFor(AppState::kIdle, 10); Wait(50);
+        Press(kL2 | kUp);
+        WaitFor(AppState::kStandLock, 5000); Wait(200);
+        Press(kR2 | kA);
+        CHECK(a.loco_mode_ == LocoMode::kWalk);
+        Wait(600);
+        Press(kR2 | kX);
+        for (int i = 0; i < 4000 && a.loco_swap_pending_; ++i) Step();
+        CHECK(a.loco_mode_ == LocoMode::kTeleop && a.locomotion_ == a.teleop_ctrl_.get());
+
+        pitch_rad = 9.0f * 3.14159265f / 180.0f;
+        Wait(1500);
+        CHECK(a.state_ == AppState::kLocomotion);
+        CHECK(gait->gait().mode() != GaitMode::Stand && gait->gait().stable());
+
+        const long requested = tick;  // the request is taken on the first tick of Press
+        Press(kR2 | kA);
+        for (int i = 0; i < 4000 && a.loco_swap_pending_; ++i) Step();
+        CHECK(a.loco_mode_ == LocoMode::kWalk && a.locomotion_ == a.walk_ctrl_.get());
+        CHECK((tick - requested) * spec::kLoopDt >= a.tuning_.policy_swap_dwell_s);
+        CHECK(a.state_ == AppState::kLocomotion);
+        pitch_rad = 0.0f;
+    }
 };
 
 int main() {
@@ -539,5 +573,14 @@ int main() {
         r.Script();
     }
     fs::remove_all(root);
+
+    const fs::path tilted = MakeProject(kU5Sha, "u5_seed42", "r1_wb_legs_gait_h4_v1_blind");
+    {
+        Application app(tilted.string(), "lo");
+        ApplicationTestAccess r{app};
+        r.Configure();
+        r.ScriptTiltedSwapBack();
+    }
+    fs::remove_all(tilted);
     std::cout << "APPLICATION_LOCO_MODE_OK\n";
 }

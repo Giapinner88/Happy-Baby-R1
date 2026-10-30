@@ -13,5 +13,11 @@ if [[ -r /etc/hb/stack.env ]]; then
     set +a
 fi
 export HB_ROOT
+# Load the optional search tool from the same canonical HB deploy tree.
+OBJECT_SEARCH_OVERLAY="${HB_OBJECT_SEARCH_ROOT:-$HB_ROOT/object_search}/experiments/r1_object_grounding/p5_voice_search/voice_overlay"
+if [[ -f "$OBJECT_SEARCH_OVERLAY/sitecustomize.py" && -f /etc/hb/object_search_enabled ]]; then
+    export R1_P5_VOICE_ENABLED=1 R1_P5_PORT=5591
+    export PYTHONPATH="$OBJECT_SEARCH_OVERLAY:$VOICE_DIR${PYTHONPATH:+:$PYTHONPATH}"
+fi
 cd "$VOICE_DIR"
 exec "$PYTHON" -m hb_voice

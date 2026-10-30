@@ -89,6 +89,10 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
         case FlatPolicyProfile::kWholeBodyLegsBlindV1:
             ctrl = std::make_unique<WholeBodyLegsController>();
             break;
+        case FlatPolicyProfile::kWholeBodyLegsGaitH4BlindV1:
+            // FSM cấu hình hoàn toàn từ metadata ONNX (không từ locomotion.yaml).
+            ctrl = std::make_unique<WholeBodyLegsGaitController>();
+            break;
     }
     ctrl->Init(path, ort_env_, ort_opts_, tuning_);
     if (const auto* wb = dynamic_cast<const WholeBodyLegsController*>(ctrl.get())) {
@@ -208,6 +212,10 @@ void Application::InitControllers() {
     if (ParseFlatPolicyProfile(walk_contract) == FlatPolicyProfile::kFlatPlusGaitH4V1) {
         std::cout << "[FlatPlusGaitH4] gait_settle_dwell_s="
                   << tuning_.gait_settle_dwell_s << "s (runtime config)\n";
+    }
+    if (const auto* wbg = dynamic_cast<const WholeBodyLegsGaitController*>(locomotion_)) {
+        std::cout << "[WholeBodyLegsGaitH4] settle_dwell=" << wbg->gait_config().settle_dwell_s
+                  << "s (metadata ONNX; bo qua gait_settle_dwell_s cua locomotion.yaml)\n";
     }
     std::cout << "[Application] Locomotion: R2+A policy '" << walk_policy_label_
               << "', R2+X policy '" << teleop_policy_label_ << "'"

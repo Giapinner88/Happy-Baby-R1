@@ -4,7 +4,7 @@ Nhánh này chỉ nhận **kết quả** (ONNX/NPZ, cấu hình, motion) từ c�
 
 | Nguồn | Đưa vào đâu | Trạng thái |
 | --- | --- | --- |
-| `loco` (đi bộ) | `controller/policies/locomotion/<tên>/` (bundle) + `controller/config/locomotion.yaml` | `u2a_seed42` (U2a, HB pose) là `teleop_policy` từ 2026-10-16, thay `u1_seed42` (U1, còn trong repo để rollback); chưa có đánh giá nào cho run này (E1/E2/E3/push lỗi hoặc chưa xong), chưa chạy robot (xem README trong bundle) |
+| `loco` (đi bộ) | `controller/policies/locomotion/<tên>/` (bundle) + `controller/config/locomotion.yaml` | `teleop_policy` hiện chọn `u5_seed42` (gait FSM + history, chưa có bằng chứng nghiệm thu phần cứng). U1, U2a, U3 và U4 còn trong repo để đối chiếu hoặc rollback; xem README từng bundle. |
 | dance / mimic (GMR) | `controller/policies/dance/<tên>/` + `controller/config/dance.yaml` | Đang dùng; xem §4 |
 | `teleop` | `teleop/` | Dùng đường chạy trên robot (H4). Mã của nhánh teleop chưa hỗ trợ H4 nên chưa đưa vào |
 | `vla` (dataset/LeRobot) | — | Chưa tích hợp |
@@ -32,8 +32,32 @@ Bốn bản này yêu cầu FSM `flat_plus_gait_fsm_legs12_stand_recovery_v1`: R
 | `flat_plus_gait_h4_v1` | 335D | H4 + one-hot `STAND,WALK,W2S` hiện tại |
 | `legacy_83` | 83D | `policies/flat/`, giữ để rollback |
 | `r1_wb_legs_v1_blind` | 71D → **12** | 59 phần tử đầu của frame 83D + 12 raw action; policy chỉ điều khiển chân, eo giữ default, tay thuộc teleop/default (không mask obs tay). Chỉ qua route bundle |
+| `r1_wb_legs_gait_h4_v1_blind` | 287D → **12** | 4 frame 71D của contract trên, term-major cũ → mới, + one-hot `STAND,WALK,W2S` của FSM 12 chân (dwell, ngưỡng, push exit lấy từ metadata ONNX). Chỉ qua route bundle (`u4_seed42`) |
 
-Model nào cũng phải qua kiểm tra shape ONNX, metadata contract, metadata gait FSM và metadata PD trước khi preflight đạt. `r1_wb_legs_v1_blind` còn kiểm `observation_layout`, `joint_names`, `action_joint_names` và `gait_period_s` == `locomotion.yaml`; test `wb_legs_golden_test` so obs/action/target với golden Python (`controller/scripts/make_wb_legs_golden.py`). Model `flat_plus_*` không hỗ trợ overlay tay gesture kiểu legacy.
+Model nào cũng phải qua kiểm tra shape ONNX, metadata contract, metadata gait FSM và metadata PD trước khi preflight đạt. `r1_wb_legs_v1_blind` còn kiểm `observation_layout`, `joint_names`, `action_joint_names` và `gait_period_s` == `locomotion.yaml`; test `wb_legs_golden_test` so obs/action/target với golden Python (`controller/scripts/make_wb_legs_golden.py`). `r1_wb_legs_gait_h4_v1_blind` kiểm thêm metadata history và mọi hằng số FSM; `wb_legs_gait_golden_test` so mode/obs/action/target 130 bước với FSM gốc của nhánh loco (`controller/scripts/make_wb_legs_gait_golden.py`). Model `flat_plus_*` không hỗ trợ overlay tay gesture kiểu legacy.
+
+### Bundle ArmFree Mirror 15k (24/10/2026)
+
+`armfree_mirror_d25_15k_20261024` đã đóng gói từ checkpoint cuối Mirror knee/ankle2.5; **chưa được chọn trong config đang chạy**. `walk_policy`, `teleop_policy`, giới hạn tốc độ và model manifest giữ nguyên. Bundle có provenance, exact gains/scales và báo cáo so4checkpoint cuối. FSM mới `flat_plus_gait_fsm_legs12_stand_recovery_v1` chỉ tính RMS12khớp chân; runtime chọn theo metadata và kiểm chính xác tên khớp. Legacy FSM giữ24khớp. Runtime cần build lại trước khi dùng bundle này; chưa deploy hoặc nghiệm thu robot. Chi tiết: [README bundle](../controller/policies/locomotion/armfree_mirror_d25_15k_20261024/README.md).
+
+Bundle bổ sung `armfree_nomirror_d20_15k_20261024` chứa NoMirror damping2.0/checkpoint14999, cùng contract12chân và metadata đúng run riêng. Bundle này cũng **chưa chọn trong config**, chưa deploy. [Provenance và kết quả](../controller/policies/locomotion/armfree_nomirror_d20_15k_20261024/README.md).
+
+### Bốn bundle locomotion theo pha native (26/10/2026)
+
+| Bundle | Checkpoint nguồn | Vai trò |
+|---|---|---|
+| `armfree_nomirror_d20_nativephase_15k_20261026` | AB_NoMirror_D20 /14999 | Baseline tổng thể, coverage tới1.5m/s |
+| `armfree_nomirror_d25_nativephase_15k_20261026` | AB_NoMirror_D25 /14999 | Đối chiếu knee/ankle damping2.5, hip2.0 |
+| `armfree_speed20_oldaction_d20_15k_20261026` | Speed20_OldAction /14999 | Coverage2m/s, knee scale.1575/ankle.328125 |
+| `armfree_speed20_nominal_d20_15k_20261026` | Speed20_NominalAction /14999 | Coverage2m/s, knee scale.15/ankle.3125 |
+
+Mỗi bundle có `README.md`, `policy.yaml` và `packaging.json` ghi exact PD/action/default/joint order, SHA checkpoint/ONNX và kiểm tra graph không đổi. Bundle dùng đúng actor native, gồm các giới hạn đã thấy: vung chân khi đi nhanh và transient tay lúc dừng chưa được giải quyết hoàn toàn. M1/M2/M3 và hai bản Swing có regression W2S không thuộc nhóm đóng gói này.
+
+Metadata `gait_phase_contract: episode_clock_command_gated_v1` chọn nhánh pha native: thời gian liên tục từ policy reset, observation đầu ởt=0, phase bằng0 khi norm3D command<0.1; STAND không dừng clock. Cần build runtime có nhánh này. Bundle cũ không có metadata trên giữ nhánh phase hiện tại. FSM12chân vẫn giữ dwell0.5s, upright và push-exit. Không thay metadata để giả rằng actor đã train với FSM-reset phase.
+
+Đóng gói chỉ thêm lựa chọn; speed limits, các bundle cũ và integration manifest giữ nguyên. Khi tự chọn sau, kiểm tra đồng thời `walk_policy` và `teleop_policy` trong `locomotion.yaml` rồi chạy preflight với đúng cặp bundle. Đóng gói không tự cấp quyền overlay cho artifact; các bundle mới là locomotion/H4 interface, chưa phải nghiệm thu phần cứng.
+
+Reproduce từ repo training: `python scripts/package_armfree_locomotion_hb.py --variant selected`. Kiểm chứng HB: `command_gated_phase_test` và `armfree_native_phase_inference_test` đối chiếu1200bước phase native qua reset/dừng/đi lại; `armfree_native_bundle_contract_test` kiểm4bundle và từ chối clock/mask/tick/dwell/joint-order sai. Build/test không xuất lệnh động cơ.
 
 ## 3. Đưa một policy đi bộ mới vào
 

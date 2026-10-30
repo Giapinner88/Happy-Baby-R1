@@ -28,17 +28,22 @@ class VoiceTtsPipelineTest(unittest.TestCase):
 
     def test_elevenlabs_uses_text_only_openai_session(self):
         """Route OpenAI text into the configured ElevenLabs cloned voice."""
-        with patch.dict(
-            os.environ,
-            {
-                "OPENAI_API_KEY": "sk-test-only",
-                "ELEVENLABS_API_KEY": "elevenlabs-test-only",
-                "ELEVENLABS_VOICE_ID": "voice-test-only",
-                "ALSA_DEVICE": "plughw:CARD=Audio,DEV=0",
-            },
-            clear=True,
-        ):
-            config = VoiceConfig.load()
+        tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
+        tuning = tuning.replace('provider: "openai"', 'provider: "elevenlabs"', 1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tuning.yaml"
+            path.write_text(tuning)
+            with patch.dict(
+                os.environ,
+                {
+                    "OPENAI_API_KEY": "sk-test-only",
+                    "ELEVENLABS_API_KEY": "elevenlabs-test-only",
+                    "ELEVENLABS_VOICE_ID": "voice-test-only",
+                    "ALSA_DEVICE": "plughw:CARD=Audio,DEV=0",
+                },
+                clear=True,
+            ):
+                config = VoiceConfig.load(path)
             session = _openai_session_properties(config)
             tts = _create_external_tts(config)
 
@@ -98,7 +103,7 @@ class VoiceTtsPipelineTest(unittest.TestCase):
         self.assertEqual([], controller.tools)
         self.assertIsNone(session.tools)
         self.assertIsNone(session.tool_choice)
-        self.assertEqual(["text"], session.output_modalities)
+        self.assertIsNone(session.output_modalities)
 
 
 class DuplicateAnswerTest(unittest.IsolatedAsyncioTestCase):

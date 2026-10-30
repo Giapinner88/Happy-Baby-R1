@@ -12,6 +12,7 @@ INTEGRATION_DIR="$HB_ROOT/integration"
 source "$INTEGRATION_DIR/scripts/config_reader.sh"
 source "$INTEGRATION_DIR/scripts/status_log.sh"
 source "$INTEGRATION_DIR/scripts/dance_preflight_summary.sh"
+source "$INTEGRATION_DIR/scripts/high_unit_owner.sh"
 
 if [[ -r /etc/hb/stack.env ]]; then
     set -a
@@ -68,6 +69,15 @@ if includes high; then
     fi
     check_ldd "run_r1" "$BIN"
 
+    # Unit phải chạy đúng cây này, nếu không mọi kiểm tra bên dưới là về code khác.
+    if UNIT_REPORT="$(hb_check_high_unit_owner "$HIGH_DIR")"; then
+        [[ -n "$UNIT_REPORT" ]] && hb_info "$UNIT_REPORT"
+        ok "hb_high_level unit runs $HIGH_DIR"
+    else
+        hb_fail "$UNIT_REPORT"
+        fail "hb_high_level khong chay cay $HIGH_DIR; preflight dung lai"
+    fi
+
     # shellcheck disable=SC1091
     source "$INTEGRATION_DIR/config/model_manifest.conf"
     # walk_policy (bundle) hoặc flat_model (route cũ) -> "<rel> <contract>".
@@ -89,7 +99,7 @@ if includes high; then
     # lệch với runtime (non-legacy nạp từ bundle policies/locomotion/<tên>).
     HIGH_PREFLIGHT_LOG="$(mktemp /tmp/hb-high-preflight.XXXXXX)"
     TEMP_FILES+=("$HIGH_PREFLIGHT_LOG")
-    "$BIN" --preflight >"$HIGH_PREFLIGHT_LOG" 2>&1 || {
+    HB_PROJECT_DIR="$HIGH_DIR" "$BIN" --preflight >"$HIGH_PREFLIGHT_LOG" 2>&1 || {
         PRESERVE_HIGH_PREFLIGHT_LOG=1
         fail "run_r1 preflight failed; details: $HIGH_PREFLIGHT_LOG"
     }

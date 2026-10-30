@@ -44,7 +44,7 @@ class VoiceConfigTest(unittest.TestCase):
         config = self.load()
         self.assertTrue(config.model.startswith("gpt-realtime"), config.model)
         self.assertEqual("sage", config.voice)
-        self.assertEqual("elevenlabs", config.tts_provider)
+        self.assertEqual("openai", config.tts_provider)
         self.assertEqual("eleven_flash_v2_5", config.elevenlabs_model)
         self.assertEqual("vi", config.elevenlabs_language)
         self.assertEqual("vi", config.language)
@@ -314,13 +314,14 @@ class VoiceConfigTest(unittest.TestCase):
                 VoiceConfig.load()
 
     def test_elevenlabs_credentials_are_required_for_clone_provider(self):
-        with patch.dict(
-            os.environ,
-            {"OPENAI_API_KEY": "sk-test-only"},
-            clear=True,
-        ):
-            with self.assertRaisesRegex(VoiceConfigError, "ELEVENLABS_API_KEY"):
-                VoiceConfig.load()
+        tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
+        tuning = tuning.replace('provider: "openai"', 'provider: "elevenlabs"', 1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tuning.yaml"
+            path.write_text(tuning)
+            with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-only"}, clear=True):
+                with self.assertRaisesRegex(VoiceConfigError, "ELEVENLABS_API_KEY"):
+                    VoiceConfig.load(path)
 
     def test_openai_provider_does_not_require_elevenlabs_credentials(self):
         tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
@@ -362,7 +363,7 @@ class VoiceConfigTest(unittest.TestCase):
     def test_invalid_tts_provider_is_rejected(self):
         tuning = (HB_ROOT / "voice" / "config" / "tuning.yaml").read_text()
         tuning = tuning.replace(
-            'provider: "elevenlabs"',
+            'provider: "openai"',
             'provider: "unsupported"',
             1,
         )

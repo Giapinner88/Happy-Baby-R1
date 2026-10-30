@@ -28,6 +28,7 @@ DEPLOY  (máy trạm -> robot; robot tự dò, hoặc ROBOT=unitree@<ip>). Bản
   deploy controller            code C++ + config + policy + dance; restart high-level, cần DISARMED
   deploy voice                 voice + presets + integration; không đụng high-level
   deploy teleop                runtime Quest; không cần DISARMED
+  deploy object-search         chỉ đồng bộ mã tìm vật, không restart service
   deploy all                   ép làm toàn bộ (lần đầu, sửa systemd, nghi robot lệch)
     [--no-restart]             chép + build + preflight, chưa restart (./hb deploy sau để kích hoạt)
     [--dry-run]                chỉ xem kế hoạch
@@ -52,6 +53,12 @@ BUILD / KIỂM TRA
 CÀI ĐẶT TRÊN ROBOT (sudo)
   install [all|services|teleop]   cài/refresh unit systemd; teleop = runtime Quest
   teleop-check                 đọc rt/lowstate, không tạo publisher
+
+GHI DỮ LIỆU  (chỉ nghe DDS, không tạo publisher; dùng song song run_r1 được)
+  record [--duration S] [--decimate N] [--all-motors] [--no-lowcmd] [--no-bms]
+                               CSV mọi motor (q/dq/ddq/tau/nhiệt/áp/lỗi) + IMU + tay cầm
+                               + lowcmd + pin, ~1 kHz; Ctrl-C để dừng. Robot: ~/hb_logs;
+                               máy trạm: chạy qua Tailscale rồi kéo về \${HB_LOG_DIR:-~/hb_logs}
 
 KHÁC
   policy list                  liệt kê bundle policy đi bộ, đánh dấu walk (R2+A) / teleop (R2+X)
@@ -185,6 +192,11 @@ deploy_args() {
 
 cmd_deploy() {
     need_dev deploy
+    if [[ "${1:-}" == object-search ]]; then
+        shift
+        [[ $# -eq 0 || ( $# -eq 1 && "$1" == --dry-run ) ]] || die "usage: ./hb deploy object-search [--dry-run]"
+        exec "$OPS/deploy_stack.sh" deploy-object-search "$@"
+    fi
     deploy_args "$@"
     exec "$OPS/deploy_stack.sh" deploy "${DEPLOY_ARGS[@]}"
 }
@@ -269,6 +281,71 @@ cmd_find_robot() {
     echo "ROBOT=$ROBOT"
 }
 
+# ----------------------------------------------------------------- record ----
+
+# Robot: build sensor_log khi thiếu (build mặc định chỉ có run_r1) rồi chạy với nice
+# để không tranh CPU với vòng điều khiển. Máy trạm: cùng lệnh qua SSH rồi scp về.
+cmd_record() {
+    local name="sensors_$(date +%Y%m%d_%H%M%S)" out="" arg
+    local args=()
+    while (( $# )); do
+        case "$1" in
+            --out) out="${2:?--out cần đường dẫn}"; shift 2 ;;
+            --duration|--decimate) args+=("$1" "${2:?$1 cần giá trị}"); shift 2 ;;
+            --all-motors|--no-lowcmd|--no-bms) args+=("$1"); shift ;;
+            *) die "usage: ./hb record [--duration S] [--decimate N] [--all-motors] [--no-lowcmd] [--no-bms]" ;;
+        esac
+    done
+    if [[ "$MODE" == robot ]]; then
+        [[ -n "$out" ]] || out="$HOME/hb_logs/$name.csv"
+        mkdir -p "$(dirname "$out")"
+        if [[ ! -x "$HIGH_DIR/build/sensor_log" || "$HIGH_DIR/tools/sensor_log.cpp" -nt "$HIGH_DIR/build/sensor_log" ]]; then
+            cmake -S "$HIGH_DIR" -B "$HIGH_DIR/build" -DCMAKE_BUILD_TYPE=Release >/dev/null
+            cmake --build "$HIGH_DIR/build" --target sensor_log
+        fi
+        exec nice -n 10 "$HIGH_DIR/build/sensor_log" \
+            --iface "${UNITREE_NETWORK_INTERFACE:-eth10}" --out "$out" "${args[@]}"
+    fi
+    [[ -z "$out" ]] || die "--out chỉ dùng trên robot; máy trạm lưu vào \${HB_LOG_DIR:-~/hb_logs}"
+    tailscale_robot
+    # Không phụ thuộc bản deploy trên robot (có thể cũ, và không deploy khi đang vận hành):
+    # chép riêng nguồn tool vào ~/hb_tools/sensor_log, build ở đó nếu nguồn đổi, rồi chạy.
+    # Không đụng /home/unitree/HB, run_r1 hay service nào.
+    local tool_dir="/home/unitree/hb_tools/sensor_log"
+    local remote_csv="/home/unitree/hb_logs/$name.csv"
+    local local_dir="${HB_LOG_DIR:-$HOME/hb_logs}"
+    local rc=0
+    # Luôn có ít nhất "--out <file>": printf '%q ' trên mảng RỖNG vẫn in ra '' (một tham số
+    # rỗng) và sensor_log từ chối nó.
+    local remote_args
+    remote_args="$(printf '%q ' --out "$remote_csv" "${args[@]}")"
+    tar -C "$HIGH_DIR" -cf - tools/sensor_log.cpp src/config/RobotSpec.hpp \
+        | ssh "$TS_ROBOT" "mkdir -p $tool_dir/new && tar -C $tool_dir/new -xf -" \
+        || die "không chép được nguồn sensor_log lên robot"
+    ssh -t "$TS_ROBOT" "set -e; cd $tool_dir
+        if ! cmp -s new/tools/sensor_log.cpp tools/sensor_log.cpp 2>/dev/null \\
+           || ! cmp -s new/src/config/RobotSpec.hpp src/config/RobotSpec.hpp 2>/dev/null \\
+           || [ ! -x build/sensor_log ]; then
+            rm -rf tools src && mv new/tools new/src .
+            printf '%s\\n' 'cmake_minimum_required(VERSION 3.10)' 'project(sensor_log CXX)' \\
+                'set(CMAKE_CXX_STANDARD 17)' 'find_package(unitree_sdk2 REQUIRED)' \\
+                'add_executable(sensor_log tools/sensor_log.cpp)' \\
+                'target_link_libraries(sensor_log unitree_sdk2 pthread)' > CMakeLists.txt
+            echo 'Build sensor_log tren robot...'
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release >/dev/null && cmake --build build
+        fi
+        rm -rf new; mkdir -p /home/unitree/hb_logs
+        exec nice -n 10 build/sensor_log --iface \${UNITREE_NETWORK_INTERFACE:-eth10} $remote_args" \
+        || rc=$?
+    # Ctrl-C trả mã khác 0 nhưng vẫn có file; chỉ coi là lỗi khi robot không có CSV.
+    ssh "$TS_ROBOT" "test -s $(printf %q "$remote_csv")" \
+        || die "sensor_log trên robot thoát mã $rc và không tạo $remote_csv (xem thông báo phía trên)"
+    mkdir -p "$local_dir"
+    scp "$TS_ROBOT:$remote_csv" "$TS_ROBOT:$remote_csv.meta.json" "$local_dir/" \
+        || die "không kéo được $remote_csv về máy trạm"
+    echo "Đã lưu $local_dir/$name.csv (+ .meta.json); bản gốc trên robot: $remote_csv"
+}
+
 # ------------------------------------------------------------------- main ----
 
 COMMAND="${1:-help}"
@@ -290,6 +367,7 @@ case "$COMMAND" in
             --interface "${UNITREE_NETWORK_INTERFACE:-eth10}" --timeout-s 5 ;;
     dance)                   exec bash "$OPS/dance_assets.sh" "$@" ;;
     policy)                  exec bash "$OPS/policy_bundles.sh" "$@" ;;
+    record)                  cmd_record "$@" ;;
     find-robot)              cmd_find_robot ;;
     field)                   cmd_field "$@" ;;
     ssh)                     cmd_ssh "$@" ;;

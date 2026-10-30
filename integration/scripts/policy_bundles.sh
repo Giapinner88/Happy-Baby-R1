@@ -64,7 +64,7 @@ cmd_add() {
     hb_valid_policy_bundle_name "$name" || {
         echo "ten bundle hoac nhom/ten: moi thanh phan bat dau bang chu/so, chi gom chu, so, . _ -: '$name'" >&2; exit 1; }
     case "$contract" in
-        legacy_83|flat_plus_h4_v1|flat_plus_h5_v1|flat_plus_gait_h4_v1|r1_wb_legs_v1_blind) ;;
+        legacy_83|flat_plus_h4_v1|flat_plus_h5_v1|flat_plus_gait_h4_v1|r1_wb_legs_v1_blind|r1_wb_legs_gait_h4_v1_blind) ;;
         *) echo "contract khong ho tro: $contract" >&2; exit 1 ;;
     esac
     local dest="$LOCO_DIR/$name"

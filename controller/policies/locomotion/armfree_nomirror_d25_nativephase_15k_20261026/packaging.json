@@ -1,0 +1,253 @@
+{
+  "bundle": "armfree_nomirror_d25_nativephase_15k_20261026",
+  "policy_id": "AB_NoMirror_D25",
+  "source_run": "/home/ubuntu22/train_mujoco/unitree_rl_mjlab_gait_pro/logs/armfree_damping25_20261023/no_mirror",
+  "source_checkpoint": "/home/ubuntu22/train_mujoco/unitree_rl_mjlab_gait_pro/logs/armfree_damping25_20261023/no_mirror/model_14999.pt",
+  "checkpoint_sha256": "a90c72cdd9636d766dd835e1b60c047d55f6547d91e9bd44770160515e54e707",
+  "source_onnx": "/home/ubuntu22/train_mujoco/unitree_rl_mjlab_gait_pro/logs/armfree_damping25_20261023/no_mirror/policy.onnx",
+  "source_onnx_sha256": "e26a511e6ca67fea37531ae8f6542e087c1d5eb4a4290029a58d5fbdfd2f99fb",
+  "packaged_sha256": "5f3dfbda50e2d1512db1d1a70c5f2806badfe0c512ef06a3e1e5691e7b9f8c93",
+  "iteration": 14999,
+  "iterations_completed": 15000,
+  "policy_steps": 360000,
+  "mirror_loss": false,
+  "checkpoint_onnx_max_abs_error": 2.6226043701171875e-06,
+  "packaged_source_max_abs_error": 0.0,
+  "actor_graph_identical": true,
+  "exact_resolved_arrays": {
+    "action_scale": [
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.1574999988079071,
+      0.328125,
+      0.328125,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.1574999988079071,
+      0.328125,
+      0.328125,
+      0.15000000596046448,
+      0.15000000596046448,
+      0.375,
+      0.375,
+      0.4124999940395355,
+      0.4124999940395355,
+      0.4124999940395355,
+      0.375,
+      0.375,
+      0.4124999940395355,
+      0.4124999940395355,
+      0.4124999940395355
+    ],
+    "default_joint_pos": [
+      -0.10000000149011612,
+      0.0348999984562397,
+      -0.04769999906420708,
+      0.30000001192092896,
+      -0.20000000298023224,
+      -0.0348999984562397,
+      -0.10000000149011612,
+      -0.0348999984562397,
+      0.04769999906420708,
+      0.30000001192092896,
+      -0.20000000298023224,
+      0.0348999984562397,
+      0.0,
+      0.0,
+      0.3499999940395355,
+      0.18000000715255737,
+      0.0,
+      0.8700000047683716,
+      0.0,
+      0.3499999940395355,
+      -0.18000000715255737,
+      0.0,
+      0.8700000047683716,
+      0.0
+    ],
+    "joint_stiffness": [
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      40.0,
+      40.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      40.0,
+      40.0,
+      100.0,
+      100.0,
+      40.0,
+      40.0,
+      20.0,
+      20.0,
+      20.0,
+      40.0,
+      40.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    "joint_damping": [
+      2.0,
+      2.0,
+      2.0,
+      2.5,
+      2.5,
+      2.5,
+      2.0,
+      2.0,
+      2.0,
+      2.5,
+      2.5,
+      2.5,
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      1.0,
+      1.0,
+      1.0,
+      2.0,
+      2.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "joint_effort_limit": [
+      60.0,
+      60.0,
+      60.0,
+      63.0,
+      52.5,
+      52.5,
+      60.0,
+      60.0,
+      60.0,
+      63.0,
+      52.5,
+      52.5,
+      60.0,
+      60.0,
+      60.0,
+      60.0,
+      33.0,
+      33.0,
+      33.0,
+      60.0,
+      60.0,
+      33.0,
+      33.0,
+      33.0
+    ]
+  },
+  "native_phase": {
+    "source_function": "src.tasks.velocity.mdp.observations.phase",
+    "period_s": 0.6,
+    "clock": "episode_step_float32_times_dt",
+    "zero_mask": "command_3norm_lt_0.1",
+    "reset_alignment": "first_observation_t0"
+  },
+  "metadata_changes": {
+    "action_scale": {
+      "before": "0.150,0.150,0.150,0.157,0.328,0.328,0.150,0.150,0.150,0.157,0.328,0.328,0.150,0.150,0.375,0.375,0.412,0.412,0.412,0.375,0.375,0.412,0.412,0.412",
+      "after": "0.150000006,0.150000006,0.150000006,0.157499999,0.328125,0.328125,0.150000006,0.150000006,0.150000006,0.157499999,0.328125,0.328125,0.150000006,0.150000006,0.375,0.375,0.412499994,0.412499994,0.412499994,0.375,0.375,0.412499994,0.412499994,0.412499994"
+    },
+    "default_joint_pos": {
+      "before": "-0.100,0.035,-0.048,0.300,-0.200,-0.035,-0.100,-0.035,0.048,0.300,-0.200,0.035,0.000,0.000,0.350,0.180,0.000,0.870,0.000,0.350,-0.180,0.000,0.870,0.000",
+      "after": "-0.100000001,0.0348999985,-0.0476999991,0.300000012,-0.200000003,-0.0348999985,-0.100000001,-0.0348999985,0.0476999991,0.300000012,-0.200000003,0.0348999985,0,0,0.349999994,0.180000007,0,0.870000005,0,0.349999994,-0.180000007,0,0.870000005,0"
+    },
+    "joint_stiffness": {
+      "before": "100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,100.000,100.000,40.000,40.000,100.000,100.000,40.000,40.000,20.000,20.000,20.000,40.000,40.000,20.000,20.000,20.000",
+      "after": "100,100,100,100,40,40,100,100,100,100,40,40,100,100,40,40,20,20,20,40,40,20,20,20"
+    },
+    "joint_damping": {
+      "before": "2.000,2.000,2.000,2.500,2.500,2.500,2.000,2.000,2.000,2.500,2.500,2.500,2.000,2.000,2.000,2.000,1.000,1.000,1.000,2.000,2.000,1.000,1.000,1.000",
+      "after": "2,2,2,2.5,2.5,2.5,2,2,2,2.5,2.5,2.5,2,2,2,2,1,1,1,2,2,1,1,1"
+    },
+    "joint_effort_limit": {
+      "before": null,
+      "after": "60,60,60,63,52.5,52.5,60,60,60,63,52.5,52.5,60,60,60,60,33,33,33,60,60,33,33,33"
+    },
+    "gait_phase_contract": {
+      "before": null,
+      "after": "episode_clock_command_gated_v1"
+    },
+    "training_phase_clock": {
+      "before": null,
+      "after": "episode_time_continuous_legacy_0909"
+    },
+    "training_phase_zero_mask": {
+      "before": null,
+      "after": "command_3norm_lt_0.1"
+    },
+    "gait_phase_tick_alignment": {
+      "before": null,
+      "after": "reset_zero_then_increment_after_observation"
+    },
+    "gait_yaw_range": {
+      "before": null,
+      "after": "-1.0,1.0"
+    },
+    "source_checkpoint": {
+      "before": null,
+      "after": "/home/ubuntu22/train_mujoco/unitree_rl_mjlab_gait_pro/logs/armfree_damping25_20261023/no_mirror/model_14999.pt"
+    },
+    "source_checkpoint_sha256": {
+      "before": null,
+      "after": "a90c72cdd9636d766dd835e1b60c047d55f6547d91e9bd44770160515e54e707"
+    },
+    "source_onnx_sha256": {
+      "before": null,
+      "after": "e26a511e6ca67fea37531ae8f6542e087c1d5eb4a4290029a58d5fbdfd2f99fb"
+    },
+    "hb_bundle": {
+      "before": null,
+      "after": "armfree_nomirror_d25_nativephase_15k_20261026"
+    },
+    "hb_validation": {
+      "before": null,
+      "after": "checkpoint_graph_PD_and_native_phase_contract"
+    },
+    "deployment_note": {
+      "before": "experimental: HB must support explicit legs12 stability contract before use",
+      "after": "Native command-gated phase requires updated HB runtime; hardware validation pending"
+    }
+  },
+  "deduplicated_source_metadata": {
+    "gait_task_variant": [
+      "0917",
+      "armfree_ab_20261023"
+    ],
+    "gait_reward_overlay": [
+      "legacy_0909_lowest_sole_stand_recovery_v1",
+      "armfree_ab_20261023_drift_unchanged"
+    ],
+    "gait_vx_range": [
+      "-1.0,1.2",
+      "-1.0,1.5"
+    ],
+    "gait_fsm_contract": [
+      "flat_plus_gait_fsm_v1_stand_recovery_v1",
+      "flat_plus_gait_fsm_legs12_stand_recovery_v1"
+    ],
+    "gait_t_settle_s": [
+      "0.5",
+      "0.5"
+    ],
+    "gait_stability_predicate": [
+      "filtered_imu_ang_vel_norm_and_joint_vel_rms_v2",
+      "filtered_imu_and_legs12_joint_rms_v1"
+    ]
+  },
+  "quality_scope": "completed native-domain simulation and transition diagnostics; hardware not accepted",
+  "evaluation_sources": [
+    "/home/ubuntu22/train_mujoco/unitree_rl_mjlab_gait_pro/artifacts/armfree_full_comparison_20261025/priority_retest_20261025/assessment.json",
+    "/home/ubuntu22/train_mujoco/unitree_rl_mjlab_gait_pro/artifacts/armfree_full_comparison_20261025/selection_20261026/selection.json"
+  ]
+}

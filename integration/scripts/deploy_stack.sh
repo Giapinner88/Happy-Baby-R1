@@ -53,6 +53,9 @@ case "$COMMAND" in
         done
         COMMAND=deploy
         ;;
+    deploy-object-search)
+        [[ $# -eq 0 || ( $# -eq 1 && "$1" == --dry-run ) ]] || usage
+        OPTION="${1:-}" ;;
     pull) OPTION="${1:-}" ;;
     status|rollback|start-*|stop-*|restart-*|logs-*) ;;
     *) usage ;;
@@ -81,7 +84,7 @@ teleop_fail() { hb_fail "teleop: $*"; }
 # so it never pauses for a password after files or a build were started.
 hb_deploy_auth_open_ssh "$ROBOT" "$SSH_CONTROL_PATH" "$SSH_CONNECT_TIMEOUT"
 case "$COMMAND" in
-    deploy|status|pull|logs-*) ;;
+    deploy|deploy-object-search|status|pull|logs-*) ;;
     *) hb_deploy_auth_enable_sudo "$ROBOT" "$SSH_CONTROL_PATH" "$SSH_CONNECT_TIMEOUT" ;;
 esac
 TMP_DIR="$(mktemp -d /tmp/hb-deploy.XXXXXX)"
@@ -131,6 +134,12 @@ sync_integration_service() {
 sync_presets() {
     rsync "${RSYNC_BASE[@]}" --delete-delay "$@" "${COMMON_EXCLUDES[@]}" \
         "$PRESETS_DIR/" "$ROBOT:$DEST/voice_presets/"
+}
+
+sync_object_search() {
+    rsync "${RSYNC_BASE[@]}" --delete-delay "$@" "${COMMON_EXCLUDES[@]}" \
+        --exclude '.venv/' --exclude 'data/runs/' \
+        "$HB_ROOT/object_search/" "$ROBOT:$DEST/object_search/"
 }
 
 # Mirror CHỈ policies/dance/ với --delete: khi bạn xóa policy/npz cũ bên dev thì
@@ -930,6 +939,12 @@ cmd_rollback() {
 
 case "$COMMAND" in
     deploy) cmd_deploy ;;
+    deploy-object-search)
+        args=()
+        [[ "$OPTION" == --dry-run ]] && args=(--dry-run)
+        sync_object_search "${args[@]}"
+        sync_tools "${args[@]}"
+        ;;
     rollback) cmd_rollback ;;
     status)
         "${SSH[@]}" "$ROBOT" "bash '$DEST/integration/scripts/stack_ctl.sh' status"

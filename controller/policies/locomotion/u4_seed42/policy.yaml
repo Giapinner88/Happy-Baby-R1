@@ -1,0 +1,6 @@
+# Locomotion policy bundle — chọn bằng walk_policy / teleop_policy trong
+# controller/config/locomotion.yaml. run_r1 kiểm sha256 và metadata ONNX lúc khởi động.
+contract: r1_wb_legs_gait_h4_v1_blind
+sha256: 23021a5fd4e636e6d5f0b17f900cd74c6bbbbe5fdd2523b6df4ccffbe1382cb9
+# true = artifact được duyệt cho overlay teleop H4 (tay+đầu từ Quest).
+teleop_h4: true

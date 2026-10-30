@@ -21,6 +21,7 @@
 #include "../estimation/StateEstimator.hpp"
 #include "../gait/GaitScheduler.hpp"
 #include "../input/InputManager.hpp"
+#include "../input/SearchYawReceiver.hpp"
 #include "../input/TeleopReceiver.hpp"
 #include "../input/VoiceGestureOwner.hpp"
 #include "../logging/MimicTelemetryLogger.hpp"
@@ -35,6 +36,7 @@
 #include "../policy/FlatPlusH5Controller.hpp"
 #include "../policy/FlatPlusGaitController.hpp"
 #include "../policy/WholeBodyLegsController.hpp"
+#include "../policy/WholeBodyLegsGaitController.hpp"
 #include "../policy/PolicyBundle.hpp"
 #include "../policy/TeleopH4PolicyGate.hpp"
 #include "../robot/LowCmdSender.hpp"
@@ -258,6 +260,7 @@ private:
     bool motion_recovery_sample_seen_ = false;
     bool motion_recovery_released_ = false;
     InputManager input_;
+    SearchYawReceiver search_yaw_;
     LowCmdSender sender_;
 
     // Hai policy locomotion nạp sẵn lúc khởi động. teleop_ctrl_ rỗng khi

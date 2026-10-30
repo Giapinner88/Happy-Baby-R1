@@ -1,0 +1,15 @@
+[Unit]
+Description=HB object-search camera and target agent
+After=hb_high_level.service
+Requires=hb_high_level.service
+
+[Service]
+Type=simple
+User=unitree
+WorkingDirectory=@HB_ROOT@/object_search/agent
+ExecStart=/usr/bin/python3 @HB_ROOT@/object_search/agent/robot_agent.py serve --runtime-root @HB_ROOT@ --interface eth10 --port 5572
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=hb-stack.target

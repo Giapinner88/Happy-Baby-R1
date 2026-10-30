@@ -27,7 +27,8 @@ public:
     IntegrationNotifier(const IntegrationNotifier&) = delete;
     IntegrationNotifier& operator=(const IntegrationNotifier&) = delete;
 
-    void Send(bool busy, bool armed, const std::string& state = "") {
+    void Send(bool busy, bool armed, const std::string& state = "",
+              const std::string& mode = "") {
         if (fd_ < 0 || path_.size() >= sizeof(((sockaddr_un*)nullptr)->sun_path)) return;
         std::string token = state;
         std::replace_if(token.begin(), token.end(),
@@ -35,6 +36,7 @@ public:
         std::string message = "v=1 busy=" + std::to_string(busy ? 1 : 0) +
                               " armed=" + std::to_string(armed ? 1 : 0);
         if (!token.empty()) message += " state=" + token;
+        if (!mode.empty()) message += " mode=" + mode;
 
         sockaddr_un addr{};
         addr.sun_family = AF_UNIX;

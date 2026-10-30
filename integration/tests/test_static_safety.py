@@ -94,7 +94,7 @@ class StaticSafetyTest(unittest.TestCase):
         # tuning decision and must not fail the safety suite.
         self.assertRegex(tuning, r'model: "gpt-realtime[^"]*"')
         self.assertIn('voice: "sage"', tuning)
-        self.assertIn('provider: "elevenlabs"', tuning)
+        self.assertIn('provider: "openai"', tuning)
         self.assertIn('model: "eleven_flash_v2_5"', tuning)
         self.assertIn("ElevenLabsTTSService", app)
         self.assertIn('output_modalities = ["text"]', app)

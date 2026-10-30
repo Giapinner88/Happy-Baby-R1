@@ -29,7 +29,9 @@ running robot risks two `run_r1` instances.
 **Current stage:** Baseline integration. Teleop is the robot-local H4 runtime;
 the `teleop` branch's sidecar/bridge lack the H4 contract the controller requires,
 so they are not merged (a static test pins the runtime's CLI contract). `loco` U2a (`u2a_seed42`, contract `r1_wb_legs_v1_blind`; U1 `u1_seed42` kept for rollback)
-is wired as `teleop_policy` (R2+X) with simulation-only evidence; no `loco` policy is
+was wired as `teleop_policy` (R2+X) with simulation-only evidence; the current
+`teleop_policy` is U5 (`u5_seed42`, `r1_wb_legs_gait_h4_v1_blind`). U3 and U4
+remain available for comparison; no `loco` policy is
 accepted for hardware. Dance slots 1–7 in `controller/config/dance.yaml` reference artifacts
 in the repo; active `state_motion_guard: true` automatically selects upright
 checks for locomotion/entry and torso-reference tracking for all MIMIC stages.

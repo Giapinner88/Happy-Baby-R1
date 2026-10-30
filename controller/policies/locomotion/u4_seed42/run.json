@@ -1,0 +1,23 @@
+{
+  "task": "Unitree-R1-Flat",
+  "num_envs": 4096,
+  "iterations": 5000,
+  "seed": 42,
+  "save_interval": 100,
+  "objective": "gait",
+  "body": "whole_body",
+  "arm_reference_obs": false,
+  "experiment": "u4",
+  "backend": "isaac",
+  "actuator_profile": "vendor_hb_pose",
+  "stand_recovery": false,
+  "stand_recovery_variant": "s2",
+  "arm_still_fraction": 0.1,
+  "unified": false,
+  "gait_fsm": true,
+  "obs_history": 4,
+  "stance_width_min": 0.24,
+  "loose_joints": false,
+  "walk_quality": false,
+  "target_smoothness": false
+}

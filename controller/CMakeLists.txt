@@ -308,6 +308,16 @@ if(BUILD_TESTING)
         HB_WB_LEGS_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_golden_trace.txt")
     add_test(NAME wb_legs_golden_test COMMAND wb_legs_golden_test)
 
+    # r1_wb_legs_gait_h4_v1_blind (U4): FSM mode + 287-D obs/action/target parity
+    # with the loco FSM and an Isaac Lab history (scripts/make_wb_legs_gait_golden.py).
+    add_executable(wb_legs_gait_golden_test tests/wb_legs_gait_golden_test.cpp
+        src/policy/OnnxPolicy.cpp)
+    target_link_libraries(wb_legs_gait_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
+    target_compile_definitions(wb_legs_gait_golden_test PRIVATE
+        HB_WB_LEGS_GAIT_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u4_seed42/policy.onnx"
+        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_gait_golden_trace.txt")
+    add_test(NAME wb_legs_gait_golden_test COMMAND wb_legs_gait_golden_test)
+
     add_executable(tuning_include_test tests/tuning_include_test.cpp src/config/Tuning.cpp)
     target_compile_definitions(tuning_include_test PRIVATE
         HB_TUNING_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/tuning.yaml")
@@ -322,6 +332,10 @@ if(BUILD_TESTING)
         COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/config_reader_test.sh"
                      "${CMAKE_CURRENT_SOURCE_DIR}/../integration/scripts/config_reader.sh"
                      "${CMAKE_CURRENT_SOURCE_DIR}/config/tuning.yaml")
+
+    # ./hb record: argv tới sensor_log trên robot (robot giả lập, không cần mạng/DDS).
+    add_test(NAME hb_record_args_test
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/hb_record_args_test.sh")
 
     add_test(NAME preflight_test COMMAND run_r1 --preflight)
     set_tests_properties(preflight_test PROPERTIES
@@ -338,3 +352,8 @@ target_link_libraries(dds_probe unitree_sdk2 pthread)
 # xuống (L2+X). Xem docs/operation.md ở gốc repo.
 add_executable(record_motion tools/record_motion.cpp ${CNPY_DIR}/cnpy.cpp)
 target_link_libraries(record_motion unitree_sdk2 ZLIB::ZLIB pthread)
+
+# ─── sensor_log: CSV mọi motor + IMU + tay cầm + lowcmd + pin (chỉ nghe, không gửi gì) ───
+# Gọi qua ./hb record (build theo yêu cầu, không nằm trong build mặc định của robot).
+add_executable(sensor_log tools/sensor_log.cpp)
+target_link_libraries(sensor_log unitree_sdk2 pthread)

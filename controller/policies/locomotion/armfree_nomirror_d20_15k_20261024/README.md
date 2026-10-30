@@ -1,0 +1,13 @@
+# ArmFree NoMirror — damping2.0, checkpoint14999
+
+Packaged candidate only. Not selected in walk_policy/teleop_policy; active HB configs and model manifest are unchanged. No deployment performed. Existing Mirror2.5 bundle is unchanged.
+
+Source: unitree_rl_mjlab_gait_pro/logs/armfree_ab_20261023/20261023_152312/no_mirror/model_14999.pt; seed42,4096env,15000iterations, mirror loss disabled. packaging.json locks checkpoint/source/package hashes and exact resolved metadata. Reproduce from the training repository with `python scripts/package_armfree_locomotion_hb.py --variant nomirror20`.
+
+Contract:335D flat_plus_gait_h4_v1 →24raw position actions; H4 term-major oldest→newest, repeat_first and pre-inference append; raw previous policy actions retained when masking q/dq arms for overlay.332D prefix normalization embedded, current3D gait one-hot unnormalized. FSM flat_plus_gait_fsm_legs12_stand_recovery_v1, exactly12leg RMS, signed-state EMA tau.2s, settle.5s and stand recovery preserved. Requires the HB legs12 runtime update already prepared with Mirror2.5; old binary will reject the new FSM contract.
+
+Native PD: hip/knee100/2; ankle40/2; waist100/2; shoulder pitch/roll40/2; shoulder yaw/elbow/wrist20/1. Native action scale knee.1575, ankle.328125; hip/waist.15, shoulder pitch/roll.375, distal arm.4125. This completed damping2.0 run retains the+5%knee/ankle scales; do not substitute nominal.15/.3125 from later M1/M2/M3 experiments. Default pose, scale, gains and24joint order are resolved from this run, not borrowed from a dance policy or Mirror2.5.
+
+Original source ONNX contained duplicate metadata keys from an inherited0917 export plus the AB override. Packaging collapses each key to the same final value ONNX Runtime exposes; values and duplicates are recorded. Full precision PD/action/default arrays replace rounded values. Only metadata changes; actor outputs are identical on64test observations. deployable=false remains; simulation/local contract evidence does not imply hardware acceptance.
+
+Final checkpoint test:760robustness trials +64gait probe trials. XY tracking error.0823m/s; push survival463/464; walk+strong push falls1/32; gesture completion160/160 and gesture+push recovery96/96; nominal gesture max drift9.17cm. High-speed alternating step difference at1.5m/s3.78cm. Not uniformly superior to Mirror2.5: Mirror2.5 tracks speed and holds position during gesture better in this test, whereas this policy has more even high-speed steps. Results cover2evaluation seeds and1training seed, simulation only. Read copied evaluation_vi.md for definitions/limitations.

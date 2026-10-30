@@ -1,0 +1,4 @@
+contract: flat_plus_gait_h4_v1
+sha256: 148d365f4d08c14b7724b710f3cdddb280b42131383bc95c4f9a34019ce234d3
+# H4 interface verified locally; hardware validation remains pending.
+teleop_h4: true
