@@ -15,31 +15,31 @@ dance_speed_1: 1.0
 dance_volume_1: 0.7
 dance_trim_deg_1: 0.0
 
-dance_2: doremon_meta_4096env_end75_home_20261021
+dance_2: doremon_goc_4096env_end75_home_20261021
 dance_home_exit_2: on
 dance_speed_2: 1.0
 dance_volume_2: 0.7
 dance_trim_deg_2: 0.0
 
-dance_3: doremon_goc_4096env_end75_home_20261021
+dance_3: pokemonplus_goc_no_spin_no_lean_12288env_friction08to15_ckpt14500_20261027
 dance_home_exit_3: on
 dance_speed_3: 1.0
 dance_volume_3: 0.7
 dance_trim_deg_3: 0.0
 
-dance_4: pokemonplus_goc_no_spin_no_lean_12288env_friction08to15_ckpt14500_20261027
+dance_4: r1nhayngan_3_meta_4096env_17k_20261007
 dance_home_exit_4: on
 dance_speed_4: 1.0
 dance_volume_4: 0.7
 dance_trim_deg_4: 0.0
 
-dance_5: pokemonplus_meta_no_spin_no_lean_20261021
+dance_5: doremon_meta_new_pipeline_20260924_20k
 dance_home_exit_5: on
 dance_speed_5: 1.0
 dance_volume_5: 0.7
 dance_trim_deg_5: 0.0
 
-dance_6: roll_stance_pm3cm_goc_8192env_friction08to15_20k_20261022
+dance_6: pokemonplus_research_full_fixed_meta_20260924
 dance_home_exit_6: on
 dance_speed_6: 1.0
 dance_volume_6: 0.7
