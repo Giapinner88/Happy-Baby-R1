@@ -118,6 +118,7 @@ private:
     bool TryRecoverMotion(const unitree_hg::msg::dds_::LowState_& low,
                           const InputCommand& cmd, bool state_ok);
     void StopForMotionFault(const char* reason);
+    void MonitorLoopTiming(long state_age_ms);
     bool TickDisarmed(const InputCommand& cmd);   // P0-1: chờ arm, KHÔNG publish
     void EnterConflict();                          // P0-1: built-in quay lại -> nhả quyền
     bool TryDisarm(const InputCommand& cmd, const unitree_hg::msg::dds_::LowState_& low);
@@ -251,6 +252,15 @@ private:
     DisarmGate disarm_gate_;
     bool arm_neutral_required_ = false;
     int state_fault_log_tick_ = 0;   // nhịp nhắc lại lỗi LowState (500 tick = 1s)
+    // Đo nhịp vòng lặp để tách "DDS ngừng cập nhật" khỏi "vòng điều khiển trễ".
+    // Chỉ ghi nhận và báo cáo; ngưỡng dừng vẫn do motion guard quyết định.
+    std::chrono::steady_clock::time_point last_tick_time_;
+    std::chrono::steady_clock::time_point last_loop_gap_log_;
+    bool have_tick_time_ = false;
+    uint64_t loop_gap_count_ = 0;        // tổng số lần tràn nhịp kể từ khi chạy
+    uint64_t loop_gap_since_log_ = 0;
+    double loop_gap_max_ms_ = 0;         // tệ nhất kể từ khi chạy
+    double loop_gap_window_max_ms_ = 0;
 
     // Các module chức năng
     StateEstimator estimator_;

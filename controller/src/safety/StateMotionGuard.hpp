@@ -51,6 +51,8 @@ public:
     double ProgressAgeSeconds() const { return progress_age_s_; }
     double ObservationGapSeconds() const { return observation_gap_s_; }
     uint32_t TickAdvance() const { return tick_advance_; }
+    // Call before any sim-clock wait or controller reset. Wall time catches a
+    // publisher that disappears OR keeps repeating an old physical sample.
     // Runtime supplies the receive timestamp of the last changed physical tick,
     // captured with this sample. Without it, retain the conservative sync guard.
     bool Sensor(uint32_t tick, double wall_s, const Eigen::Quaternionf& root,
@@ -66,6 +68,9 @@ public:
                               received_progress_s > wall_s)) return Trip("invalid_state");
         progress_age_s_ = receive_clock ? wall_s-received_progress_s :
                           initialized_ ? wall_s-progress_wall_ : 0;
+        // Deliberately ahead of the first-sample branch: with the receive clock
+        // a late consumer no longer inflates this, so feedback that is already
+        // expired when a powered state begins is a dead feed, not a slow loop.
         if (receive_clock && progress_age_s_ > c_.timeout_s+1e-7) return Trip("stale_state");
         if (!initialized_) {
             initialized_=true; tick_=tick; wall_=progress_wall_=wall_s; sample_dt_=.02f;
@@ -77,6 +82,11 @@ public:
             // A delayed consumer may resume with feedback that remained fresh
             // in the DDS callback. Do not confuse its scheduling gap with age.
             if (!receive_clock && progress_age_s_>c_.timeout_s+1e-7) return Trip("stale_state");
+            // A loop that missed this long published no PD frame for the whole
+            // gap and tore a hole in the observation history. Feedback that is
+            // fresh again on resume does not undo either; stop under its own
+            // name instead of borrowing the sensor one.
+            if (observation_gap_s_>c_.timeout_s+1e-7) return Trip("loop_overrun");
             if (advance>0) {
                 sample_dt_=std::min(.02f,advance*.001f);
                 tick_=tick; progress_wall_=wall_s;

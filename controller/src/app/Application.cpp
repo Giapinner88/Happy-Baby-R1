@@ -245,6 +245,7 @@ bool Application::Tick() {
                   std::chrono::steady_clock::now() - last_state_time_).count()
             : std::numeric_limits<long>::max();
     }
+    MonitorLoopTiming(state_age_ms);
     // Gói cũ hơn watchdog DDS thì mọi thứ đọc từ nó (kể cả byte tay cầm) đều
     // không còn giá trị. Cờ này đi kèm `low` xuống mọi consumer.
     const bool previous_state_fresh = state_fresh_;

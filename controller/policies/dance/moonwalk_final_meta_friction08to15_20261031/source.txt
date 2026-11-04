@@ -1,0 +1,7 @@
+run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031
+actor: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031/policy.onnx
+metadata: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031.onnx
+motion: /home/ubuntu22/train_mujoco/outputs/artifacts/nus_0018_moonwalk_final_20261031/moonwalk_final_50hz.npz
+checkpoint: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031/model_14999.pt
+packager: /home/ubuntu22/train_mujoco/outputs/artifacts/moonwalk_policy_retrain_20261101/package_happybaby.py
+activation: inactive

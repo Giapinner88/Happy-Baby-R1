@@ -45,17 +45,30 @@ int main(){
     {Driver d;Check(!d.Step(Mode::Dance,170,170,26));Check(!d.Step(Mode::Dance,170,170,26));Check(d.Step(Mode::Dance,170,170,26));Check(std::string(d.guard.Reason())=="joint_speed");}
     {Guard g;Check(!g.Sensor(0,0,I,Z,true,0));Check(g.Sensor(0,.101,I,Z,true,0));Check(std::string(g.Reason())=="stale_state");Check(g.Sensor(200,.102,I,Z,true,0));}
     {Guard g;Check(!g.Sensor(0,0,I,Z,true,0));Check(g.Sensor(20,.101,I,Z,true,0));}
-    // Consumer paused for 200 ms, but DDS observed a changed tick 2 ms ago.
+    // Consumer paused for 200 ms while DDS observed a changed tick 2 ms ago:
+    // feedback is fresh (not stale_state), but 200 ms without a PD frame is its
+    // own fault and still stops the robot.
     {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));
-      Check(!g.Sensor(300,1.2,I,Z,true,0,1.198));
+      Check(g.Sensor(300,1.2,I,Z,true,0,1.198));
+      Check(std::string(g.Reason())=="loop_overrun");
       Check(g.ObservationGapSeconds()>.19);Check(g.ProgressAgeSeconds()<.003);}
+    // A late but in-budget consumer keeps running on fresh feedback.
+    {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));
+      Check(!g.Sensor(200,1.09,I,Z,true,0,1.088));
+      Check(g.ObservationGapSeconds()>.08);}
+    // Sensor loss outranks the loop: name the deeper cause when both expire.
+    {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));
+      Check(g.Sensor(100,1.2,I,Z,true,0,1));Check(std::string(g.Reason())=="stale_state");}
     // Repeated DDS packets do not refresh physical progression, even on entry.
     {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));
       Check(g.Sensor(100,1.101,I,Z,true,0,1));Check(std::string(g.Reason())=="stale_state");}
-    {Guard g;Check(g.Sensor(100,1.101,I,Z,true,0,1));}
+    // Entry is deliberately strict: feedback already expired when a powered
+    // state begins is a dead feed, and no free first sample is granted.
+    {Guard g;Check(g.Sensor(100,1.101,I,Z,true,0,1));Check(std::string(g.Reason())=="stale_state");}
     // A newer tick in an old received snapshot still expires.
     {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));Check(g.Sensor(200,1.3,I,Z,true,0,1.1));}
-    {Guard g;Check(!g.Sensor(UINT32_MAX-5,1,I,Z,true,0,1));Check(!g.Sensor(14,1.2,I,Z,true,0,1.199));}
+    // Tick wraparound at a normal loop cadence stays legal.
+    {Guard g;Check(!g.Sensor(UINT32_MAX-5,1,I,Z,true,0,1));Check(!g.Sensor(14,1.002,I,Z,true,0,1.002));}
     {Guard g;Check(!g.Sensor(100,1,I,Z,true,0,1));Check(g.Sensor(98,1.002,I,Z,true,0,1.002));
       Check(std::string(g.Reason())=="state_clock_reversed");}
     {Guard g;Check(!g.Sensor(100,0,I,Z,true,0));Check(g.Sensor(0,.02,I,Z,true,0));}

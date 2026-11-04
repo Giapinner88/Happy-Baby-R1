@@ -1,0 +1,50 @@
+name: moonwalk_final_meta_friction08to15_20261031
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031/2026-10-31_14-46-06_moonwalk_final_meta_8192env_friction08to15_15k_20261031.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 15000
+  iterations_target: 15000
+  checkpoint: model_14999.pt
+  friction_range:
+  - 0.8
+  - 1.5
+motion:
+  file: motion.npz
+  source: /home/ubuntu22/train_mujoco/outputs/artifacts/nus_0018_moonwalk_final_20261031/moonwalk_final_50hz.npz
+  source_sha256: 54a0add1212c3d69d5d6c1fdc875a96c6c19b3f5552063fa4fa0649f46fef455
+  frames: 865
+  fps: 50.0
+audio: null
+audio_omission: No matching Moonwalk audio found in workspace
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  hardware_acceptance: pending
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+cpp_sim:
+  result: passed
+  report: /home/ubuntu22/train_mujoco/outputs/artifacts/moonwalk_policy_retrain_20261101/RUNS.md
+artifacts:
+  policy: policy.onnx
+  motion: motion.npz
+  checkpoint: model_14999.pt
+  agent: agent.yaml
+  env: env.yaml
+  onnx_metadata: onnx_metadata.yaml
+sha256:
+  DESCRIPTION.md: 412d6564fb22c41eaef5d92062c02a710aef785985bdbe6c3c9ed11123fbcdb1
+  agent.yaml: 0794657cf3b5394a5f31db6e4e199ce65bdf86fd7506dcd72e0f8170f00689ea
+  env.yaml: 072a084d8a1379733511ca07d54013d9d79bcbfecf7f8b9421d6958c32048699
+  model_14999.pt: 4fd2b2258a24985ab50c1ca967374df58d9a95dac6271f583abba6a990ae1704
+  motion.npz: 54a0add1212c3d69d5d6c1fdc875a96c6c19b3f5552063fa4fa0649f46fef455
+  onnx_metadata.yaml: 2430ca212a112d3b96220d8ef6c9ea638bb0f03ab1518baa1deb71b8b43277f0
+  policy.onnx: 7ee7e547cfdd2a43ad9146a88078786359136a66a3d1d51b4383668444e11520
+  source.txt: e6a788c69e422823e7c3c517dff26301fe2a3cc8036c24cec6a5d99df76fc76f

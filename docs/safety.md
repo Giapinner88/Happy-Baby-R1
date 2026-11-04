@@ -72,11 +72,21 @@ nghiêng so với đứng thẳng theo `fall_*`. Không cần bật/tắt nghiê
 Guard dữ liệu dùng mốc `steady_clock` do DDS callback ghi khi `LowState.tick`
 thay đổi; mốc được chụp cùng gói dưới mutex. Tick đứng hoặc ngừng nhận quá
 `motion_safety_state_timeout_s` (100 ms) vẫn dừng, kể cả gói lặp liên tục.
-Vòng điều khiển đọc chậm rồi nhận một mẫu còn mới không tự gây `stale_state`.
+Vòng điều khiển đọc chậm rồi nhận một mẫu còn mới không gây `stale_state`, vì
+đó không phải lỗi dữ liệu. Nhưng vòng lặp đứt quá cùng ngưỡng 100 ms thì dừng
+dưới tên riêng `loop_overrun`: suốt khoảng đó không có khung PD nào được gửi và
+lịch sử observation bị thủng, cảm biến tươi trở lại cũng không bù được. Hai lý
+do tách nhau để log nói đúng nguyên nhân, không phải để nới lỏng mức bảo vệ.
 Đây là tuổi tiến triển quan sát tại callback, không phải phép đo độ trễ vật lý
 đầu cuối. Watchdog tuổi gói `state_timeout_ms` vẫn độc lập. Log STOP thêm
-`progress_age_ms`, `observation_gap_ms`, `tick_advance` để phân biệt dữ liệu cũ
-với consumer bị trễ.
+`progress_age_ms`, `observation_gap_ms`, `tick_advance`, `loop_gaps`,
+`loop_gap_max_ms` để phân biệt dữ liệu cũ với consumer bị trễ.
+
+Ngoài ra mỗi chu kỳ dài hơn 10 ms (bỏ lỡ từ 5 khung PD) được ghi thành dòng
+`[LoopTiming] gap_ms=... state_age_ms=... progress_age_ms=... state=...`, gom
+theo cửa sổ 1 giây, KHÔNG dừng robot. Dùng các dòng này để biết máy có bị trễ
+lập lịch hay không trước khi bàn tới chuyện đổi ngưỡng. `stdout` nay đệm theo
+dòng nên mốc thời gian trong journal đúng với thứ tự sự việc.
 
 Đoạn cuối đã về đứng được nhận diện tự động từ NPZ: phần reference liên tục
 đến hết bài có torso nghiêng ≤10°, tốc độ chân/waist ≤0.6 rad/s, tốc độ đổi

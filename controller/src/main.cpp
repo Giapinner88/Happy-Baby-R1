@@ -3,6 +3,7 @@
  * Quản lý khởi tạo, xử lý tín hiệu hệ thống (signal) và vòng lặp chính của robot.
  */
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -39,6 +40,10 @@ std::string GetProjectDir(const char* argv0) {
 } // namespace
 
 int main(int argc, const char** argv) {
+    // journald nhận stdout qua pipe => mặc định đệm theo khối, log vận hành có
+    // thể xuất hiện muộn hàng giây và làm sai lệch mốc thời gian khi điều tra
+    // sự cố. Đệm theo dòng để thứ tự log đúng với thứ tự sự việc.
+    std::setvbuf(stdout, nullptr, _IOLBF, 0);
     std::string interface_override;
     bool preflight = false;
     for (int i = 1; i < argc; ++i) {
