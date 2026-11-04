@@ -64,7 +64,7 @@ def progress_snapshot(active):
             if (event.get('state') == 'SCAN_ROUND_RESULT'
                     and event.get('body_offset_deg') == 0
                     and event.get('decision') == 'not_found'
-                    and event.get('views_processed') == 3):
+                    and event.get('views_processed',0) > 0):
                 front_scan_complete = True
     return {'status': 'running', 'front_scan_complete': front_scan_complete}
 

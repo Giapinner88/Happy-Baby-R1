@@ -1,6 +1,5 @@
 {
   "head_yaws_deg": [
-    0,
     25,
     -25
   ],
@@ -17,6 +16,7 @@
   "recenter_step_deg": 60,
   "fast_recenter_without_recapture": true,
   "batch_head_capture": false,
+  "parallel_perception": true,
   "usable_hfov_deg": 65,
   "overlap_fraction": 0.2,
   "max_observations": 24,

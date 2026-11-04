@@ -4,6 +4,7 @@ import subprocess
 import time
 from pathlib import Path
 import math
+import threading
 
 
 def rotate_point_into_heading(point,delta_heading_deg):
@@ -110,6 +111,7 @@ class PipelineBackend:
     def __init__(self,transport,output_dir,pipeline_args=None):
         self.transport=transport;self.out=Path(output_dir);self.index=0
         self.args=pipeline_args or [];self.plans={}
+        self.perception_lock=threading.Lock()
     def __getattr__(self,name):return getattr(self.transport,name)
     def capture_view(self):
         captured=self.transport.rpc('capture')
@@ -121,8 +123,11 @@ class PipelineBackend:
         return self.process_view(query,self.capture_view())
     def process_view(self,query,captured):
         import sys
+        started=time.monotonic()
         directory=Path(captured['capture_dir']).resolve()
-        self.index+=1;out=self.out/('view_%03d'%self.index)
+        with self.perception_lock:
+            self.index+=1;index=self.index
+        out=self.out/('view_%03d'%index)
         script=Path(__file__).resolve().parents[2]/'r1_target_control/pipeline.py'
         cmd=[sys.executable,str(script),'--capture-dir',str(directory),
              '--query',query,'--output-dir',str(out),*self.args]
@@ -130,7 +135,7 @@ class PipelineBackend:
             process=subprocess.run(cmd,text=True,capture_output=True,timeout=120)
         except subprocess.TimeoutExpired:
             raise TimeoutError('vision pipeline timeout') from None
-        (self.out/('view_%03d.log'%self.index)).write_text(process.stdout+process.stderr)
+        (self.out/('view_%03d.log'%index)).write_text(process.stdout+process.stderr)
         if process.returncode:raise RuntimeError('vision pipeline failed; inspect view log')
         proposal=json.loads((out/'bbox/result.json').read_text())
         observation=json.loads((out/'bbox/observation.json').read_text())
@@ -144,6 +149,8 @@ class PipelineBackend:
         if abs(math_degrees(q['head_yaw_joint'])-captured['pose']['head_yaw_deg'])>1:
             raise ValueError('adapter pose differs from capture encoder')
         result={'decision':proposal['decision'],'observation_id':proposal['observation_id'],
+                'perception_started_monotonic_s':started,
+                'perception_finished_monotonic_s':time.monotonic(),
                 'image_sha256':observation['source_sha256'],'pose':captured['pose'],
                 'captured_at_s':captured['captured_at_s']}
         p=proposal['proposal']
@@ -156,7 +163,8 @@ class PipelineBackend:
             # Geometry already includes captured head pose and camera mounting.
             # Adding head yaw here again would double-count it.
             result['target_heading_deg']=captured['pose']['body_heading_deg']+math.degrees(math.atan2(point[1],point[0]))
-            self.plans[result['observation_id']]=out
+            with self.perception_lock:
+                self.plans[result['observation_id']]=out
         else:
             result['clarification']=p.get('clarification')
             if proposal['decision']=='ask' and len(p.get('candidates',[]))==2:

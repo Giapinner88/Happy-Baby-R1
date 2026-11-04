@@ -3,6 +3,7 @@ Backend state timestamps use the same monotonic clock as backend.now().
 No motor publisher or cloud client in this module.
 """
 import math
+from concurrent.futures import ThreadPoolExecutor, wait
 
 
 def validate_config(c):
@@ -20,6 +21,8 @@ def validate_config(c):
         raise ValueError('fast_recenter_without_recapture must be bool')
     if type(c.get('batch_head_capture',False)) is not bool:
         raise ValueError('batch_head_capture must be bool')
+    if type(c.get('parallel_perception',False)) is not bool:
+        raise ValueError('parallel_perception must be bool')
     if type(c.get('recenter_attempts',2)) is not int or not 0<=c.get('recenter_attempts',2)<=4:
         raise ValueError('invalid recenter_attempts')
     step=c.get('recenter_step_deg',60)
@@ -29,8 +32,8 @@ def validate_config(c):
     for k in ['head_yaws_deg','body_offsets_deg']:
         if not isinstance(c[k],list) or not c[k] or any(type(x) not in (int,float) or not math.isfinite(x) for x in c[k]):
             raise ValueError('invalid '+k)
-    if c['head_yaws_deg'][0] != 0 or any(abs(x)>c['head_limit_deg'] for x in c['head_yaws_deg']):
-        raise ValueError('head scan must start at zero and respect envelope')
+    if any(abs(x)>c['head_limit_deg'] for x in c['head_yaws_deg']):
+        raise ValueError('head scan must respect envelope')
     step=c['usable_hfov_deg']*(1-c['overlap_fraction'])
     if any(b-a>step for a,b in zip(sorted(c['head_yaws_deg']),sorted(c['head_yaws_deg'])[1:])):
         raise ValueError('head scan leaves gaps under configured FOV')
@@ -149,6 +152,10 @@ class Search:
         self.check()
         if self.count>=self.c['max_observations']:raise TimeoutError('observation budget')
         o=self.b.process_view(query,captured) if captured is not None else self.b.observe(query)
+        return self.accept_observation(o,head,body,captured)
+
+    def accept_observation(self,o,head,body,captured=None):
+        """Validate worker results on the motion/orchestration thread only."""
         self.count+=1;self.check()
         if o['observation_id'] in self.seen:raise ValueError('reused observation ID')
         self.seen.add(o['observation_id'])
@@ -177,6 +184,32 @@ class Search:
                            'interval_deg':[bearing-self.c['usable_hfov_deg']/2,bearing+self.c['usable_hfov_deg']/2]})
         self.log('OBSERVATION',observation=o)
         return o
+
+    def parallel_round(self,query,body):
+        """Only perception runs in workers; camera/motion and validation stay serial.
+
+        Each worker owns a captured image and its recorded pose. All workers are
+        joined before any action/body rotation, including cancellation/failure.
+        Capture order determines selection, never network completion order.
+        """
+        jobs=[]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            for head in self.c['head_yaws_deg']:
+                self.check()
+                if self.count+len(jobs)>=self.c['max_observations']:
+                    raise TimeoutError('observation budget')
+                self.log('HEAD_SCAN',target_yaw_deg=head);self.b.move_head(head)
+                captured=self.capture_staged(head,body)
+                self.log('PERCEPTION_SUBMITTED',image_sha256=captured['image_sha256'],head_yaw_deg=head)
+                jobs.append((head,captured,pool.submit(self.b.process_view,query,captured)))
+            observations=[]
+            for head,captured,future in jobs:
+                while not future.done():
+                    self.check()
+                    # Keep the adapter lease alive without issuing motion.
+                    self.state();wait([future],timeout=self.c['poll_s'])
+                observations.append(self.accept_observation(future.result(),head,body,captured))
+        return observations
 
     def point_or_recenter(self,query,observation):
         for attempt in range(self.c.get('recenter_attempts',2)+1):
@@ -234,6 +267,19 @@ class Search:
                     if self.travel+travel>self.c['max_body_travel_deg']:raise TimeoutError('body travel budget')
                     self.log('BODY_TURN',target_heading_deg=target)
                     body=self.turn_body(target)
+                if self.c.get('parallel_perception',False):
+                    observations=self.parallel_round(query,body)
+                    for o in observations:
+                        if o['decision']=='ask':
+                            self.pending=o if len(o.get('candidates',[]))==2 else None
+                            raise Finished('needs_clarification',o.get('clarification'))
+                    for o in observations:
+                        if o['decision']!='selected':continue
+                        action=self.point_or_recenter(query,o)
+                        if action is not None:raise Finished('found',action=action)
+                    self.log('SCAN_ROUND_RESULT',body_offset_deg=offset,decision='not_found',
+                             views_processed=len(observations))
+                    continue
                 if self.c.get('batch_head_capture',False):
                     if not all(hasattr(self.b,name) for name in ('capture_view','process_view')):
                         raise ValueError('backend does not support staged capture')

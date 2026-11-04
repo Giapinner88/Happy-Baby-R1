@@ -40,6 +40,12 @@ def main():
     if not required <= cfg.keys():parser.error('incomplete config')
     if cfg['image_detail'] not in ('auto','low','high') or cfg['timeout_s']<=0 or cfg['max_output_tokens']<=0:
         parser.error('invalid detail, timeout or token budget')
+    max_edge=cfg.get('image_max_edge',0)
+    quality=cfg.get('jpeg_quality',85)
+    if type(max_edge) is not int or max_edge<0 or type(quality) is not int or not 50<=quality<=100:
+        parser.error('invalid image_max_edge or jpeg_quality')
+    if cfg.get('image_encoding','png') not in ('png','jpeg'):
+        parser.error('invalid image_encoding')
     if not args.query.strip():parser.error('query is empty')
     if not args.prepare_only and args.proposal_json is None and not os.environ.get('OPENAI_API_KEY','').strip():
         parser.error('OPENAI_API_KEY is missing; use --prepare-only for offline preparation')
@@ -58,13 +64,24 @@ def main():
     def save(name,value):
         (out/name).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')
     png_path_image.save(out/'frame.png')
-    submitted=(out/'frame.png').read_bytes();sha=hashlib.sha256(submitted).hexdigest()
+    # Keep the original pixels for calibration/overlays. A normalized bbox maps
+    # back to this frame even when the API image is proportionally downscaled.
+    api_image=png_path_image.copy()
+    if max_edge and max(api_image.size)>max_edge:
+        api_image.thumbnail((max_edge,max_edge),getattr(Image,'Resampling',Image).LANCZOS)
+    encoding=cfg.get('image_encoding','png')
+    api_path=out/('submitted.jpg' if encoding=='jpeg' else 'submitted.png')
+    api_image.save(api_path,**({'quality':quality} if encoding=='jpeg' else {}))
+    submitted=api_path.read_bytes();sha=hashlib.sha256(submitted).hexdigest()
     observation='obs_'+sha[:16]
-    request=grounding.build_request(submitted,args.query,(width,height),cfg)
+    request=grounding.build_request(submitted,args.query,api_image.size,cfg)
     save('resolved_config.json',{**cfg,'calibration':str(cal.resolve()) if cal else None,
          'source_image':str(args.image.resolve()),'query':args.query,
          'mode':'prepare_only' if args.prepare_only else ('offline_replay' if args.proposal_json else 'openai_responses')})
     save('observation.json',{'observation_id':observation,'image_sha256':sha,
+         'frame_sha256':hashlib.sha256((out/'frame.png').read_bytes()).hexdigest(),
+         'submitted_image':api_path.name,'submitted_image_size_wh':list(api_image.size),
+         'submitted_bytes':len(submitted),
          'source_sha256':hashlib.sha256(source).hexdigest(),'image_size_wh':[width,height],
          'image':'frame.png','loaded_at_utc':datetime.now(timezone.utc).isoformat(),
          'captured_at_utc':None,'head_state':None,'body_pose':None,

@@ -138,12 +138,13 @@ def optical_ray(uv: list, image_wh: tuple, calibration_path: Path) -> dict:
 
 
 def build_request(image_png: bytes, query: str, image_wh: tuple, config: dict) -> dict:
+    mime = 'image/jpeg' if image_png.startswith(b'\xff\xd8') else 'image/png'
     return {
         'model': config['model'], 'store': False,
         'instructions': INSTRUCTIONS,
         'input': [{'role': 'user', 'content': [
             {'type': 'input_text', 'text': f'Image dimensions: {image_wh[0]}x{image_wh[1]}. User request: {query}'},
-            {'type': 'input_image', 'image_url': 'data:image/png;base64,'+base64.b64encode(image_png).decode('ascii'),
+            {'type': 'input_image', 'image_url': 'data:'+mime+';base64,'+base64.b64encode(image_png).decode('ascii'),
              'detail': config['image_detail']}]}],
         'text': {'format': {'type': 'json_schema', 'name': 'object_grounding', 'strict': True, 'schema': SCHEMA}},
         'max_output_tokens': config['max_output_tokens'],

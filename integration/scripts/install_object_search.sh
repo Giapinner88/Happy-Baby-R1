@@ -28,6 +28,10 @@ for name in r1-p5-agent r1-p6-search; do
         > "/etc/systemd/system/$name.service"
     chmod 0644 "/etc/systemd/system/$name.service"
 done
+install -d -m 0755 /etc/systemd/system/hb_teleop_runtime.service.d /etc/systemd/system/r1-p6-search.service.d
+install -m 0644 "$APP/runtime/quest-search-mode.conf" /etc/systemd/system/hb_teleop_runtime.service.d/object-search-mode.conf
+install -m 0644 "$APP/runtime/p6-search-mode.conf" /etc/systemd/system/r1-p6-search.service.d/object-search-mode.conf
 systemctl daemon-reload
 touch /etc/hb/object_search_enabled
-echo "Units rendered. Inspect with systemctl cat; activate only under the robot SOP."
+echo "Units rendered. When DISARMED, select the persistent sender mode:"
+echo "sudo bash $APP/runtime/runtime_mode.sh search  # or quest"

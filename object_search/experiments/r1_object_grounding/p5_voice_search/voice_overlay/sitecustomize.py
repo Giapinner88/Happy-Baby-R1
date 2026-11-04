@@ -170,7 +170,7 @@ def install():
     vision_tools.VISION_TOOL_INSTRUCTIONS += (
         '\n- Khi người dùng yêu cầu tìm và chỉ một vật, gọi find_and_point với một mục tiêu rõ ràng. '
         'Không nói lời chờ hoặc suy đoán trong khi công cụ đang tìm. '
-        'Sau khi đã quét ba ảnh trước mặt mà chưa thấy vật, hệ thống tự báo trạng thái và tiếp tục xoay tìm; '
+        'Sau khi đã quét các ảnh phía trước mà chưa thấy vật, hệ thống tự báo trạng thái và tiếp tục xoay tìm; '
         'không hỏi người dùng mô tả thêm trừ khi tool cuối cùng trả needs_clarification. '
         'Nếu có hai vật phù hợp, hỏi lại bên trái/phải hoặc to/nhỏ; sau câu trả lời, '
         'gọi lại find_and_point với chính câu trả lời để dùng tọa độ đã lưu, không quét lại. '

@@ -20,7 +20,7 @@ from ai_modules.vision import openai_grounding as grounding
 from control import runtime_info,limits,validate_target
 from vision_geometry import combined_target,validate_config,camera_pose
 
-CAPTURE_SCRIPT=ROOT/'experiments/r1_object_grounding/p2_look_at_dryrun/capture_observation.py'
+CAPTURE_SCRIPT=ROOT/'experiments/r1_object_grounding/p2_bbox_baseline/p2_look_at_dryrun/capture_observation.py'
 BBOX_SCRIPT=ROOT/'experiments/r1_object_grounding/p2_bbox_baseline/run.py'
 
 
@@ -48,8 +48,13 @@ def read_bbox(directory,capture):
         raise ValueError('bbox observation ID mismatch')
     if observation['source_sha256']!=capture['image_sha256']:
         raise ValueError('bbox and capture refer to different source images')
-    if hashlib.sha256((directory/'frame.png').read_bytes()).hexdigest()!=observation['image_sha256']:
+    submitted=observation.get('submitted_image','frame.png')
+    if submitted not in ('frame.png','submitted.jpg','submitted.png'):
+        raise ValueError('invalid submitted image path')
+    if hashlib.sha256((directory/submitted).read_bytes()).hexdigest()!=observation['image_sha256']:
         raise ValueError('submitted image SHA256 mismatch')
+    if hashlib.sha256((directory/'frame.png').read_bytes()).hexdigest()!=observation.get('frame_sha256',observation['image_sha256']):
+        raise ValueError('geometry frame SHA256 mismatch')
     proposal=grounding.validate_proposal(result['proposal'])
     if proposal['decision']!=result['decision']:raise ValueError('bbox decision mismatch')
     if proposal['decision']=='selected':
@@ -150,7 +155,7 @@ def main():
             bbox.mkdir()
             for name in ['result.json','observation.json','frame.png','annotated.png','resolved_config.json']:
                 shutil.copy2(a.bbox_run/name,bbox/name)
-            for name in ['response.json','provenance.json']:
+            for name in ['response.json','provenance.json','submitted.jpg','submitted.png']:
                 if (a.bbox_run/name).is_file():shutil.copy2(a.bbox_run/name,bbox/name)
             query=stored_query
         else:

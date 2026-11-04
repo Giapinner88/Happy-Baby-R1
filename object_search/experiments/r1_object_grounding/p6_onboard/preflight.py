@@ -12,6 +12,26 @@ import sys
 ROOT = Path(__file__).resolve().parents[3]
 
 
+def is_competing_sender(argv):
+    """Match executed Python scripts, not strings in SSH/shell diagnostics."""
+    if not argv:
+        return False
+    conflicts = {'run_r1_vendor_targets.py', 'run_r1_vendor_ik_stream.py',
+                 'run_r1_policy_rollout.py', 'run_r1_upstream_ik_stream.py'}
+    executable = Path(argv[0]).name
+    if executable in conflicts:
+        return True
+    if not executable.startswith('python'):
+        return False
+    for arg in argv[1:]:
+        if arg in ('-c', '-m'):
+            return False
+        if arg.startswith('-'):
+            continue
+        return Path(arg).name in conflicts
+    return False
+
+
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -68,17 +88,16 @@ def verify_runtime(root, runtime_root, agent_port):
     expected_owner = (runtime_root/'controller/build/run_r1').resolve()
     owners = []
     senders = []
-    conflicts = ('run_r1_vendor_targets.py', 'run_r1_vendor_ik_stream.py',
-                 'run_r1_policy_rollout.py', 'run_r1_upstream_ik_stream.py')
     for item in Path('/proc').iterdir():
         if not item.name.isdigit():
             continue
         try:
-            command = item.joinpath('cmdline').read_bytes().replace(b'\0', b' ').decode(errors='replace')
-            argv0 = command.split(' ', 1)[0]
+            argv = [arg.decode(errors='replace') for arg in
+                    item.joinpath('cmdline').read_bytes().split(b'\0') if arg]
+            argv0 = argv[0] if argv else ''
             if Path(argv0).name == 'run_r1':
                 owners.append((item.name, (item/'exe').resolve()))
-            if any(name in command for name in conflicts):
+            if is_competing_sender(argv):
                 senders.append(item.name)
         except (OSError, ValueError):
             continue
