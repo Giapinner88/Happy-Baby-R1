@@ -6,6 +6,8 @@
 #include <string>
 
 #include "config/Tuning.hpp"
+#include "policy/FlatPolicyProfile.hpp"
+#include "policy/PolicyBundle.hpp"
 
 namespace {
 void Require(bool condition) {
@@ -21,11 +23,25 @@ int main() {
     Tuning tuning;
     assert(tuning.LoadFromFile(HB_TUNING_CONFIG_PATH));
     assert(tuning.network_interface == "eth10");
-    // Ghim route policy đang active để đổi model phải cập nhật manifest và
-    // preflight cùng lúc; contract + sha256 nằm trong policy.yaml của bundle.
-    assert(tuning.walk_policy == "t1_settle05_iter19999");
-    assert(tuning.teleop_policy == "u4_seed42");
+    // KHÔNG ghim tên bundle: đổi policy phải là một dòng trong locomotion.yaml.
+    // Thay vào đó kiểm cấu trúc, tức mọi thứ đổi tên có thể làm hỏng: bundle tồn
+    // tại, sha256 khớp file onnx thật, contract nhận ra được, và chu kỳ giải
+    // được mà không cần override trong YAML. PolicyBundle::Load ném lỗi nếu sai.
+    assert(!tuning.walk_policy.empty());
     assert(!tuning.flat_model_configured);
+    const std::string project =
+        std::filesystem::path(HB_TUNING_CONFIG_PATH).parent_path().parent_path().string();
+    for (const std::string& name : {tuning.walk_policy,
+                                    tuning.teleop_policy.empty() ? tuning.walk_policy
+                                                                 : tuning.teleop_policy}) {
+        const PolicyBundle bundle = PolicyBundle::Load(project, name);
+        assert(!bundle.contract.empty());
+        ParseFlatPolicyProfile(bundle.contract);  // ném nếu contract lạ
+        // Chu kỳ phải đến từ bundle: locomotion.yaml không còn khai nó.
+        assert(bundle.gait_period_s.has_value());
+    }
+    assert(!tuning.WalkGaitPeriodOverride().has_value());
+    assert(!tuning.gait_settle_dwell_s.has_value());
     assert(tuning.teleop_h4_enabled);
     assert(tuning.teleop_h4_model_sha256.empty());
     // Audio cues and per-motor head gains are part of the active runtime

@@ -36,6 +36,7 @@ usage() {
     cat <<'USAGE'
 Usage:
   ./hb policy list                                       liệt kê bundle, đánh dấu walk/teleop đang chọn
+  ./hb policy use <tên> [--teleop]                       đổi walk_policy (hoặc teleop_policy) rồi preflight
   ./hb policy add <file.onnx> <tên> [--contract C]
                    [--gait-period S] [--settle-dwell S]
                                                          tên hoặc nhóm/tên; tạo policies/locomotion/<tên>/ (mặc định
@@ -132,9 +133,65 @@ EOF
     echo "  3. ./hb deploy   (may dev)"
 }
 
+# Đổi policy đang chọn. Chu kỳ, dwell và manifest đi theo bundle, nên đây là
+# toàn bộ thao tác: sửa một dòng rồi chứng minh bằng preflight thật.
+cmd_use() {
+    local name="" role=walk_policy
+    while (($#)); do
+        case "$1" in
+            --teleop) role=teleop_policy; shift ;;
+            --walk)   role=walk_policy; shift ;;
+            -*) usage >&2; exit 2 ;;
+            *) [[ -z "$name" ]] || { usage >&2; exit 2; }; name="$1"; shift ;;
+        esac
+    done
+    [[ -n "$name" ]] || { usage >&2; exit 2; }
+    hb_valid_policy_bundle_name "$name" || {
+        echo "ten bundle khong hop le: '$name'" >&2; exit 1; }
+    local dir="$LOCO_DIR/$name"
+    [[ -f "$dir/policy.onnx" && -f "$dir/policy.yaml" ]] || {
+        echo "khong co bundle '$name' ($dir thieu policy.onnx hoac policy.yaml)" >&2
+        echo "xem danh sach: ./hb policy list" >&2; exit 1; }
+    local contract period actual expected
+    contract="$(hb_config_get "$dir/policy.yaml" contract)"
+    period="$(hb_config_get "$dir/policy.yaml" gait_period_s)"
+    expected="$(hb_config_get "$dir/policy.yaml" sha256)"
+    [[ -n "$contract" ]] || { echo "bundle '$name' thieu contract" >&2; exit 1; }
+    [[ -n "$period" ]] || {
+        echo "bundle '$name' thieu gait_period_s trong policy.yaml; runtime se tu choi." \
+             "Them bang: ./hb policy add ... --gait-period <giay>" >&2; exit 1; }
+    actual="$(sha256sum "$dir/policy.onnx" | awk '{print $1}')"
+    [[ "$actual" == "$expected" ]] || {
+        echo "bundle '$name': sha256 trong policy.yaml ($expected) khac file onnx ($actual)" >&2
+        exit 1; }
+
+    local config="$HIGH_DIR/config/locomotion.yaml" previous
+    previous="$(hb_config_get "$config" "$role")"
+    if grep -qE "^${role}:" "$config"; then
+        sed -i "s|^${role}:.*|${role}: ${name}|" "$config"
+    else
+        printf '%s: %s\n' "$role" "$name" >>"$config"
+    fi
+    echo "$role: ${previous:-<trong>} -> $name  (contract $contract, gait_period_s $period)"
+
+    # Manifest sinh lai tu runtime, khong suy ra o day. ./hb deploy cung lam
+    # buoc nay, chay truoc de loi hien ra ngay luc doi chu khong luc deploy.
+    if ! bash "$HB_ROOT/integration/scripts/update_model_manifest.sh"; then
+        echo "preflight that bai; tra lai $role: ${previous:-<trong>}" >&2
+        if [[ -n "$previous" ]]; then
+            sed -i "s|^${role}:.*|${role}: ${previous}|" "$config"
+        else
+            sed -i "/^${role}:/d" "$config"
+        fi
+        exit 1
+    fi
+    echo "Tiep theo: ./hb test cpp, roi ./hb deploy (may dev)"
+}
+
 case "${1:-help}" in
     list) shift; cmd_list "$@" ;;
     add)  shift; cmd_add "$@" ;;
+    use)  shift; cmd_use "$@" ;;
     help|-h|--help) usage ;;
     *) usage >&2; exit 2 ;;
 esac

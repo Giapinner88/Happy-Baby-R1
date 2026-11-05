@@ -328,6 +328,7 @@ if(BUILD_TESTING)
     add_test(NAME wb_legs_gait_golden_test COMMAND wb_legs_gait_golden_test)
 
     add_executable(tuning_include_test tests/tuning_include_test.cpp src/config/Tuning.cpp)
+    target_include_directories(tuning_include_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_definitions(tuning_include_test PRIVATE
         HB_TUNING_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/tuning.yaml")
     add_test(NAME tuning_include_test COMMAND tuning_include_test)

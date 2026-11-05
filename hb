@@ -63,7 +63,8 @@ GHI DỮ LIỆU  (chỉ nghe DDS, không tạo publisher; dùng song song run_r1
 KHÁC
   policy list                  liệt kê bundle policy đi bộ, đánh dấu walk (R2+A) / teleop (R2+X)
   policy add <file.onnx> <tên> [--contract C]
-                               tạo controller/policies/locomotion/<tên>/ (chọn bằng locomotion.yaml)
+                               tạo controller/policies/locomotion/<tên>/; chu kỳ gait đọc từ metadata ONNX
+  policy use <tên> [--teleop]  đổi walk_policy (hoặc teleop_policy) rồi preflight + sinh lại manifest
   dance list | prune [--apply] | restore <tên>
   find-robot                   dò robot, in ROBOT=...
 USAGE

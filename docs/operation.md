@@ -41,7 +41,9 @@ Các tham số khác (gains, tốc độ, dance, ngồi ghế…) chỉnh theo n
 >    `run_r1 --preflight`, dòng `[...] gait_period=...` có đánh dấu `[bundle]` hay
 >    `[override locomotion.yaml]`. Dwell FSM cũng vậy.
 > 2. Trần tốc độ (`slow_*`/`fast_*`) phải nằm trong dải lệnh model đó đã train.
-> 3. Sửa tên bundle trong `tests/tuning_include_test.cpp` và `tests/config_reader_test.sh` —
+> 3. ~~Sửa tên bundle trong test~~ **không cần nữa**: hai test đó kiểm cấu trúc chứ không
+>    ghim tên. Dùng `./hb policy use <tên>` để đổi, nó tự sinh lại manifest và trả lại
+>    lựa chọn cũ nếu preflight hỏng. Phần còn lại của ghi chú cũ:
 >    hai chỗ đó ghim tên có chủ đích để bắt việc đổi model ngoài ý muốn.
 
 ---
