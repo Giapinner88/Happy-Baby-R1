@@ -269,10 +269,13 @@ void Application::InitControllers() {
         walk_gait_period_s_ = tuning_.WalkGaitPeriod();
         teleop_gait_period_s_ = tuning_.TeleopGaitPeriod();
         walk_settle_dwell_s = tuning_.GaitSettleDwell();
-        // Route cũ flat_model không có bundle; chỉ các contract không phải
-        // flat_plus_gait mới đi đường này an toàn, còn lại sẽ bị từ chối vì
-        // thiếu gait_phase_source. Đó là chủ ý: route cũ là rollback, không
-        // phải chỗ chạy policy mới.
+        // Route cũ flat_model không có bundle để khai gait_phase_source, nên nó
+        // được MIỄN kiểm tra bằng sentinel "from_metadata" và giữ nguyên cách
+        // suy từ sự có mặt của khoá metadata. Nói rõ: nghĩa là lỗ hổng "ONNX
+        // rụng khoá phase thì chạy sai term phase" VẪN CÒN trên route này.
+        // Chấp nhận được vì route này ghim đúng tên file trong config và mọi
+        // artifact trong _archive/flat_plus đều thuộc họ 0917 (episode clock,
+        // vốn không có khoá đó). Đừng nạp policy command-gated qua đường này.
         walk_ctrl_ = MakeLocomotionController(walk_contract, policy_path, walk_gait_period_s_,
                                               walk_settle_dwell_s, "from_metadata");
         if (tuning_.teleop_h4_enabled) {

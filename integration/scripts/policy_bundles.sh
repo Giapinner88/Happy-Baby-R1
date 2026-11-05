@@ -69,11 +69,16 @@ cmd_list() {
 }
 
 cmd_add() {
-    local src="" name="" contract="flat_plus_gait_h4_v1" period="" settle=""
+    local src="" name="" contract="flat_plus_gait_h4_v1" period="" settle="" phase_source=""
     while (( $# )); do
         case "$1" in
             --contract) contract="${2:?--contract needs a value}"; shift 2 ;;
             --gait-period) period="${2:?--gait-period needs a value}"; shift 2 ;;
+            --phase-source)
+                phase_source="${2:?--phase-source needs a value}"
+                [[ "$phase_source" == command_gated || "$phase_source" == episode_clock ]] || {
+                    echo "--phase-source phai la command_gated hoac episode_clock" >&2; exit 2; }
+                shift 2 ;;
             --settle-dwell) settle="${2:?--settle-dwell needs a value}"; shift 2 ;;
             -*) usage >&2; exit 2 ;;
             *)
@@ -104,9 +109,13 @@ cmd_add() {
     # chúng, nên bundle thiếu là run_r1 từ chối khởi động. Shell không đọc được
     # ONNX nên hỏi chính run_r1; --gait-period/--settle-dwell chỉ để vá khi
     # không đọc được. Giá trị sai không trôi được: runtime đối chiếu lại metadata.
-    local meta
-    if [[ -z "$period" ]] && meta="$(hb_policy_onnx_meta "$src" 2>/dev/null)"; then
-        period="$(sed -n 's/^gait_period_s=//p' <<<"$meta")"
+    # Doc metadata VO DIEU KIEN. Truoc day chi doc khi thieu --gait-period, nen
+    # dung co do la gait_phase_source bi dap nham 'episode_clock' cho moi
+    # artifact -- lai la suy tu su vang mat, chi doi cho sang buoc dong goi.
+    local meta meta_ok=1
+    meta="$(hb_policy_onnx_meta "$src" 2>/dev/null)" || meta_ok=0
+    if (( meta_ok == 1 )); then
+        [[ -n "$period" ]] || period="$(sed -n 's/^gait_period_s=//p' <<<"$meta")"
         [[ -n "$settle" ]] || settle="$(sed -n 's/^gait_t_settle_s=//p' <<<"$meta")"
     fi
     (( fixed_period == 0 )) || [[ -n "$period" ]] || {
@@ -142,11 +151,18 @@ EOF
     # Nguon term phase: hai bundle cung gait_fsm_contract co the khac nhau o
     # day, nen controller doi bundle khai chu khong suy tu metadata.
     if [[ "$contract" == flat_plus_gait_h4_v1 ]]; then
-        if grep -q '^gait_phase_contract=' <<<"${meta:-}"; then
-            printf 'gait_phase_source: command_gated\n' >>"$dest/policy.yaml"
-        else
-            printf 'gait_phase_source: episode_clock\n' >>"$dest/policy.yaml"
+        if [[ -z "$phase_source" ]]; then
+            (( meta_ok == 1 )) || {
+                echo "khong doc duoc metadata ONNX cua $src nen khong biet nguon term" \
+                     "phase. Them --phase-source command_gated|episode_clock." >&2
+                rm -rf -- "$dest"; exit 1; }
+            if grep -q '^gait_phase_contract=' <<<"$meta"; then
+                phase_source=command_gated
+            else
+                phase_source=episode_clock
+            fi
         fi
+        printf 'gait_phase_source: %s\n' "$phase_source" >>"$dest/policy.yaml"
     fi
     cat >>"$dest/policy.yaml" <<EOF
 # Nguồn: $(basename "$src"), thêm ngày $(date +%Y-%m-%d). Ghi provenance huấn luyện

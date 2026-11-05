@@ -67,16 +67,16 @@ cp "$READER" "$TMP_DIR/integration/scripts/config_reader.sh"
 cp "$(dirname "$READER")/policy_bundles.sh" "$TMP_DIR/integration/scripts/policy_bundles.sh"
 printf '%s\n' 'walk_policy: group/example' 'teleop_policy: group/example' >"$TMP_DIR/controller/config/tuning.yaml"
 printf 'fixture actor bytes' >"$TMP_DIR/source.onnx"
-bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 "$TMP_DIR/source.onnx" group/example >/dev/null
+bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 --phase-source command_gated "$TMP_DIR/source.onnx" group/example >/dev/null
 [[ -s "$TMP_DIR/controller/policies/locomotion/group/example/policy.yaml" ]]
 listing="$(bash "$TMP_DIR/integration/scripts/policy_bundles.sh" list)"
 [[ "$listing" == *group/example* && "$listing" == *'walk(R2+A)'* && "$listing" == *'teleop(R2+X)'* ]]
 for name in ../escape group//bad group/../escape /absolute group/; do
-    if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 "$TMP_DIR/source.onnx" "$name" >/dev/null 2>&1; then
+    if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 --phase-source command_gated "$TMP_DIR/source.onnx" "$name" >/dev/null 2>&1; then
         echo "Expected add to reject invalid selector '$name'" >&2; exit 1
     fi
 done
-if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 "$TMP_DIR/source.onnx" group/example >/dev/null 2>&1; then
+if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 --phase-source command_gated "$TMP_DIR/source.onnx" group/example >/dev/null 2>&1; then
     echo 'Expected add to reject an existing bundle' >&2; exit 1
 fi
 for name in '' . .. ../u2a_seed42 /armfree/test armfree/../u2a_seed42 \

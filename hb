@@ -102,8 +102,9 @@ build_dev_controller() {
     local test_python
     test_python="$(hb_test_python || true)"
     [[ -n "$test_python" ]] || echo "hb: khong tim thay python co goi onnx; 4 test hop dong ONNX se bi bo qua" >&2
-    cmake -S "$HIGH_DIR" -B "$HIGH_DIR/build" -DCMAKE_BUILD_TYPE=Release \
-        ${test_python:+-DHB_TEST_PYTHON="$test_python"}
+    local -a configure=(cmake -S "$HIGH_DIR" -B "$HIGH_DIR/build" -DCMAKE_BUILD_TYPE=Release)
+    [[ -z "$test_python" ]] || configure+=("-DHB_TEST_PYTHON=$test_python")
+    "${configure[@]}"
     if [[ "${1:-}" == "--clean" ]]; then
         cmake --build "$HIGH_DIR/build" --target clean
     fi
