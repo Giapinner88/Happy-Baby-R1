@@ -1,10 +1,10 @@
 {
   "task_id": "Unitree-R1-ArmFree0917-T1-Settle05-4096",
-  "source_checkpoint": "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/logs/armfree0917_t1_settle05_4096_20k_20261104/gait_seed42_4096env_20k/model_14100.pt",
-  "checkpoint_sha256": "72af0e8d0420c0d68ce84a5ef5d36646f2d7d96f09870b22113b62fdeee48141",
-  "iteration": 14100,
-  "onnx_sha256": "8ed49757c4288ec114af81c7a7e2e9386eec7ae5a42dae6642eb4e3dd053a53b",
-  "torch_onnx_max_abs_error": 4.0531158447265625e-06,
+  "source_checkpoint": "/home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_gait_pro/logs/armfree0917_t1_settle05_4096_20k_20261104/gait_seed42_4096env_20k/model_19999.pt",
+  "checkpoint_sha256": "a15f07cc96feb3fc9da62d34ad1b1adeaa33862e8ae25cd777ce5d55382113f5",
+  "iteration": 19999,
+  "onnx_sha256": "1d1ec267af9d2f3c41ab06584346ad9ee6368a15247ce572fec3c7bb7bd06d27",
+  "torch_onnx_max_abs_error": 1.6689300537109375e-06,
   "parity_samples": 128,
   "metadata": {
     "run_path": "local",
@@ -106,10 +106,14 @@
     "joint_effort_limit": "60,60,60,63,52.5,52.5,60,60,60,63,52.5,52.5,60,60,60,60,33,33,33,60,60,33,33,33",
     "gait_phase_contract": "episode_clock_command_gated_v1",
     "gait_phase_tick_alignment": "reset_zero_then_increment_after_observation",
-    "source_checkpoint": "model_14100.pt",
-    "source_checkpoint_sha256": "72af0e8d0420c0d68ce84a5ef5d36646f2d7d96f09870b22113b62fdeee48141",
-    "source_checkpoint_iteration": "14100"
+    "source_checkpoint": "model_19999.pt",
+    "source_checkpoint_iteration": "19999",
+    "source_checkpoint_sha256": "a15f07cc96feb3fc9da62d34ad1b1adeaa33862e8ae25cd777ce5d55382113f5"
   },
   "hardware_acceptance": "pending",
-  "quality_passed": false
+  "quality_passed": false,
+  "training_complete": true,
+  "iterations_completed": 20000,
+  "policy_steps": 480000,
+  "parity_method": "play env num_envs=1 on CPU, 128 consecutive steps, shipped ONNX vs model_19999.pt"
 }

@@ -23,8 +23,8 @@ int main() {
     assert(tuning.network_interface == "eth10");
     // Ghim route policy đang active để đổi model phải cập nhật manifest và
     // preflight cùng lúc; contract + sha256 nằm trong policy.yaml của bundle.
-    assert(tuning.walk_policy == "flat_plus_gait_0917_armfree");
-    assert(tuning.teleop_policy == "u5_seed42");
+    assert(tuning.walk_policy == "t1_settle05_iter19999");
+    assert(tuning.teleop_policy == "u4_seed42");
     assert(!tuning.flat_model_configured);
     assert(tuning.teleop_h4_enabled);
     assert(tuning.teleop_h4_model_sha256.empty());

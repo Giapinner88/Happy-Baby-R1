@@ -11,7 +11,7 @@ import tempfile
 import onnx
 
 root, binary = (Path(p).resolve() for p in sys.argv[1:3])
-model = onnx.load(root / "policies/locomotion/t1_settle05_iter14100/policy.onnx")
+model = onnx.load(root / "policies/locomotion/t1_settle05_iter19999/policy.onnx")
 metadata = {p.key: p.value for p in model.metadata_props}
 cases = {
     "valid": {},

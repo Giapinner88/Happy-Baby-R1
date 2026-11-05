@@ -609,8 +609,8 @@ int main() {
     const fs::path split = MakeProject(
         "23021a5fd4e636e6d5f0b17f900cd74c6bbbbe5fdd2523b6df4ccffbe1382cb9",
         "u4_seed42", "r1_wb_legs_gait_h4_v1_blind",
-        "t1_settle05_iter14100",
-        "8ed49757c4288ec114af81c7a7e2e9386eec7ae5a42dae6642eb4e3dd053a53b", 1.0f);
+        "t1_settle05_iter19999",
+        "1d1ec267af9d2f3c41ab06584346ad9ee6368a15247ce572fec3c7bb7bd06d27", 1.0f);
     {
         Application app(split.string(), "lo");
         ApplicationTestAccess r{app};

@@ -249,7 +249,7 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/command_gated_phase_trace.txt)
     add_test(NAME t1_native_phase_inference_test COMMAND armfree_native_phase_inference_test
         ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/t1_command_gated_phase_trace.txt
-        t1_settle05_iter14100 1.0)
+        t1_settle05_iter19999 1.0)
     add_test(NAME t1_policy_period_test COMMAND bash
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/t1_policy_period_test.sh
         ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
