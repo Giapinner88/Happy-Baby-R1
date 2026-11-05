@@ -58,7 +58,7 @@ void ScanDanceFolder(const std::string& dir, const std::string& label,
 } // namespace
 
 std::unique_ptr<PolicyController> Application::MakeLocomotionController(
-        const std::string& contract, const std::string& path) {
+        const std::string& contract, const std::string& path, float gait_period_s) {
     std::unique_ptr<PolicyController> ctrl;
     switch (ParseFlatPolicyProfile(contract)) {
         case FlatPolicyProfile::kLegacy83:
@@ -82,7 +82,7 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
                 tuning_.gait_settle_dwell_s,
                 tuning_.gait_w2s_timeout_s,
                 tuning_.gait_stability_filter_tau_s},
-                tuning_.gait_period_s);
+                gait_period_s);
             ctrl = std::move(gait_controller);
             break;
         }
@@ -96,10 +96,11 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
     }
     ctrl->Init(path, ort_env_, ort_opts_, tuning_);
     if (const auto* wb = dynamic_cast<const WholeBodyLegsController*>(ctrl.get())) {
-        // Phase obs dùng gait_ chung (tuning gait_period_s): phải bằng chu kỳ lúc train.
-        if (std::abs(wb->metadata_gait_period_s() - tuning_.gait_period_s) > 1e-3f)
+        // Validate against this route, not the other policy period.
+        if (!std::isfinite(wb->metadata_gait_period_s()) ||
+            std::abs(wb->metadata_gait_period_s() - gait_period_s) > 1e-3f)
             throw std::runtime_error(
-                "gait_period_s=" + std::to_string(tuning_.gait_period_s) +
+                "gait_period_s=" + std::to_string(gait_period_s) +
                 " khac metadata gait_period_s=" + std::to_string(wb->metadata_gait_period_s()) +
                 " cua " + path);
     }
@@ -129,7 +130,8 @@ void Application::InitControllers() {
         // Route bundle: policies/locomotion/<tên>/{policy.onnx, policy.yaml}.
         const PolicyBundle walk = PolicyBundle::Load(proj_dir_, tuning_.walk_policy);
         walk_contract = walk.contract;
-        walk_ctrl_ = MakeLocomotionController(walk.contract, proj_dir_ + "/" + walk.rel_path);
+        walk_ctrl_ = MakeLocomotionController(walk.contract, proj_dir_ + "/" + walk.rel_path,
+                                               tuning_.WalkGaitPeriod());
         walk_policy_label_ = walk.name;
         print_model("MODEL", walk.contract, walk.rel_path, *walk_ctrl_);
 
@@ -139,7 +141,7 @@ void Application::InitControllers() {
             ? walk : PolicyBundle::Load(proj_dir_, teleop_name);
         if (teleop.name != walk.name) {
             teleop_ctrl_ = MakeLocomotionController(teleop.contract,
-                                                    proj_dir_ + "/" + teleop.rel_path);
+                                                    proj_dir_ + "/" + teleop.rel_path, tuning_.TeleopGaitPeriod());
             // Tay: gesture/teleop chốt default tay MỘT lần lúc khởi động (từ walk
             // policy) -> hai policy phải trùng default tay. Chân + eo: các state tư thế
             // nhắm default của policy đang chọn, và đổi nóng blend blend_time_s từ
@@ -189,7 +191,7 @@ void Application::InitControllers() {
                 : "policies/locomotion/_archive/flat_plus/";
         const std::string rel = policy_dir + tuning_.flat_model;
         const std::string policy_path = proj_dir_ + "/" + rel;
-        walk_ctrl_ = MakeLocomotionController(walk_contract, policy_path);
+        walk_ctrl_ = MakeLocomotionController(walk_contract, policy_path, tuning_.WalkGaitPeriod());
         if (tuning_.teleop_h4_enabled) {
             h4_teleop_approved_ = walk_ctrl_->SupportsH4TeleopOverlay() &&
                 teleop_h4::Approved(true, walk_contract, policy_path,
@@ -206,8 +208,9 @@ void Application::InitControllers() {
 
     // Đặt ở đây (chứ không ở Run) để --preflight cũng in ra: chu kỳ gait là một phần
     // hợp đồng train giống Kp/Kd, phải đọc được mà không cần cắm DDS.
-    gait_.Configure(tuning_.gait_period_s);
+    gait_.Configure(tuning_.WalkGaitPeriod());
     std::cout << "[" << locomotion_->Name() << "] gait_period=" << gait_.period_s()
+              << "s, teleop_gait_period=" << tuning_.TeleopGaitPeriod()
               << "s (phai khop 'period' cua phase obs luc train " << walk_policy_label_ << ")\n";
     if (ParseFlatPolicyProfile(walk_contract) == FlatPolicyProfile::kFlatPlusGaitH4V1) {
         std::cout << "[FlatPlusGaitH4] gait_settle_dwell_s="

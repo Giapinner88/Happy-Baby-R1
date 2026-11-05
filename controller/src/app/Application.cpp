@@ -684,8 +684,14 @@ void Application::ActivatePolicy(PolicyController* ctrl) {
     // dậy là locomotion chạy tiếp bằng trim của bài dance đó.
     // Đặt TRƯỚC Reset() để policy nhận đúng quaternion ngay frame đầu.
     // Mimic tự nạp dance_trim_deg_N của nó ngay trước khi gọi hàm này.
-    if (ctrl == walk_ctrl_.get() || (teleop_ctrl_ && ctrl == teleop_ctrl_.get()))
+    if (ctrl == walk_ctrl_.get() || (teleop_ctrl_ && ctrl == teleop_ctrl_.get())) {
         estimator_.SetPitchTrimDeg(tuning_.LocomotionTrimDeg());
+        const float period = ctrl == walk_ctrl_.get() ? tuning_.WalkGaitPeriod() : tuning_.TeleopGaitPeriod();
+        if (std::abs(gait_.period_s() - period) > 1e-6f) {
+            gait_.Configure(period);
+            gait_.Reset();
+        }
+    }
     ctrl->Reset(estimator_.state());
     active_ = ctrl;
     lying_ = false;

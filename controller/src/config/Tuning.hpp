@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <string>
@@ -59,12 +60,16 @@ struct Tuning {
     float policy_kp_scale = 1.0f;
     float policy_kd_scale = 1.0f;
 
-    // Chu kỳ đồng hồ gait (giây) đưa vào obs[9]/obs[10] = sin/cos(2*pi*t/period).
-    // PHẢI bằng `period` của phase obs lúc train policy đang nạp — sai số ở đây là sai
-    // NHỊP bước, không có cách nào bù lại bằng gain. Mặc định 0.6 = period lúc train
-    // mọi policy R1 hiện có (mjlab velocity_env_cfg.py term `phase`, và deploy tham
-    // chiếu velocity/v0/params/deploy.yaml). Xem comment trong config/locomotion.yaml.
+    // Chu kỳ theo từng route; thiếu override thì dùng gait_period_s.
     float gait_period_s = 0.6f;
+    std::optional<float> walk_gait_period_s;
+    std::optional<float> teleop_gait_period_s;
+
+    float WalkGaitPeriod() const { return walk_gait_period_s.value_or(gait_period_s); }
+    float TeleopGaitPeriod() const {
+        return teleop_gait_period_s.value_or(
+            teleop_policy.empty() || teleop_policy == walk_policy ? WalkGaitPeriod() : gait_period_s);
+    }
 
     // Giới hạn tốc độ đi bộ (vx, vy, yaw)
     float slow_vx = 0.5f, slow_vy = 0.3f, slow_yaw = 0.5f, slow_vx_back = 0.4f;

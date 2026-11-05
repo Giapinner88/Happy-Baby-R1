@@ -5,19 +5,21 @@
 #include <sstream>
 
 int main(int argc, char** argv) {
-    if (argc != 3) throw std::invalid_argument("usage: armfree_native_phase_inference_test ROOT TRACE");
-    const std::array<std::string, 4> bundles = {
+    if (argc != 3 && argc != 5) throw std::invalid_argument("usage: armfree_native_phase_inference_test ROOT TRACE [BUNDLE PERIOD]");
+    std::vector<std::string> bundles = {
         "armfree/nomirror_d20",
         "armfree/nomirror_d25",
         "armfree/speed20_oldaction_d20",
         "armfree/speed20_nominal_d20"};
+    const float period = argc == 5 ? std::stof(argv[4]) : .6f;
+    if (argc == 5) bundles = {argv[3]};
     Ort::Env environment(ORT_LOGGING_LEVEL_ERROR, "native-phase-test");
     Ort::SessionOptions options;
     options.SetIntraOpNumThreads(1);
     for (const auto& bundle : bundles) {
         FlatPlusGaitController policy;
         GaitModeConfig gait;gait.settle_dwell_s = .5f;
-        policy.ConfigureGait(gait, .6f);
+        policy.ConfigureGait(gait, period);
         Tuning tuning;
         policy.Init(std::string(argv[1]) + "/policies/locomotion/" + bundle + "/policy.onnx", environment, options, tuning);
         RobotState state;
@@ -36,8 +38,7 @@ int main(int argc, char** argv) {
             if (!(row >> reset >> vx >> vy >> yaw >> sine >> cosine))
                 throw std::runtime_error("bad native phase row");
             if (reset) policy.Reset(state);
-            // Moving arms must not prevent the legs12 FSM from settling.
-            for (int j = 12; j < 24; ++j) state.dq_raw[j] = 2.0f;
+            for (int j = 12; j < 24; ++j) state.dq_raw[j] = argc == 5 ? 0.0f : 2.0f;
             ControlContext ctx{state};ctx.cmd_vx = vx;ctx.cmd_vy = vy;ctx.cmd_yaw = yaw;
             const auto& target = policy.Step(ctx);
             for (float q : target)
@@ -55,6 +56,21 @@ int main(int argc, char** argv) {
         }
         if (rows < 1000 || stand == 0 || w2s == 0)
             throw std::runtime_error("native inference trace did not cover stop and restart");
+        if (argc == 5) {
+            policy.Reset(state);
+            state.dq_raw[14] = 4.0f;
+            for (int i = 0; i < 20; ++i)
+                policy.Step(ControlContext{state, .4f, 0, 0, {0, 0}});
+            for (int i = 0; i < 100; ++i)
+                policy.Step(ControlContext{state, 0, 0, 0, {0, 0}});
+            if (policy.gait().stable() || policy.gait().mode() == GaitMode::Stand)
+                throw std::runtime_error("T1 ignored arm velocity in 24-joint RMS");
+            state.dq_raw.fill(0);
+            for (int i = 0; i < 100; ++i)
+                policy.Step(ControlContext{state, 0, 0, 0, {0, 0}});
+            if (policy.gait().mode() != GaitMode::Stand)
+                throw std::runtime_error("T1 failed settle after arm velocity stopped");
+        }
         std::cout << bundle << " NATIVE_INFERENCE_OK rows=" << rows
                   << " phase_max_abs_error=" << maximum << " stand=" << stand << " w2s=" << w2s << '\n';
     }

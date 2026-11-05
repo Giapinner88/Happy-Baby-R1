@@ -70,6 +70,28 @@ int main() {
     }
     Tuning ms_period;
     assert(!ms_period.LoadFromFile(bad_path.string()));
+    {
+        std::ofstream file(bad_path);
+        file << "gait_period_s: 0.8\nwalk_policy: a\nteleop_policy: b\n"
+                "walk_gait_period_s: 1.0\nteleop_gait_period_s: 0.6\n";
+    }
+    Tuning split;
+    assert(split.LoadFromFile(bad_path.string()));
+    assert(Near(split.WalkGaitPeriod(), 1.0f) && Near(split.TeleopGaitPeriod(), 0.6f));
+    for (const char* key : {"walk_gait_period_s", "teleop_gait_period_s"}) {
+        for (const char* value : {"0", "-1", "600", "nan", "inf"}) {
+            std::ofstream(bad_path) << key << ": " << value << '\n';
+            Tuning invalid;
+            assert(!invalid.LoadFromFile(bad_path.string()));
+        }
+    }
+    std::ofstream(bad_path) << "gait_period_s: 0.8\n";
+    Tuning legacy;
+    assert(legacy.LoadFromFile(bad_path.string()));
+    assert(Near(legacy.WalkGaitPeriod(), .8f) && Near(legacy.TeleopGaitPeriod(), .8f));
+    std::ofstream(bad_path) << "walk_gait_period_s: 1.0\nteleop_gait_period_s: 0.6\n";
+    Tuning shared;
+    assert(!shared.LoadFromFile(bad_path.string()));
     std::filesystem::remove(bad_path);
 
     return 0;

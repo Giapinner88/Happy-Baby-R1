@@ -25,6 +25,12 @@ Bốn bản này yêu cầu FSM `flat_plus_gait_fsm_legs12_stand_recovery_v1`: R
 
 ## 2. Hợp đồng locomotion
 
+Chu kỳ có thể đặt riêng bằng `walk_gait_period_s` (R2+A) và
+`teleop_gait_period_s` (R2+X); thiếu khóa thì dùng `gait_period_s`.
+Nếu hai nút dùng chung một policy thì chu kỳ phải giống nhau.
+Walk hiện chọn [MJLab T1/checkpoint14100](../controller/policies/locomotion/t1_settle05_iter14100/README.md)
+với T=1s; U4 ở route teleop giữ T=0.6s. Đây là tích hợp local, chưa nghiệm thu robot.
+
 | Contract | Input | Quan sát |
 |---|---:|---|
 | `flat_plus_h4_v1` | 332D | 4 frame 83D chuẩn, term-major, cũ → mới |

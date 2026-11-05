@@ -207,7 +207,8 @@ private:
     void ActivatePolicy(PolicyController* ctrl);
     // Nạp một controller locomotion theo contract (route bundle hoặc flat_model cũ).
     std::unique_ptr<PolicyController> MakeLocomotionController(const std::string& contract,
-                                                               const std::string& path);
+                                                               const std::string& path,
+                                                               float gait_period_s);
     PolicyController* LocomotionFor(LocoMode mode) const;
     static const char* LocoModeName(LocoMode mode);
     // STAND LOCK -> LOCOMOTION ở chế độ chỉ định (R2+A / R2+X).

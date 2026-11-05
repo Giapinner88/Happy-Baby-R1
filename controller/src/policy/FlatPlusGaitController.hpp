@@ -25,6 +25,7 @@ public:
     void ConfigureGait(const GaitModeConfig& config,
                        float gait_period_s = spec::kGaitPeriodS) {
         gait_config_ = config;
+        configured_period_s_ = gait_period_s;
         gait_.Configure(config);
         gait_phase_.Configure(gait_period_s);
         command_phase_.Configure(gait_period_s);
@@ -97,6 +98,9 @@ protected:
                         "prefix_only_then_raw_gait_v1");
         RequireMetadata(model_path_, "onnx_preprocess_contract",
                         "normalize_prefix_then_append_raw_gait_v1");
+        std::string period;
+        if (policy_.ReadMetadataString("gait_period_s", period))
+            RequireMetadataFloat(model_path_, "gait_period_s", configured_period_s_);
         // The observation/controller contract is shared by the original gait
         // artifacts and the 0917 exports. Keep the FSM check exact, but qualify
         // each stand-recovery task variant explicitly.
@@ -113,9 +117,33 @@ protected:
                 "' in " + model_path_);
         }
         const bool legs12 = gait_fsm == "flat_plus_gait_fsm_legs12_stand_recovery_v1";
+        std::string task_variant;
+        policy_.ReadMetadataString("gait_task_variant", task_variant);
+        const bool t1 = task_variant == "armfree0917_t1_settle05_20261104";
+        if (t1) {
+            RequireMetadata(model_path_, "gait_fsm_contract", "flat_plus_gait_fsm_v1_stand_recovery_v1");
+            RequireMetadataFloat(model_path_, "gait_period_s", configured_period_s_);
+            RequireMetadataFloat(model_path_, "gait_period_s", 1.0f);
+            RequireMetadataFloat(model_path_, "gait_t_settle_s", gait_config_.settle_dwell_s);
+            RequireMetadata(model_path_, "training_num_envs", "4096");
+            RequireMetadata(model_path_, "training_target_iterations", "20000");
+            RequireMetadata(model_path_, "gait_stability_joint_count", "24");
+            const std::string joint_names =
+                "left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,"
+                "left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,"
+                "right_hip_pitch_joint,right_hip_roll_joint,right_hip_yaw_joint,"
+                "right_knee_joint,right_ankle_pitch_joint,right_ankle_roll_joint,"
+                "waist_roll_joint,waist_yaw_joint,left_shoulder_pitch_joint,"
+                "left_shoulder_roll_joint,left_shoulder_yaw_joint,left_elbow_joint,"
+                "left_wrist_roll_joint,right_shoulder_pitch_joint,right_shoulder_roll_joint,"
+                "right_shoulder_yaw_joint,right_elbow_joint,right_wrist_roll_joint";
+            RequireMetadata(model_path_, "joint_names", joint_names);
+            RequireMetadata(model_path_, "gait_stability_joint_names", joint_names);
+            RequireMetadata(model_path_, "gait_phase_contract", "episode_clock_command_gated_v1");
+        }
         std::string phase_contract;
         if (policy_.ReadMetadataString("gait_phase_contract", phase_contract)) {
-            if (!legs12 || phase_contract != "episode_clock_command_gated_v1")
+            if ((!legs12 && !t1) || phase_contract != "episode_clock_command_gated_v1")
                 throw std::runtime_error("ONNX metadata mismatch: unsupported gait_phase_contract in " + model_path_);
             RequireMetadata(model_path_, "training_phase_clock",
                             "episode_time_continuous_legacy_0909");
@@ -126,12 +154,11 @@ protected:
             command_phase_enabled_ = true;
         }
         if (gait_fsm == "flat_plus_gait_fsm_v1_stand_recovery_v1" || legs12) {
-            std::string task_variant;
             if (!policy_.ReadMetadataString("gait_task_variant", task_variant) ||
                 (task_variant != "0917" && task_variant != "0917V3" &&
                  task_variant != "0917V4" && task_variant != "0917V5A1" &&
                  task_variant != "0917V5A2A" &&
-                 !(legs12 && task_variant == "armfree_ab_20261023"))) {
+                 !(legs12 && task_variant == "armfree_ab_20261023") && !t1)) {
                 throw std::runtime_error(
                     "ONNX metadata mismatch: gait_task_variant expected '0917' "
                     "or '0917V3'/'0917V4'/'0917V5A1'/'0917V5A2A' "
@@ -218,6 +245,7 @@ protected:
 
 private:
     GaitModeConfig gait_config_{};
+    float configured_period_s_ = spec::kGaitPeriodS;
     GaitModeScheduler gait_{};
     GaitScheduler gait_phase_{};
     CommandGatedPhase command_phase_{};

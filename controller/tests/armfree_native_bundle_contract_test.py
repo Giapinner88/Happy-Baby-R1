@@ -38,6 +38,8 @@ for name in names:
         shutil.copytree(root / 'config', target / 'config')
         config = target / 'config/locomotion.yaml'
         original_config = config.read_text()
+        original_config = re.sub(r'^walk_gait_period_s:.*$', 'walk_gait_period_s: 0.6', original_config, flags=re.MULTILINE)
+        original_config = re.sub(r'^teleop_gait_period_s:.*$', 'teleop_gait_period_s: 0.6', original_config, flags=re.MULTILINE)
         for folder in ('motions', 'assets'):
             if (root / folder).exists():
                 (target / folder).symlink_to(root / folder, target_is_directory=True)
@@ -91,7 +93,8 @@ for name in names:
         result = subprocess.run([str(binary), '--preflight'], env={**os.environ, 'HB_PROJECT_DIR': str(target)},
                                 text=True, capture_output=True)
         assert result.returncode == 0, (name, 'current_teleop_route', result.stdout[-3000:], result.stderr)
-        assert 'policies/locomotion/u2a_seed42/policy.onnx' in result.stdout
+        selected = re.search(r'^teleop_policy:\s*(\S+)', original_config, re.MULTILINE).group(1)
+        assert f'policies/locomotion/{selected}/policy.onnx' in result.stdout
         # A stale bundle hash must still reject before model loading.
         (bundle / 'policy.yaml').write_text('contract: flat_plus_gait_h4_v1\nsha256: ' + '0'*64 + '\n')
         result = subprocess.run([str(binary), '--preflight'], env={**os.environ, 'HB_PROJECT_DIR': str(target)},

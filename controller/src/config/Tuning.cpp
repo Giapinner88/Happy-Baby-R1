@@ -64,6 +64,8 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "policy_kp_scale")    policy_kp_scale = f();
     else if (key == "policy_kd_scale")    policy_kd_scale = f();
     else if (key == "gait_period_s")      gait_period_s = f();
+    else if (key == "walk_gait_period_s") walk_gait_period_s = f();
+    else if (key == "teleop_gait_period_s") teleop_gait_period_s = f();
     else if (key == "slow_vx")            slow_vx = f();
     else if (key == "slow_vy")            slow_vy = f();
     else if (key == "slow_yaw")           slow_yaw = f();
@@ -464,6 +466,11 @@ bool Tuning::Validate() const {
             "(duoi 84 = robot do trong kReturningToDefault vi khong co policy do)");
     // PhaseObs chia cho gait_period_s -> 0 hoặc âm là chia cho 0/NaN đi thẳng vào obs.
     // Trần/sàn rộng nhưng vẫn chặn được lỗi nhập đơn vị (ms) hoặc để trống.
+    require(finite_in(WalkGaitPeriod(), 0.3f, 1.5f), "walk_gait_period_s must be finite and in [0.3, 1.5]");
+    require(finite_in(TeleopGaitPeriod(), 0.3f, 1.5f), "teleop_gait_period_s must be finite and in [0.3, 1.5]");
+    require(!(teleop_policy.empty() || teleop_policy == walk_policy) ||
+                std::abs(WalkGaitPeriod() - TeleopGaitPeriod()) < 1e-6f,
+            "a shared locomotion policy must use one gait period");
     require(finite_in(gait_period_s, 0.3f, 1.5f),
             "gait_period_s must be finite and in [0.3, 1.5] "
             "(phai bang 'period' cua phase obs luc train policy dang nap)");
