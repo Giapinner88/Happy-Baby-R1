@@ -212,7 +212,8 @@ private:
     std::unique_ptr<PolicyController> MakeLocomotionController(const std::string& contract,
                                                                const std::string& path,
                                                                float gait_period_s,
-                                                               float settle_dwell_s);
+                                                               float settle_dwell_s,
+                                                               const std::string& gait_phase_source);
     PolicyController* LocomotionFor(LocoMode mode) const;
     static const char* LocoModeName(LocoMode mode);
     // STAND LOCK -> LOCOMOTION ở chế độ chỉ định (R2+A / R2+X).

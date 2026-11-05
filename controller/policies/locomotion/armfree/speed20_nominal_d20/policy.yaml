@@ -3,3 +3,4 @@ sha256: 11aeb5173ccff6254bbd7caa5feec89e0d1e89cf3e4d074ac0d2ddb0b339f65c
 teleop_h4: true
 gait_period_s: 0.6
 gait_settle_dwell_s: 0.5
+gait_phase_source: command_gated

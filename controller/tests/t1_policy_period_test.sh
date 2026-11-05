@@ -23,17 +23,31 @@ for key in walk_gait_period_s teleop_gait_period_s gait_settle_dwell_s; do
     fi
 done
 
-# 1. Bundle đang chọn: t1_settle05_iter19999 (1.0s) + teleop u4_seed42 (0.6s).
-HB_PROJECT_DIR="$temp" "$binary" --preflight > "$temp/valid.log" 2>&1
-grep -q 'gait_period=1s, teleop_gait_period=0.6s' "$temp/valid.log"
-grep -q 'gait_period=1s.*\[bundle\]' "$temp/valid.log"
-grep -q 'gait_settle_dwell_s=0.5s (bundle)' "$temp/valid.log"
+# Chu kỳ kỳ vọng đọc TỪ BUNDLE đang chọn, không ghim số: ghim số ở đây thì
+# đổi walk_policy lại phải sửa test, đúng thứ việc này muốn bỏ.
+bundle_period() {
+    sed -n 's/^gait_period_s:[[:space:]]*//p' "$temp/policies/locomotion/$1/policy.yaml" |
+        head -1 | sed 's/\.0$//; s/^\([0-9]*\.[0-9]*[1-9]\)0*$/\1/'
+}
+walk_now="$(sed -n 's/^walk_policy:[[:space:]]*//p' "$pristine" | head -1)"
+teleop_now="$(sed -n 's/^teleop_policy:[[:space:]]*//p' "$pristine" | head -1)"
+[[ -n "$teleop_now" ]] || teleop_now="$walk_now"
 
-# 2. Đổi một dòng walk_policy là đủ: chu kỳ và dwell đi theo bundle mới.
-sed -i 's|^walk_policy:.*|walk_policy: flat_plus_gait_0917_armfree|' "$config"
+# 1. Chu kỳ in ra phải đúng của bundle đang chọn, và phải ghi nguồn [bundle].
+HB_PROJECT_DIR="$temp" "$binary" --preflight > "$temp/valid.log" 2>&1
+grep -q "gait_period=$(bundle_period "$walk_now")s, teleop_gait_period=$(bundle_period "$teleop_now")s" \
+    "$temp/valid.log"
+grep -q 'gait_period=.*\[bundle\]' "$temp/valid.log"
+
+# 2. Đổi một dòng walk_policy là đủ: chu kỳ và dwell đi theo bundle mới. Chọn
+#    một bundle có chu kỳ KHÁC bundle đang dùng để phép thử có ý nghĩa.
+other=flat_plus_gait_0917_armfree
+[[ "$walk_now" != "$other" ]] || other=t1_settle05_iter19999
+sed -i "s|^walk_policy:.*|walk_policy: ${other}|" "$config"
 HB_PROJECT_DIR="$temp" "$binary" --preflight > "$temp/swapped.log" 2>&1
-grep -q 'gait_period=0.6s' "$temp/swapped.log"
-grep -q 'gait_settle_dwell_s=0.5s (bundle)' "$temp/swapped.log"
+grep -q "gait_period=$(bundle_period "$other")s" "$temp/swapped.log"
+grep -q "gait_settle_dwell_s=$(sed -n 's/^gait_settle_dwell_s:[[:space:]]*//p' \
+    "$temp/policies/locomotion/$other/policy.yaml" | head -1)s (bundle)" "$temp/swapped.log"
 cp "$pristine" "$config"
 
 # 3. Override lệch metadata vẫn phải chặn khởi động, từng route một.

@@ -19,7 +19,8 @@ int main(int argc, char** argv) {
     for (const auto& bundle : bundles) {
         FlatPlusGaitController policy;
         GaitModeConfig gait;gait.settle_dwell_s = .5f;
-        policy.ConfigureGait(gait, period);
+        // Test nay chi chay bundle command-gated (trace phase do chinh no sinh).
+        policy.ConfigureGait(gait, period, "command_gated");
         Tuning tuning;
         policy.Init(std::string(argv[1]) + "/policies/locomotion/" + bundle + "/policy.onnx", environment, options, tuning);
         RobotState state;

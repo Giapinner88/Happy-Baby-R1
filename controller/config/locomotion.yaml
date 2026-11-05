@@ -5,9 +5,10 @@
 # Chu kỳ phase và dwell của FSM đi theo policy, KHÔNG đặt ở đây: mỗi bundle khai
 # trong policy.yaml của nó (bản sao metadata ONNX, dập lúc đóng gói), nên đổi
 # walk_policy là chu kỳ tự đổi theo.
-# Ba khoá walk_gait_period_s / teleop_gait_period_s / gait_settle_dwell_s vẫn
-# đọc được nhưng chỉ dùng làm tripwire: runtime bắt chúng khớp metadata ONNX, đặt
-# lệch là chết lúc khởi động. Không dùng để chạy khác lúc train được.
+# walk_gait_period_s / teleop_gait_period_s vẫn đọc được nhưng chỉ là tripwire:
+# runtime bắt chúng khớp metadata ONNX, đặt lệch là chết lúc khởi động.
+# gait_settle_dwell_s KHÔNG phải tripwire: nó là tuning runtime của FSM, chỉ bị
+# đối chiếu ở nhánh phase command-gated và legs12, nơi khác đặt lệch được.
 # Khoá trần gait_period_s chỉ thuộc route cũ flat_model, đặt ở đây là lỗi config.
 
 # T1 train: vx [-1.0,1.2], vy ±0.6 m/s, yaw ±1.0 rad/s.

@@ -29,9 +29,15 @@ Chu kỳ phase và dwell của FSM **đi theo bundle**, không khai trong
 `locomotion.yaml`: mỗi `policy.yaml` có `gait_period_s` (và
 `gait_settle_dwell_s` với contract `flat_plus_gait_h4_v1`), là bản sao metadata
 ONNX dập lúc `./hb policy add`. Đổi `walk_policy` là chu kỳ tự đổi theo.
-`walk_gait_period_s` / `teleop_gait_period_s` / `gait_settle_dwell_s` vẫn đọc
-được nhưng chỉ là tripwire: runtime bắt chúng khớp metadata, đặt lệch là chết
-lúc khởi động, nên không dùng để chạy khác lúc train được. Khoá trần
+`walk_gait_period_s` / `teleop_gait_period_s` vẫn đọc được nhưng chỉ là tripwire:
+runtime bắt chúng khớp metadata, đặt lệch là chết lúc khởi động, nên không dùng
+để chạy khác lúc train được. `gait_settle_dwell_s` thì **không** như vậy: nó là
+tuning runtime của FSM, chỉ bị đối chiếu với metadata ở nhánh phase
+command-gated và ở legs12; bundle khác đặt lệch được mà không báo gì (xem
+`flat_plus_gait_0917_armfree/policy.yaml`, cố ý để 0.5 trong khi ONNX ghi 1.5).
+Mỗi bundle gait còn khai `gait_phase_source` (`command_gated` hoặc
+`episode_clock`): hai bundle cùng `gait_fsm_contract` có thể khác nhau ở đây,
+nên runtime đòi bundle nói rõ thay vì suy từ sự có mặt của khoá metadata. Khoá trần
 `gait_period_s` chỉ thuộc route cũ `flat_model`; đặt nó cùng `walk_policy` là
 lỗi config và bị từ chối.
 Walk hiện chọn [MJLab T1/checkpoint19999](../controller/policies/locomotion/t1_settle05_iter19999/README.md)
@@ -80,9 +86,11 @@ Reproduce từ repo training: `python scripts/package_armfree_locomotion_hb.py -
    sửa `locomotion.yaml`, sinh lại manifest từ preflight thật, và tự trả lại lựa chọn
    cũ nếu preflight hỏng. Chu kỳ và dwell tự lấy từ bundle, không phải kiểm tay nữa.
    Còn phải kiểm thủ công: trần tốc độ `slow_*` / `fast_*` nằm trong dải lệnh đã train.
-4. `./hb test cpp`. Không còn test nào ghim tên bundle: `tuning_include_test.cpp` và
-   `config_reader_test.sh` nay kiểm cấu trúc (bundle tồn tại, sha256 khớp onnx,
-   contract nhận ra được, `gait_period_s` có mặt, `locomotion.yaml` không khai chu kỳ).
+4. `./hb test cpp`. Không test nào ghim tên bundle hay số chu kỳ:
+   `tuning_include_test.cpp` và `config_reader_test.sh` kiểm cấu trúc (bundle tồn
+   tại, sha256 khớp onnx, contract nhận ra được, `gait_period_s` có mặt,
+   `locomotion.yaml` không khai chu kỳ), còn `t1_policy_period_test.sh` đọc kỳ
+   vọng từ `policy.yaml` của bundle đang chọn.
 5. `./hb test` → `./hb deploy` từ máy trạm (code C++ và policy đi cùng một lệnh). Ghi nguồn: nhánh, run, checkpoint, SHA vào log buổi thử.
 
 **Đổi nóng giữa hai policy** (R2+A ↔ R2+X khi đang LOCOMOTION) chỉ xảy ra khi tay đã thu và gait ở STAND ổn định liên tục `policy_swap_dwell_s`; quá `policy_swap_timeout_s` thì huỷ. Policy mới được reset history và blend `blend_time_s` từ target vừa gửi. Đường chuyển policy→policy này **chưa có bằng chứng sim/robot**; lần đầu với hai model khác nhau phải chạy trên giá treo (xem [safety.md](safety.md)).

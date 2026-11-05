@@ -139,6 +139,15 @@ EOF
     fi
     [[ -z "$settle" || "$contract" != flat_plus_gait_h4_v1 ]] || \
         printf 'gait_settle_dwell_s: %s\n' "$settle" >>"$dest/policy.yaml"
+    # Nguon term phase: hai bundle cung gait_fsm_contract co the khac nhau o
+    # day, nen controller doi bundle khai chu khong suy tu metadata.
+    if [[ "$contract" == flat_plus_gait_h4_v1 ]]; then
+        if grep -q '^gait_phase_contract=' <<<"${meta:-}"; then
+            printf 'gait_phase_source: command_gated\n' >>"$dest/policy.yaml"
+        else
+            printf 'gait_phase_source: episode_clock\n' >>"$dest/policy.yaml"
+        fi
+    fi
     cat >>"$dest/policy.yaml" <<EOF
 # Nguồn: $(basename "$src"), thêm ngày $(date +%Y-%m-%d). Ghi provenance huấn luyện
 # (nhánh, run, checkpoint, đánh giá) vào README.md cạnh file này.
@@ -178,9 +187,18 @@ cmd_use() {
     period="$(hb_config_get "$dir/policy.yaml" gait_period_s)"
     expected="$(hb_config_get "$dir/policy.yaml" sha256)"
     [[ -n "$contract" ]] || { echo "bundle '$name' thieu contract" >&2; exit 1; }
-    [[ -n "$period" ]] || {
-        echo "bundle '$name' thieu gait_period_s trong policy.yaml; runtime se tu choi." \
-             "Them bang: ./hb policy add ... --gait-period <giay>" >&2; exit 1; }
+    # Dong bo voi FlatPolicyProfileHasFixedGaitPeriod() va cmd_add: contract ma
+    # policy tu phat chu ky moi buoc khong co so nao de khai.
+    if [[ "$contract" == r1_armfree0917_multigait_h4_v2 ]]; then
+        [[ -z "$period" ]] || {
+            echo "contract $contract khong co chu ky gait co dinh nhung policy.yaml khai" \
+                 "gait_period_s: $period" >&2; exit 1; }
+        period="(do policy phat)"
+    else
+        [[ -n "$period" ]] || {
+            echo "bundle '$name' thieu gait_period_s trong policy.yaml; runtime se tu choi." \
+                 "Them bang: ./hb policy add ... --gait-period <giay>" >&2; exit 1; }
+    fi
     actual="$(sha256sum "$dir/policy.onnx" | awk '{print $1}')"
     [[ "$actual" == "$expected" ]] || {
         echo "bundle '$name': sha256 trong policy.yaml ($expected) khac file onnx ($actual)" >&2
@@ -197,7 +215,7 @@ cmd_use() {
 
     # Manifest sinh lai tu runtime, khong suy ra o day. ./hb deploy cung lam
     # buoc nay, chay truoc de loi hien ra ngay luc doi chu khong luc deploy.
-    if ! bash "$HB_ROOT/integration/scripts/update_model_manifest.sh"; then
+    if ! bash "$HB_ROOT/integration/scripts/update_model_manifest.sh" --accept; then
         echo "preflight that bai; tra lai $role: ${previous:-<trong>}" >&2
         if [[ -n "$previous" ]]; then
             sed -i "s|^${role}:.*|${role}: ${previous}|" "$config"

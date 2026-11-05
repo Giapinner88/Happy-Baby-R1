@@ -70,8 +70,11 @@ for name in names:
         ]
         # policy.yaml khai chu ky/dwell cua chinh bundle nguon; ONNX van la ben
         # phe duyet, nen cac case lam lech metadata o duoi van phai bi tu choi.
+        phase_source = ("command_gated" if "gait_phase_contract" in meta
+                        else "episode_clock")
         timing = (f"gait_period_s: {meta['gait_period_s']}\n"
-                  f"gait_settle_dwell_s: {meta['gait_t_settle_s']}\n")
+                  f"gait_settle_dwell_s: {meta['gait_t_settle_s']}\n"
+                  f"gait_phase_source: {phase_source}\n")
         for label, updates, accepted in cases:
             current = onnx.ModelProto();current.CopyFrom(model)
             for prop in current.metadata_props:

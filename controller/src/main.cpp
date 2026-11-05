@@ -52,7 +52,8 @@ int PrintPolicyMeta(const std::string& model_path) {
         Ort::Session session(env, model_path.c_str(), options);
         Ort::AllocatorWithDefaultOptions allocator;
         Ort::ModelMetadata metadata = session.GetModelMetadata();
-        for (const char* key : {"policy_contract", "gait_period_s", "gait_t_settle_s"}) {
+        for (const char* key : {"policy_contract", "gait_period_s", "gait_t_settle_s",
+                                "gait_phase_contract"}) {
             Ort::AllocatedStringPtr value =
                 metadata.LookupCustomMetadataMapAllocated(key, allocator);
             if (value) std::cout << key << "=" << value.get() << "\n";

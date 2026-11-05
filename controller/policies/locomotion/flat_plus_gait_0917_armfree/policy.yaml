@@ -13,3 +13,4 @@ gait_period_s: 0.6
 # metadata. De 1.5 o day thi chon bundle tu mot locomotion.yaml sach se cham hon
 # 1 giay o W2S truoc khi vao STAND ma khong bao gi.
 gait_settle_dwell_s: 0.5
+gait_phase_source: episode_clock

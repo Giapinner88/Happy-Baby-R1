@@ -35,6 +35,10 @@ struct PolicyBundle {
     std::string sha256;
     std::optional<float> gait_period_s;        // chu kỳ phase obs lúc train
     std::optional<float> gait_settle_dwell_s;  // gait_t_settle_s lúc train
+    // "command_gated" hoặc "episode_clock": nguồn của term phase lúc train.
+    // Hai bundle cùng gait_fsm_contract có thể khác nhau ở đây, nên FSM không
+    // suy ra được; thiếu khoá thì ONNX khuyết metadata phase sẽ lọt.
+    std::string gait_phase_source;
 
     static bool ValidName(const std::string& name) {
         // Same component grammar as hb_valid_policy_bundle_name in the shell
@@ -87,6 +91,13 @@ struct PolicyBundle {
                 b.gait_period_s = ParseFloat(name, key, value, 0.3f, 1.5f);
             else if (key == "gait_settle_dwell_s")
                 b.gait_settle_dwell_s = ParseFloat(name, key, value, 0.01f, 60.0f);
+            else if (key == "gait_phase_source") {
+                if (value != "command_gated" && value != "episode_clock")
+                    throw std::runtime_error("policy bundle '" + name +
+                        "': gait_phase_source must be 'command_gated' or 'episode_clock', got '" +
+                        value + "'");
+                b.gait_phase_source = value;
+            }
         }
         if (b.contract.empty())
             throw std::runtime_error("policy bundle '" + name + "': missing contract");

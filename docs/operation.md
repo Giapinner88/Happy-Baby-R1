@@ -35,7 +35,7 @@ Chạy `controller` theo **2 cách**:
 
 Các tham số khác (gains, tốc độ, dance, ngồi ghế…) chỉnh theo nhu cầu; sửa xong cần `./hb restart all` (chỉ chạy khi robot DISARMED).
 
-> ⚠ **Đổi `locomotion.yaml: walk_policy` / `teleop_policy` thì phải kiểm 2 thứ đi kèm** (cách thêm bundle: [policies.md](policies.md) §3):
+> ⚠ **Đổi `locomotion.yaml: walk_policy` / `teleop_policy` thì phải kiểm 1 thứ đi kèm** (cách thêm bundle: [policies.md](policies.md) §3):
 > 1. ~~Chu kỳ gait~~ **tự động rồi**: lấy từ `gait_period_s` trong `policy.yaml` của bundle
 >    (bản sao metadata ONNX), runtime vẫn đối chiếu lại với ONNX. Xem số đang chạy bằng
 >    `run_r1 --preflight`, dòng `[...] gait_period=...` có đánh dấu `[bundle]` hay

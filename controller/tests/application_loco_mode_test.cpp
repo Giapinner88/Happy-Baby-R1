@@ -61,8 +61,25 @@ void WriteBundle(const fs::path& loco, const std::string& name, const std::strin
     fs::create_directories(loco / name);
     fs::create_symlink(fs::path(HB_PROJECT_PATH) / "policies/locomotion" / source / "policy.onnx",
                        loco / name / "policy.onnx");
+    // Contract gait doi bundle khai nguon term phase; fixture lay tu bundle
+    // nguon that de khong phai ghim chuoi o day.
+    std::string phase_source;
+    if (contract == "flat_plus_gait_h4_v1") {
+        std::ifstream src(fs::path(HB_PROJECT_PATH) / "policies/locomotion" / source /
+                          "policy.yaml");
+        for (std::string line; std::getline(src, line);) {
+            const std::string key = "gait_phase_source:";
+            if (line.rfind(key, 0) != 0) continue;
+            std::string value = line.substr(key.size());
+            value.erase(0, value.find_first_not_of(" \t"));
+            value.erase(value.find_last_not_of(" \t\r\n") + 1);
+            phase_source = "gait_phase_source: " + value + "\n";
+            break;
+        }
+    }
     std::ofstream(loco / name / "policy.yaml")
-        << "contract: " << contract << "\nsha256: " << sha << "\n" << extra;
+        << "contract: " << contract << "\nsha256: " << sha << "\n"
+        << phase_source << extra;
 }
 
 // Temporary project: frozen replay config + two bundles selected as walk/teleop.

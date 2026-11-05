@@ -25,9 +25,11 @@ public:
     bool SupportsH4TeleopOverlay() const override { return true; }
 
     void ConfigureGait(const GaitModeConfig& config,
-                       float gait_period_s = spec::kGaitPeriodS) {
+                       float gait_period_s = spec::kGaitPeriodS,
+                       const std::string& phase_source = "") {
         gait_config_ = config;
         configured_period_s_ = gait_period_s;
+        expected_phase_source_ = phase_source;
         gait_.Configure(config);
         gait_phase_.Configure(gait_period_s);
         command_phase_.Configure(gait_period_s);
@@ -161,8 +163,31 @@ protected:
                             legs12 ? "12" : "24");
         }
 
+        // Nguồn phase do BUNDLE khai, không suy từ sự có mặt của khoá metadata:
+        // khuyết khoá và "train bằng episode clock" là hai chuyện khác nhau, mà
+        // hai bundle cùng gait_fsm_contract đang nằm ở hai phía (t1 =
+        // command_gated, flat_plus_gait_0917_armfree = episode_clock). Suy từ
+        // sự có mặt thì một ONNX rụng khoá sẽ lặng lẽ chạy sai term phase.
         std::string phase_contract;
-        if (policy_.ReadMetadataString("gait_phase_contract", phase_contract)) {
+        const bool has_phase_contract =
+            policy_.ReadMetadataString("gait_phase_contract", phase_contract);
+        if (expected_phase_source_.empty()) {
+            throw std::runtime_error(
+                "bundle khong khai gait_phase_source cho " + model_path_ +
+                "; them 'gait_phase_source: command_gated' hoac 'episode_clock' vao policy.yaml");
+        }
+        // Route cũ flat_model không có bundle để khai; giữ nguyên hành vi suy
+        // từ metadata như trước, vì đó là đường rollback đã ghim bằng tên file
+        // trong config, không phải đường nạp policy mới.
+        if (expected_phase_source_ != "from_metadata" &&
+            (expected_phase_source_ == "command_gated") != has_phase_contract) {
+            throw std::runtime_error(
+                "ONNX metadata mismatch: bundle khai gait_phase_source=" +
+                expected_phase_source_ + " nhung ONNX " +
+                (has_phase_contract ? "CO" : "KHONG CO") + " gait_phase_contract, in " +
+                model_path_);
+        }
+        if (has_phase_contract) {
             if (phase_contract != "episode_clock_command_gated_v1")
                 throw std::runtime_error("ONNX metadata mismatch: unsupported gait_phase_contract in " + model_path_);
             // Phase clock chỉ được tiêu thụ trên nhánh stand recovery
@@ -269,6 +294,7 @@ protected:
 private:
     GaitModeConfig gait_config_{};
     float configured_period_s_ = spec::kGaitPeriodS;
+    std::string expected_phase_source_;  // bundle khai; rỗng = từ chối
     GaitModeScheduler gait_{};
     GaitScheduler gait_phase_{};
     CommandGatedPhase command_phase_{};
