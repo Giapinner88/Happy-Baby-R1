@@ -37,6 +37,7 @@
 #include "../policy/FlatPlusGaitController.hpp"
 #include "../policy/WholeBodyLegsController.hpp"
 #include "../policy/WholeBodyLegsGaitController.hpp"
+#include "../policy/MultiGaitH4V2Controller.hpp"
 #include "../policy/PolicyBundle.hpp"
 #include "../policy/TeleopH4PolicyGate.hpp"
 #include "../robot/LowCmdSender.hpp"

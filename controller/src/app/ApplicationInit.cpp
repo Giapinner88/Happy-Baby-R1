@@ -113,6 +113,12 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
             // FSM cấu hình hoàn toàn từ metadata ONNX (không từ locomotion.yaml).
             ctrl = std::make_unique<WholeBodyLegsGaitController>();
             break;
+        case FlatPolicyProfile::kMultiGaitH4V2:
+            // Đã đăng ký nhưng Init() luôn từ chối, kèm lý do chính xác.
+            // Có mặt ở đây để chọn nhầm nó in ra bốn quyết định còn thiếu
+            // thay vì "Unknown flat_policy_contract".
+            ctrl = std::make_unique<MultiGaitH4V2Controller>();
+            break;
     }
     ctrl->Init(path, ort_env_, ort_opts_, tuning_);
     if (const auto* wb = dynamic_cast<const WholeBodyLegsController*>(ctrl.get())) {
@@ -155,15 +161,26 @@ void Application::InitControllers() {
                                 bundle.gait_settle_dwell_s, bundle.name);
     };
 
+    // Contract mà chu kỳ do chính policy phát ra mỗi bước (multigait V2) không
+    // có một chu kỳ train nào để ghi vào bundle. Đòi nó ở đây thì lỗi khởi
+    // động nói sai chuyện ("bundle thieu gait_period_s") và che mất lời từ
+    // chối thật của controller.
+    auto resolve_period = [&](const char* role, const std::optional<float>& yaml_override,
+                              const PolicyBundle& bundle) {
+        if (!FlatPolicyProfileHasFixedGaitPeriod(ParseFlatPolicyProfile(bundle.contract)))
+            return std::numeric_limits<float>::quiet_NaN();
+        return ResolveGaitValue(role, "gait_period_s", yaml_override,
+                                bundle.gait_period_s, bundle.name);
+    };
+
     float walk_settle_dwell_s = 0.0f;
     std::string walk_contract;
     if (!tuning_.walk_policy.empty()) {
         // Route bundle: policies/locomotion/<tên>/{policy.onnx, policy.yaml}.
         const PolicyBundle walk = PolicyBundle::Load(proj_dir_, tuning_.walk_policy);
         walk_contract = walk.contract;
-        walk_gait_period_s_ = ResolveGaitValue("walk_policy", "gait_period_s",
-                                               tuning_.WalkGaitPeriodOverride(),
-                                               walk.gait_period_s, walk.name);
+        walk_gait_period_s_ = resolve_period("walk_policy",
+                                             tuning_.WalkGaitPeriodOverride(), walk);
         walk_settle_dwell_s = resolve_settle("walk_policy", walk);
         walk_ctrl_ = MakeLocomotionController(walk.contract, proj_dir_ + "/" + walk.rel_path,
                                                walk_gait_period_s_, walk_settle_dwell_s);
@@ -176,9 +193,7 @@ void Application::InitControllers() {
             ? walk : PolicyBundle::Load(proj_dir_, teleop_name);
         teleop_gait_period_s_ = teleop.name == walk.name
             ? walk_gait_period_s_
-            : ResolveGaitValue("teleop_policy", "gait_period_s",
-                               tuning_.TeleopGaitPeriodOverride(),
-                               teleop.gait_period_s, teleop.name);
+            : resolve_period("teleop_policy", tuning_.TeleopGaitPeriodOverride(), teleop);
         if (teleop.name != walk.name) {
             teleop_ctrl_ = MakeLocomotionController(teleop.contract,
                                                     proj_dir_ + "/" + teleop.rel_path,

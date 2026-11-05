@@ -165,6 +165,9 @@ if(BUILD_TESTING)
         add_test(NAME t1_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/t1_bundle_contract_test.py"
             ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
+        add_test(NAME multigait_v2_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/multigait_v2_bundle_contract_test.py"
+            ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
     endif()
     add_executable(remote_health_test tests/remote_health_test.cpp)
     target_link_libraries(remote_health_test unitree_sdk2 pthread)

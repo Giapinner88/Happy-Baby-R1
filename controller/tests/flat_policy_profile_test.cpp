@@ -22,6 +22,20 @@ int main() {
            FlatPolicyProfile::kFlatPlusH5V1);
     assert(ParseFlatPolicyProfile("flat_plus_gait_h4_v1") ==
            FlatPolicyProfile::kFlatPlusGaitH4V1);
+    assert(ParseFlatPolicyProfile("r1_armfree0917_multigait_h4_v2") ==
+           FlatPolicyProfile::kMultiGaitH4V2);
+
+    // Chỉ multigait V2 không có chu kỳ gait cố định: chu kỳ của nó do policy
+    // phát ra mỗi bước qua action index 24.
+    assert(!FlatPolicyProfileHasFixedGaitPeriod(FlatPolicyProfile::kMultiGaitH4V2));
+    for (const FlatPolicyProfile fixed : {FlatPolicyProfile::kLegacy83,
+                                          FlatPolicyProfile::kFlatPlusH4V1,
+                                          FlatPolicyProfile::kFlatPlusH5V1,
+                                          FlatPolicyProfile::kFlatPlusGaitH4V1,
+                                          FlatPolicyProfile::kWholeBodyLegsBlindV1,
+                                          FlatPolicyProfile::kWholeBodyLegsGaitH4BlindV1}) {
+        assert(FlatPolicyProfileHasFixedGaitPeriod(fixed));
+    }
 
     // Contract không thuộc hai route hỗ trợ và tên gần đúng phải bị từ chối.
     for (const char* bad : {"unsupported_flat_contract", "flat_plus",

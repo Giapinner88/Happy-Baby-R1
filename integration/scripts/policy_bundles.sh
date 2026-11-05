@@ -89,8 +89,14 @@ cmd_add() {
         echo "ten bundle hoac nhom/ten: moi thanh phan bat dau bang chu/so, chi gom chu, so, . _ -: '$name'" >&2; exit 1; }
     case "$contract" in
         legacy_83|flat_plus_h4_v1|flat_plus_h5_v1|flat_plus_gait_h4_v1|r1_wb_legs_v1_blind|r1_wb_legs_gait_h4_v1_blind) ;;
+        r1_armfree0917_multigait_h4_v2) ;;
         *) echo "contract khong ho tro: $contract" >&2; exit 1 ;;
     esac
+    # Chu ky cua multigait V2 do chinh policy phat ra moi buoc (action index
+    # 24), khong co mot so train nao de ghi vao bundle. Dong bo voi
+    # FlatPolicyProfileHasFixedGaitPeriod() trong controller.
+    local fixed_period=1
+    [[ "$contract" != r1_armfree0917_multigait_h4_v2 ]] || fixed_period=0
     local dest="$LOCO_DIR/$name"
     [[ ! -e "$dest" ]] || { echo "da ton tai: $dest" >&2; exit 1; }
 
@@ -103,9 +109,11 @@ cmd_add() {
         period="$(sed -n 's/^gait_period_s=//p' <<<"$meta")"
         [[ -n "$settle" ]] || settle="$(sed -n 's/^gait_t_settle_s=//p' <<<"$meta")"
     fi
-    [[ -n "$period" ]] || {
+    (( fixed_period == 0 )) || [[ -n "$period" ]] || {
         echo "khong lay duoc gait_period_s tu $src (metadata thieu hoac khong doc duoc)." \
              "Them --gait-period <giay> neu biet chac chu ky luc train." >&2; exit 1; }
+    (( fixed_period == 1 )) || [[ -z "$period" ]] || {
+        echo "contract $contract khong co chu ky gait co dinh: bo --gait-period." >&2; exit 1; }
 
     mkdir -p "$dest"
     cp -- "$src" "$dest/policy.onnx"
@@ -116,17 +124,30 @@ cmd_add() {
 # controller/config/locomotion.yaml. run_r1 kiểm sha256 và metadata ONNX lúc khởi động.
 contract: $contract
 sha256: $sha
+EOF
+    if (( fixed_period == 1 )); then
+        cat >>"$dest/policy.yaml" <<EOF
 # Bản sao metadata ONNX cùng tên, dập lúc tạo bundle. Runtime vẫn đối chiếu lại
 # với ONNX, nên sửa tay ở đây là khởi động chết chứ không đổi được hành vi.
 gait_period_s: $period
 EOF
+    else
+        cat >>"$dest/policy.yaml" <<EOF
+# Contract này không có chu kỳ gait cố định: policy tự phát chu kỳ mỗi bước qua
+# action index 24, nên không có gait_period_s để chép từ metadata.
+EOF
+    fi
     [[ -z "$settle" || "$contract" != flat_plus_gait_h4_v1 ]] || \
         printf 'gait_settle_dwell_s: %s\n' "$settle" >>"$dest/policy.yaml"
     cat >>"$dest/policy.yaml" <<EOF
 # Nguồn: $(basename "$src"), thêm ngày $(date +%Y-%m-%d). Ghi provenance huấn luyện
 # (nhánh, run, checkpoint, đánh giá) vào README.md cạnh file này.
 EOF
-    echo "Da tao $dest (gait_period_s=$period${settle:+, gait_t_settle_s=$settle})"
+    if (( fixed_period == 1 )); then
+        echo "Da tao $dest (gait_period_s=$period${settle:+, gait_t_settle_s=$settle})"
+    else
+        echo "Da tao $dest (contract $contract: chu ky do policy phat, khong ghi gait_period_s)"
+    fi
     echo "Tiep theo:"
     echo "  1. Ghi provenance vao $dest/README.md"
     echo "  2. Sua controller/config/locomotion.yaml: walk_policy: $name  (hoac teleop_policy: $name)"
