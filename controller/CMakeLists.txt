@@ -177,6 +177,12 @@ if(BUILD_TESTING)
             "(onnx_file_contract_test, armfree_native_bundle_contract_test, "
             "t1_bundle_contract_test, multigait_v2_bundle_contract_test). "
             "Cau hinh lai voi -DHB_TEST_PYTHON=<python co goi onnx>.")
+        # Canh bao luc configure de truot rat de. Dang ky mot test LUON THAT BAI
+        # de ctest do thay vi bao "100% passed" tren mot suite thieu 4 cong.
+        add_test(NAME onnx_contract_tests_missing COMMAND "${CMAKE_COMMAND}" -E false)
+        set_tests_properties(onnx_contract_tests_missing PROPERTIES
+            FAIL_REGULAR_EXPRESSION ""
+            LABELS "configuration")
     endif()
     add_executable(remote_health_test tests/remote_health_test.cpp)
     target_link_libraries(remote_health_test unitree_sdk2 pthread)

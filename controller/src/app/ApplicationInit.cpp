@@ -298,7 +298,10 @@ void Application::InitControllers() {
     std::cout << "[" << locomotion_->Name() << "] gait_period=" << gait_.period_s()
               << "s, teleop_gait_period=" << teleop_gait_period_s_
               << "s (phai khop 'period' cua phase obs luc train " << walk_policy_label_ << ")"
-              << (tuning_.WalkGaitPeriodOverride() ? " [override locomotion.yaml]" : " [bundle]")
+              << (tuning_.walk_policy.empty()
+                      ? " [flat_model, gait_period_s cua locomotion.yaml]"
+                      : (tuning_.WalkGaitPeriodOverride() ? " [override locomotion.yaml]"
+                                                          : " [bundle]"))
               << "\n";
     if (ParseFlatPolicyProfile(walk_contract) == FlatPolicyProfile::kFlatPlusGaitH4V1) {
         std::cout << "[FlatPlusGaitH4] gait_settle_dwell_s=" << walk_settle_dwell_s

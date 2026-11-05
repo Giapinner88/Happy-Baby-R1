@@ -27,6 +27,13 @@ public:
     void ConfigureGait(const GaitModeConfig& config,
                        float gait_period_s = spec::kGaitPeriodS,
                        const std::string& phase_source = "") {
+        // Call-site dùng 0 làm "contract này không có chu kỳ cố định" rồi mới
+        // ném ở Init. Chốt ngay đây để contract thêm về sau không phải tự khám
+        // phá lại: controller này chia cho chu kỳ nên 0 là chia cho 0.
+        if (!(gait_period_s > 0.0f) || !std::isfinite(gait_period_s))
+            throw std::runtime_error(
+                "FlatPlusGaitH4: gait_period_s phai duong va huu han, nhan duoc " +
+                std::to_string(gait_period_s));
         gait_config_ = config;
         configured_period_s_ = gait_period_s;
         expected_phase_source_ = phase_source;
