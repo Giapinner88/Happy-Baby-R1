@@ -53,7 +53,12 @@ with tempfile.TemporaryDirectory(prefix="hb-t1-contract-") as tmp:
             prop.value = changes.get(prop.key, prop.value)
         onnx.save(current, bundle / "policy.onnx")
         sha = hashlib.sha256((bundle / "policy.onnx").read_bytes()).hexdigest()
-        (bundle / "policy.yaml").write_text(f"contract: flat_plus_gait_h4_v1\nsha256: {sha}\n")
+        # Bundle khai dung chu ky/dwell cua T1. Case "period"/"settle" lam lech
+        # metadata ONNX so voi khai bao nay -> phai bi tu choi.
+        (bundle / "policy.yaml").write_text(
+            f"contract: flat_plus_gait_h4_v1\nsha256: {sha}\n"
+            f"gait_period_s: {metadata['gait_period_s']}\n"
+            f"gait_settle_dwell_s: {metadata['gait_t_settle_s']}\n")
         result = subprocess.run([str(binary), "--preflight"],
                                 env={**os.environ, "HB_PROJECT_DIR": str(project)},
                                 text=True, capture_output=True)

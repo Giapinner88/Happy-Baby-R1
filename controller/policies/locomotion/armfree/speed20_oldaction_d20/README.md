@@ -12,7 +12,7 @@ A source ONNX with `training_phase_clock` metadata must not be treated as a stan
 
 Simulation findings: priority retest288trials/policy includes motion, turn, stand, stop, push and gesture. Both source Speed20 actors still have lateral swing at high speed and transient arm offsets during stopping. No hardware acceptance is implied. H4 overlay is interface-compatible; arbitrary teleoperation is not a specialized training objective.
 
-Native command ranges: vx(-1.0, 2.0)m/s, vy(-0.6, 0.6)m/s, yaw(-1.0, 1.0)rad/s. These metadata ranges do not change HB operator limits. To select later, explicitly set `walk_policy`/`teleop_policy` in `controller/config/locomotion.yaml` to `armfree/speed20_oldaction_d20` and ensure gait_period_s0.6 and gait_settle_dwell_s0.5; active configs and integration model manifest are unchanged by packaging.
+Native command ranges: vx(-1.0, 2.0)m/s, vy(-0.6, 0.6)m/s, yaw(-1.0, 1.0)rad/s. These metadata ranges do not change HB operator limits. To select later, explicitly set `walk_policy`/`teleop_policy` in `controller/config/locomotion.yaml` to `armfree/speed20_oldaction_d20` ; the gait period and settle dwell come from this bundle's policy.yaml, so no locomotion.yaml edit is needed; active configs and integration model manifest are unchanged by packaging.
 
 Reproduce from the training repo: `python scripts/package_armfree_locomotion_hb.py --install-selected-grouped --hb-root /home/ubuntu22/train_mujoco/robot_r1/Happy-Baby-R1-develop` (uses the previously verified selected packages). All exact hashes/parity results live in `packaging.json`; the selection rationale is in HB `docs/policies.md`.
 

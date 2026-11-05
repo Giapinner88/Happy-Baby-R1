@@ -1,3 +1,5 @@
 contract: flat_plus_gait_h4_v1
 sha256: ff9e6ad07b29ce2f03e071e2fb0afa7efd7662b16d041787ec5566512eeaafe9
 teleop_h4: true
+gait_period_s: 0.6
+gait_settle_dwell_s: 0.5

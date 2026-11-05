@@ -72,7 +72,8 @@ int main() {
     assert(!ms_period.LoadFromFile(bad_path.string()));
     {
         std::ofstream file(bad_path);
-        file << "gait_period_s: 0.8\nwalk_policy: a\nteleop_policy: b\n"
+        // Route bundle: chu kỳ đến từ policy.yaml, khoá trần gait_period_s bị cấm.
+        file << "walk_policy: a\nteleop_policy: b\n"
                 "walk_gait_period_s: 1.0\nteleop_gait_period_s: 0.6\n";
     }
     Tuning split;
@@ -85,10 +86,15 @@ int main() {
             assert(!invalid.LoadFromFile(bad_path.string()));
         }
     }
+    // Route cũ flat_model: gait_period_s vẫn là chu kỳ của cả hai chế độ.
     std::ofstream(bad_path) << "gait_period_s: 0.8\n";
     Tuning legacy;
     assert(legacy.LoadFromFile(bad_path.string()));
     assert(Near(legacy.WalkGaitPeriod(), .8f) && Near(legacy.TeleopGaitPeriod(), .8f));
+    // Nhưng đặt nó cùng walk_policy là lỗi config: nó sẽ bị bỏ qua trong im lặng.
+    std::ofstream(bad_path) << "gait_period_s: 0.8\nwalk_policy: a\n";
+    Tuning stray;
+    assert(!stray.LoadFromFile(bad_path.string()));
     std::ofstream(bad_path) << "walk_gait_period_s: 1.0\nteleop_gait_period_s: 0.6\n";
     Tuning shared;
     assert(!shared.LoadFromFile(bad_path.string()));

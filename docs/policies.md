@@ -25,9 +25,15 @@ Bốn bản này yêu cầu FSM `flat_plus_gait_fsm_legs12_stand_recovery_v1`: R
 
 ## 2. Hợp đồng locomotion
 
-Chu kỳ có thể đặt riêng bằng `walk_gait_period_s` (R2+A) và
-`teleop_gait_period_s` (R2+X); thiếu khóa thì dùng `gait_period_s`.
-Nếu hai nút dùng chung một policy thì chu kỳ phải giống nhau.
+Chu kỳ phase và dwell của FSM **đi theo bundle**, không khai trong
+`locomotion.yaml`: mỗi `policy.yaml` có `gait_period_s` (và
+`gait_settle_dwell_s` với contract `flat_plus_gait_h4_v1`), là bản sao metadata
+ONNX dập lúc `./hb policy add`. Đổi `walk_policy` là chu kỳ tự đổi theo.
+`walk_gait_period_s` / `teleop_gait_period_s` / `gait_settle_dwell_s` vẫn đọc
+được nhưng chỉ là tripwire: runtime bắt chúng khớp metadata, đặt lệch là chết
+lúc khởi động, nên không dùng để chạy khác lúc train được. Khoá trần
+`gait_period_s` chỉ thuộc route cũ `flat_model`; đặt nó cùng `walk_policy` là
+lỗi config và bị từ chối.
 Walk hiện chọn [MJLab T1/checkpoint19999](../controller/policies/locomotion/t1_settle05_iter19999/README.md)
 với T=1s; U4 ở route teleop giữ T=0.6s. Đây là tích hợp local, chưa nghiệm thu robot.
 
@@ -68,11 +74,11 @@ Reproduce từ repo training: `python scripts/package_armfree_locomotion_hb.py -
 ## 3. Đưa một policy đi bộ mới vào
 
 1. Xem metadata ONNX (`controller/scripts/dump_onnx_metadata.py`), rồi tạo bundle:
-   `./hb policy add <file.onnx> <tên> [--contract C]` (mặc định `flat_plus_gait_h4_v1`). Dòng `teleop_h4` trong `policy.yaml` cũ không còn tác dụng và được bỏ qua. Script chép file thành `policy.onnx` và ghi `sha256` vào `policy.yaml`.
+   `./hb policy add <file.onnx> <tên> [--contract C]` (mặc định `flat_plus_gait_h4_v1`). Dòng `teleop_h4` trong `policy.yaml` cũ không còn tác dụng và được bỏ qua. Script chép file thành `policy.onnx`, ghi `sha256`, và dập `gait_period_s` + `gait_settle_dwell_s` đọc từ metadata ONNX qua `run_r1 --policy-meta`. ONNX không có metadata thì khai tay bằng `--gait-period` / `--settle-dwell`, giá trị sai vẫn bị runtime bắt lúc khởi động.
 2. Ghi provenance (nhánh, run, checkpoint, đánh giá) vào `README.md` trong bundle.
-3. Đổi `walk_policy` hoặc `teleop_policy` trong `locomotion.yaml`; kiểm thủ công:
-   - `gait_period_s` bằng `period` của phase obs lúc train model đó (dùng chung cho cả hai policy);
-   - trần tốc độ `slow_*` / `fast_*` nằm trong dải lệnh đã train.
+3. Đổi `walk_policy` hoặc `teleop_policy` trong `locomotion.yaml`. Chu kỳ và dwell
+   tự lấy từ bundle, không phải kiểm tay nữa. Còn phải kiểm thủ công: trần tốc độ
+   `slow_*` / `fast_*` nằm trong dải lệnh đã train.
 4. Cập nhật tên bundle được ghim trong `controller/tests/tuning_include_test.cpp` và `controller/tests/config_reader_test.sh` (cố ý ghim để bắt đổi model ngoài ý muốn).
 5. `./hb test` → `./hb deploy` từ máy trạm (code C++ và policy đi cùng một lệnh). Ghi nguồn: nhánh, run, checkpoint, SHA vào log buổi thử.
 

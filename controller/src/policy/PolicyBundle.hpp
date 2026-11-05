@@ -3,7 +3,7 @@
 // Locomotion policy bundle: one directory per selectable model.
 //
 //   policies/locomotion/<name>/policy.onnx
-//   policies/locomotion/<name>/policy.yaml   (contract, sha256)
+//   policies/locomotion/<name>/policy.yaml   (contract, sha256, gait timing)
 //
 // config/locomotion.yaml selects bundles by relative name, optionally group/name
 // (walk_policy / teleop_policy). Flat names remain supported.
@@ -12,8 +12,17 @@
 // 500 Hz loop. ONNX metadata is still checked by PolicyController::Init.
 // H4 teleop availability follows the contract (SupportsH4TeleopOverlay), not
 // a per-bundle flag; a legacy `teleop_h4:` line is accepted and ignored.
+//
+// gait_period_s / gait_settle_dwell_s are copies of the ONNX metadata of the
+// same name, written here at packaging time so that selecting a bundle is
+// enough: locomotion.yaml no longer has to repeat the training period. They are
+// a proposal, not the authority. PolicyController::Init still compares them
+// against the metadata, so a hand-edited policy.yaml stops startup. Both are
+// optional; a bundle without them falls back to the locomotion.yaml value.
 #include <algorithm>
+#include <cmath>
 #include <fstream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -24,6 +33,8 @@ struct PolicyBundle {
     std::string rel_path;       // relative to proj_dir, e.g. policies/locomotion/x/policy.onnx
     std::string contract;
     std::string sha256;
+    std::optional<float> gait_period_s;        // chu kỳ phase obs lúc train
+    std::optional<float> gait_settle_dwell_s;  // gait_t_settle_s lúc train
 
     static bool ValidName(const std::string& name) {
         // Same component grammar as hb_valid_policy_bundle_name in the shell
@@ -72,6 +83,10 @@ struct PolicyBundle {
                 value = value.substr(1, value.size() - 2);
             if (key == "contract") b.contract = value;
             else if (key == "sha256") b.sha256 = value;
+            else if (key == "gait_period_s")
+                b.gait_period_s = ParseFloat(name, key, value, 0.3f, 1.5f);
+            else if (key == "gait_settle_dwell_s")
+                b.gait_settle_dwell_s = ParseFloat(name, key, value, 0.01f, 60.0f);
         }
         if (b.contract.empty())
             throw std::runtime_error("policy bundle '" + name + "': missing contract");
@@ -87,6 +102,29 @@ struct PolicyBundle {
     }
 
 private:
+    // A malformed number stops startup: silently dropping it would fall back to
+    // locomotion.yaml and run the policy at the wrong period.
+    // Dải giống Tuning::Validate: bundle là đường vào thứ hai cho cùng tham số,
+    // nên phải chặn cùng mức. PhaseObs chia cho chu kỳ, số 0 đi thẳng vào obs.
+    static float ParseFloat(const std::string& bundle, const std::string& key,
+                            const std::string& value, float low, float high) {
+        size_t consumed = 0;
+        float parsed = 0.0f;
+        try {
+            parsed = std::stof(value, &consumed);
+        } catch (const std::exception&) {
+            consumed = 0;
+        }
+        if (consumed != value.size() || !std::isfinite(parsed))
+            throw std::runtime_error("policy bundle '" + bundle + "': " + key +
+                                     " is not a finite number: '" + value + "'");
+        if (parsed < low || parsed > high)
+            throw std::runtime_error("policy bundle '" + bundle + "': " + key + " = " +
+                                     value + " is outside [" + std::to_string(low) + ", " +
+                                     std::to_string(high) + "]");
+        return parsed;
+    }
+
     static std::string Trim(const std::string& s) {
         const auto first = s.find_first_not_of(" \t\r\n");
         if (first == std::string::npos) return "";

@@ -2,3 +2,4 @@
 # Runtime checks contract and SHA-256.
 contract: r1_wb_legs_v1_blind
 sha256: a57b64b4b8f299e392174ffc89aa300f54cde642e3fd577f5e004488a6eeccc8
+gait_period_s: 0.6

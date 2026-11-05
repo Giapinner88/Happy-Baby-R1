@@ -5,3 +5,11 @@ contract: flat_plus_gait_h4_v1
 sha256: 7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ecad815ccb
 # Nguồn: controller/policies/locomotion/flat_plus/policy_flat_plus_gait_0917_armfree.onnx
 # (policy đi bộ đang chạy trước khi tách bundle). Repo không giữ provenance huấn luyện.
+gait_period_s: 0.6
+# CO Y khac metadata ONNX: luc train gait_t_settle_s = 1.5, nhung moi cau hinh
+# da chay bundle nay (tests/fixtures/replay, profile gait_0917_armfree_settle_override)
+# deu override ve 0.5, va 0.5 la gia tri da nghiem thu. Dwell la tham so runtime
+# cua FSM, khong thuoc hop dong quan sat, nen branch nay khong doi chieu no voi
+# metadata. De 1.5 o day thi chon bundle tu mot locomotion.yaml sach se cham hon
+# 1 giay o W2S truoc khi vao STAND ma khong bao gi.
+gait_settle_dwell_s: 0.5

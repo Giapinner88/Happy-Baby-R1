@@ -62,6 +62,7 @@ struct Tuning {
 
     // Chu kỳ theo từng route; thiếu override thì dùng gait_period_s.
     float gait_period_s = 0.6f;
+    bool gait_period_configured = false;  // route bundle cấm khoá trần này
     std::optional<float> walk_gait_period_s;
     std::optional<float> teleop_gait_period_s;
 
@@ -69,6 +70,17 @@ struct Tuning {
     float TeleopGaitPeriod() const {
         return teleop_gait_period_s.value_or(
             teleop_policy.empty() || teleop_policy == walk_policy ? WalkGaitPeriod() : gait_period_s);
+    }
+
+    // Route bundle: chỉ khoá theo-route mới là override. gait_period_s trần
+    // (mặc định 0.6) KHÔNG rơi vào đây, vì nó là mặc định của route flat_model
+    // cũ; để nó ghi đè thì bỏ walk_gait_period_s khỏi config sẽ im lặng chạy sai
+    // chu kỳ thay vì lấy chu kỳ của bundle. Rỗng = lấy từ bundle.
+    std::optional<float> WalkGaitPeriodOverride() const { return walk_gait_period_s; }
+    std::optional<float> TeleopGaitPeriodOverride() const {
+        if (teleop_gait_period_s) return teleop_gait_period_s;
+        if (teleop_policy.empty() || teleop_policy == walk_policy) return walk_gait_period_s;
+        return std::nullopt;
     }
 
     // Giới hạn tốc độ đi bộ (vx, vy, yaw)
@@ -533,7 +545,11 @@ struct Tuning {
     float gait_move_request_ang = 0.15f;
     float gait_stability_gyro_norm = 0.25f;
     float gait_stability_joint_velocity_rms = 0.60f;
-    float gait_settle_dwell_s = 1.50f;
+    // Rỗng = lấy gait_settle_dwell_s của bundle (bản sao gait_t_settle_s lúc
+    // train). Route flat_model cũ không có bundle nên dùng kDefaultSettleDwellS.
+    static constexpr float kDefaultSettleDwellS = 1.50f;
+    std::optional<float> gait_settle_dwell_s;
+    float GaitSettleDwell() const { return gait_settle_dwell_s.value_or(kDefaultSettleDwellS); }
     float gait_w2s_timeout_s = 5.00f;
     float gait_stability_filter_tau_s = 0.20f;
 

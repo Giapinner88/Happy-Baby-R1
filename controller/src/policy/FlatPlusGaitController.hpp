@@ -98,9 +98,10 @@ protected:
                         "prefix_only_then_raw_gait_v1");
         RequireMetadata(model_path_, "onnx_preprocess_contract",
                         "normalize_prefix_then_append_raw_gait_v1");
-        std::string period;
-        if (policy_.ReadMetadataString("gait_period_s", period))
-            RequireMetadataFloat(model_path_, "gait_period_s", configured_period_s_);
+        // Bắt buộc, không phải "nếu model có khoá này": chu kỳ nay đến từ bundle,
+        // và bundle chỉ là bản sao. Thiếu đối chiếu thì một policy.yaml sai sẽ
+        // chạy sai chu kỳ mà không ai biết.
+        RequireMetadataFloat(model_path_, "gait_period_s", configured_period_s_);
         // The observation/controller contract is shared by the original gait
         // artifacts and the 0917 exports. Keep the FSM check exact, but qualify
         // each stand-recovery task variant explicitly.

@@ -686,7 +686,7 @@ void Application::ActivatePolicy(PolicyController* ctrl) {
     // Mimic tự nạp dance_trim_deg_N của nó ngay trước khi gọi hàm này.
     if (ctrl == walk_ctrl_.get() || (teleop_ctrl_ && ctrl == teleop_ctrl_.get())) {
         estimator_.SetPitchTrimDeg(tuning_.LocomotionTrimDeg());
-        const float period = ctrl == walk_ctrl_.get() ? tuning_.WalkGaitPeriod() : tuning_.TeleopGaitPeriod();
+        const float period = ctrl == walk_ctrl_.get() ? walk_gait_period_s_ : teleop_gait_period_s_;
         if (std::abs(gait_.period_s() - period) > 1e-6f) {
             gait_.Configure(period);
             gait_.Reset();

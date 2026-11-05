@@ -57,9 +57,7 @@
     "preflight_test"
   ],
   "walk_policy": "t1_settle05_iter19999",
-  "walk_gait_period_s": 1.0,
   "teleop_policy": "u4_seed42",
-  "teleop_gait_period_s": 0.6,
   "source_iteration": 19999,
   "training_complete": true,
   "torch_onnx_max_abs_error": 1.6689300537109375e-06,
@@ -68,5 +66,6 @@
   "hardware_acceptance": "pending",
   "deployed": false,
   "previous_bundle": "t1_settle05_iter14100 (same run, replaced in place)",
-  "note": "Baseline before this change was 47/49: tuning_include_test and config_reader_test still pinned the pre-T1 walk/teleop pair. Both are updated here, so the suite is green."
+  "note": "Baseline before this change was 47/49: tuning_include_test and config_reader_test still pinned the pre-T1 walk/teleop pair. Both are updated here, so the suite is green.",
+  "gait_timing_source": "policy.yaml cua bundle (gait_period_s 1.0, gait_settle_dwell_s 0.5), doi chieu lai metadata ONNX luc khoi dong"
 }

@@ -206,9 +206,12 @@ private:
     void EnterZeroTorque(const std::string& reason);  // L2+Y: mode=1, kp=kd=0, chỉ từ kIdle
     void ActivatePolicy(PolicyController* ctrl);
     // Nạp một controller locomotion theo contract (route bundle hoặc flat_model cũ).
+    // gait_period_s và settle_dwell_s đã được giải xong ở call-site (override của
+    // locomotion.yaml, nếu không có thì lấy của bundle).
     std::unique_ptr<PolicyController> MakeLocomotionController(const std::string& contract,
                                                                const std::string& path,
-                                                               float gait_period_s);
+                                                               float gait_period_s,
+                                                               float settle_dwell_s);
     PolicyController* LocomotionFor(LocoMode mode) const;
     static const char* LocoModeName(LocoMode mode);
     // STAND LOCK -> LOCOMOTION ở chế độ chỉ định (R2+A / R2+X).
@@ -286,6 +289,10 @@ private:
     LocoMode loco_mode_ = LocoMode::kWalk;
     std::string walk_policy_label_;
     std::string teleop_policy_label_;
+    // Chu kỳ gait đã giải cho từng route (override YAML hoặc bundle). Không đọc
+    // lại tuning_ lúc chạy: ở route bundle tuning_ có thể không có khoá nào.
+    float walk_gait_period_s_ = 0.0f;
+    float teleop_gait_period_s_ = 0.0f;
     bool loco_swap_pending_ = false;
     LocoMode loco_swap_target_ = LocoMode::kWalk;
     float loco_swap_timer_s_ = 0.0f;

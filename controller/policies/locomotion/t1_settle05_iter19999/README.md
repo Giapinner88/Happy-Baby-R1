@@ -24,14 +24,14 @@ nhưng clock vẫn chạy. Kp/Kd, action scale và default pose lấy đúng met
 
 ```yaml
 walk_policy: t1_settle05_iter19999
-walk_gait_period_s: 1.0
 teleop_policy: u4_seed42
-teleop_gait_period_s: 0.6
 ```
 
-`gait_period_s` là fallback khi thiếu override. Runtime kiểm period của từng route
-và đổi clock khi chuyển policy. Rollback: chọn `flat_plus_gait_0917_armfree`
-và đặt `walk_gait_period_s: 0.6`.
+Chu kỳ không khai trong `locomotion.yaml` nữa: `policy.yaml` của bundle này ghi
+`gait_period_s: 1.0` và `gait_settle_dwell_s: 0.5`, u4 ghi `0.6`, runtime lấy
+từ đó và vẫn đối chiếu lại metadata ONNX của từng route, đổi clock khi chuyển
+policy. Rollback: đổi mỗi `walk_policy: flat_plus_gait_0917_armfree`, chu kỳ 0.6
+đi theo bundle đó (xem chú thích dwell trong `policy.yaml` của nó).
 
 Miền train: vx [-1.0, 1.2], vy [-0.6, 0.6] m/s, yaw [-1.0, 1.0] rad/s.
 Các giới hạn lệnh hiện có của HB vẫn có thể vượt miền này.

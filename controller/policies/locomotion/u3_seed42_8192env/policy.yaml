@@ -4,3 +4,4 @@ contract: r1_wb_legs_v1_blind
 sha256: 35f06a0bdd838879e1ebe291327f8f7aa1d1b058fc08d10efa3d1147a9e211eb
 # true = artifact được duyệt cho overlay teleop H4 (tay+đầu từ Quest).
 teleop_h4: false
+gait_period_s: 0.6
