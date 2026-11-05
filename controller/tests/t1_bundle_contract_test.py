@@ -13,22 +13,29 @@ import onnx
 root, binary = (Path(p).resolve() for p in sys.argv[1:3])
 model = onnx.load(root / "policies/locomotion/t1_settle05_iter19999/policy.onnx")
 metadata = {p.key: p.value for p in model.metadata_props}
+reversed_joints = ",".join(reversed(metadata["joint_names"].split(",")))
+# gait_task_variant la provenance, khong con la cong chan: mot ban train lai voi
+# ten bien the moi phai nap duoc, nhung van phai qua day du hop dong quan sat.
+# Cac case bi bo: "envs" (training_num_envs) va "budget"
+# (training_target_iterations). Hai khoa do mo ta cach train, khong anh huong
+# inference; cho cua chung la packaging.json chu khong phai cong runtime.
 cases = {
-    "valid": {},
-    "period": {"gait_period_s": "0.6"},
-    "phase": {"gait_phase_contract": "unknown"},
-    "clock": {"training_phase_clock": "stand_reset"},
-    "mask": {"training_phase_zero_mask": "fsm_stand"},
-    "first_tick": {"gait_phase_tick_alignment": "increment_first"},
-    "joint_count": {"gait_stability_joint_count": "12"},
-    "joint_order": {"joint_names": ",".join(reversed(metadata["joint_names"].split(",")))},
-    "rms_order": {"gait_stability_joint_names": ",".join(reversed(metadata["joint_names"].split(",")))},
-    "predicate": {"gait_stability_predicate": "filtered_imu_and_legs12_joint_rms_v1"},
-    "variant": {"gait_task_variant": "unknown"},
-    "fsm": {"gait_fsm_contract": "flat_plus_gait_fsm_v1"},
-    "settle": {"gait_t_settle_s": "1.0"},
-    "envs": {"training_num_envs": "1024"},
-    "budget": {"training_target_iterations": "10000"},
+    "valid": ({}, True),
+    "new_variant": ({"gait_task_variant": "retrain_unknown_20261106"}, True),
+    "new_variant_joint_order": (
+        {"gait_task_variant": "retrain_unknown_20261106", "joint_names": reversed_joints},
+        False),
+    "period": ({"gait_period_s": "0.6"}, False),
+    "phase": ({"gait_phase_contract": "unknown"}, False),
+    "clock": ({"training_phase_clock": "stand_reset"}, False),
+    "mask": ({"training_phase_zero_mask": "fsm_stand"}, False),
+    "first_tick": ({"gait_phase_tick_alignment": "increment_first"}, False),
+    "joint_count": ({"gait_stability_joint_count": "12"}, False),
+    "joint_order": ({"joint_names": reversed_joints}, False),
+    "rms_order": ({"gait_stability_joint_names": reversed_joints}, False),
+    "predicate": ({"gait_stability_predicate": "filtered_imu_and_legs12_joint_rms_v1"}, False),
+    "fsm": ({"gait_fsm_contract": "flat_plus_gait_fsm_v1"}, False),
+    "settle": ({"gait_t_settle_s": "1.0"}, False),
 }
 with tempfile.TemporaryDirectory(prefix="hb-t1-contract-") as tmp:
     project = Path(tmp)
@@ -46,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix="hb-t1-contract-") as tmp:
     bundle.mkdir()
     config = project / "config/locomotion.yaml"
     config.write_text(re.sub(r"^walk_policy:.*$", "walk_policy: t1_test", config.read_text(), flags=re.M))
-    for label, changes in cases.items():
+    for label, (changes, accepted) in cases.items():
         current = onnx.ModelProto()
         current.CopyFrom(model)
         for prop in current.metadata_props:
@@ -62,7 +69,7 @@ with tempfile.TemporaryDirectory(prefix="hb-t1-contract-") as tmp:
         result = subprocess.run([str(binary), "--preflight"],
                                 env={**os.environ, "HB_PROJECT_DIR": str(project)},
                                 text=True, capture_output=True)
-        assert (result.returncode == 0) == (label == "valid"), (label, result.stdout[-1500:], result.stderr)
-        if label != "valid":
+        assert (result.returncode == 0) == accepted, (label, result.stdout[-1500:], result.stderr)
+        if not accepted:
             assert "metadata mismatch" in result.stdout + result.stderr, label
 print(f"T1_BUNDLE_CONTRACT_OK: {len(cases)} cases")
