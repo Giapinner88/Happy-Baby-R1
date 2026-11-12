@@ -38,6 +38,7 @@
 #include "../policy/FlatPlusGaitController.hpp"
 #include "../policy/WholeBodyLegsController.hpp"
 #include "../policy/WholeBodyLegsGaitController.hpp"
+#include "../policy/MultiGaitH4V2Controller.hpp"
 #include "../policy/PolicyBundle.hpp"
 #include "../policy/TeleopH4PolicyGate.hpp"
 #include "../robot/LowCmdSender.hpp"
@@ -119,6 +120,7 @@ private:
     bool TryRecoverMotion(const unitree_hg::msg::dds_::LowState_& low,
                           const InputCommand& cmd, bool state_ok);
     void StopForMotionFault(const char* reason);
+    void MonitorLoopTiming(long state_age_ms);
     bool TickDisarmed(const InputCommand& cmd);   // P0-1: chờ arm, KHÔNG publish
     void EnterConflict();                          // P0-1: built-in quay lại -> nhả quyền
     bool TryDisarm(const InputCommand& cmd, const unitree_hg::msg::dds_::LowState_& low);
@@ -206,8 +208,13 @@ private:
     void EnterZeroTorque(const std::string& reason);  // L2+Y: mode=1, kp=kd=0, chỉ từ kIdle
     void ActivatePolicy(PolicyController* ctrl);
     // Nạp một controller locomotion theo contract (route bundle hoặc flat_model cũ).
+    // gait_period_s và settle_dwell_s đã được giải xong ở call-site (override của
+    // locomotion.yaml, nếu không có thì lấy của bundle).
     std::unique_ptr<PolicyController> MakeLocomotionController(const std::string& contract,
-                                                               const std::string& path);
+                                                               const std::string& path,
+                                                               float gait_period_s,
+                                                               float settle_dwell_s,
+                                                               const std::string& gait_phase_source);
     PolicyController* LocomotionFor(LocoMode mode) const;
     static const char* LocoModeName(LocoMode mode);
     // STAND LOCK -> LOCOMOTION ở chế độ chỉ định (R2+A / R2+X).
@@ -239,6 +246,8 @@ private:
     std::mutex state_mutex_;
     bool got_state_ = false;
     std::chrono::steady_clock::time_point last_state_time_;   // chỉ đọc/ghi trong state_mutex_
+    std::chrono::steady_clock::time_point last_state_progress_time_; // state_mutex_
+    std::chrono::steady_clock::time_point sampled_state_progress_time_; // Tick snapshot
     // Gói LowState của tick này còn mới hơn state_timeout_ms hay không.
     bool state_fresh_ = false;
     bool remote_state_fresh_ = false;
@@ -250,6 +259,15 @@ private:
     DisarmGate disarm_gate_;
     bool arm_neutral_required_ = false;
     int state_fault_log_tick_ = 0;   // nhịp nhắc lại lỗi LowState (500 tick = 1s)
+    // Đo nhịp vòng lặp để tách "DDS ngừng cập nhật" khỏi "vòng điều khiển trễ".
+    // Chỉ ghi nhận và báo cáo; ngưỡng dừng vẫn do motion guard quyết định.
+    std::chrono::steady_clock::time_point last_tick_time_;
+    std::chrono::steady_clock::time_point last_loop_gap_log_;
+    bool have_tick_time_ = false;
+    uint64_t loop_gap_count_ = 0;        // tổng số lần tràn nhịp kể từ khi chạy
+    uint64_t loop_gap_since_log_ = 0;
+    double loop_gap_max_ms_ = 0;         // tệ nhất kể từ khi chạy
+    double loop_gap_window_max_ms_ = 0;
 
     // Các module chức năng
     StateEstimator estimator_;
@@ -275,6 +293,10 @@ private:
     LocoMode loco_mode_ = LocoMode::kWalk;
     std::string walk_policy_label_;
     std::string teleop_policy_label_;
+    // Chu kỳ gait đã giải cho từng route (override YAML hoặc bundle). Không đọc
+    // lại tuning_ lúc chạy: ở route bundle tuning_ có thể không có khoá nào.
+    float walk_gait_period_s_ = 0.0f;
+    float teleop_gait_period_s_ = 0.0f;
     bool loco_swap_pending_ = false;
     LocoMode loco_swap_target_ = LocoMode::kWalk;
     float loco_swap_timer_s_ = 0.0f;

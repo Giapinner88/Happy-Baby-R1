@@ -4,10 +4,12 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 namespace {
 bool CheckRawSample(motion_safety::Guard& guard,
-                    const unitree_hg::msg::dds_::LowState_& low, float& max_dq) {
+                    const unitree_hg::msg::dds_::LowState_& low, float& max_dq,
+                    std::chrono::steady_clock::time_point progress_time) {
     const auto& imu = low.imu_state();
     const Eigen::Quaternionf root(imu.quaternion()[0], imu.quaternion()[1],
                                    imu.quaternion()[2], imu.quaternion()[3]);
@@ -25,7 +27,8 @@ bool CheckRawSample(motion_safety::Guard& guard,
     for (float a : imu.accelerometer()) finite = finite && std::isfinite(a);
     const double wall = std::chrono::duration<double>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
-    return !guard.Sensor(low.tick(), wall, root, gyro, finite, max_dq);
+    const double progress = std::chrono::duration<double>(progress_time.time_since_epoch()).count();
+    return !guard.Sensor(low.tick(), wall, root, gyro, finite, max_dq, progress);
 }
 }
 
@@ -40,7 +43,7 @@ bool Application::CheckMotionSensor(const unitree_hg::msg::dds_::LowState_& low)
         motion_guard_monitoring_ = true;
     }
     float max_dq = 0;
-    if (!CheckRawSample(motion_guard_, low, max_dq)) {
+    if (!CheckRawSample(motion_guard_, low, max_dq, sampled_state_progress_time_)) {
         StopForMotionFault(motion_guard_.Reason());
         return false;
     }
@@ -51,7 +54,7 @@ bool Application::TryRecoverMotion(const unitree_hg::msg::dds_::LowState_& low,
                                    const InputCommand& cmd, bool state_ok) {
     float max_dq = 0;
     if (!state_ok || !estimator_.sample_valid() || !state_fresh_ || !remote_state_fresh_ ||
-        !CheckRawSample(motion_recovery_guard_, low, max_dq)) {
+        !CheckRawSample(motion_recovery_guard_, low, max_dq, sampled_state_progress_time_)) {
         motion_recovery_guard_ = motion_safety::Guard(tuning_.MotionSafetyConfig());
         motion_recovery_sample_seen_ = motion_recovery_released_ = false;
         return false;
@@ -119,9 +122,49 @@ bool Application::CheckMotionPose() {
     return true;
 }
 
+// Một chu kỳ dài hơn kLoopGapReportMs nghĩa là đã bỏ lỡ ít nhất 5 khung PD.
+// Chưa đủ để dừng (motion guard giữ quyền đó ở ngưỡng timeout_s), nhưng phải
+// để lại dấu vết kèm tuổi gói DDS, nếu không mọi lần điều tra sau lại chỉ đoán.
+void Application::MonitorLoopTiming(long state_age_ms) {
+    constexpr double kLoopGapReportMs = 10.0;
+    constexpr double kLoopGapLogWindowS = 1.0;
+    const auto now = std::chrono::steady_clock::now();
+    const double gap_ms = have_tick_time_
+        ? std::chrono::duration<double, std::milli>(now - last_tick_time_).count() : 0.0;
+    last_tick_time_ = now;
+    have_tick_time_ = true;
+    if (gap_ms <= kLoopGapReportMs) return;
+    ++loop_gap_count_;
+    ++loop_gap_since_log_;
+    loop_gap_max_ms_ = std::max(loop_gap_max_ms_, gap_ms);
+    loop_gap_window_max_ms_ = std::max(loop_gap_window_max_ms_, gap_ms);
+    // Máy quá tải có thể tràn nhịp liên tục; gom theo cửa sổ 1 s để log không
+    // tự nó trở thành tải, nhưng số lần và mức tệ nhất không bị mất.
+    if (std::chrono::duration<double>(now - last_loop_gap_log_).count() < kLoopGapLogWindowS)
+        return;
+    last_loop_gap_log_ = now;
+    std::cerr << "[LoopTiming] gap_ms=" << gap_ms
+              << " window_max_ms=" << loop_gap_window_max_ms_
+              << " window_count=" << loop_gap_since_log_
+              << " total=" << loop_gap_count_;
+    if (state_age_ms == std::numeric_limits<long>::max()) {
+        std::cerr << " state_age_ms=none";
+    } else {
+        std::cerr << " state_age_ms=" << state_age_ms << " progress_age_ms="
+                  << std::chrono::duration<double, std::milli>(
+                         now - sampled_state_progress_time_).count();
+    }
+    std::cerr << " state=" << StateName() << "\n";
+    loop_gap_since_log_ = 0;
+    loop_gap_window_max_ms_ = 0;
+}
+
 void Application::StopForMotionFault(const char* reason) {
     const bool first = !motion_guard_.Latched();
     motion_guard_.Trip(reason);
+    // Khung damping đi TRƯỚC mọi dòng log: stderr không có đệm, nếu đường log
+    // bị nghẽn thì lệnh dừng phải đã nằm trên dây rồi. Damping lặp lại vô hại.
+    sender_.Damping(estimator_.state().mode_machine);
     // Sensor/Pose may have latched before calling us. The state is the reliable
     // one-shot log gate, while Damping must be repeated even when already IDLE.
     if (first || state_ != AppState::kIdle) {
@@ -131,6 +174,11 @@ void Application::StopForMotionFault(const char* reason) {
                   << " state=" << StateName() << " dance=" << pending_dance_key_
                   << " error_deg=" << motion_guard_.ErrorDeg()
                   << " bad_s=" << motion_guard_.BadSeconds()
+                  << " progress_age_ms=" << motion_guard_.ProgressAgeSeconds()*1000
+                  << " observation_gap_ms=" << motion_guard_.ObservationGapSeconds()*1000
+                  << " tick_advance=" << motion_guard_.TickAdvance()
+                  << " loop_gaps=" << loop_gap_count_
+                  << " loop_gap_max_ms=" << loop_gap_max_ms_
                   << "; IDLE/damping, release controls then issue a new command\n";
     }
     EnterIdle(std::string("Motion safety: ") + motion_guard_.Reason());

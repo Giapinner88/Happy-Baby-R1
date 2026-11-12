@@ -4,7 +4,6 @@
 
 # PHẢI khớp period lúc train flat_model. Đổi thì đo lại bằng autotest sim trước khi
 # chạy robot thật (xem huong_dan_van_hanh.md / memory gait-period-06-not-08).
-gait_period_s: 0.6
 # Thời gian FSM chờ ổn định từ W2S sang STAND; lấy trực tiếp từ config này,
 # không cần khớp metadata gait_t_settle_s trong ONNX.
 gait_settle_dwell_s: 0.5

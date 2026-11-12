@@ -1,0 +1,8 @@
+# Locomotion policy bundle — chọn bằng walk_policy / teleop_policy trong
+# controller/config/locomotion.yaml. run_r1 kiểm sha256 và metadata ONNX lúc khởi động.
+contract: r1_armfree0917_multigait_h4_v2
+sha256: 5189902404d029506f7f1327b541c1f6ec6c24bedbb5a22dc064e8e68702245a
+# Contract này không có chu kỳ gait cố định: policy tự phát chu kỳ mỗi bước qua
+# action index 24, nên không có gait_period_s để chép từ metadata.
+# Nguồn: policy.onnx, thêm ngày 2026-11-06. Ghi provenance huấn luyện
+# (nhánh, run, checkpoint, đánh giá) vào README.md cạnh file này.

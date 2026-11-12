@@ -63,7 +63,9 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "return_kp_ankle")    return_kp_ankle = f();
     else if (key == "policy_kp_scale")    policy_kp_scale = f();
     else if (key == "policy_kd_scale")    policy_kd_scale = f();
-    else if (key == "gait_period_s")      gait_period_s = f();
+    else if (key == "gait_period_s")      { gait_period_s = f(); gait_period_configured = true; }
+    else if (key == "walk_gait_period_s") walk_gait_period_s = f();
+    else if (key == "teleop_gait_period_s") teleop_gait_period_s = f();
     else if (key == "slow_vx")            slow_vx = f();
     else if (key == "slow_vy")            slow_vy = f();
     else if (key == "slow_yaw")           slow_yaw = f();
@@ -418,6 +420,13 @@ bool Tuning::Validate() const {
             "select the locomotion policy in exactly one way");
     require(bundle_route || teleop_policy.empty(),
             "teleop_policy requires walk_policy (bundle route)");
+    // Route bundle lấy chu kỳ từ policy.yaml. Khoá trần gait_period_s chỉ dành
+    // cho route flat_model cũ; để nó lẫn vào đây thì nó bị bỏ qua trong im lặng
+    // và người sửa tưởng mình đã đổi được chu kỳ. Override đúng là
+    // walk_gait_period_s / teleop_gait_period_s.
+    require(!bundle_route || !gait_period_configured,
+            "gait_period_s is for the legacy flat_model route; with walk_policy set the "
+            "period comes from the bundle, override with walk_gait_period_s if needed");
     require(bundle_route || !flat_model.empty(), "flat_model must not be empty");
     require(bundle_route ||
                 flat_policy_contract == "legacy_83" ||
@@ -469,6 +478,11 @@ bool Tuning::Validate() const {
             "(duoi 84 = robot do trong kReturningToDefault vi khong co policy do)");
     // PhaseObs chia cho gait_period_s -> 0 hoặc âm là chia cho 0/NaN đi thẳng vào obs.
     // Trần/sàn rộng nhưng vẫn chặn được lỗi nhập đơn vị (ms) hoặc để trống.
+    require(finite_in(WalkGaitPeriod(), 0.3f, 1.5f), "walk_gait_period_s must be finite and in [0.3, 1.5]");
+    require(finite_in(TeleopGaitPeriod(), 0.3f, 1.5f), "teleop_gait_period_s must be finite and in [0.3, 1.5]");
+    require(!(teleop_policy.empty() || teleop_policy == walk_policy) ||
+                std::abs(WalkGaitPeriod() - TeleopGaitPeriod()) < 1e-6f,
+            "a shared locomotion policy must use one gait period");
     require(finite_in(gait_period_s, 0.3f, 1.5f),
             "gait_period_s must be finite and in [0.3, 1.5] "
             "(phai bang 'period' cua phase obs luc train policy dang nap)");
@@ -486,7 +500,7 @@ bool Tuning::Validate() const {
             "gait_stability_gyro_norm must be finite and in [0, 20]");
     require(finite_in(gait_stability_joint_velocity_rms, 0.0f, 50.0f),
             "gait_stability_joint_velocity_rms must be finite and in [0, 50]");
-    require(finite_in(gait_settle_dwell_s, 0.01f, 60.0f),
+    require(!gait_settle_dwell_s || finite_in(*gait_settle_dwell_s, 0.01f, 60.0f),
             "gait_settle_dwell_s must be finite and in [0.01, 60]");
     require(finite_in(gait_w2s_timeout_s, 0.1f, 120.0f),
             "gait_w2s_timeout_s must be finite and in [0.1, 120]");

@@ -35,13 +35,15 @@ Chạy `controller` theo **2 cách**:
 
 Các tham số khác (gains, tốc độ, dance, ngồi ghế…) chỉnh theo nhu cầu; sửa xong cần `./hb restart all` (chỉ chạy khi robot DISARMED).
 
-> ⚠ **Đổi `locomotion.yaml: walk_policy` / `teleop_policy` thì phải kiểm 3 thứ đi kèm — không có cái nào tự động** (cách thêm bundle: [policies.md](policies.md) §3):
-> 1. `gait_period_s` phải bằng `period` của phase obs lúc train đúng model đó (mjlab:
->    `velocity_env_cfg.py` term `phase`; deploy chuẩn: `.../velocity/v0/params/deploy.yaml`
->    → `observations.gait_phase.params.period`). Sai = robot bước sai nhịp, không gain nào bù được.
->    Chạy `run_r1 --preflight` để xem số đang chạy: dòng `[Locomotion] gait_period=...`.
+> ⚠ **Đổi `locomotion.yaml: walk_policy` / `teleop_policy` thì phải kiểm 1 thứ đi kèm** (cách thêm bundle: [policies.md](policies.md) §3):
+> 1. ~~Chu kỳ gait~~ **tự động rồi**: lấy từ `gait_period_s` trong `policy.yaml` của bundle
+>    (bản sao metadata ONNX), runtime vẫn đối chiếu lại với ONNX. Xem số đang chạy bằng
+>    `run_r1 --preflight`, dòng `[...] gait_period=...` có đánh dấu `[bundle]` hay
+>    `[override locomotion.yaml]`. Dwell FSM cũng vậy.
 > 2. Trần tốc độ (`slow_*`/`fast_*`) phải nằm trong dải lệnh model đó đã train.
-> 3. Sửa tên bundle trong `tests/tuning_include_test.cpp` và `tests/config_reader_test.sh` —
+> 3. ~~Sửa tên bundle trong test~~ **không cần nữa**: hai test đó kiểm cấu trúc chứ không
+>    ghim tên. Dùng `./hb policy use <tên>` để đổi, nó tự sinh lại manifest và trả lại
+>    lựa chọn cũ nếu preflight hỏng. Phần còn lại của ghi chú cũ:
 >    hai chỗ đó ghim tên có chủ đích để bắt việc đổi model ngoài ý muốn.
 
 ---

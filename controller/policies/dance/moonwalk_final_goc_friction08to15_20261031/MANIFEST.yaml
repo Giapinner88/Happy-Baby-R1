@@ -1,0 +1,50 @@
+name: moonwalk_final_goc_friction08to15_20261031
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_goc_8192env_friction08to15_15k_20261031
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_goc/logs/rsl_rl/r1_tracking/2026-10-31_14-46-06_moonwalk_final_goc_8192env_friction08to15_15k_20261031/2026-10-31_14-46-06_moonwalk_final_goc_8192env_friction08to15_15k_20261031.onnx
+training:
+  repo: unitree_rl_mjlab_goc
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 15000
+  iterations_target: 15000
+  checkpoint: model_14999.pt
+  friction_range:
+  - 0.8
+  - 1.5
+motion:
+  file: motion.npz
+  source: /home/ubuntu22/train_mujoco/outputs/artifacts/nus_0018_moonwalk_final_20261031/moonwalk_final_50hz.npz
+  source_sha256: 54a0add1212c3d69d5d6c1fdc875a96c6c19b3f5552063fa4fa0649f46fef455
+  frames: 865
+  fps: 50.0
+audio: null
+audio_omission: No matching Moonwalk audio found in workspace
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  hardware_acceptance: pending
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+cpp_sim:
+  result: passed
+  report: /home/ubuntu22/train_mujoco/outputs/artifacts/moonwalk_policy_retrain_20261101/RUNS.md
+artifacts:
+  policy: policy.onnx
+  motion: motion.npz
+  checkpoint: model_14999.pt
+  agent: agent.yaml
+  env: env.yaml
+  onnx_metadata: onnx_metadata.yaml
+sha256:
+  DESCRIPTION.md: b73ccaa5db912e38b142115aaa3d8683f0a85604fff663b4ac78209d731bc975
+  agent.yaml: 8319d076bea49b0453bdc585e4f980bfa23652781254157b478dd328b1a8ff00
+  env.yaml: 60062283944294c373349a21fa690e76eaa99fcd487df5f266e168f643f2cd85
+  model_14999.pt: e4488f522ddba756f0cfd0e92f84d7deacbacda25be602440f87de843599632f
+  motion.npz: 54a0add1212c3d69d5d6c1fdc875a96c6c19b3f5552063fa4fa0649f46fef455
+  onnx_metadata.yaml: 58c2a525a11157052298cf60c3234546a5d66c36906dbea48b24dc56cdd48c0e
+  policy.onnx: 9b772e7e02361dc059a08628fe13ef7f2b09203aca7ca3b0aa6e3510259c6c32
+  source.txt: 86ea4478f12972c3900e4326b4362ea246c7d4376c209bad193ad6b45c85eb3f

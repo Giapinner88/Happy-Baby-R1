@@ -222,8 +222,25 @@ struct ApplicationTestAccess {
         const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
         a.motion_guard_.Sensor(100, now-.2, Eigen::Quaternionf::Identity(), Eigen::Vector3f::Zero(), true, 0);
         a.motion_guard_monitoring_ = true;
+        auto stale = Packet(100); a.OnLowState(&stale);
+        a.last_state_progress_time_ = std::chrono::steady_clock::now()-std::chrono::milliseconds(200);
         Tick(a, Packet(100)); Latched(a, "stale_state");
         Tick(a, Packet(102)); Latched(a, "stale_state");
+
+        // The control consumer paused, while the callback received fresh
+        // progression: not stale_state, but 200 ms of missing PD frames is a
+        // hole in both the command stream and the observation history.
+        Setup(a);
+        a.motion_guard_.Sensor(100, now-.2, Eigen::Quaternionf::Identity(), Eigen::Vector3f::Zero(), true, 0);
+        a.motion_guard_monitoring_ = true;
+        Tick(a, Packet(300));
+        Latched(a, "loop_overrun");
+        // An in-budget consumer delay keeps driving on feedback that stayed fresh.
+        Setup(a);
+        a.motion_guard_.Sensor(100, now-.05, Eigen::Quaternionf::Identity(), Eigen::Vector3f::Zero(), true, 0);
+        a.motion_guard_monitoring_ = true;
+        Tick(a, Packet(300));
+        CHECK(!a.motion_guard_.Latched()); CHECK(a.state_ == AppState::kLocomotion);
 
         Setup(a); a.state_ = AppState::kMimic; a.pending_dance_key_ = 7;
         Tick(a, Packet(100)); Latched(a, "invalid_reference"); ZeroPackets();

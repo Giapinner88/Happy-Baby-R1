@@ -38,6 +38,8 @@ for name in names:
         shutil.copytree(root / 'config', target / 'config')
         config = target / 'config/locomotion.yaml'
         original_config = config.read_text()
+        original_config = re.sub(r'^walk_gait_period_s:.*$', 'walk_gait_period_s: 0.6', original_config, flags=re.MULTILINE)
+        original_config = re.sub(r'^teleop_gait_period_s:.*$', 'teleop_gait_period_s: 0.6', original_config, flags=re.MULTILINE)
         for folder in ('motions', 'assets'):
             if (root / folder).exists():
                 (target / folder).symlink_to(root / folder, target_is_directory=True)
@@ -66,6 +68,13 @@ for name in names:
             ('wrong_joint_order', {'joint_names': ','.join(reversed(meta['joint_names'].split(',')))}, False),
             ('wrong_dwell', {'gait_t_settle_s': '1.0'}, False),
         ]
+        # policy.yaml khai chu ky/dwell cua chinh bundle nguon; ONNX van la ben
+        # phe duyet, nen cac case lam lech metadata o duoi van phai bi tu choi.
+        phase_source = ("command_gated" if "gait_phase_contract" in meta
+                        else "episode_clock")
+        timing = (f"gait_period_s: {meta['gait_period_s']}\n"
+                  f"gait_settle_dwell_s: {meta['gait_t_settle_s']}\n"
+                  f"gait_phase_source: {phase_source}\n")
         for label, updates, accepted in cases:
             current = onnx.ModelProto();current.CopyFrom(model)
             for prop in current.metadata_props:
@@ -73,7 +82,7 @@ for name in names:
                     prop.value = updates[prop.key]
             onnx.save(current, bundle / 'policy.onnx')
             sha = hashlib.sha256((bundle / 'policy.onnx').read_bytes()).hexdigest()
-            (bundle / 'policy.yaml').write_text(f'contract: flat_plus_gait_h4_v1\nsha256: {sha}\nteleop_h4: true\n')
+            (bundle / 'policy.yaml').write_text(f'contract: flat_plus_gait_h4_v1\nsha256: {sha}\nteleop_h4: true\n' + timing)
             text = re.sub(r'^walk_policy:.*$', 'walk_policy: ' + name, original_config, flags=re.MULTILINE)
             text = re.sub(r'^teleop_policy:.*$', 'teleop_policy: ' + name, text, flags=re.MULTILINE)
             config.write_text(text)
@@ -86,14 +95,15 @@ for name in names:
         # mixed-policy behavior, including default-pose compatibility checks.
         onnx.save(model, bundle / 'policy.onnx')
         sha = hashlib.sha256((bundle / 'policy.onnx').read_bytes()).hexdigest()
-        (bundle / 'policy.yaml').write_text(f'contract: flat_plus_gait_h4_v1\nsha256: {sha}\nteleop_h4: true\n')
+        (bundle / 'policy.yaml').write_text(f'contract: flat_plus_gait_h4_v1\nsha256: {sha}\nteleop_h4: true\n' + timing)
         config.write_text(re.sub(r'^walk_policy:.*$', 'walk_policy: ' + name, original_config, flags=re.MULTILINE))
         result = subprocess.run([str(binary), '--preflight'], env={**os.environ, 'HB_PROJECT_DIR': str(target)},
                                 text=True, capture_output=True)
         assert result.returncode == 0, (name, 'current_teleop_route', result.stdout[-3000:], result.stderr)
-        assert 'policies/locomotion/u2a_seed42/policy.onnx' in result.stdout
+        selected = re.search(r'^teleop_policy:\s*(\S+)', original_config, re.MULTILINE).group(1)
+        assert f'policies/locomotion/{selected}/policy.onnx' in result.stdout
         # A stale bundle hash must still reject before model loading.
-        (bundle / 'policy.yaml').write_text('contract: flat_plus_gait_h4_v1\nsha256: ' + '0'*64 + '\n')
+        (bundle / 'policy.yaml').write_text('contract: flat_plus_gait_h4_v1\nsha256: ' + '0'*64 + '\n' + timing)
         result = subprocess.run([str(binary), '--preflight'], env={**os.environ, 'HB_PROJECT_DIR': str(target)},
                                 text=True, capture_output=True)
         assert result.returncode != 0 and 'SHA-256' in result.stdout + result.stderr

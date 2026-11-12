@@ -122,10 +122,14 @@ void Application::ClearVoiceCommandGesture() {
 
 void Application::OnLowState(const void* msg) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    shared_low_state_ = *static_cast<const LowState_*>(msg);
+    const auto now = std::chrono::steady_clock::now();
+    const auto& incoming = *static_cast<const LowState_*>(msg);
+    if (!got_state_ || incoming.tick() != shared_low_state_.tick())
+        last_state_progress_time_ = now;
+    shared_low_state_ = incoming;
     got_state_ = true;
     ++state_sequence_;
-    last_state_time_ = std::chrono::steady_clock::now();
+    last_state_time_ = now;
 }
 
 /**
@@ -230,6 +234,7 @@ bool Application::Tick() {
         // mutex (watchdog cũ) là data race thật sự — tính tuổi ngay tại đây.
         std::lock_guard<std::mutex> lock(state_mutex_);
         low = shared_low_state_;
+        sampled_state_progress_time_ = last_state_progress_time_;
         got = got_state_;
         new_state_sample_ = got && state_sequence_ != consumed_state_sequence_;
         consumed_state_sequence_ = state_sequence_;
@@ -240,6 +245,7 @@ bool Application::Tick() {
                   std::chrono::steady_clock::now() - last_state_time_).count()
             : std::numeric_limits<long>::max();
     }
+    MonitorLoopTiming(state_age_ms);
     // Gói cũ hơn watchdog DDS thì mọi thứ đọc từ nó (kể cả byte tay cầm) đều
     // không còn giá trị. Cờ này đi kèm `low` xuống mọi consumer.
     const bool previous_state_fresh = state_fresh_;
@@ -678,8 +684,14 @@ void Application::ActivatePolicy(PolicyController* ctrl) {
     // dậy là locomotion chạy tiếp bằng trim của bài dance đó.
     // Đặt TRƯỚC Reset() để policy nhận đúng quaternion ngay frame đầu.
     // Mimic tự nạp dance_trim_deg_N của nó ngay trước khi gọi hàm này.
-    if (ctrl == walk_ctrl_.get() || (teleop_ctrl_ && ctrl == teleop_ctrl_.get()))
+    if (ctrl == walk_ctrl_.get() || (teleop_ctrl_ && ctrl == teleop_ctrl_.get())) {
         estimator_.SetPitchTrimDeg(tuning_.LocomotionTrimDeg());
+        const float period = ctrl == walk_ctrl_.get() ? walk_gait_period_s_ : teleop_gait_period_s_;
+        if (std::abs(gait_.period_s() - period) > 1e-6f) {
+            gait_.Configure(period);
+            gait_.Reset();
+        }
+    }
     ctrl->Reset(estimator_.state());
     active_ = ctrl;
     arm_desired_q_ = ctrl->default_q();

@@ -2,6 +2,8 @@
 
 #include <array>
 #include <cmath>
+#include <iostream>
+#include <string>
 
 #include "FlatHistoryController.hpp"
 #include "../gait/GaitModeScheduler.hpp"
@@ -23,8 +25,18 @@ public:
     bool SupportsH4TeleopOverlay() const override { return true; }
 
     void ConfigureGait(const GaitModeConfig& config,
-                       float gait_period_s = spec::kGaitPeriodS) {
+                       float gait_period_s = spec::kGaitPeriodS,
+                       const std::string& phase_source = "") {
+        // Call-site dùng 0 làm "contract này không có chu kỳ cố định" rồi mới
+        // ném ở Init. Chốt ngay đây để contract thêm về sau không phải tự khám
+        // phá lại: controller này chia cho chu kỳ nên 0 là chia cho 0.
+        if (!(gait_period_s > 0.0f) || !std::isfinite(gait_period_s))
+            throw std::runtime_error(
+                "FlatPlusGaitH4: gait_period_s phai duong va huu han, nhan duoc " +
+                std::to_string(gait_period_s));
         gait_config_ = config;
+        configured_period_s_ = gait_period_s;
+        expected_phase_source_ = phase_source;
         gait_.Configure(config);
         gait_phase_.Configure(gait_period_s);
         command_phase_.Configure(gait_period_s);
@@ -97,9 +109,13 @@ protected:
                         "prefix_only_then_raw_gait_v1");
         RequireMetadata(model_path_, "onnx_preprocess_contract",
                         "normalize_prefix_then_append_raw_gait_v1");
-        // The observation/controller contract is shared by the original gait
-        // artifacts and the 0917 exports. Keep the FSM check exact, but qualify
-        // each stand-recovery task variant explicitly.
+        // Bắt buộc, không phải "nếu model có khoá này": chu kỳ nay đến từ bundle,
+        // và bundle chỉ là bản sao. Thiếu đối chiếu thì một policy.yaml sai sẽ
+        // chạy sai chu kỳ mà không ai biết.
+        RequireMetadataFloat(model_path_, "gait_period_s", configured_period_s_);
+        // Nhánh kiểm tra chọn theo HỢP ĐỒNG FSM, không theo chuỗi biến thể.
+        // Keep the FSM check exact: mỗi giá trị dưới đây ứng với một bộ assert
+        // riêng ở phía dưới.
         std::string gait_fsm;
         if (!policy_.ReadMetadataString("gait_fsm_contract", gait_fsm) ||
             (gait_fsm != "flat_plus_gait_fsm_v1" &&
@@ -113,32 +129,94 @@ protected:
                 "' in " + model_path_);
         }
         const bool legs12 = gait_fsm == "flat_plus_gait_fsm_legs12_stand_recovery_v1";
+        // gait_task_variant chỉ còn là provenance: in ra để truy vết bản train,
+        // KHÔNG dùng làm cổng chặn. Policy train lại với tên biến thể mới nạp
+        // được, miễn là mọi hợp đồng quan sát dưới đây vẫn khớp.
+        std::string task_variant;
+        policy_.ReadMetadataString("gait_task_variant", task_variant);
+        std::cout << "[" << Name() << "] gait_task_variant="
+                  << (task_variant.empty() ? std::string("<missing>") : task_variant)
+                  << " gait_fsm_contract=" << gait_fsm << "\n";
+
+        // Thứ tự khớp là hợp đồng, không phải provenance: sai thứ tự thì robot
+        // cử động nhầm chi. Mọi bundle trên contract 335-D này đều lái đúng 24
+        // khớp theo thứ tự dưới đây, nên kiểm vô điều kiện, kể cả nhánh 0917
+        // trước đây chưa hề kiểm.
+        const std::string kLegJoints12 =
+            "left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,"
+            "left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,"
+            "right_hip_pitch_joint,right_hip_roll_joint,right_hip_yaw_joint,"
+            "right_knee_joint,right_ankle_pitch_joint,right_ankle_roll_joint";
+        const std::string kActuatedJoints24 = kLegJoints12 +
+            ",waist_roll_joint,waist_yaw_joint,left_shoulder_pitch_joint,"
+            "left_shoulder_roll_joint,left_shoulder_yaw_joint,left_elbow_joint,"
+            "left_wrist_roll_joint,right_shoulder_pitch_joint,right_shoulder_roll_joint,"
+            "right_shoulder_yaw_joint,right_elbow_joint,right_wrist_roll_joint";
+        RequireMetadata(model_path_, "joint_names", kActuatedJoints24);
+        // Tập khớp của vị ngữ ổn định đi theo FSM: legs12 dùng 12 khớp chân,
+        // còn lại dùng cả 24. Bundle legs12 BẮT BUỘC khai; bundle khác khai thì
+        // phải đúng (bundle 0917 cũ không có khoá này).
+        std::string exported_stability_joints;
+        const bool has_stability_joints = policy_.ReadMetadataString(
+            "gait_stability_joint_names", exported_stability_joints);
+        if (legs12 || has_stability_joints) {
+            RequireMetadata(model_path_, "gait_stability_joint_names",
+                            legs12 ? kLegJoints12 : kActuatedJoints24);
+        }
+        std::string exported_stability_count;
+        if (policy_.ReadMetadataString("gait_stability_joint_count",
+                                       exported_stability_count)) {
+            RequireMetadata(model_path_, "gait_stability_joint_count",
+                            legs12 ? "12" : "24");
+        }
+
+        // Nguồn phase do BUNDLE khai, không suy từ sự có mặt của khoá metadata:
+        // khuyết khoá và "train bằng episode clock" là hai chuyện khác nhau, mà
+        // hai bundle cùng gait_fsm_contract đang nằm ở hai phía (t1 =
+        // command_gated, flat_plus_gait_0917_armfree = episode_clock). Suy từ
+        // sự có mặt thì một ONNX rụng khoá sẽ lặng lẽ chạy sai term phase.
         std::string phase_contract;
-        if (policy_.ReadMetadataString("gait_phase_contract", phase_contract)) {
-            if (!legs12 || phase_contract != "episode_clock_command_gated_v1")
+        const bool has_phase_contract =
+            policy_.ReadMetadataString("gait_phase_contract", phase_contract);
+        if (expected_phase_source_.empty()) {
+            throw std::runtime_error(
+                "bundle khong khai gait_phase_source cho " + model_path_ +
+                "; them 'gait_phase_source: command_gated' hoac 'episode_clock' vao policy.yaml");
+        }
+        // Route cũ flat_model không có bundle để khai; giữ nguyên hành vi suy
+        // từ metadata như trước, vì đó là đường rollback đã ghim bằng tên file
+        // trong config, không phải đường nạp policy mới.
+        if (expected_phase_source_ != "from_metadata" &&
+            (expected_phase_source_ == "command_gated") != has_phase_contract) {
+            throw std::runtime_error(
+                "ONNX metadata mismatch: bundle khai gait_phase_source=" +
+                expected_phase_source_ + " nhung ONNX " +
+                (has_phase_contract ? "CO" : "KHONG CO") + " gait_phase_contract, in " +
+                model_path_);
+        }
+        if (has_phase_contract) {
+            if (phase_contract != "episode_clock_command_gated_v1")
                 throw std::runtime_error("ONNX metadata mismatch: unsupported gait_phase_contract in " + model_path_);
+            // Phase clock chỉ được tiêu thụ trên nhánh stand recovery
+            // (PrepareObservationContext). FSM phẳng mà vẫn khai phase contract
+            // thì obs phase bị bỏ qua lúc chạy: từ chối thay vì chạy sai obs.
+            if (gait_fsm == "flat_plus_gait_fsm_v1")
+                throw std::runtime_error(
+                    "ONNX metadata mismatch: gait_phase_contract can hop dong FSM "
+                    "stand recovery, model has gait_fsm_contract='" + gait_fsm +
+                    "' in " + model_path_);
             RequireMetadata(model_path_, "training_phase_clock",
                             "episode_time_continuous_legacy_0909");
             RequireMetadata(model_path_, "training_phase_zero_mask",
                             "command_3norm_lt_0.1");
             RequireMetadata(model_path_, "gait_phase_tick_alignment",
                             "reset_zero_then_increment_after_observation");
+            // Với các bundle chạy phase clock, dwell là một phần hợp đồng
+            // one-hot (STAND xuất hiện sau đúng bấy nhiêu giây lúc train).
+            RequireMetadataFloat(model_path_, "gait_t_settle_s", gait_config_.settle_dwell_s);
             command_phase_enabled_ = true;
         }
         if (gait_fsm == "flat_plus_gait_fsm_v1_stand_recovery_v1" || legs12) {
-            std::string task_variant;
-            if (!policy_.ReadMetadataString("gait_task_variant", task_variant) ||
-                (task_variant != "0917" && task_variant != "0917V3" &&
-                 task_variant != "0917V4" && task_variant != "0917V5A1" &&
-                 task_variant != "0917V5A2A" &&
-                 !(legs12 && task_variant == "armfree_ab_20261023"))) {
-                throw std::runtime_error(
-                    "ONNX metadata mismatch: gait_task_variant expected '0917' "
-                    "or '0917V3'/'0917V4'/'0917V5A1'/'0917V5A2A' "
-                    "for stand-recovery FSM, model has '" +
-                    (task_variant.empty() ? std::string("<missing>") : task_variant) +
-                    "' in " + model_path_);
-            }
             if (task_variant == "0917V5A1" || task_variant == "0917V5A2A") {
                 RequireMetadata(model_path_, "gait_v5_ablation", task_variant);
                 RequireMetadata(model_path_, "gait_reward_overlay",
@@ -167,22 +245,26 @@ protected:
             gait_config_.stand_upright_enabled = true;
             gait_config_.stand_push_exit_enabled = true;
             stand_recovery_enabled_ = true;
+        } else {
+            // FSM phẳng: bản train không có stand recovery. ONNX vẫn khai cờ
+            // recovery nghĩa là gait_fsm_contract lệch với bản train.
+            std::string exported;
+            for (const char* key : {"gait_stand_upright_enabled",
+                                    "gait_stand_push_exit_enabled"}) {
+                if (policy_.ReadMetadataString(key, exported))
+                    RequireMetadataFloat(model_path_, key, 0.0f);
+            }
+            if (policy_.ReadMetadataString("gait_command_overlay", exported) &&
+                exported == "legacy_0909_v2_stand_recovery_v1") {
+                throw std::runtime_error(
+                    "ONNX metadata mismatch: gait_command_overlay khai stand "
+                    "recovery nhung gait_fsm_contract='" + gait_fsm +
+                    "' khong co recovery, in " + model_path_);
+            }
         }
         if (legs12) {
-            RequireMetadata(model_path_, "gait_task_variant", "armfree_ab_20261023");
             RequireMetadata(model_path_, "gait_stability_predicate",
                             "filtered_imu_and_legs12_joint_rms_v1");
-            const std::string leg_names =
-                "left_hip_pitch_joint,left_hip_roll_joint,left_hip_yaw_joint,"
-                "left_knee_joint,left_ankle_pitch_joint,left_ankle_roll_joint,"
-                "right_hip_pitch_joint,right_hip_roll_joint,right_hip_yaw_joint,"
-                "right_knee_joint,right_ankle_pitch_joint,right_ankle_roll_joint";
-            RequireMetadata(model_path_, "gait_stability_joint_names", leg_names);
-            RequireMetadata(model_path_, "joint_names", leg_names +
-                ",waist_roll_joint,waist_yaw_joint,left_shoulder_pitch_joint,"
-                "left_shoulder_roll_joint,left_shoulder_yaw_joint,left_elbow_joint,"
-                "left_wrist_roll_joint,right_shoulder_pitch_joint,right_shoulder_roll_joint,"
-                "right_shoulder_yaw_joint,right_elbow_joint,right_wrist_roll_joint");
             RequireMetadataFloat(model_path_, "gait_t_settle_s", gait_config_.settle_dwell_s);
             gait_config_.stability_legs12_only = true;
         } else {
@@ -198,9 +280,9 @@ protected:
                              gait_config_.move_request_lin);
         RequireMetadataFloat(model_path_, "gait_move_request_ang",
                              gait_config_.move_request_ang);
-        // SETTLE dwell is a runtime tuning, not an actor/observation contract.
-        // Keep the FSM duration controlled by gait_settle_dwell_s in YAML;
-        // exported gait_t_settle_s metadata may describe the training setup.
+        // gait_t_settle_s đã được đối chiếu ở trên cho các bundle chạy phase
+        // clock và cho legs12. Với bundle cũ không có hai thứ đó, dwell vẫn là
+        // tuning runtime (gait_settle_dwell_s), không phải hợp đồng quan sát.
         RequireMetadataFloat(model_path_, "gait_w2s_timeout_s",
                              gait_config_.w2s_timeout_s);
         RequireMetadataFloat(model_path_, "gait_stability_ang_vel_max",
@@ -218,6 +300,8 @@ protected:
 
 private:
     GaitModeConfig gait_config_{};
+    float configured_period_s_ = spec::kGaitPeriodS;
+    std::string expected_phase_source_;  // bundle khai; rỗng = từ chối
     GaitModeScheduler gait_{};
     GaitScheduler gait_phase_{};
     CommandGatedPhase command_phase_{};

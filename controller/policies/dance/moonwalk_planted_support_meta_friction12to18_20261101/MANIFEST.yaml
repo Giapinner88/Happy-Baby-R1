@@ -1,0 +1,50 @@
+name: moonwalk_planted_support_meta_friction12to18_20261101
+kind: r1_mimic_dance
+status: packaged; hardware_acceptance_pending
+source_run: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-11-01_17-41-33_moonwalk_planted_support_meta_8192env_friction12to18_15k_20261101
+metadata_source: /home/ubuntu22/train_mujoco/robot_r1/unitree_rl_mjlab_meta/logs/rsl_rl/r1_tracking/2026-11-01_17-41-33_moonwalk_planted_support_meta_8192env_friction12to18_15k_20261101/2026-11-01_17-41-33_moonwalk_planted_support_meta_8192env_friction12to18_15k_20261101.onnx
+training:
+  repo: unitree_rl_mjlab_meta
+  task: Unitree-R1-Tracking-No-State-Estimation
+  iterations_completed: 15000
+  iterations_target: 15000
+  checkpoint: model_14999.pt
+  friction_range:
+  - 1.2
+  - 1.8
+motion:
+  file: motion.npz
+  source: /home/ubuntu22/train_mujoco/outputs/artifacts/nus_0018_moonwalk_planted_support_final_20261101/0018_Moonwalk001_whole_body_50hz.npz
+  source_sha256: 99a25f59b30f21e96b81d9dde03e59b4da3520fcf64c0007049e2fbc51ceb079
+  frames: 774
+  fps: 50.0
+audio: null
+audio_omission: No matching Moonwalk audio found in workspace
+dimensions:
+  observation: 129
+  action: 24
+  policy_hz: 50.0
+hb:
+  activation: inactive
+  slot: null
+  hardware_acceptance: pending
+  scanner_contract: exactly one root-level .onnx and one root-level .npz
+cpp_sim:
+  result: cooldown_guard_stop
+  report: /home/ubuntu22/train_mujoco/outputs/artifacts/moonwalk_policy_retrain_20261101/RUNS.md
+artifacts:
+  policy: policy.onnx
+  motion: motion.npz
+  checkpoint: model_14999.pt
+  agent: agent.yaml
+  env: env.yaml
+  onnx_metadata: onnx_metadata.yaml
+sha256:
+  DESCRIPTION.md: 571fe487ffd3ced7a0c5c9a2138ed97e71baf7dee5f688794c2b38750b38eaa2
+  agent.yaml: c9049545011efd8e3a926a3dd7a3a865d9d7e429a7fd3baaf5bfd299c3cd9e32
+  env.yaml: 8138ae0bda166654bf40be5486812f6f3d9592b597f1a48ba54f4a37d8e07e25
+  model_14999.pt: 890415de101fa0541ff3b7057b3ff72f486685e395b245eadc3860273e7f9979
+  motion.npz: 99a25f59b30f21e96b81d9dde03e59b4da3520fcf64c0007049e2fbc51ceb079
+  onnx_metadata.yaml: 58c9d90ecba0edcd1a106e63c70bd56c61ba4718fe4013aa01298eacc80da709
+  policy.onnx: 71d9b5a13dc03a3125f3aa55ababef2b8ec497680b713aebb0ce05b151b458e6
+  source.txt: 3de7e4ffa87205076fb223e78139597042b626757f51be252ae99c2ede3fbc03

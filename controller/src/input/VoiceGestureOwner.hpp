@@ -97,6 +97,7 @@ public:
 
 private:
     static constexpr float kRequestTtlS = 2.0f;
+    static constexpr int kMaxAcceptsPerPoll = 4;   // = listen backlog
     static constexpr size_t kMaxRequestBytes = 2048;
     static constexpr size_t kReplyCacheSize = 128;
 
@@ -118,8 +119,10 @@ private:
                error == EALREADY || error == EACCES;
     }
 
+    // Bị chặn số lượt: một tiến trình đổ kết nối liên tục không được phép kéo
+    // dài một nhịp của vòng 500 Hz. Phần còn lại nằm trong backlog tới tick sau.
     void AcceptOne() {
-        for (;;) {
+        for (int handled = 0; handled < kMaxAcceptsPerPoll; ++handled) {
             const int fd = ::accept4(listen_fd_, nullptr, nullptr,
                                      SOCK_NONBLOCK | SOCK_CLOEXEC);
             if (fd < 0) {

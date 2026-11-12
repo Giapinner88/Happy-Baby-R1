@@ -162,6 +162,27 @@ if(BUILD_TESTING)
         add_test(NAME armfree_native_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/armfree_native_bundle_contract_test.py"
             ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
+        add_test(NAME t1_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/t1_bundle_contract_test.py"
+            ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
+        add_test(NAME multigait_v2_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/multigait_v2_bundle_contract_test.py"
+            ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
+    else()
+        # 4 test duoi day la toan bo phan kiem cong metadata ONNX. Thieu chung
+        # thi ctest van bao 100% passed, tuc mot suite xanh chua kiem mot cong
+        # nao. Bao that to thay vi bo qua im lang.
+        message(WARNING
+            "HB_TEST_PYTHON khong dat: BO QUA 4 test hop dong ONNX "
+            "(onnx_file_contract_test, armfree_native_bundle_contract_test, "
+            "t1_bundle_contract_test, multigait_v2_bundle_contract_test). "
+            "Cau hinh lai voi -DHB_TEST_PYTHON=<python co goi onnx>.")
+        # Canh bao luc configure de truot rat de. Dang ky mot test LUON THAT BAI
+        # de ctest do thay vi bao "100% passed" tren mot suite thieu 4 cong.
+        add_test(NAME onnx_contract_tests_missing COMMAND "${CMAKE_COMMAND}" -E false)
+        set_tests_properties(onnx_contract_tests_missing PROPERTIES
+            FAIL_REGULAR_EXPRESSION ""
+            LABELS "configuration")
     endif()
     add_executable(remote_health_test tests/remote_health_test.cpp)
     target_link_libraries(remote_health_test unitree_sdk2 pthread)
@@ -244,6 +265,12 @@ if(BUILD_TESTING)
     target_link_libraries(armfree_native_phase_inference_test ${ONNXRUNTIME_LIB} unitree_sdk2 pthread)
     add_test(NAME armfree_native_phase_inference_test COMMAND armfree_native_phase_inference_test
         ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/command_gated_phase_trace.txt)
+    add_test(NAME t1_native_phase_inference_test COMMAND armfree_native_phase_inference_test
+        ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/t1_command_gated_phase_trace.txt
+        t1_settle05_iter19999 1.0)
+    add_test(NAME t1_policy_period_test COMMAND bash
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/t1_policy_period_test.sh
+        ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
 
     add_executable(policy_bundle_test tests/policy_bundle_test.cpp)
     add_test(NAME policy_bundle_test COMMAND policy_bundle_test ${CMAKE_CURRENT_SOURCE_DIR})
@@ -371,6 +398,7 @@ if(BUILD_TESTING)
     add_test(NAME wb_legs_armres_gait_golden_test COMMAND wb_legs_armres_gait_golden_test)
 
     add_executable(tuning_include_test tests/tuning_include_test.cpp src/config/Tuning.cpp)
+    target_include_directories(tuning_include_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_definitions(tuning_include_test PRIVATE
         HB_TUNING_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/tuning.yaml")
     add_test(NAME tuning_include_test COMMAND tuning_include_test)

@@ -57,8 +57,28 @@ void ScanDanceFolder(const std::string& dir, const std::string& label,
 
 } // namespace
 
+namespace {
+
+// Chu kỳ/dwell của một route: override trong locomotion.yaml thắng, nếu không có
+// thì lấy của bundle. Bundle cũng không có thì báo đúng khoá còn thiếu chứ không
+// lặng lẽ rơi về một mặc định — chạy sai chu kỳ là obs sai, không phải chỉnh nhẹ.
+float ResolveGaitValue(const char* role, const char* key,
+                       const std::optional<float>& yaml_override,
+                       const std::optional<float>& from_bundle,
+                       const std::string& bundle_name) {
+    if (yaml_override) return *yaml_override;
+    if (from_bundle) return *from_bundle;
+    throw std::runtime_error(
+        std::string("khong xac dinh duoc ") + key + " cho " + role +
+        ": bundle '" + bundle_name + "' khong co khoa nay trong policy.yaml va " +
+        "locomotion.yaml cung khong dat override");
+}
+
+} // namespace
+
 std::unique_ptr<PolicyController> Application::MakeLocomotionController(
-        const std::string& contract, const std::string& path) {
+        const std::string& contract, const std::string& path, float gait_period_s,
+        float settle_dwell_s, const std::string& gait_phase_source) {
     std::unique_ptr<PolicyController> ctrl;
     switch (ParseFlatPolicyProfile(contract)) {
         case FlatPolicyProfile::kLegacy83:
@@ -79,10 +99,10 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
                 tuning_.gait_move_request_ang,
                 tuning_.gait_stability_gyro_norm,
                 tuning_.gait_stability_joint_velocity_rms,
-                tuning_.gait_settle_dwell_s,
+                settle_dwell_s,
                 tuning_.gait_w2s_timeout_s,
                 tuning_.gait_stability_filter_tau_s},
-                tuning_.gait_period_s);
+                gait_period_s, gait_phase_source);
             ctrl = std::move(gait_controller);
             break;
         }
@@ -103,13 +123,20 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
             ctrl = std::make_unique<WholeBodyLegsGaitController>(
                 WholeBodyLegsController::kLegsArmResActionDim);
             break;
+        case FlatPolicyProfile::kMultiGaitH4V2:
+            // Đã đăng ký nhưng Init() luôn từ chối, kèm lý do chính xác.
+            // Có mặt ở đây để chọn nhầm nó in ra bốn quyết định còn thiếu
+            // thay vì "Unknown flat_policy_contract".
+            ctrl = std::make_unique<MultiGaitH4V2Controller>();
+            break;
     }
     ctrl->Init(path, ort_env_, ort_opts_, tuning_);
     if (const auto* wb = dynamic_cast<const WholeBodyLegsController*>(ctrl.get())) {
-        // Phase obs dùng gait_ chung (tuning gait_period_s): phải bằng chu kỳ lúc train.
-        if (std::abs(wb->metadata_gait_period_s() - tuning_.gait_period_s) > 1e-3f)
+        // Validate against this route, not the other policy period.
+        if (!std::isfinite(wb->metadata_gait_period_s()) ||
+            std::abs(wb->metadata_gait_period_s() - gait_period_s) > 1e-3f)
             throw std::runtime_error(
-                "gait_period_s=" + std::to_string(tuning_.gait_period_s) +
+                "gait_period_s=" + std::to_string(gait_period_s) +
                 " khac metadata gait_period_s=" + std::to_string(wb->metadata_gait_period_s()) +
                 " cua " + path);
     }
@@ -143,12 +170,55 @@ void Application::InitControllers() {
                   << " Kd=" << ctrl.kd()[12] << " (policy.yaml, ghi de metadata ONNX)\n";
     };
 
+    // Dwell chỉ là tham số của FSM trong contract flat_plus_gait_h4_v1. Các
+    // contract khác hoặc không có FSM, hoặc đọc dwell thẳng từ metadata ONNX
+    // (WholeBodyLegsGaitH4), nên không đòi bundle phải khai báo.
+    auto resolve_settle = [&](const char* role, const PolicyBundle& bundle) {
+        if (ParseFlatPolicyProfile(bundle.contract) != FlatPolicyProfile::kFlatPlusGaitH4V1)
+            return tuning_.GaitSettleDwell();
+        return ResolveGaitValue(role, "gait_settle_dwell_s", tuning_.gait_settle_dwell_s,
+                                bundle.gait_settle_dwell_s, bundle.name);
+    };
+
+    // Contract mà chu kỳ do chính policy phát ra mỗi bước (multigait V2) không
+    // có một chu kỳ train nào để ghi vào bundle. Đòi nó ở đây thì lỗi khởi
+    // động nói sai chuyện ("bundle thieu gait_period_s") và che mất lời từ
+    // chối thật của controller.
+    auto resolve_period = [&](const char* role, const std::optional<float>& yaml_override,
+                              const PolicyBundle& bundle) -> std::optional<float> {
+        if (!FlatPolicyProfileHasFixedGaitPeriod(ParseFlatPolicyProfile(bundle.contract)))
+            return std::nullopt;
+        return ResolveGaitValue(role, "gait_period_s", yaml_override,
+                                bundle.gait_period_s, bundle.name);
+    };
+    // NaN từng được dùng làm "không có chu kỳ". GaitScheduler::Configure bỏ qua
+    // NaN trong im lặng và ActivatePolicy so sánh với NaN luôn ra false, nên
+    // một contract như vậy mà KHÔNG ném lúc Init sẽ chạy ở 0.6 s mặc định mà
+    // không ai biết. Giữ "không có chu kỳ" trong kiểu dữ liệu và ném tại đây.
+    auto require_period = [&](const char* role, const std::optional<float>& period,
+                              const std::string& bundle_name) {
+        if (period) return *period;
+        throw std::runtime_error(
+            std::string("contract cua bundle '") + bundle_name + "' (" + role +
+            ") khong co chu ky gait co dinh, nhung da chay toi cho can mot so. "
+            "Controller cua contract do phai tu choi trong Init.");
+    };
+
+    float walk_settle_dwell_s = 0.0f;
     std::string walk_contract;
     if (!tuning_.walk_policy.empty()) {
         // Route bundle: policies/locomotion/<tên>/{policy.onnx, policy.yaml}.
         const PolicyBundle walk = PolicyBundle::Load(proj_dir_, tuning_.walk_policy);
         walk_contract = walk.contract;
-        walk_ctrl_ = MakeLocomotionController(walk.contract, proj_dir_ + "/" + walk.rel_path);
+        const std::optional<float> walk_period =
+            resolve_period("walk_policy", tuning_.WalkGaitPeriodOverride(), walk);
+        walk_settle_dwell_s = resolve_settle("walk_policy", walk);
+        // Chưa gán vào walk_gait_period_s_: contract không có chu kỳ cố định
+        // phải ném ở Init trước khi bất kỳ ai hỏi tới con số.
+        walk_ctrl_ = MakeLocomotionController(walk.contract, proj_dir_ + "/" + walk.rel_path,
+                                               walk_period.value_or(0.0f), walk_settle_dwell_s,
+                                               walk.gait_phase_source);
+        walk_gait_period_s_ = require_period("walk_policy", walk_period, walk.name);
         apply_bundle_gains(walk, *walk_ctrl_);
         walk_policy_label_ = walk.name;
         print_model("MODEL", walk.contract, walk.rel_path, *walk_ctrl_);
@@ -157,9 +227,15 @@ void Application::InitControllers() {
             tuning_.teleop_policy.empty() ? tuning_.walk_policy : tuning_.teleop_policy;
         const PolicyBundle teleop = teleop_name == walk.name
             ? walk : PolicyBundle::Load(proj_dir_, teleop_name);
+        const std::optional<float> teleop_period = teleop.name == walk.name
+            ? std::optional<float>(walk_gait_period_s_)
+            : resolve_period("teleop_policy", tuning_.TeleopGaitPeriodOverride(), teleop);
         if (teleop.name != walk.name) {
             teleop_ctrl_ = MakeLocomotionController(teleop.contract,
-                                                    proj_dir_ + "/" + teleop.rel_path);
+                                                    proj_dir_ + "/" + teleop.rel_path,
+                                                    teleop_period.value_or(0.0f),
+                                                    resolve_settle("teleop_policy", teleop),
+                                                    teleop.gait_phase_source);
             apply_bundle_gains(teleop, *teleop_ctrl_);
             // Tay: gesture/teleop chốt default tay MỘT lần lúc khởi động (từ walk
             // policy) -> hai policy phải trùng default tay. Chân + eo: các state tư thế
@@ -184,6 +260,7 @@ void Application::InitControllers() {
                 std::cout << "[Application] walk/teleop default chan+eo lech toi da " << leg_gap
                           << " rad; doi nong blend " << tuning_.blend_time_s << "s.\n";
         }
+        teleop_gait_period_s_ = require_period("teleop_policy", teleop_period, teleop.name);
         teleop_policy_label_ = teleop.name;
         PolicyController& teleop_ctrl = teleop_ctrl_ ? *teleop_ctrl_ : *walk_ctrl_;
         print_model("TELEOP_MODEL", teleop.contract, teleop.rel_path, teleop_ctrl);
@@ -210,7 +287,18 @@ void Application::InitControllers() {
                 : "policies/locomotion/_archive/flat_plus/";
         const std::string rel = policy_dir + tuning_.flat_model;
         const std::string policy_path = proj_dir_ + "/" + rel;
-        walk_ctrl_ = MakeLocomotionController(walk_contract, policy_path);
+        walk_gait_period_s_ = tuning_.WalkGaitPeriod();
+        teleop_gait_period_s_ = tuning_.TeleopGaitPeriod();
+        walk_settle_dwell_s = tuning_.GaitSettleDwell();
+        // Route cũ flat_model không có bundle để khai gait_phase_source, nên nó
+        // được MIỄN kiểm tra bằng sentinel "from_metadata" và giữ nguyên cách
+        // suy từ sự có mặt của khoá metadata. Nói rõ: nghĩa là lỗ hổng "ONNX
+        // rụng khoá phase thì chạy sai term phase" VẪN CÒN trên route này.
+        // Chấp nhận được vì route này ghim đúng tên file trong config và mọi
+        // artifact trong _archive/flat_plus đều thuộc họ 0917 (episode clock,
+        // vốn không có khoá đó). Đừng nạp policy command-gated qua đường này.
+        walk_ctrl_ = MakeLocomotionController(walk_contract, policy_path, walk_gait_period_s_,
+                                              walk_settle_dwell_s, "from_metadata");
         if (tuning_.teleop_h4_enabled) {
             h4_teleop_approved_ = walk_ctrl_->SupportsH4TeleopOverlay() &&
                 teleop_h4::Approved(true, walk_contract, policy_path,
@@ -227,12 +315,18 @@ void Application::InitControllers() {
 
     // Đặt ở đây (chứ không ở Run) để --preflight cũng in ra: chu kỳ gait là một phần
     // hợp đồng train giống Kp/Kd, phải đọc được mà không cần cắm DDS.
-    gait_.Configure(tuning_.gait_period_s);
+    gait_.Configure(walk_gait_period_s_);
     std::cout << "[" << locomotion_->Name() << "] gait_period=" << gait_.period_s()
-              << "s (phai khop 'period' cua phase obs luc train " << walk_policy_label_ << ")\n";
+              << "s, teleop_gait_period=" << teleop_gait_period_s_
+              << "s (phai khop 'period' cua phase obs luc train " << walk_policy_label_ << ")"
+              << (tuning_.walk_policy.empty()
+                      ? " [flat_model, gait_period_s cua locomotion.yaml]"
+                      : (tuning_.WalkGaitPeriodOverride() ? " [override locomotion.yaml]"
+                                                          : " [bundle]"))
+              << "\n";
     if (ParseFlatPolicyProfile(walk_contract) == FlatPolicyProfile::kFlatPlusGaitH4V1) {
-        std::cout << "[FlatPlusGaitH4] gait_settle_dwell_s="
-                  << tuning_.gait_settle_dwell_s << "s (runtime config)\n";
+        std::cout << "[FlatPlusGaitH4] gait_settle_dwell_s=" << walk_settle_dwell_s
+                  << "s (" << (tuning_.gait_settle_dwell_s ? "runtime config" : "bundle") << ")\n";
     }
     if (const auto* wbg = dynamic_cast<const WholeBodyLegsGaitController*>(locomotion_)) {
         std::cout << "[" << wbg->Name() << "] settle_dwell=" << wbg->gait_config().settle_dwell_s

@@ -63,7 +63,8 @@ GHI DỮ LIỆU  (chỉ nghe DDS, không tạo publisher; dùng song song run_r1
 KHÁC
   policy list                  liệt kê bundle policy đi bộ, đánh dấu walk (R2+A) / teleop (R2+X)
   policy add <file.onnx> <tên> [--contract C]
-                               tạo controller/policies/locomotion/<tên>/ (chọn bằng locomotion.yaml)
+                               tạo controller/policies/locomotion/<tên>/; chu kỳ gait đọc từ metadata ONNX
+  policy use <tên> [--teleop]  đổi walk_policy (hoặc teleop_policy) rồi preflight + sinh lại manifest
   dance list | prune [--apply] | restore <tên>
   find-robot                   dò robot, in ROBOT=...
 USAGE
@@ -82,8 +83,28 @@ ort_lib_path() {
 
 # ------------------------------------------------------------------ build ----
 
+# python co goi onnx cho 4 test hop dong ONNX. Khong tim thay thi cmake canh
+# bao va ctest bo qua chung, nen tim o day chu khong de build dir tu quyet.
+hb_test_python() {
+    local candidate
+    for candidate in "${HB_TEST_PYTHON:-}" "$HOME/miniconda3/envs/mjlab_cpu/bin/python" \
+                     python3 python; do
+        [[ -n "$candidate" ]] || continue
+        command -v "$candidate" >/dev/null 2>&1 || [[ -x "$candidate" ]] || continue
+        "$candidate" -c 'import onnx' >/dev/null 2>&1 || continue
+        command -v "$candidate" 2>/dev/null || echo "$candidate"
+        return 0
+    done
+    return 1
+}
+
 build_dev_controller() {
-    cmake -S "$HIGH_DIR" -B "$HIGH_DIR/build" -DCMAKE_BUILD_TYPE=Release
+    local test_python
+    test_python="$(hb_test_python || true)"
+    [[ -n "$test_python" ]] || echo "hb: khong tim thay python co goi onnx; 4 test hop dong ONNX se bi bo qua" >&2
+    local -a configure=(cmake -S "$HIGH_DIR" -B "$HIGH_DIR/build" -DCMAKE_BUILD_TYPE=Release)
+    [[ -z "$test_python" ]] || configure+=("-DHB_TEST_PYTHON=$test_python")
+    "${configure[@]}"
     if [[ "${1:-}" == "--clean" ]]; then
         cmake --build "$HIGH_DIR/build" --target clean
     fi

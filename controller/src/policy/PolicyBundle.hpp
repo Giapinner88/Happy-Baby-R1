@@ -3,7 +3,7 @@
 // Locomotion policy bundle: one directory per selectable model.
 //
 //   policies/locomotion/<name>/policy.onnx
-//   policies/locomotion/<name>/policy.yaml   (contract, sha256[, waist_kp, waist_kd])
+//   policies/locomotion/<name>/policy.yaml   (contract, sha256, gait timing[, waist_kp, waist_kd])
 //
 // config/locomotion.yaml selects bundles by relative name, optionally group/name
 // (walk_policy / teleop_policy). Flat names remain supported.
@@ -17,9 +17,17 @@
 // gains of waist_roll and waist_yaw on the robot, for policies that hold the
 // waist by PD (waist not a policy action). This is a hardware-side deviation
 // from the training dynamics; record it in the bundle README.
+//
+// gait_period_s / gait_settle_dwell_s are copies of the ONNX metadata of the
+// same name, written here at packaging time so that selecting a bundle is
+// enough: locomotion.yaml no longer has to repeat the training period. They are
+// a proposal, not the authority. PolicyController::Init still compares them
+// against the metadata, so a hand-edited policy.yaml stops startup. Both are
+// optional; a bundle without them falls back to the locomotion.yaml value.
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -34,6 +42,13 @@ struct PolicyBundle {
     float waist_kd = NAN;
 
     bool has_waist_gains() const { return std::isfinite(waist_kp); }
+
+    std::optional<float> gait_period_s;        // chu kỳ phase obs lúc train
+    std::optional<float> gait_settle_dwell_s;  // gait_t_settle_s lúc train
+    // "command_gated" hoặc "episode_clock": nguồn của term phase lúc train.
+    // Hai bundle cùng gait_fsm_contract có thể khác nhau ở đây, nên FSM không
+    // suy ra được; thiếu khoá thì ONNX khuyết metadata phase sẽ lọt.
+    std::string gait_phase_source;
 
     static bool ValidName(const std::string& name) {
         // Same component grammar as hb_valid_policy_bundle_name in the shell
@@ -82,8 +97,19 @@ struct PolicyBundle {
                 value = value.substr(1, value.size() - 2);
             if (key == "contract") b.contract = value;
             else if (key == "sha256") b.sha256 = value;
-            else if (key == "waist_kp") b.waist_kp = ParseGain(name, key, value, 10.0f, 400.0f);
-            else if (key == "waist_kd") b.waist_kd = ParseGain(name, key, value, 0.0f, 20.0f);
+            else if (key == "waist_kp") b.waist_kp = ParseFloat(name, key, value, 10.0f, 400.0f);
+            else if (key == "waist_kd") b.waist_kd = ParseFloat(name, key, value, 0.0f, 20.0f);
+            else if (key == "gait_period_s")
+                b.gait_period_s = ParseFloat(name, key, value, 0.3f, 1.5f);
+            else if (key == "gait_settle_dwell_s")
+                b.gait_settle_dwell_s = ParseFloat(name, key, value, 0.01f, 60.0f);
+            else if (key == "gait_phase_source") {
+                if (value != "command_gated" && value != "episode_clock")
+                    throw std::runtime_error("policy bundle '" + name +
+                        "': gait_phase_source must be 'command_gated' or 'episode_clock', got '" +
+                        value + "'");
+                b.gait_phase_source = value;
+            }
         }
         if (std::isfinite(b.waist_kp) != std::isfinite(b.waist_kd))
             throw std::runtime_error("policy bundle '" + name + "': waist_kp and waist_kd go together");
@@ -101,16 +127,27 @@ struct PolicyBundle {
     }
 
 private:
-    static float ParseGain(const std::string& name, const std::string& key,
-                           const std::string& value, float lo, float hi) {
-        size_t used = 0;
-        float f = NAN;
-        try { f = std::stof(value, &used); } catch (...) {}
-        if (used != value.size() || !std::isfinite(f) || f < lo || f > hi)
-            throw std::runtime_error("policy bundle '" + name + "': " + key + " must be a number in [" +
-                                     std::to_string(lo) + ", " + std::to_string(hi) + "], got '" +
-                                     value + "'");
-        return f;
+    // A malformed number stops startup: silently dropping it would fall back to
+    // locomotion.yaml and run the policy at the wrong period.
+    // Dải giống Tuning::Validate: bundle là đường vào thứ hai cho cùng tham số,
+    // nên phải chặn cùng mức. PhaseObs chia cho chu kỳ, số 0 đi thẳng vào obs.
+    static float ParseFloat(const std::string& bundle, const std::string& key,
+                            const std::string& value, float low, float high) {
+        size_t consumed = 0;
+        float parsed = 0.0f;
+        try {
+            parsed = std::stof(value, &consumed);
+        } catch (const std::exception&) {
+            consumed = 0;
+        }
+        if (consumed != value.size() || !std::isfinite(parsed))
+            throw std::runtime_error("policy bundle '" + bundle + "': " + key +
+                                     " is not a finite number: '" + value + "'");
+        if (parsed < low || parsed > high)
+            throw std::runtime_error("policy bundle '" + bundle + "': " + key + " = " +
+                                     value + " is outside [" + std::to_string(low) + ", " +
+                                     std::to_string(high) + "]");
+        return parsed;
     }
 
     static std::string Trim(const std::string& s) {

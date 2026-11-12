@@ -28,8 +28,11 @@ for profile in "${profiles[@]}"; do
     esac
     cp "$root/config/$example" "$tmp/$profile/config/tuning.yaml"
     if [[ "$profile" == gait_0917_armfree_settle_override ]]; then
+        # Route bundle cam khoa tran gait_period_s (chu ky den tu policy.yaml);
+        # gait_settle_dwell_s van la override hop le va la trong tam cua case nay.
         sed -i \
             -e '/^flat_policy_contract:/d' \
+            -e '/^gait_period_s:/d' \
             -e 's/^flat_model:.*/walk_policy: flat_plus_gait_0917_armfree/' \
             -e 's/^gait_settle_dwell_s:.*/gait_settle_dwell_s: 0.50/' \
             "$tmp/$profile/config/tuning.yaml"

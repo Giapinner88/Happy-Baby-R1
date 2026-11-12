@@ -61,14 +61,33 @@ void WriteBundle(const fs::path& loco, const std::string& name, const std::strin
     fs::create_directories(loco / name);
     fs::create_symlink(fs::path(HB_PROJECT_PATH) / "policies/locomotion" / source / "policy.onnx",
                        loco / name / "policy.onnx");
+    // Contract gait doi bundle khai nguon term phase; fixture lay tu bundle
+    // nguon that de khong phai ghim chuoi o day.
+    std::string phase_source;
+    if (contract == "flat_plus_gait_h4_v1") {
+        std::ifstream src(fs::path(HB_PROJECT_PATH) / "policies/locomotion" / source /
+                          "policy.yaml");
+        for (std::string line; std::getline(src, line);) {
+            const std::string key = "gait_phase_source:";
+            if (line.rfind(key, 0) != 0) continue;
+            std::string value = line.substr(key.size());
+            value.erase(0, value.find_first_not_of(" \t"));
+            value.erase(value.find_last_not_of(" \t\r\n") + 1);
+            phase_source = "gait_phase_source: " + value + "\n";
+            break;
+        }
+    }
     std::ofstream(loco / name / "policy.yaml")
-        << "contract: " << contract << "\nsha256: " << sha << "\n" << extra;
+        << "contract: " << contract << "\nsha256: " << sha << "\n"
+        << phase_source << extra;
 }
 
 // Temporary project: frozen replay config + two bundles selected as walk/teleop.
 fs::path MakeProject(const std::string& teleop_sha, const std::string& teleop_source = "u4_seed42",
                      const std::string& teleop_contract = "r1_wb_legs_gait_h4_v1_blind",
-                     const std::string& teleop_extra = "") {
+                     const std::string& teleop_extra = "",
+                     const std::string& walk_source = "flat_plus_gait_0917_armfree",
+                     const std::string& walk_sha = kWalkSha, float walk_period = .6f) {
     char tmpl[] = "/tmp/hb-loco-mode-test.XXXXXX";
     const char* dir = mkdtemp(tmpl);
     if (!dir) std::abort();
@@ -79,13 +98,14 @@ fs::path MakeProject(const std::string& teleop_sha, const std::string& teleop_so
     fs::create_directories(root / "policies/locomotion");
     for (const char* sub : {"dance", "gestures", "flat"})
         fs::create_symlink(src / "policies" / sub, root / "policies" / sub);
-    WriteBundle(root / "policies/locomotion", "walk_a", "flat_plus_gait_0917_armfree",
-                "flat_plus_gait_h4_v1", kWalkSha);
+    WriteBundle(root / "policies/locomotion", "walk_a", walk_source,
+                "flat_plus_gait_h4_v1", walk_sha);
     WriteBundle(root / "policies/locomotion", "teleop_b", teleop_source,
                 teleop_contract, teleop_sha, teleop_extra);
     std::ofstream(root / "config/locomotion.yaml", std::ios::app)
         << "\nwalk_policy: walk_a\nteleop_policy: teleop_b\n"
-           "policy_swap_dwell_s: 0.5\npolicy_swap_timeout_s: 6.0\n";
+           "policy_swap_dwell_s: 0.5\npolicy_swap_timeout_s: 6.0\n"
+        << "walk_gait_period_s: " << walk_period << "\nteleop_gait_period_s: 0.6\n";
     return root;
 }
 
@@ -456,6 +476,27 @@ struct ApplicationTestAccess {
         Wait(600);
     }
 
+    void ScriptPeriodSwap() {
+        CHECK(std::abs(a.gait_.period_s() - 1.0f) < 1e-6f);
+        WaitFor(AppState::kIdle, 10); Wait(50);
+        Press(kL2 | kUp);
+        WaitFor(AppState::kStandLock, 5000); Wait(200);
+        Press(kR2 | kA); Wait(700);
+        CHECK(std::abs(a.gait_.period_s() - 1.0f) < 1e-6f);
+        Press(kR2 | kX);
+        for (int i = 0; i < 4000 && a.loco_swap_pending_; ++i) Step();
+        CHECK(a.loco_mode_ == LocoMode::kTeleop);
+        CHECK(std::abs(a.gait_.period_s() - .6f) < 1e-6f);
+        a.gait_.Reset(); a.gait_.Update(.15f);
+        CHECK(std::abs(a.gait_.PhaseObs(1.f)[0] - 1.f) < 1e-5f);
+        Wait(700); Press(kR2 | kA);
+        for (int i = 0; i < 4000 && a.loco_swap_pending_; ++i) Step();
+        CHECK(a.loco_mode_ == LocoMode::kWalk);
+        CHECK(std::abs(a.gait_.period_s() - 1.0f) < 1e-6f);
+        a.gait_.Reset(); a.gait_.Update(.25f);
+        CHECK(std::abs(a.gait_.PhaseObs(1.f)[0] - 1.f) < 1e-5f);
+    }
+
     void Script() {
         CHECK(a.walk_ctrl_ && a.teleop_ctrl_ && a.walk_ctrl_ != a.teleop_ctrl_);
         CHECK(a.teleop_ctrl_->ActionSize() == 12 && a.walk_ctrl_->ActionSize() == 24);
@@ -688,5 +729,18 @@ int main() {
         r.ScriptArmResidual();
     }
     fs::remove_all(armres);
+
+    const fs::path split = MakeProject(
+        "23021a5fd4e636e6d5f0b17f900cd74c6bbbbe5fdd2523b6df4ccffbe1382cb9",
+        "u4_seed42", "r1_wb_legs_gait_h4_v1_blind", "",
+        "t1_settle05_iter19999",
+        "1d1ec267af9d2f3c41ab06584346ad9ee6368a15247ce572fec3c7bb7bd06d27", 1.0f);
+    {
+        Application app(split.string(), "lo");
+        ApplicationTestAccess r{app};
+        r.Configure();
+        r.ScriptPeriodSwap();
+    }
+    fs::remove_all(split);
     std::cout << "APPLICATION_LOCO_MODE_OK\n";
 }

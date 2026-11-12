@@ -7,20 +7,29 @@ ENTRY_CONFIG="$2"
 # shellcheck disable=SC1090
 source "$READER"
 
-# Ghim route policy đang active để đổi model phải cập nhật manifest và
-# preflight cùng lúc; policy legacy vẫn giữ riêng để rollback.
-[[ "$(hb_config_get "$ENTRY_CONFIG" walk_policy)" == "flat_plus_gait_0917_armfree" ]]
-[[ "$(hb_config_get "$ENTRY_CONFIG" teleop_policy)" == "u11_seed42" ]]
+# KHÔNG ghim tên bundle: đổi policy phải là một dòng trong locomotion.yaml.
+# Kiểm cấu trúc thay vì tên — đây là những thứ đổi tên có thể làm hỏng.
+HIGH_DIR="$(cd "$(dirname "$ENTRY_CONFIG")/.." && pwd)"
+[[ -n "$(hb_config_get "$ENTRY_CONFIG" walk_policy)" ]]
 [[ -z "$(hb_config_get "$ENTRY_CONFIG" flat_model)" ]]
-# Bundle dùng cùng tập con YAML: script đọc contract bằng chính reader này.
-BUNDLE_YAML="$(dirname "$ENTRY_CONFIG")/../policies/locomotion/flat_plus_gait_0917_armfree/policy.yaml"
-[[ "$(hb_config_get "$BUNDLE_YAML" contract)" == "flat_plus_gait_h4_v1" ]]
-read -r rel contract < <(hb_selected_policy "$ENTRY_CONFIG" walk_policy)
-[[ "$rel" == "policies/locomotion/flat_plus_gait_0917_armfree/policy.onnx" ]]
-[[ "$contract" == "flat_plus_gait_h4_v1" ]]
-read -r rel contract < <(hb_selected_policy "$ENTRY_CONFIG" teleop_policy)
-[[ "$rel" == "policies/locomotion/u11_seed42/policy.onnx" ]]
-[[ "$contract" == "r1_wb_legs_gait_h4_v1_blind" ]]
+# Chu kỳ không được khai trong locomotion.yaml nữa; nó đến từ bundle.
+for key in walk_gait_period_s teleop_gait_period_s gait_settle_dwell_s gait_period_s; do
+    [[ -z "$(hb_config_get "$ENTRY_CONFIG" "$key")" ]] || {
+        echo "locomotion.yaml van khai '$key'; chu ky phai den tu policy.yaml cua bundle" >&2
+        exit 1
+    }
+done
+for role in walk_policy teleop_policy; do
+    read -r rel contract < <(hb_selected_policy "$ENTRY_CONFIG" "$role")
+    [[ -f "$HIGH_DIR/$rel" ]]
+    # Bundle dùng cùng tập con YAML: script đọc bằng chính reader này.
+    BUNDLE_YAML="$HIGH_DIR/$(dirname "$rel")/policy.yaml"
+    [[ "$(hb_config_get "$BUNDLE_YAML" contract)" == "$contract" ]]
+    [[ -n "$(hb_config_get "$BUNDLE_YAML" gait_period_s)" ]]
+    # sha256 trong policy.yaml phải khớp file onnx thật.
+    [[ "$(hb_config_get "$BUNDLE_YAML" sha256)" == \
+       "$(sha256sum "$HIGH_DIR/$rel" | awk '{print $1}')" ]]
+done
 [[ "$(hb_config_get "$ENTRY_CONFIG" network_interface)" == "eth10" ]]
 
 TMP_DIR="$(mktemp -d /tmp/hb-config-reader-test.XXXXXX)"
@@ -58,16 +67,16 @@ cp "$READER" "$TMP_DIR/integration/scripts/config_reader.sh"
 cp "$(dirname "$READER")/policy_bundles.sh" "$TMP_DIR/integration/scripts/policy_bundles.sh"
 printf '%s\n' 'walk_policy: group/example' 'teleop_policy: group/example' >"$TMP_DIR/controller/config/tuning.yaml"
 printf 'fixture actor bytes' >"$TMP_DIR/source.onnx"
-bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add "$TMP_DIR/source.onnx" group/example >/dev/null
+bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 --phase-source command_gated "$TMP_DIR/source.onnx" group/example >/dev/null
 [[ -s "$TMP_DIR/controller/policies/locomotion/group/example/policy.yaml" ]]
 listing="$(bash "$TMP_DIR/integration/scripts/policy_bundles.sh" list)"
 [[ "$listing" == *group/example* && "$listing" == *'walk(R2+A)'* && "$listing" == *'teleop(R2+X)'* ]]
 for name in ../escape group//bad group/../escape /absolute group/; do
-    if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add "$TMP_DIR/source.onnx" "$name" >/dev/null 2>&1; then
+    if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 --phase-source command_gated "$TMP_DIR/source.onnx" "$name" >/dev/null 2>&1; then
         echo "Expected add to reject invalid selector '$name'" >&2; exit 1
     fi
 done
-if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add "$TMP_DIR/source.onnx" group/example >/dev/null 2>&1; then
+if bash "$TMP_DIR/integration/scripts/policy_bundles.sh" add --gait-period 0.6 --settle-dwell 0.5 --phase-source command_gated "$TMP_DIR/source.onnx" group/example >/dev/null 2>&1; then
     echo 'Expected add to reject an existing bundle' >&2; exit 1
 fi
 for name in '' . .. ../u2a_seed42 /armfree/test armfree/../u2a_seed42 \
