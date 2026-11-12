@@ -36,9 +36,10 @@ int main() {
                                                                  : tuning.teleop_policy}) {
         const PolicyBundle bundle = PolicyBundle::Load(project, name);
         assert(!bundle.contract.empty());
-        ParseFlatPolicyProfile(bundle.contract);  // ném nếu contract lạ
+        const FlatPolicyProfile profile = ParseFlatPolicyProfile(bundle.contract);  // ném nếu contract lạ
         // Chu kỳ phải đến từ bundle: locomotion.yaml không còn khai nó.
-        assert(bundle.gait_period_s.has_value());
+        // Multigait tự phát chu kỳ (action 24) nên bundle không được khai.
+        assert(bundle.gait_period_s.has_value() == FlatPolicyProfileHasFixedGaitPeriod(profile));
     }
     assert(!tuning.WalkGaitPeriodOverride().has_value());
     assert(!tuning.gait_settle_dwell_s.has_value());

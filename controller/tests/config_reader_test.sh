@@ -25,7 +25,12 @@ for role in walk_policy teleop_policy; do
     # Bundle dùng cùng tập con YAML: script đọc bằng chính reader này.
     BUNDLE_YAML="$HIGH_DIR/$(dirname "$rel")/policy.yaml"
     [[ "$(hb_config_get "$BUNDLE_YAML" contract)" == "$contract" ]]
-    [[ -n "$(hb_config_get "$BUNDLE_YAML" gait_period_s)" ]]
+    # Multigait tự phát chu kỳ (action 24): bundle không được khai gait_period_s.
+    case "$contract" in
+        r1_armfree0917_multigait_h4_v2|r1_armfree0917_multigait_h4_v2573)
+            [[ -z "$(hb_config_get "$BUNDLE_YAML" gait_period_s)" ]] ;;
+        *)  [[ -n "$(hb_config_get "$BUNDLE_YAML" gait_period_s)" ]] ;;
+    esac
     # sha256 trong policy.yaml phải khớp file onnx thật.
     [[ "$(hb_config_get "$BUNDLE_YAML" sha256)" == \
        "$(sha256sum "$HIGH_DIR/$rel" | awk '{print $1}')" ]]
