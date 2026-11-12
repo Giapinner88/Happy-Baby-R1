@@ -18,6 +18,10 @@ enum class FlatPolicyProfile {
     // tho), 25 action (24 khop + 1 lenh nhip). CHUA chay duoc: xem
     // MultiGaitH4V2Controller va plans/PHASE_E_V2_CONTRACT_NOTES.md.
     kMultiGaitH4V2,
+    // r1_armfree0917_multigait_h4_v2573: same 355/25 layout for the v2573/v2574
+    // training family, runnable: MultiGaitV2573Controller owns the FSM and the
+    // policy-driven timing clock.
+    kMultiGaitH4V2573,
 };
 
 inline FlatPolicyProfile ParseFlatPolicyProfile(const std::string& value) {
@@ -34,6 +38,8 @@ inline FlatPolicyProfile ParseFlatPolicyProfile(const std::string& value) {
         return FlatPolicyProfile::kWholeBodyLegsArmResGaitH4RefV1;
     if (value == "r1_armfree0917_multigait_h4_v2")
         return FlatPolicyProfile::kMultiGaitH4V2;
+    if (value == "r1_armfree0917_multigait_h4_v2573")
+        return FlatPolicyProfile::kMultiGaitH4V2573;
     throw std::runtime_error("Unknown flat_policy_contract: " + value);
 }
 
@@ -46,5 +52,14 @@ inline FlatPolicyProfile ParseFlatPolicyProfile(const std::string& value) {
 // so o day la bia dat mot hop dong khong co that; runtime cung khong co
 // metadata `gait_period_s` nao de doi chieu lai.
 inline bool FlatPolicyProfileHasFixedGaitPeriod(FlatPolicyProfile profile) {
-    return profile != FlatPolicyProfile::kMultiGaitH4V2;
+    return profile != FlatPolicyProfile::kMultiGaitH4V2 &&
+           profile != FlatPolicyProfile::kMultiGaitH4V2573;
 }
+
+// The controller owns its gait clock and never reads ControlContext::gait_phase
+// (multigait v2573: phase from action 24). The shared HB GaitScheduler still
+// ticks, so it gets kPolicyOwnedClockNominalPeriodS; no observation uses it.
+inline bool FlatPolicyProfileOwnsGaitClock(FlatPolicyProfile profile) {
+    return profile == FlatPolicyProfile::kMultiGaitH4V2573;
+}
+inline constexpr float kPolicyOwnedClockNominalPeriodS = 1.0f;

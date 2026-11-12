@@ -24,6 +24,13 @@ int main() {
            FlatPolicyProfile::kFlatPlusGaitH4V1);
     assert(ParseFlatPolicyProfile("r1_armfree0917_multigait_h4_v2") ==
            FlatPolicyProfile::kMultiGaitH4V2);
+    assert(ParseFlatPolicyProfile("r1_armfree0917_multigait_h4_v2573") ==
+           FlatPolicyProfile::kMultiGaitH4V2573);
+    // Only the runnable multigait owns its clock; the V2 stub still refuses in Init.
+    assert(!FlatPolicyProfileHasFixedGaitPeriod(FlatPolicyProfile::kMultiGaitH4V2573));
+    assert(FlatPolicyProfileOwnsGaitClock(FlatPolicyProfile::kMultiGaitH4V2573));
+    assert(!FlatPolicyProfileOwnsGaitClock(FlatPolicyProfile::kMultiGaitH4V2));
+    assert(!FlatPolicyProfileOwnsGaitClock(FlatPolicyProfile::kFlatPlusGaitH4V1));
 
     // Chỉ multigait V2 không có chu kỳ gait cố định: chu kỳ của nó do policy
     // phát ra mỗi bước qua action index 24.

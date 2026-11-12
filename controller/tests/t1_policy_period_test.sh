@@ -29,13 +29,20 @@ bundle_period() {
     sed -n 's/^gait_period_s:[[:space:]]*//p' "$temp/policies/locomotion/$1/policy.yaml" |
         head -1 | sed 's/\.0$//; s/^\([0-9]*\.[0-9]*[1-9]\)0*$/\1/'
 }
+# Printed period: "<s>s", or "policy" for a contract whose policy owns its
+# clock (multigait v2573: no gait_period_s in its bundle).
+period_token() {
+    local p
+    p="$(bundle_period "$1")"
+    if [[ -n "$p" ]]; then echo "${p}s"; else echo policy; fi
+}
 walk_now="$(sed -n 's/^walk_policy:[[:space:]]*//p' "$pristine" | head -1)"
 teleop_now="$(sed -n 's/^teleop_policy:[[:space:]]*//p' "$pristine" | head -1)"
 [[ -n "$teleop_now" ]] || teleop_now="$walk_now"
 
 # 1. Chu kỳ in ra phải đúng của bundle đang chọn, và phải ghi nguồn [bundle].
 HB_PROJECT_DIR="$temp" "$binary" --preflight > "$temp/valid.log" 2>&1
-grep -q "gait_period=$(bundle_period "$walk_now")s, teleop_gait_period=$(bundle_period "$teleop_now")s" \
+grep -q "gait_period=$(period_token "$walk_now"), teleop_gait_period=$(period_token "$teleop_now")" \
     "$temp/valid.log"
 grep -q 'gait_period=.*\[bundle\]' "$temp/valid.log"
 

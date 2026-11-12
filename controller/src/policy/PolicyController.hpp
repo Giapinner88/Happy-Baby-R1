@@ -22,7 +22,7 @@ public:
 
     void Init(const std::string& model_path, Ort::Env& env,
               const Ort::SessionOptions& options, const Tuning& tuning) {
-        policy_.Load(model_path, env, options, ObsSize(), ActionSize());
+        policy_.Load(model_path, env, options, ObsSize(), OutputSize());
 
         const std::string expected_contract = ExpectedPolicyContract();
         if (!expected_contract.empty()) {
@@ -116,7 +116,7 @@ public:
         // đang chạy locomotion + nhiều mimic. Ở đây còn giữ được target trước đó
         // thay vì để một action rác nhiễm cả last_action_ (và qua đó nhiễm luôn
         // history buffer của các contract có history).
-        for (int i = 0; i < n; ++i) {
+        for (int i = 0; i < OutputSize(); ++i) {
             if (!std::isfinite(action[i])) {
                 if (!infer_fault_) {
                     std::cerr << "[" << Name() << "] output ONNX khong huu han o khop "
@@ -149,8 +149,12 @@ public:
 
     virtual bool IsFinished() const { return false; }
     virtual int ObsSize() const = 0;
-    // Số chiều output ONNX; các khớp policy[ActionSize()..24) giữ default_q.
+    // Joint actions (action i -> joint i); policy joints [ActionSize()..24) keep default_q.
     virtual int ActionSize() const { return spec::kNumJoints; }
+    // ONNX output width. Larger than ActionSize() only when the policy also
+    // emits non-joint outputs (multigait: timing command at index 24);
+    // ComputeTargets() receives the whole, finite-checked output.
+    virtual int OutputSize() const { return ActionSize(); }
     virtual std::string Name() const = 0;
     // Contract này có chịu được overlay tay kiểu legacy không (ghi đè
     // target_q[14..23] + che obs của tay theo offset cố định của frame 83-D)?

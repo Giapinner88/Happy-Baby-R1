@@ -173,6 +173,9 @@ void Application::AdvanceLocoModeSwap(const RobotState& rs) {
         const bool needs_stand = dynamic_cast<const FlatPlusGaitController*>(locomotion_) != nullptr;
         stable = stable && fsm->stable() && (!needs_stand || fsm->mode() == GaitMode::Stand);
     }
+    // Multigait swaps only from a quiet two-foot STAND without pending recovery.
+    if (const auto* multigait = dynamic_cast<const MultiGaitV2573Controller*>(locomotion_))
+        stable = stable && multigait->StandReady();
     const bool ready = upper_idle && (same_ctrl || stable);
     loco_swap_still_s_ = ready ? loco_swap_still_s_ + spec::kLoopDt : 0.0f;
     const float dwell = same_ctrl ? 0.0f : tuning_.policy_swap_dwell_s;

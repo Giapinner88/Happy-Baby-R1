@@ -75,6 +75,7 @@ set(HB_APP_SOURCES
     src/motion/MotionData.cpp
     src/motion/JointTrajectory.cpp
     src/policy/OnnxPolicy.cpp
+    src/gait/LegFK.cpp
     src/input/KeyboardX11.cpp
     ${CNPY_DIR}/cnpy.cpp
 )
@@ -168,14 +169,18 @@ if(BUILD_TESTING)
         add_test(NAME multigait_v2_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/multigait_v2_bundle_contract_test.py"
             ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
+        add_test(NAME multigait_v2573_bundle_contract_test COMMAND "${HB_TEST_PYTHON}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/multigait_v2573_bundle_contract_test.py"
+            ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
     else()
         # 4 test duoi day la toan bo phan kiem cong metadata ONNX. Thieu chung
         # thi ctest van bao 100% passed, tuc mot suite xanh chua kiem mot cong
         # nao. Bao that to thay vi bo qua im lang.
         message(WARNING
-            "HB_TEST_PYTHON khong dat: BO QUA 4 test hop dong ONNX "
+            "HB_TEST_PYTHON khong dat: BO QUA 5 test hop dong ONNX "
             "(onnx_file_contract_test, armfree_native_bundle_contract_test, "
-            "t1_bundle_contract_test, multigait_v2_bundle_contract_test). "
+            "t1_bundle_contract_test, multigait_v2_bundle_contract_test, "
+            "multigait_v2573_bundle_contract_test). "
             "Cau hinh lai voi -DHB_TEST_PYTHON=<python co goi onnx>.")
         # Canh bao luc configure de truot rat de. Dang ky mot test LUON THAT BAI
         # de ctest do thay vi bao "100% passed" tren mot suite thieu 4 cong.
@@ -271,6 +276,18 @@ if(BUILD_TESTING)
     add_test(NAME t1_policy_period_test COMMAND bash
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/t1_policy_period_test.sh
         ${CMAKE_CURRENT_SOURCE_DIR} $<TARGET_FILE:run_r1>)
+
+    # Multigait v2573/v2574: FSM parity with the Python training env, then the
+    # HB controller on the shipped bundle (identity, obs layout, timing clock).
+    add_executable(multigait_v2573_runtime_parity_test
+        tests/multigait_v2573_runtime_parity_test.cpp src/gait/LegFK.cpp)
+    add_test(NAME multigait_v2573_runtime_parity_test COMMAND multigait_v2573_runtime_parity_test
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/multigait_v2573_push_runtime_trace.txt.gz)
+    add_executable(multigait_v2573_controller_test tests/multigait_v2573_controller_test.cpp
+        src/policy/OnnxPolicy.cpp src/gait/LegFK.cpp)
+    target_link_libraries(multigait_v2573_controller_test ${ONNXRUNTIME_LIB} unitree_sdk2 pthread)
+    add_test(NAME multigait_v2573_controller_test COMMAND multigait_v2573_controller_test
+        ${CMAKE_CURRENT_SOURCE_DIR})
 
     add_executable(policy_bundle_test tests/policy_bundle_test.cpp)
     add_test(NAME policy_bundle_test COMMAND policy_bundle_test ${CMAKE_CURRENT_SOURCE_DIR})

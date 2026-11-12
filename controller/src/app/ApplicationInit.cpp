@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <thread>
 #include <vector>
 #include <dirent.h>
@@ -129,6 +130,10 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
             // thay vì "Unknown flat_policy_contract".
             ctrl = std::make_unique<MultiGaitH4V2Controller>();
             break;
+        case FlatPolicyProfile::kMultiGaitH4V2573:
+            // 8-mode FSM + timing clock driven by action 24; identity-gated per source.
+            ctrl = std::make_unique<MultiGaitV2573Controller>();
+            break;
     }
     ctrl->Init(path, ort_env_, ort_opts_, tuning_);
     if (const auto* wb = dynamic_cast<const WholeBodyLegsController*>(ctrl.get())) {
@@ -158,7 +163,7 @@ void Application::InitControllers() {
         std::cout << "[Preflight] " << tag << " contract=" << contract
                   << " rel=" << rel
                   << " input=" << ctrl.ObsSize()
-                  << " output=" << ctrl.ActionSize() << "\n";
+                  << " output=" << ctrl.OutputSize() << "\n";
     };
 
     // waist_kp/waist_kd của bundle (chỉ policy giữ eo bằng PD; xem PolicyBundle.hpp).
@@ -186,8 +191,15 @@ void Application::InitControllers() {
     // chối thật của controller.
     auto resolve_period = [&](const char* role, const std::optional<float>& yaml_override,
                               const PolicyBundle& bundle) -> std::optional<float> {
-        if (!FlatPolicyProfileHasFixedGaitPeriod(ParseFlatPolicyProfile(bundle.contract)))
+        if (!FlatPolicyProfileHasFixedGaitPeriod(ParseFlatPolicyProfile(bundle.contract))) {
+            // A number here would only be ignored; refuse it instead.
+            if (yaml_override || bundle.gait_period_s)
+                throw std::runtime_error(
+                    std::string(role) + " '" + bundle.name + "' (" + bundle.contract +
+                    ") has no fixed gait period: remove gait_period_s from policy.yaml "
+                    "and walk_gait_period_s/teleop_gait_period_s from locomotion.yaml");
             return std::nullopt;
+        }
         return ResolveGaitValue(role, "gait_period_s", yaml_override,
                                 bundle.gait_period_s, bundle.name);
     };
@@ -196,8 +208,12 @@ void Application::InitControllers() {
     // một contract như vậy mà KHÔNG ném lúc Init sẽ chạy ở 0.6 s mặc định mà
     // không ai biết. Giữ "không có chu kỳ" trong kiểu dữ liệu và ném tại đây.
     auto require_period = [&](const char* role, const std::optional<float>& period,
-                              const std::string& bundle_name) {
+                              const PolicyBundle& bundle) {
         if (period) return *period;
+        // Policy-owned clock: the shared GaitScheduler period is never observed.
+        if (FlatPolicyProfileOwnsGaitClock(ParseFlatPolicyProfile(bundle.contract)))
+            return kPolicyOwnedClockNominalPeriodS;
+        const std::string& bundle_name = bundle.name;
         throw std::runtime_error(
             std::string("contract cua bundle '") + bundle_name + "' (" + role +
             ") khong co chu ky gait co dinh, nhung da chay toi cho can mot so. "
@@ -218,7 +234,7 @@ void Application::InitControllers() {
         walk_ctrl_ = MakeLocomotionController(walk.contract, proj_dir_ + "/" + walk.rel_path,
                                                walk_period.value_or(0.0f), walk_settle_dwell_s,
                                                walk.gait_phase_source);
-        walk_gait_period_s_ = require_period("walk_policy", walk_period, walk.name);
+        walk_gait_period_s_ = require_period("walk_policy", walk_period, walk);
         apply_bundle_gains(walk, *walk_ctrl_);
         walk_policy_label_ = walk.name;
         print_model("MODEL", walk.contract, walk.rel_path, *walk_ctrl_);
@@ -260,7 +276,7 @@ void Application::InitControllers() {
                 std::cout << "[Application] walk/teleop default chan+eo lech toi da " << leg_gap
                           << " rad; doi nong blend " << tuning_.blend_time_s << "s.\n";
         }
-        teleop_gait_period_s_ = require_period("teleop_policy", teleop_period, teleop.name);
+        teleop_gait_period_s_ = require_period("teleop_policy", teleop_period, teleop);
         teleop_policy_label_ = teleop.name;
         PolicyController& teleop_ctrl = teleop_ctrl_ ? *teleop_ctrl_ : *walk_ctrl_;
         print_model("TELEOP_MODEL", teleop.contract, teleop.rel_path, teleop_ctrl);
@@ -316,9 +332,18 @@ void Application::InitControllers() {
     // Đặt ở đây (chứ không ở Run) để --preflight cũng in ra: chu kỳ gait là một phần
     // hợp đồng train giống Kp/Kd, phải đọc được mà không cần cắm DDS.
     gait_.Configure(walk_gait_period_s_);
-    std::cout << "[" << locomotion_->Name() << "] gait_period=" << gait_.period_s()
-              << "s, teleop_gait_period=" << teleop_gait_period_s_
-              << "s (phai khop 'period' cua phase obs luc train " << walk_policy_label_ << ")"
+    // "policy" = the controller owns its clock (no fixed period to match).
+    auto period_text = [](const PolicyController& ctrl, float period) {
+        if (dynamic_cast<const MultiGaitV2573Controller*>(&ctrl)) return std::string("policy");
+        std::ostringstream text;
+        text << period << "s";
+        return text.str();
+    };
+    const PolicyController& teleop_view = teleop_ctrl_ ? *teleop_ctrl_ : *walk_ctrl_;
+    std::cout << "[" << locomotion_->Name() << "] gait_period="
+              << period_text(*walk_ctrl_, gait_.period_s())
+              << ", teleop_gait_period=" << period_text(teleop_view, teleop_gait_period_s_)
+              << " (phai khop 'period' cua phase obs luc train " << walk_policy_label_ << ")"
               << (tuning_.walk_policy.empty()
                       ? " [flat_model, gait_period_s cua locomotion.yaml]"
                       : (tuning_.WalkGaitPeriodOverride() ? " [override locomotion.yaml]"

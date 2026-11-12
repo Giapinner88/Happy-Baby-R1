@@ -94,14 +94,16 @@ cmd_add() {
         echo "ten bundle hoac nhom/ten: moi thanh phan bat dau bang chu/so, chi gom chu, so, . _ -: '$name'" >&2; exit 1; }
     case "$contract" in
         legacy_83|flat_plus_h4_v1|flat_plus_h5_v1|flat_plus_gait_h4_v1|r1_wb_legs_v1_blind|r1_wb_legs_gait_h4_v1_blind|r1_wb_legs_waist_gait_h4_v1_blind|r1_wb_legs_armres_gait_h4_v1_ref) ;;
-        r1_armfree0917_multigait_h4_v2) ;;
+        r1_armfree0917_multigait_h4_v2|r1_armfree0917_multigait_h4_v2573) ;;
         *) echo "contract khong ho tro: $contract" >&2; exit 1 ;;
     esac
     # Chu ky cua multigait V2 do chinh policy phat ra moi buoc (action index
     # 24), khong co mot so train nao de ghi vao bundle. Dong bo voi
     # FlatPolicyProfileHasFixedGaitPeriod() trong controller.
     local fixed_period=1
-    [[ "$contract" != r1_armfree0917_multigait_h4_v2 ]] || fixed_period=0
+    case "$contract" in
+        r1_armfree0917_multigait_h4_v2|r1_armfree0917_multigait_h4_v2573) fixed_period=0 ;;
+    esac
     local dest="$LOCO_DIR/$name"
     [[ ! -e "$dest" ]] || { echo "da ton tai: $dest" >&2; exit 1; }
 
@@ -205,7 +207,8 @@ cmd_use() {
     [[ -n "$contract" ]] || { echo "bundle '$name' thieu contract" >&2; exit 1; }
     # Dong bo voi FlatPolicyProfileHasFixedGaitPeriod() va cmd_add: contract ma
     # policy tu phat chu ky moi buoc khong co so nao de khai.
-    if [[ "$contract" == r1_armfree0917_multigait_h4_v2 ]]; then
+    if [[ "$contract" == r1_armfree0917_multigait_h4_v2 ||
+          "$contract" == r1_armfree0917_multigait_h4_v2573 ]]; then
         [[ -z "$period" ]] || {
             echo "contract $contract khong co chu ky gait co dinh nhung policy.yaml khai" \
                  "gait_period_s: $period" >&2; exit 1; }
