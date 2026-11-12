@@ -53,8 +53,12 @@ cp "$pristine" "$config"
 # 3. Override lệch metadata vẫn phải chặn khởi động, từng route một.
 for key in walk_gait_period_s teleop_gait_period_s; do
     cp "$pristine" "$config"
+    # The override must really differ from the selected bundle period;
+    # a fixed value breaks as soon as walk_policy changes.
+    route="$walk_now"
+    [[ "$key" == teleop_gait_period_s ]] && route="$teleop_now"
     value=0.6
-    [[ "$key" == teleop_gait_period_s ]] && value=1.0
+    [[ "$(bundle_period "$route")" == 0.6 ]] && value=1.0
     printf '%s: %s\n' "$key" "$value" >> "$config"
     if HB_PROJECT_DIR="$temp" "$binary" --preflight > "$temp/invalid.log" 2>&1; then
         echo "preflight accepted a mismatched $key" >&2
