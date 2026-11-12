@@ -93,6 +93,16 @@ std::unique_ptr<PolicyController> Application::MakeLocomotionController(
             // FSM cấu hình hoàn toàn từ metadata ONNX (không từ locomotion.yaml).
             ctrl = std::make_unique<WholeBodyLegsGaitController>();
             break;
+        case FlatPolicyProfile::kWholeBodyLegsWaistGaitH4BlindV1:
+            // Như trên, thêm 2 action eo (waist_roll, waist_yaw).
+            ctrl = std::make_unique<WholeBodyLegsGaitController>(
+                WholeBodyLegsController::kLegsWaistActionDim);
+            break;
+        case FlatPolicyProfile::kWholeBodyLegsArmResGaitH4RefV1:
+            // 12 chân + 10 residual tay quanh tham chiếu teleop/gesture (U10).
+            ctrl = std::make_unique<WholeBodyLegsGaitController>(
+                WholeBodyLegsController::kLegsArmResActionDim);
+            break;
     }
     ctrl->Init(path, ort_env_, ort_opts_, tuning_);
     if (const auto* wb = dynamic_cast<const WholeBodyLegsController*>(ctrl.get())) {
@@ -124,12 +134,22 @@ void Application::InitControllers() {
                   << " output=" << ctrl.ActionSize() << "\n";
     };
 
+    // waist_kp/waist_kd của bundle (chỉ policy giữ eo bằng PD; xem PolicyBundle.hpp).
+    auto apply_bundle_gains = [&](const PolicyBundle& bundle, PolicyController& ctrl) {
+        if (!bundle.has_waist_gains()) return;
+        for (const int j : {spec::kWaistRollPolicyIdx, spec::kWaistYawPolicyIdx})
+            ctrl.OverrideHeldJointGains(j, bundle.waist_kp, bundle.waist_kd, tuning_);
+        std::cout << "[" << ctrl.Name() << "] '" << bundle.name << "' waist Kp=" << ctrl.kp()[12]
+                  << " Kd=" << ctrl.kd()[12] << " (policy.yaml, ghi de metadata ONNX)\n";
+    };
+
     std::string walk_contract;
     if (!tuning_.walk_policy.empty()) {
         // Route bundle: policies/locomotion/<tên>/{policy.onnx, policy.yaml}.
         const PolicyBundle walk = PolicyBundle::Load(proj_dir_, tuning_.walk_policy);
         walk_contract = walk.contract;
         walk_ctrl_ = MakeLocomotionController(walk.contract, proj_dir_ + "/" + walk.rel_path);
+        apply_bundle_gains(walk, *walk_ctrl_);
         walk_policy_label_ = walk.name;
         print_model("MODEL", walk.contract, walk.rel_path, *walk_ctrl_);
 
@@ -140,6 +160,7 @@ void Application::InitControllers() {
         if (teleop.name != walk.name) {
             teleop_ctrl_ = MakeLocomotionController(teleop.contract,
                                                     proj_dir_ + "/" + teleop.rel_path);
+            apply_bundle_gains(teleop, *teleop_ctrl_);
             // Tay: gesture/teleop chốt default tay MỘT lần lúc khởi động (từ walk
             // policy) -> hai policy phải trùng default tay. Chân + eo: các state tư thế
             // nhắm default của policy đang chọn, và đổi nóng blend blend_time_s từ
@@ -214,7 +235,7 @@ void Application::InitControllers() {
                   << tuning_.gait_settle_dwell_s << "s (runtime config)\n";
     }
     if (const auto* wbg = dynamic_cast<const WholeBodyLegsGaitController*>(locomotion_)) {
-        std::cout << "[WholeBodyLegsGaitH4] settle_dwell=" << wbg->gait_config().settle_dwell_s
+        std::cout << "[" << wbg->Name() << "] settle_dwell=" << wbg->gait_config().settle_dwell_s
                   << "s (metadata ONNX; bo qua gait_settle_dwell_s cua locomotion.yaml)\n";
     }
     std::cout << "[Application] Locomotion: R2+A policy '" << walk_policy_label_

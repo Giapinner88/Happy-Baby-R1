@@ -63,16 +63,16 @@ int main() {
         // Overlay tay không được che obs với contract blind.
         ctx.arm_override_active = true;
         ctx.arm_mask_keep = 0.0f;
-        std::vector<float> obs(WholeBodyLegsController::kObsDim, 0.0f);
+        std::vector<float> obs(ctrl.ObsSize(), 0.0f);
         ctrl.Obs(ctx, obs);
-        Near(row["obs"], obs.data(), WholeBodyLegsController::kObsDim, 1e-6f,
+        Near(row["obs"], obs.data(), ctrl.ObsSize(), 1e-6f,
              "step " + std::to_string(steps) + " obs");
         const auto& target = ctrl.Step(ctx);
-        Near(row["action"], ctrl.last_action().data(), WholeBodyLegsController::kActionDim, 1e-4f,
+        Near(row["action"], ctrl.last_action().data(), WholeBodyLegsController::kLegActionDim, 1e-4f,
              "step " + std::to_string(steps) + " action");
         Near(row["target"], target.data(), spec::kNumJoints, 1e-4f,
              "step " + std::to_string(steps) + " target");
-        for (int i = WholeBodyLegsController::kActionDim; i < spec::kNumJoints; ++i)
+        for (int i = WholeBodyLegsController::kLegActionDim; i < spec::kNumJoints; ++i)
             if (ctrl.last_action()[i] != 0.0f) { std::cerr << "FAIL last_action tail\n"; ++failures; }
         ++steps;
         row.clear();

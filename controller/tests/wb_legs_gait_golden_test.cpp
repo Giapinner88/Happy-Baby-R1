@@ -1,11 +1,15 @@
-// Cross-implementation parity for contract r1_wb_legs_gait_h4_v1_blind (U4).
+// Cross-implementation parity for contracts r1_wb_legs_gait_h4_v1_blind (U4, 12
+// actions), r1_wb_legs_waist_gait_h4_v1_blind (U7, 14 actions incl. waist) and
+// r1_wb_legs_armres_gait_h4_v1_ref (U10, 22 actions: legs + arm residuals around a
+// filtered arm reference, plus the arm authority g), selected by
+// HB_WB_LEGS_GAIT_ACTION_DIM.
 //
-// Reads tests/data/wb_legs_gait_golden_trace.txt, produced by
-// scripts/make_wb_legs_gait_golden.py from the loco FSM (loco/r1/gait_fsm.py),
-// an independent Isaac Lab history buffer and onnxruntime, and checks that
-// WholeBodyLegsGaitController reaches the same STAND/WALK/W2S mode, builds the
-// same 287-D observation (4 x 71 term-major + one-hot), gets the same raw action
-// and emits the same 24 joint targets, over 130 consecutive policy steps.
+// Reads the trace produced by scripts/make_wb_legs_gait_golden.py from the loco
+// FSM (loco/r1/gait_fsm.py), an independent Isaac Lab history buffer and
+// onnxruntime, and checks that WholeBodyLegsGaitController reaches the same
+// STAND/WALK/W2S mode, builds the same observation (4 x frame term-major +
+// one-hot: 287 or 295), gets the same raw action and emits the same 24 joint
+// targets (waist from the policy for U7), over 130 consecutive policy steps.
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -38,9 +42,17 @@ int main() {
     Ort::Env env{ORT_LOGGING_LEVEL_WARNING, "wb_legs_gait_golden"};
     Ort::SessionOptions opts;
     Tuning tuning;
-    WholeBodyLegsGaitController ctrl;
+    constexpr int kActionDim = HB_WB_LEGS_GAIT_ACTION_DIM;
+    WholeBodyLegsGaitController ctrl(kActionDim);
     ctrl.Init(HB_WB_LEGS_GAIT_MODEL, env, opts, tuning);
-    if (ctrl.ObsSize() != 287) { std::cerr << "FAIL obs size\n"; return 1; }
+    const int obs_dim = ctrl.ObsSize();
+    const int arm_ref = kActionDim == 22 ? 20 : 0;  // arm_q_ref[10], arm_dq_ref[10] per frame
+    const int authority = kActionDim == 22 ? 1 : 0;
+    if (obs_dim != 4 * (59 + kActionDim + arm_ref) + 3 + authority ||
+        ctrl.ActionSize() != kActionDim) {
+        std::cerr << "FAIL obs/action size " << obs_dim << "/" << ctrl.ActionSize() << "\n";
+        return 1;
+    }
     RobotState rs;
     ctrl.Reset(rs);
 
@@ -62,6 +74,11 @@ int main() {
         // Contract blind: overlay tay không được che obs.
         ctx.arm_override_active = true;
         ctx.arm_mask_keep = 0.0f;
+        if (row.count("arm_desired")) {
+            std::copy(row["arm_desired"].begin(), row["arm_desired"].end(), ctx.arm_desired.begin());
+            ctx.arm_desired_valid = true;
+            ctx.arm_authority = row["authority"][0];
+        }
         const std::string at = "step " + std::to_string(steps) + " ";
         const auto& target = ctrl.Step(ctx);
         if (static_cast<int>(ctrl.gait().mode()) != static_cast<int>(row["mode"][0])) {
@@ -69,19 +86,27 @@ int main() {
                       << static_cast<int>(ctrl.gait().mode()) << "\n";
             ++failures;
         }
-        // Block actions (4 x 12, vị trí 236..283) mang action ONNX của các bước
+        // Block actions (4 x A, cuối history) mang action ONNX của các bước
         // trước, nên dùng dung sai onnxruntime như `action`; phần còn lại phải gần exact.
-        constexpr int kActionsBlock = 4 * (WholeBodyLegsGaitController::kObsDim -
-                                           WholeBodyLegsGaitController::kActionDim);
+        constexpr int kActionsBlock = 4 * 59;
         const float* obs = ctrl.last_obs().data();
         const std::vector<float>& want = row["obs"];
+        if (static_cast<int>(want.size()) != obs_dim) {
+            std::cerr << "FAIL " << at << "trace obs size " << want.size() << "\n";
+            ++failures;
+            return;
+        }
         Near(want, obs, kActionsBlock, 1e-6f, at + "obs");
-        Near({want.begin() + kActionsBlock, want.end() - 3}, obs + kActionsBlock,
-             4 * WholeBodyLegsGaitController::kActionDim, 1e-4f, at + "obs.actions");
-        Near({want.end() - 3, want.end()}, obs + WholeBodyLegsGaitController::kGaitObsDim - 3, 3,
-             0.0f, at + "obs.one_hot");
-        Near(row["action"], ctrl.last_action().data(), WholeBodyLegsGaitController::kActionDim,
-             1e-4f, at + "action");
+        Near({want.begin() + kActionsBlock, want.end()}, obs + kActionsBlock,
+             4 * kActionDim, 1e-4f, at + "obs.actions");
+        // Tham chiếu tay: filter float32 (torch) với float C++, sai khác vài ulp tích luỹ.
+        const int ref_at = kActionsBlock + 4 * kActionDim;
+        Near({want.begin() + ref_at, want.end()}, obs + ref_at, 4 * arm_ref, 1e-5f,
+             at + "obs.arm_ref");
+        const int one_hot_at = obs_dim - 3 - authority;
+        Near({want.begin() + one_hot_at, want.end()}, obs + one_hot_at, 3 + authority, 0.0f,
+             at + "obs.one_hot+authority");
+        Near(row["action"], ctrl.last_action().data(), kActionDim, 1e-4f, at + "action");
         Near(row["target"], target.data(), spec::kNumJoints, 1e-4f, at + "target");
         if (steps == 0) first = row;
         ++steps;
@@ -107,6 +132,7 @@ int main() {
     steps = 0;
     run_step();
     if (failures) return 1;
-    std::cout << "wb_legs_gait_golden_test: PASS (130 steps + reset replay)\n";
+    std::cout << "wb_legs_gait_golden_test: PASS " << ctrl.Name() << " obs " << obs_dim
+              << " (130 steps + reset replay)\n";
     return 0;
 }

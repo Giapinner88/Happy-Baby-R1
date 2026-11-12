@@ -519,6 +519,11 @@ struct Tuning {
     // swap_timeout_s mà chưa đủ điều kiện thì huỷ, giữ policy cũ.
     float policy_swap_dwell_s = 0.5f;
     float policy_swap_timeout_s = 6.0f;
+    // Contract arm-residual (U10): trần g của residual tay, đưa vào obs. idle = không
+    // ai cầm tay (train: tay default, g = 1); overlay = teleop/gesture đang cầm tay
+    // (train: đang cử động g 0.3..1, đang giữ tư thế g 0..0.3).
+    float armres_authority_idle = 1.0f;
+    float armres_authority_overlay = 0.3f;
 
     // FSM gait-conditioned cho flat_plus_gait_h4_v1. Các giá trị này phải khớp
     // metadata của model; mặc định chính là contract đã export từ simulator.

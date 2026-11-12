@@ -52,8 +52,8 @@ enum Btn : uint16_t {
 };
 
 const char* kWalkSha = "7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ecad815ccb";
-const char* kTeleopSha = "9cdf005ef7a7842b630744f298d992ad370ee2320f99d69691fc2db86b9e5fa5";
-const char* kU5Sha = "c2ef27766e15f30539bda177787ba8ab05a7e70e2a2a32feac975cee39ed894e";
+const char* kU4Sha = "23021a5fd4e636e6d5f0b17f900cd74c6bbbbe5fdd2523b6df4ccffbe1382cb9";
+const char* kU10Sha = "9ee0448002d9c4d0fc722c1a38f004078fd8b84ec000631b6d4deedbacfb9d19";
 
 void WriteBundle(const fs::path& loco, const std::string& name, const std::string& source,
                  const std::string& contract, const std::string& sha,
@@ -66,8 +66,9 @@ void WriteBundle(const fs::path& loco, const std::string& name, const std::strin
 }
 
 // Temporary project: frozen replay config + two bundles selected as walk/teleop.
-fs::path MakeProject(const std::string& teleop_sha, const std::string& teleop_source = "u1_seed42",
-                     const std::string& teleop_contract = "r1_wb_legs_v1_blind") {
+fs::path MakeProject(const std::string& teleop_sha, const std::string& teleop_source = "u4_seed42",
+                     const std::string& teleop_contract = "r1_wb_legs_gait_h4_v1_blind",
+                     const std::string& teleop_extra = "") {
     char tmpl[] = "/tmp/hb-loco-mode-test.XXXXXX";
     const char* dir = mkdtemp(tmpl);
     if (!dir) std::abort();
@@ -81,7 +82,7 @@ fs::path MakeProject(const std::string& teleop_sha, const std::string& teleop_so
     WriteBundle(root / "policies/locomotion", "walk_a", "flat_plus_gait_0917_armfree",
                 "flat_plus_gait_h4_v1", kWalkSha);
     WriteBundle(root / "policies/locomotion", "teleop_b", teleop_source,
-                teleop_contract, teleop_sha);
+                teleop_contract, teleop_sha, teleop_extra);
     std::ofstream(root / "config/locomotion.yaml", std::ios::app)
         << "\nwalk_policy: walk_a\nteleop_policy: teleop_b\n"
            "policy_swap_dwell_s: 0.5\npolicy_swap_timeout_s: 6.0\n";
@@ -107,6 +108,7 @@ struct ApplicationTestAccess {
     float ly = 0;
     bool remote_off = false;   // all-zero wireless_remote, as when the remote is lost
     float pitch_rad = 0;  // IMU pitch of the ideal plant (still, upright by default)
+    std::array<float, spec::kNumMotorsIdl> sent_kp{}, sent_kd{};  // last LowCmd gains
     long tick = 0;
 
     void Configure() {
@@ -165,8 +167,11 @@ struct ApplicationTestAccess {
         ++a.tick_;
         if (!g_packets.empty()) {
             const auto& cmd = g_packets.back().motor_cmd();
-            for (int m = 0; m < spec::kNumMotorsIdl; ++m)
+            for (int m = 0; m < spec::kNumMotorsIdl; ++m) {
                 if (cmd[m].kp() > 0.0f) measured_q[m] = cmd[m].q();
+                sent_kp[m] = cmd[m].kp();
+                sent_kd[m] = cmd[m].kd();
+            }
         }
         g_packets.clear();
         ++tick;
@@ -547,6 +552,76 @@ struct ApplicationTestAccess {
         CHECK(a.state_ == AppState::kLocomotion);
         pitch_rad = 0.0f;
     }
+
+    // R2+X on the arm-residual policy (U10): the arm target sent to the motors is the
+    // policy's (filtered reference + g x 0.2 x clip(a)), never the gesture overlay;
+    // a gesture only moves the reference, and g follows the upper-body owner.
+    void ScriptArmResidual() {
+        const auto* ctrl = dynamic_cast<const WholeBodyLegsGaitController*>(a.teleop_ctrl_.get());
+        CHECK(ctrl && ctrl->arm_residual() && ctrl->ArmsFromReference());
+        CHECK(a.PolicyCaps().gesture);
+        WaitFor(AppState::kIdle, 10); Wait(50);
+        Press(kL2 | kUp);
+        WaitFor(AppState::kStandLock, 5000); Wait(200);
+        Press(kR2 | kA);
+        Wait(600);
+        Press(kR2 | kX);
+        for (int i = 0; i < 4000 && a.loco_swap_pending_; ++i) Step();
+        CHECK(a.loco_mode_ == LocoMode::kTeleop && a.active_ == a.teleop_ctrl_.get());
+        Wait(600);
+        const float res = ctrl->arm_residual_rad();
+        // Sent arm = policy arm target, within g x residual of the filtered reference.
+        auto check_arms = [&](float g) {
+            CHECK(ctrl->arm_authority() == g && ctrl->last_obs().back() == g);
+            for (int k = 0; k < spec::kNumArmJoints; ++k) {
+                const int j = 14 + k;
+                CHECK(measured_q[spec::MotorIdl(j)] == a.ai_target_q_[j]);
+                CHECK(std::fabs(a.ai_target_q_[j] - ctrl->arm_reference().q()[k]) <= g * res + 1e-5f);
+            }
+        };
+        check_arms(a.tuning_.armres_authority_idle);
+        float idle_gap = 0.0f;
+        for (int k = 0; k < spec::kNumArmJoints; ++k)
+            idle_gap = std::max(idle_gap, std::fabs(ctrl->arm_reference().q()[k] -
+                                                    ctrl->default_q()[14 + k]));
+        CHECK(idle_gap < 1e-6f);  // nobody holds the arms: reference stays at default
+
+        CHECK(a.voice_gesture_owner_.Init(a.proj_dir_ + "/gesture.sock"));
+        DoubleClick(kUp); Wait(200);
+        CHECK(a.arm_gesture_.ActiveName() == a.gesture_slot_[1]);
+        check_arms(a.tuning_.armres_authority_overlay);
+        float ref_gap = 0.0f;
+        for (int k = 0; k < spec::kNumArmJoints; ++k)
+            ref_gap = std::max(ref_gap, std::fabs(ctrl->arm_reference().q()[k] -
+                                                  ctrl->default_q()[14 + k]));
+        CHECK(ref_gap > 0.02f);  // the gesture moved the reference
+        DoubleClick(kUp);
+        for (int i = 0; i < 15000 && !a.arm_gesture_.Idle(); ++i) Step();
+        CHECK(a.arm_gesture_.Idle() && a.state_ == AppState::kLocomotion);
+        Wait(200);
+        check_arms(a.tuning_.armres_authority_idle);
+    }
+
+    // waist_kp/waist_kd of the teleop bundle (U4 holds the waist by PD) reach rt/lowcmd
+    // only while R2+X drives; R2+A keeps the walk policy's metadata gains.
+    void ScriptWaistGainOverride(float kp, float kd) {
+        const int roll = spec::MotorIdl(spec::kWaistRollPolicyIdx);
+        const int yaw = spec::MotorIdl(spec::kWaistYawPolicyIdx);
+        CHECK(a.teleop_ctrl_->kp()[0] == a.walk_ctrl_->kp()[0]);
+        WaitFor(AppState::kIdle, 10); Wait(50);
+        Press(kL2 | kUp);
+        WaitFor(AppState::kStandLock, 5000); Wait(200);
+        Press(kR2 | kA);
+        Wait(100);
+        CHECK(a.state_ == AppState::kLocomotion && a.loco_mode_ == LocoMode::kWalk);
+        CHECK(sent_kp[roll] == a.walk_ctrl_->kp()[spec::kWaistRollPolicyIdx] && sent_kp[roll] != kp);
+        Press(kR2 | kX);
+        for (int i = 0; i < 4000 && a.loco_swap_pending_; ++i) Step();
+        CHECK(a.loco_mode_ == LocoMode::kTeleop && a.locomotion_ == a.teleop_ctrl_.get());
+        Wait(100);
+        for (const int m : {roll, yaw}) CHECK(sent_kp[m] == kp && sent_kd[m] == kd);
+        CHECK(sent_kp[spec::MotorIdl(0)] == a.teleop_ctrl_->kp()[0]);
+    }
 };
 
 int main() {
@@ -565,7 +640,7 @@ int main() {
         CHECK(threw);
     }
 
-    const fs::path root = MakeProject(kTeleopSha);
+    const fs::path root = MakeProject(kU4Sha);
     {
         Application app(root.string(), "lo");
         ApplicationTestAccess r{app};
@@ -574,7 +649,7 @@ int main() {
     }
     fs::remove_all(root);
 
-    const fs::path tilted = MakeProject(kU5Sha, "u5_seed42", "r1_wb_legs_gait_h4_v1_blind");
+    const fs::path tilted = MakeProject(kU4Sha);
     {
         Application app(tilted.string(), "lo");
         ApplicationTestAccess r{app};
@@ -582,5 +657,36 @@ int main() {
         r.ScriptTiltedSwapBack();
     }
     fs::remove_all(tilted);
+
+    const fs::path stiff = MakeProject(kU4Sha, "u4_seed42", "r1_wb_legs_gait_h4_v1_blind",
+                                       "waist_kp: 200\nwaist_kd: 4\n");
+    {
+        Application app(stiff.string(), "lo");
+        ApplicationTestAccess r{app};
+        r.Configure();
+        r.ScriptWaistGainOverride(200.0f, 4.0f);
+    }
+    fs::remove_all(stiff);
+
+    // waist_kp without waist_kd must stop startup.
+    {
+        const fs::path bad = MakeProject(kU4Sha, "u4_seed42", "r1_wb_legs_gait_h4_v1_blind",
+                                         "waist_kp: 200\n");
+        Application app(bad.string(), "lo");
+        ApplicationTestAccess r{app};
+        std::string what;
+        try { r.Configure(); } catch (const std::exception& e) { what = e.what(); }
+        fs::remove_all(bad);
+        CHECK(what.find("waist_kp and waist_kd go together") != std::string::npos);
+    }
+
+    const fs::path armres = MakeProject(kU10Sha, "u10_seed42", "r1_wb_legs_armres_gait_h4_v1_ref");
+    {
+        Application app(armres.string(), "lo");
+        ApplicationTestAccess r{app};
+        r.Configure();
+        r.ScriptArmResidual();
+    }
+    fs::remove_all(armres);
     std::cout << "APPLICATION_LOCO_MODE_OK\n";
 }

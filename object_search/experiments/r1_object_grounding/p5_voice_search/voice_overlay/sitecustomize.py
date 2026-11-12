@@ -1,5 +1,6 @@
 """Extend the installed HB voice session without changing vendor source."""
 import asyncio
+from pathlib import Path
 import json
 import os
 import time
@@ -182,5 +183,5 @@ def install():
     )
 
 
-if os.environ.get('R1_P5_VOICE_ENABLED') == '1':
+if os.environ.get('R1_P5_VOICE_ENABLED') == '1' and not Path('/etc/hb/local_approach_voice').is_file():
     install()

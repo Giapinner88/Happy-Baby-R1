@@ -29,4 +29,11 @@ struct ControlContext {
     float gravity_x_bias      = 0.0f;
     float cmd_vx_bias         = 0.0f;
 
+    // Contract arm-residual (U10): tay mong muốn từ nguồn thân trên (teleop/gesture,
+    // default khi không ai cầm tay), policy idx 14..23, TRƯỚC ArmReferenceFilter;
+    // và trần quyền g in [0, 1] của residual tay. Contract khác bỏ qua.
+    std::array<float, spec::kNumArmJoints> arm_desired{};
+    bool  arm_desired_valid = false;
+    float arm_authority     = 1.0f;
+
 };

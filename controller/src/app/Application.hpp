@@ -22,6 +22,7 @@
 #include "../gait/GaitScheduler.hpp"
 #include "../input/InputManager.hpp"
 #include "../input/SearchYawReceiver.hpp"
+#include "../input/ApproachReceiver.hpp"
 #include "../input/TeleopReceiver.hpp"
 #include "../input/VoiceGestureOwner.hpp"
 #include "../logging/MimicTelemetryLogger.hpp"
@@ -261,6 +262,7 @@ private:
     bool motion_recovery_released_ = false;
     InputManager input_;
     SearchYawReceiver search_yaw_;
+    approach_owner::Receiver approach_receiver_;
     LowCmdSender sender_;
 
     // Hai policy locomotion nạp sẵn lúc khởi động. teleop_ctrl_ rỗng khi
@@ -336,6 +338,9 @@ private:
     long tick_ = 0;
 
     std::array<float, spec::kNumJoints> ai_target_q_{};
+    // Policy ArmsFromReference (U10): tay mong muốn của nguồn thân trên (teleop/gesture
+    // trộn trên default tay của policy), vào ctx.arm_desired ở policy step kế.
+    std::array<float, spec::kNumJoints> arm_desired_q_{};
     std::array<float, spec::kNumJoints> stand_gains_kp_{};
     std::array<float, spec::kNumJoints> stand_gains_kd_{};
     // Bản sao stand_gains_kp_ nhưng cổ chân dùng tuning_.return_kp_ankle. CHỈ đường vào

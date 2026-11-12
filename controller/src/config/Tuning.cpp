@@ -317,6 +317,8 @@ void Tuning::Apply(const std::string& key, const std::string& value, bool& known
     else if (key == "teleop_policy")      teleop_policy = value;
     else if (key == "policy_swap_dwell_s")   policy_swap_dwell_s = f();
     else if (key == "policy_swap_timeout_s") policy_swap_timeout_s = f();
+    else if (key == "armres_authority_idle")    armres_authority_idle = f();
+    else if (key == "armres_authority_overlay") armres_authority_overlay = f();
     else if (key == "gait_stop_request_lin") gait_stop_request_lin = f();
     else if (key == "gait_stop_request_ang") gait_stop_request_ang = f();
     else if (key == "gait_move_request_lin") gait_move_request_lin = f();
@@ -429,6 +431,9 @@ bool Tuning::Validate() const {
     require(finite_in(policy_swap_timeout_s, 1.0f, 30.0f) &&
                 policy_swap_timeout_s > policy_swap_dwell_s,
             "policy_swap_timeout_s must be > policy_swap_dwell_s and in [1, 30]");
+    require(finite_in(armres_authority_idle, 0.0f, 1.0f) &&
+                finite_in(armres_authority_overlay, 0.0f, 1.0f),
+            "armres_authority_idle and armres_authority_overlay must be finite and in [0, 1]");
     require(gesture_voice_command_socket.rfind("/run/hb/", 0) == 0 &&
                 gesture_voice_command_socket.size() < 108 &&
                 gesture_voice_command_socket.find("..") == std::string::npos,

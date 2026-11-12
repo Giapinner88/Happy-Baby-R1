@@ -254,9 +254,14 @@ void Application::RunPolicy(const InputCommand& cmd) {
 
     std::array<float, spec::kNumJoints> send_q = ai_target_q_;
     // H4 teleop and gestures both mask each 83-D history frame before packing.
+    // ArmsFromReference (U10): nguồn thân trên chỉ cấp tham chiếu tay (trộn trên default
+    // tay) cho policy step kế; target tay gửi đi là của policy, không bị ghi đè.
+    const bool arms_from_reference = active_->ArmsFromReference();
+    if (arms_from_reference) arm_desired_q_ = active_->default_q();
+    std::array<float, spec::kNumJoints>& overlay_q = arms_from_reference ? arm_desired_q_ : send_q;
     if (ub.active && (caps.gesture || caps.h4)) {
-        if (ub.use_teleop) teleop_.BlendInto(send_q);
-        else               arm_gesture_.BlendInto(send_q);
+        if (ub.use_teleop) teleop_.BlendInto(overlay_q);
+        else               arm_gesture_.BlendInto(overlay_q);
     }
     if (tuning_.state_motion_guard) {
         const auto finite = [](const auto& values) {
@@ -344,6 +349,14 @@ void Application::UpdateBaseCommand(const InputCommand& cmd, const PolicyOverlay
         cmd.want_emergency_stop);
     const bool teleop_locks_base = tuning_.teleop_lock_base && teleop_runtime_on_ &&
         (legacy_arm_overlay_supported || h4_overlay_supported);
+    // APV1 is opt-in, zero-only by default. Preserve manual/START/history/
+    // emergency gates; never create another LowCmd publisher.
+    approach_receiver_.Apply(requested_vx, requested_vy, requested_yaw,
+        manual_motion,
+        state_fresh_ && armed_.load() && cmd.is_active &&
+            state_ == AppState::kLocomotion && loco_mode_ == LocoMode::kWalk &&
+            !holding && !teleop_locks_base && !history_gesture_holds_base,
+        cmd.want_emergency_stop);
     if (state_ == AppState::kLocomotion && !holding && !teleop_locks_base &&
         !history_gesture_holds_base) {
         cmd_vx_ = requested_vx;
@@ -565,6 +578,12 @@ bool Application::StepPolicy(const RobotState& rs, const PolicyOverlayCaps& caps
     float cmd_norm = std::sqrt(cmd_vx_ * cmd_vx_ + cmd_vy_ * cmd_vy_ +
                                cmd_yaw_ * cmd_yaw_);
     ControlContext ctx{rs, cmd_vx_, cmd_vy_, cmd_yaw_, gait_.PhaseObs(cmd_norm)};
+    if (active_->ArmsFromReference()) {
+        std::copy(arm_desired_q_.begin() + 14, arm_desired_q_.end(), ctx.arm_desired.begin());
+        ctx.arm_desired_valid = true;
+        ctx.arm_authority = ub_active ? tuning_.armres_authority_overlay
+                                      : tuning_.armres_authority_idle;
+    }
     if (ub_active && (gesture_overlay_supported || h4_overlay_supported)) {
         // H4/gait mask frame 83-D before history. Feedforward balance stays
         // legacy-only until it has its own acceptance evidence.
@@ -692,8 +711,11 @@ void Application::UpdateGestureHandover(const RobotState& rs, bool gesture_overl
         const float gyro_norm = rs.gyro.norm();
         const float arm_dq_rms = std::sqrt(
             arm_dq_sq / static_cast<float>(ArmGesturePlayer::kNumArm));
+        // ArmsFromReference: gesture thu về tham chiếu default; target policy có thêm
+        // residual (<= g x arm_residual_rad) nên không phải đích để so.
         const bool policy_target_matches = arm_gesture_.HandoverMatches(
-            ai_target_q_, tuning_.gesture_handover_position_tol_rad,
+            active_->ArmsFromReference() ? active_->default_q() : ai_target_q_,
+            tuning_.gesture_handover_position_tol_rad,
             tuning_.gesture_handover_arm_dq_rms);
         const bool measured_position_matches =
             max_arm_target_error <= tuning_.gesture_handover_measured_position_tol_rad;

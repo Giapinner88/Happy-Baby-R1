@@ -96,8 +96,12 @@ trap cleanup EXIT
 
 # ------------------------------------------------------------------ sync ----
 
+# So nội dung (--checksum) và KHÔNG giữ mtime (--no-times): file đổi nhận mtime lúc chép
+# nên build tăng dần trên robot luôn biên dịch lại nó. Giữ mtime máy trạm thì khi hai
+# cây source cùng deploy lên một robot, file mới có thể cũ hơn object build từ cây kia
+# và bị bỏ qua (2026-11-06: Tuning.cpp mới, Tuning.cpp.o cũ -> preflight lỗi khoá lạ).
 sync_high() {
-    rsync "${RSYNC_BASE[@]}" "$@" "${COMMON_EXCLUDES[@]}" \
+    rsync "${RSYNC_BASE[@]}" --checksum --no-times "$@" "${COMMON_EXCLUDES[@]}" \
         --exclude 'build/' --exclude 'build_*/' --exclude 'thirdparty/onnxruntime/' --exclude 'docs/' \
         --exclude '/policies/dance/' "${TRAINING_EXCLUDES[@]}" \
         "$HB_ROOT/controller/" "$ROBOT:$DEST/controller/"

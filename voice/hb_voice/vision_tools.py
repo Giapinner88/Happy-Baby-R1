@@ -99,6 +99,9 @@ class VisionToolController:
 
     def prefetch(self) -> bool:
         """Start one bounded capture when transcript hints at a visual question."""
+        from . import approach_tools
+        if approach_tools.enabled() and approach_tools.ACTIVE.exists():
+            return False
         if self._tool_capture_active or self._camera_tool_consumed:
             return False
         now = time.monotonic()
@@ -128,7 +131,13 @@ class VisionToolController:
 
     async def _capture_serialized(self) -> CameraCapture:
         async with self._capture_lock:
-            return await asyncio.to_thread(self._capture_frame)
+            from . import approach_tools
+            lease = approach_tools.claim_camera() if approach_tools.enabled() else None
+            try:
+                return await asyncio.to_thread(self._capture_frame)
+            finally:
+                if lease is not None:
+                    lease.close()
 
     async def _capture_for_tool(self) -> tuple[CameraCapture, bool, float]:
         task = self._prefetch_task
@@ -148,7 +157,7 @@ class VisionToolController:
     def tools(self) -> list:
         from pipecat.adapters.schemas.function_schema import FunctionSchema
 
-        return [
+        available = [
             FunctionSchema(
                 name="inspect_camera",
                 description=(
@@ -163,6 +172,11 @@ class VisionToolController:
                 handler=self.inspect_camera,
             )
         ]
+
+        from . import approach_tools
+        if approach_tools.enabled():
+            available.extend(approach_tools.tools())
+        return available
 
     async def inspect_camera(self, params) -> None:
         """Append a fresh JPEG before returning the result that resumes the model."""
@@ -287,3 +301,13 @@ class VisionToolController:
             sha256=hashlib.sha256(jpeg).hexdigest(),
             subprocess_ms=subprocess_ms,
         )
+
+
+from . import approach_tools as _approach_tools
+if _approach_tools.enabled():
+    VISION_TOOL_INSTRUCTIONS += (
+        "\n- Khi người dùng yêu cầu đi tới vật, gọi approach_object; không điều khiển khớp trực tiếp. "
+        "accepted chỉ là nhận task, shadow chưa đi, busy không xếp hàng hoặc tự thử lại. "
+        "Dùng approach_status để đọc kết quả; không nói đã tới vật nếu chưa xác nhận. "
+        "Khi người dùng nói dừng đi, gọi cancel_approach ngay."
+    )

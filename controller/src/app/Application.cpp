@@ -682,6 +682,7 @@ void Application::ActivatePolicy(PolicyController* ctrl) {
         estimator_.SetPitchTrimDeg(tuning_.LocomotionTrimDeg());
     ctrl->Reset(estimator_.state());
     active_ = ctrl;
+    arm_desired_q_ = ctrl->default_q();
     lying_ = false;
     fall_detector_.Reset();
     blend_alpha_ = 0.0f;

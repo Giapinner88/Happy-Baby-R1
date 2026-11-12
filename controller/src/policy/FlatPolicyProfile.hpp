@@ -12,6 +12,8 @@ enum class FlatPolicyProfile {
     kFlatPlusGaitH4V1,
     kWholeBodyLegsBlindV1,   // r1_wb_legs_v1_blind: 71-D obs, 12 leg actions (chỉ route bundle)
     kWholeBodyLegsGaitH4BlindV1,  // r1_wb_legs_gait_h4_v1_blind: 4x71 + one-hot = 287-D, 12 actions
+    kWholeBodyLegsWaistGaitH4BlindV1,  // r1_wb_legs_waist_gait_h4_v1_blind: 4x73 + 3 = 295-D, 14 actions
+    kWholeBodyLegsArmResGaitH4RefV1,   // r1_wb_legs_armres_gait_h4_v1_ref: 4x101 + 3 + 1 = 408-D, 22 actions
 };
 
 inline FlatPolicyProfile ParseFlatPolicyProfile(const std::string& value) {
@@ -22,5 +24,9 @@ inline FlatPolicyProfile ParseFlatPolicyProfile(const std::string& value) {
     if (value == "r1_wb_legs_v1_blind") return FlatPolicyProfile::kWholeBodyLegsBlindV1;
     if (value == "r1_wb_legs_gait_h4_v1_blind")
         return FlatPolicyProfile::kWholeBodyLegsGaitH4BlindV1;
+    if (value == "r1_wb_legs_waist_gait_h4_v1_blind")
+        return FlatPolicyProfile::kWholeBodyLegsWaistGaitH4BlindV1;
+    if (value == "r1_wb_legs_armres_gait_h4_v1_ref")
+        return FlatPolicyProfile::kWholeBodyLegsArmResGaitH4RefV1;
     throw std::runtime_error("Unknown flat_policy_contract: " + value);
 }

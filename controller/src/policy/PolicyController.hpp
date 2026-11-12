@@ -127,14 +127,20 @@ public:
             }
         }
 
-        for (int i = 0; i < n; ++i) {
-            last_action_[i] = action[i];
-            target_q_[i] = default_q_[i] + action[i] * action_scale_[i];
-        }
-        // Khớp ngoài action (vd. eo + tay của policy chỉ-chân) giữ default_q;
-        // overlay tay (teleop/gesture) ghi đè chỉ số 14..23 ở bước gửi lệnh.
-        for (int i = n; i < spec::kNumJoints; ++i) target_q_[i] = default_q_[i];
+        for (int i = 0; i < n; ++i) last_action_[i] = action[i];
+        ComputeTargets(action);
         return target_q_;
+    }
+
+    // Ghi đè gain của một khớp policy GIỮ ở default (không phải action), theo
+    // bundle; nhân policy_*_scale như gain metadata. Khớp là action thì từ chối:
+    // đổi gain ở đó đổi luôn ánh xạ action -> mô-men đã học.
+    void OverrideHeldJointGains(int joint, float kp, float kd, const Tuning& tuning) {
+        if (joint < 0 || joint >= spec::kNumJoints || JointIsAction(joint))
+            throw std::runtime_error(Name() + ": khop " + std::to_string(joint) +
+                                     " la action cua policy, khong ghi de gain");
+        kp_[joint] = kp * tuning.policy_kp_scale;
+        kd_[joint] = kd * tuning.policy_kd_scale;
     }
 
     // Policy đã trả NaN/Inf ít nhất một lần kể từ Reset(). Application đọc cờ
@@ -162,6 +168,11 @@ public:
     // Separate from gestures and legacy 83-D. Never infer teleop compatibility
     // from an observation length or a shared history layout.
     virtual bool SupportsH4TeleopOverlay() const { return false; }
+    // Policy tự xuất target tay quanh tham chiếu (ctx.arm_desired): teleop/gesture
+    // chỉ cấp tham chiếu, KHÔNG được ghi đè target tay ở bước gửi lệnh.
+    virtual bool ArmsFromReference() const { return false; }
+    // Khớp policy `joint` có nhận action của ONNX không (mặc định: action i -> khớp i).
+    virtual bool JointIsAction(int joint) const { return joint < ActionSize(); }
 
     const std::array<float, spec::kNumJoints>& default_q() const { return default_q_; }
     const std::array<float, spec::kNumJoints>& kp() const { return kp_; }
@@ -170,6 +181,14 @@ public:
 
 protected:
     virtual void BuildObservation(const ControlContext& ctx, std::vector<float>& obs) = 0;
+    // Raw action (thứ tự ONNX, đã kiểm hữu hạn) -> target_q_. Mặc định action i
+    // điều khiển khớp i; khớp ngoài action (vd. eo + tay của policy chỉ-chân) giữ
+    // default_q, overlay tay (teleop/gesture) ghi đè chỉ số 14..23 ở bước gửi lệnh.
+    virtual void ComputeTargets(const std::vector<float>& action) {
+        const int n = ActionSize();
+        for (int i = 0; i < n; ++i) target_q_[i] = default_q_[i] + action[i] * action_scale_[i];
+        for (int i = n; i < spec::kNumJoints; ++i) target_q_[i] = default_q_[i];
+    }
     virtual std::string ExpectedPolicyContract() const { return ""; }
     virtual std::string ExpectedObservationLayout() const { return ""; }
 

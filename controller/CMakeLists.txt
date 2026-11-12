@@ -315,8 +315,60 @@ if(BUILD_TESTING)
     target_link_libraries(wb_legs_gait_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
     target_compile_definitions(wb_legs_gait_golden_test PRIVATE
         HB_WB_LEGS_GAIT_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u4_seed42/policy.onnx"
-        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_gait_golden_trace.txt")
+        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_gait_golden_trace.txt"
+        HB_WB_LEGS_GAIT_ACTION_DIM=12)
     add_test(NAME wb_legs_gait_golden_test COMMAND wb_legs_gait_golden_test)
+
+    # U11: cùng contract U4 (one-hot raw trong ONNX).
+    add_executable(wb_legs_gait_u11_golden_test tests/wb_legs_gait_golden_test.cpp
+        src/policy/OnnxPolicy.cpp)
+    target_link_libraries(wb_legs_gait_u11_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
+    target_compile_definitions(wb_legs_gait_u11_golden_test PRIVATE
+        HB_WB_LEGS_GAIT_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u11_seed42/policy.onnx"
+        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_gait_u11_golden_trace.txt"
+        HB_WB_LEGS_GAIT_ACTION_DIM=12)
+    add_test(NAME wb_legs_gait_u11_golden_test COMMAND wb_legs_gait_u11_golden_test)
+
+    # U12: cùng contract U4 (push train mạnh hơn).
+    add_executable(wb_legs_gait_u12_golden_test tests/wb_legs_gait_golden_test.cpp
+        src/policy/OnnxPolicy.cpp)
+    target_link_libraries(wb_legs_gait_u12_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
+    target_compile_definitions(wb_legs_gait_u12_golden_test PRIVATE
+        HB_WB_LEGS_GAIT_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u12_seed42/policy.onnx"
+        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_gait_u12_golden_trace.txt"
+        HB_WB_LEGS_GAIT_ACTION_DIM=12)
+    add_test(NAME wb_legs_gait_u12_golden_test COMMAND wb_legs_gait_u12_golden_test)
+
+    # U13a: cùng contract U4 (U12 + settle dwell 0.5 s từ metadata).
+    add_executable(wb_legs_gait_u13a_golden_test tests/wb_legs_gait_golden_test.cpp
+        src/policy/OnnxPolicy.cpp)
+    target_link_libraries(wb_legs_gait_u13a_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
+    target_compile_definitions(wb_legs_gait_u13a_golden_test PRIVATE
+        HB_WB_LEGS_GAIT_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u13a_seed42/policy.onnx"
+        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_gait_u13a_golden_trace.txt"
+        HB_WB_LEGS_GAIT_ACTION_DIM=12)
+    add_test(NAME wb_legs_gait_u13a_golden_test COMMAND wb_legs_gait_u13a_golden_test)
+
+    # U14a: cùng contract U4 (U13a + actuator vendor_bm + mirror; gain/scale từ metadata).
+    add_executable(wb_legs_gait_u14a_golden_test tests/wb_legs_gait_golden_test.cpp
+        src/policy/OnnxPolicy.cpp)
+    target_link_libraries(wb_legs_gait_u14a_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
+    target_compile_definitions(wb_legs_gait_u14a_golden_test PRIVATE
+        HB_WB_LEGS_GAIT_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u14a_seed42/policy.onnx"
+        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_gait_u14a_golden_trace.txt"
+        HB_WB_LEGS_GAIT_ACTION_DIM=12)
+    add_test(NAME wb_legs_gait_u14a_golden_test COMMAND wb_legs_gait_u14a_golden_test)
+
+    # r1_wb_legs_armres_gait_h4_v1_ref (U10): 22 action (chân + residual tay), obs 408 với
+    # tham chiếu tay qua ArmReferenceFilter, g và clamp soft limit.
+    add_executable(wb_legs_armres_gait_golden_test tests/wb_legs_gait_golden_test.cpp
+        src/policy/OnnxPolicy.cpp)
+    target_link_libraries(wb_legs_armres_gait_golden_test unitree_sdk2 ${ONNXRUNTIME_LIB})
+    target_compile_definitions(wb_legs_armres_gait_golden_test PRIVATE
+        HB_WB_LEGS_GAIT_MODEL="${CMAKE_CURRENT_SOURCE_DIR}/policies/locomotion/u10_seed42/policy.onnx"
+        HB_WB_LEGS_GAIT_TRACE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/wb_legs_armres_gait_golden_trace.txt"
+        HB_WB_LEGS_GAIT_ACTION_DIM=22)
+    add_test(NAME wb_legs_armres_gait_golden_test COMMAND wb_legs_armres_gait_golden_test)
 
     add_executable(tuning_include_test tests/tuning_include_test.cpp src/config/Tuning.cpp)
     target_compile_definitions(tuning_include_test PRIVATE

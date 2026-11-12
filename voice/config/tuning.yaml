@@ -34,10 +34,8 @@ tts:
   use_speaker_boost: true
 
 input:
-  # Mic ngoài cắm trực tiếp vào PC2. Runtime tự tìm card USB có capture, không
-  # cần khai báo gì; chỉ đặt ALSA_DEVICE trong /etc/hb/stack.env khi có nhiều
-  # hơn một mic USB và cần ghim đúng một cái.
-  # Chỉ dùng r1_multicast khi cần rollback về mic tích hợp trên bo PC1.
+  # Hai nguồn: USB trên PC2 và multicast từ PC1. Nhấn F2 để chuyển thủ công.
+  # Nếu USB chưa cắm, nhấn F2 chọn PC1; không tự đổi nguồn trong chế độ manual.
   source: "alsa_usb"
 
   # Mic TTGK cũ có mức output lớn; giữ 0 dB để không làm tín hiệu clipping nặng hơn.
@@ -177,7 +175,7 @@ conversation:
   # Hands-free F1 phải KHỞI ĐỘNG bằng mic TTGK/ALSA trên PC2; fail startup nếu ai
   # đổi input.source về mic multicast PC1. Mất mic ngoài lúc đang chạy là việc của
   # input.fallback_to_robot_mic, không phải của núm này.
-  require_external_mic: true
+  require_external_mic: false
 
   # Âm báo ngắn phát ra loa mỗi khi đổi chế độ, để người vận hành biết robot đang
   # ở chế độ nào mà không cần nhìn log:

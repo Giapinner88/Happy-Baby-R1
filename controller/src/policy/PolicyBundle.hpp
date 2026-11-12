@@ -3,7 +3,7 @@
 // Locomotion policy bundle: one directory per selectable model.
 //
 //   policies/locomotion/<name>/policy.onnx
-//   policies/locomotion/<name>/policy.yaml   (contract, sha256)
+//   policies/locomotion/<name>/policy.yaml   (contract, sha256[, waist_kp, waist_kd])
 //
 // config/locomotion.yaml selects bundles by relative name, optionally group/name
 // (walk_policy / teleop_policy). Flat names remain supported.
@@ -12,7 +12,13 @@
 // 500 Hz loop. ONNX metadata is still checked by PolicyController::Init.
 // H4 teleop availability follows the contract (SupportsH4TeleopOverlay), not
 // a per-bundle flag; a legacy `teleop_h4:` line is accepted and ignored.
+//
+// Optional `waist_kp` / `waist_kd` (both or neither) replace the ONNX metadata
+// gains of waist_roll and waist_yaw on the robot, for policies that hold the
+// waist by PD (waist not a policy action). This is a hardware-side deviation
+// from the training dynamics; record it in the bundle README.
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -24,6 +30,10 @@ struct PolicyBundle {
     std::string rel_path;       // relative to proj_dir, e.g. policies/locomotion/x/policy.onnx
     std::string contract;
     std::string sha256;
+    float waist_kp = NAN;       // NaN = keep the ONNX metadata gain
+    float waist_kd = NAN;
+
+    bool has_waist_gains() const { return std::isfinite(waist_kp); }
 
     static bool ValidName(const std::string& name) {
         // Same component grammar as hb_valid_policy_bundle_name in the shell
@@ -72,7 +82,11 @@ struct PolicyBundle {
                 value = value.substr(1, value.size() - 2);
             if (key == "contract") b.contract = value;
             else if (key == "sha256") b.sha256 = value;
+            else if (key == "waist_kp") b.waist_kp = ParseGain(name, key, value, 10.0f, 400.0f);
+            else if (key == "waist_kd") b.waist_kd = ParseGain(name, key, value, 0.0f, 20.0f);
         }
+        if (std::isfinite(b.waist_kp) != std::isfinite(b.waist_kd))
+            throw std::runtime_error("policy bundle '" + name + "': waist_kp and waist_kd go together");
         if (b.contract.empty())
             throw std::runtime_error("policy bundle '" + name + "': missing contract");
         if (!teleop_h4::IsLowerSha256(b.sha256))
@@ -87,6 +101,18 @@ struct PolicyBundle {
     }
 
 private:
+    static float ParseGain(const std::string& name, const std::string& key,
+                           const std::string& value, float lo, float hi) {
+        size_t used = 0;
+        float f = NAN;
+        try { f = std::stof(value, &used); } catch (...) {}
+        if (used != value.size() || !std::isfinite(f) || f < lo || f > hi)
+            throw std::runtime_error("policy bundle '" + name + "': " + key + " must be a number in [" +
+                                     std::to_string(lo) + ", " + std::to_string(hi) + "], got '" +
+                                     value + "'");
+        return f;
+    }
+
     static std::string Trim(const std::string& s) {
         const auto first = s.find_first_not_of(" \t\r\n");
         if (first == std::string::npos) return "";
