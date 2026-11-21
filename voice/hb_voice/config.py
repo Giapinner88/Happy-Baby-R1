@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -184,18 +185,22 @@ class VoiceConfig:
         elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY", "").strip() or None
         elevenlabs_voice_id = os.getenv("ELEVENLABS_VOICE_ID", "").strip() or None
         if tts_provider == "elevenlabs":
-            if not elevenlabs_api_key or elevenlabs_api_key == "your-elevenlabs-api-key-here":
-                raise VoiceConfigError(
-                    "ELEVENLABS_API_KEY is missing/placeholder when "
-                    "tts.provider=elevenlabs; "
-                    "set it in /etc/hb/stack.env"
+            missing = [
+                name for name, value, placeholder in (
+                    ("ELEVENLABS_API_KEY", elevenlabs_api_key, "your-elevenlabs-api-key-here"),
+                    ("ELEVENLABS_VOICE_ID", elevenlabs_voice_id, "your-elevenlabs-voice-id-here"),
                 )
-            if not elevenlabs_voice_id or elevenlabs_voice_id == "your-elevenlabs-voice-id-here":
-                raise VoiceConfigError(
-                    "ELEVENLABS_VOICE_ID is missing/placeholder when "
-                    "tts.provider=elevenlabs; "
-                    "set it in /etc/hb/stack.env"
-                )
+                if not value or value == placeholder
+            ]
+            if missing:
+                # Keep the robot talking: use the OpenAI voice until the ElevenLabs keys are in
+                # /etc/hb/stack.env (then restart hb_voice). Set HB_TTS_STRICT=1 to fail instead.
+                message = (", ".join(missing) + " missing/placeholder for tts.provider=elevenlabs; "
+                           "set it in /etc/hb/stack.env")
+                if os.getenv("HB_TTS_STRICT", "").strip() == "1":
+                    raise VoiceConfigError(message)
+                print("[hb_voice] " + message + "; using the OpenAI voice for now", file=sys.stderr, flush=True)
+                tts_provider = "openai"
 
         elevenlabs_model = _text(tts, "model", path)
         elevenlabs_language = _text(tts, "language", path)

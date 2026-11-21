@@ -17,7 +17,9 @@ openai:
 tts:
   # elevenlabs: OpenAI Realtime sinh text, ElevenLabs phát giọng clone.
   # openai: rollback về audio trực tiếp bằng openai.voice ở trên.
-  provider: "openai"
+  # Thiếu ELEVENLABS_API_KEY/ELEVENLABS_VOICE_ID trong /etc/hb/stack.env thì tự dùng giọng
+  # OpenAI (log cảnh báo) cho tới khi thêm key và restart hb_voice; HB_TTS_STRICT=1 để báo lỗi.
+  provider: "elevenlabs"
 
   # Model streaming độ trễ thấp, hỗ trợ language_code=vi.
   model: "eleven_flash_v2_5"

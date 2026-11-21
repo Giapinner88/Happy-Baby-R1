@@ -1,0 +1,34 @@
+[Unit]
+Description=HB R1 voice assistant tasks (find, face, approach, re-find)
+# Only runs when enabled by integration/scripts/install_assistant.sh enable.
+ConditionPathExists=/etc/hb/assistant_enabled
+After=hb_high_level.service r1-p5-agent.service network-online.target
+Wants=network-online.target r1-p5-agent.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_USER@
+EnvironmentFile=-/etc/hb/stack.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=OPENBLAS_NUM_THREADS=1
+Environment=OMP_NUM_THREADS=1
+Restart=on-failure
+RestartSec=3
+KillMode=control-group
+TimeoutStopSec=8
+NoNewPrivileges=yes
+UMask=0077
+RuntimeDirectory=hb-approach
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+Nice=10
+CPUAffinity=4 5 6 7
+CPUQuota=250%
+MemoryMax=5G
+TasksMax=128
+WorkingDirectory=@HB_ROOT@/assistant/app
+ExecStart=/usr/bin/env PYTHONPATH=@HB_ROOT@/assistant/runtime:@HB_ROOT@/assistant/app R1_P5_VOICE_ENABLED=0 R1_ASSISTANT_VOICE=0 @APPROACH_PYTHON@ @HB_ROOT@/assistant/bin/r1-assistant serve --config /etc/hb/assistant/robot.json
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+{
+  "schema": "r1_assistant.v1",
+  "mode": "shadow",
+  "host": "127.0.0.1",
+  "port": 5595,
+  "task_timeout_s": 300,
+  "poll_s": 0.1,
+  "camera_lease_s": 15,
+  "hb_source_root": "/home/unitree/HB",
+  "hb_root": "/home/unitree/HB",
+  "app_root": "/home/unitree/HB/assistant/app",
+  "runs_dir": "/home/unitree/hb_assistant/runs",
+  "instance_lock": "/run/hb-approach/assistant.lock",
+  "camera_lock": "/run/hb-approach/camera.lock",
+  "gesture_socket": "/run/hb/gesture_owner.sock",
+  "approach_config": "/etc/hb/assistant/approach.json",
+  "search_python": "/home/unitree/HB/object_search/.venv/bin/python",
+  "approach_python": "/home/unitree/r1_approach_local_env/bin/python",
+  "unitree_sdk_python_root": "/home/unitree/Foundation_Unitree/unitree_sdk2_python",
+  "unitree_python_site": "/home/unitree/.local/lib/python3.8/site-packages",
+  "interface": "eth10",
+  "search": {
+    "adapter_argv": "/etc/hb/assistant/adapter_argv.json",
+    "bbox_config": "/home/unitree/HB/assistant/app/experiments/r1_object_grounding/p2_bbox_baseline/config.json",
+    "vision_config": "/home/unitree/HB/assistant/app/experiments/r1_target_control/vision_config.json",
+    "head_only": false,
+    "body_turns": 1,
+    "body_step_deg": 180,
+    "approach_search": true,
+    "relocate_rounds": 2,
+    "relocate_time_s": 150
+  }
+}

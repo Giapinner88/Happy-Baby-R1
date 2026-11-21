@@ -53,7 +53,7 @@ case "$COMMAND" in
         done
         COMMAND=deploy
         ;;
-    deploy-object-search)
+    deploy-object-search|deploy-assistant)
         [[ $# -eq 0 || ( $# -eq 1 && "$1" == --dry-run ) ]] || usage
         OPTION="${1:-}" ;;
     pull) OPTION="${1:-}" ;;
@@ -84,7 +84,7 @@ teleop_fail() { hb_fail "teleop: $*"; }
 # so it never pauses for a password after files or a build were started.
 hb_deploy_auth_open_ssh "$ROBOT" "$SSH_CONTROL_PATH" "$SSH_CONNECT_TIMEOUT"
 case "$COMMAND" in
-    deploy|deploy-object-search|status|pull|logs-*) ;;
+    deploy|deploy-object-search|deploy-assistant|status|pull|logs-*) ;;
     *) hb_deploy_auth_enable_sudo "$ROBOT" "$SSH_CONTROL_PATH" "$SSH_CONNECT_TIMEOUT" ;;
 esac
 TMP_DIR="$(mktemp -d /tmp/hb-deploy.XXXXXX)"
@@ -138,6 +138,11 @@ sync_integration_service() {
 sync_presets() {
     rsync "${RSYNC_BASE[@]}" --delete-delay "$@" "${COMMON_EXCLUDES[@]}" \
         "$PRESETS_DIR/" "$ROBOT:$DEST/voice_presets/"
+}
+
+sync_assistant() {
+    rsync "${RSYNC_BASE[@]}" --delete-delay "$@" "${COMMON_EXCLUDES[@]}" \
+        "$HB_ROOT/assistant/" "$ROBOT:$DEST/assistant/"
 }
 
 sync_object_search() {
@@ -947,6 +952,12 @@ case "$COMMAND" in
         args=()
         [[ "$OPTION" == --dry-run ]] && args=(--dry-run)
         sync_object_search "${args[@]}"
+        sync_tools "${args[@]}"
+        ;;
+    deploy-assistant)
+        args=()
+        [[ "$OPTION" == --dry-run ]] && args=(--dry-run)
+        sync_assistant "${args[@]}"
         sync_tools "${args[@]}"
         ;;
     rollback) cmd_rollback ;;

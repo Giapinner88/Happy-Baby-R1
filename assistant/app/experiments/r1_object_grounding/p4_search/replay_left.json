@@ -1,0 +1,28 @@
+{
+  "synthetic": true,
+  "observations": [
+    {
+      "decision": "not_found"
+    },
+    {
+      "decision": "selected",
+      "identity_key": "chair_black_1",
+      "bbox": [
+        0.4,
+        0.3,
+        0.6,
+        0.8
+      ]
+    },
+    {
+      "decision": "selected",
+      "identity_key": "chair_black_1",
+      "bbox": [
+        0.4,
+        0.3,
+        0.6,
+        0.8
+      ]
+    }
+  ]
+}

@@ -29,6 +29,7 @@ DEPLOY  (máy trạm -> robot; robot tự dò, hoặc ROBOT=unitree@<ip>). Bản
   deploy voice                 voice + presets + integration; không đụng high-level
   deploy teleop                runtime Quest; không cần DISARMED
   deploy object-search         chỉ đồng bộ mã tìm vật, không restart service
+  deploy assistant             đồng bộ assistant/ (tìm, quay, đi tới bằng giọng nói); bật bằng install_assistant.sh
   deploy all                   ép làm toàn bộ (lần đầu, sửa systemd, nghi robot lệch)
     [--no-restart]             chép + build + preflight, chưa restart (./hb deploy sau để kích hoạt)
     [--dry-run]                chỉ xem kế hoạch
@@ -217,6 +218,11 @@ cmd_deploy() {
         shift
         [[ $# -eq 0 || ( $# -eq 1 && "$1" == --dry-run ) ]] || die "usage: ./hb deploy object-search [--dry-run]"
         exec "$OPS/deploy_stack.sh" deploy-object-search "$@"
+    fi
+    if [[ "${1:-}" == assistant ]]; then
+        shift
+        [[ $# -eq 0 || ( $# -eq 1 && "$1" == --dry-run ) ]] || die "usage: ./hb deploy assistant [--dry-run]"
+        exec "$OPS/deploy_stack.sh" deploy-assistant "$@"
     fi
     deploy_args "$@"
     exec "$OPS/deploy_stack.sh" deploy "${DEPLOY_ARGS[@]}"

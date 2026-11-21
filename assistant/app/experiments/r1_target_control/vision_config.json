@@ -1,0 +1,15 @@
+{
+  "assumed_range_m": 2.0,
+  "arm_side_deadband_deg": 5.0,
+  "allow_other_arm_if_ik_fails": true,
+  "try_measured_arm_seed": true,
+  "camera_mount_verified": false,
+  "optical_to_head_rotation": [[0, 0, 1], [-1, 0, 0], [0, -1, 0]],
+  "camera_translation_in_head_m": [0.0, 0.0, 0.0],
+  "max_state_rpc_gap_s": 0.1,
+  "head_solver_iterations": 60,
+  "head_solver_step_rad": 0.1,
+  "head_jacobian_step_rad": 0.00001,
+  "head_damping": 0.0001,
+  "head_max_error_deg": 0.5
+}

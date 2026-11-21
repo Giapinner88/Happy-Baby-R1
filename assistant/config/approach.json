@@ -1,0 +1,254 @@
+{
+  "execute": false,
+  "clear_corridor_confirmed": false,
+  "camera_hz": 6.0,
+  "capture_retry_on_timeout": true,
+  "task_duration_s": 100.0,
+  "interface": "eth10",
+  "model_dir": "/home/unitree/r1_local_approach/models/dac01",
+  "sensor_worker": "sensor/camera_shadow_worker.py",
+  "active_marker": "/run/hb-approach/active",
+  "camera_lock": "/run/hb-approach/camera.lock",
+  "instance_lock": "/run/hb-approach/instance.lock",
+  "runs_dir": "/home/unitree/hb_assistant/runs/approach",
+  "grounding_timeout_s": 10.0,
+  "grounding": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "low",
+    "image_detail": "high",
+    "image_encoding": "jpeg",
+    "jpeg_quality": 85,
+    "image_max_edge": 0,
+    "max_output_tokens": 4096,
+    "timeout_s": 90,
+    "calibration": "data/calibration/r1_camera.npz"
+  },
+  "planner": {
+    "controller": {
+      "robot_radius_m": 0.25,
+      "margin_m": 0.1,
+      "standoff_m": 1.0,
+      "goal_tolerance_m": 0.08,
+      "max_age_s": 0.6,
+      "max_position_error_m": 0.15,
+      "max_v_mps": 0.16,
+      "max_w_radps": 0.5,
+      "max_accel_mps2": 0.1,
+      "brake_mps2": 0.3,
+      "reaction_s": 0.3,
+      "turn_threshold_rad": 0.3,
+      "heading_gain": 1.5,
+      "distance_gain": 1.0,
+      "command_ttl_s": 0.15,
+      "task_timeout_s": 100.0,
+      "allow_detour": false,
+      "cruise_until_goal": true
+    },
+    "corridor": {
+      "resolution_m": 0.1,
+      "origin_m": [
+        -3.0,
+        -3.0
+      ],
+      "width": 60,
+      "height": 60,
+      "declared_free_cells": [
+        [
+          2,
+          2,
+          58,
+          58
+        ]
+      ],
+      "target_exclusion_radius_m": 0.4,
+      "operator_confirmed": false,
+      "source": "hypothetical operator-declared clear area around robot for orient-approach; not sensed obstacle coverage"
+    },
+    "verification_policy": {
+      "floor_plane_validation": "not_verified",
+      "camera_body_validation": "not_verified",
+      "target_position_validation": "not_verified"
+    }
+  },
+  "execution": {
+    "scope": "exploratory orient-then-bounded-forward; operator-declared clear area only",
+    "max_v_mps": 0.16,
+    "max_accel_mps2": 0.1,
+    "max_duration_s": 2.5,
+    "max_displacement_m": 0.1,
+    "max_heading_error_rad": 0.05,
+    "gait_activation_mps": 0.15,
+    "max_source_age_s": 0.6,
+    "step_envelope_validation": "skipped_by_operator",
+    "braking_validation": "not_verified"
+  },
+  "tracker": {
+    "backend": "features",
+    "target_id": "selected_object_01",
+    "seed_manifest": "experiments/r1_camera/depth_capability_v1/cases/extinguisher_grounding_seed_view2.json",
+    "min_features": 8,
+    "max_features": 100,
+    "feature_quality": 0.01,
+    "feature_distance_px": 3.0,
+    "lk_window_px": 21,
+    "lk_levels": 3,
+    "max_fb_error_px": 1.5,
+    "ransac_error_px": 3.0,
+    "min_inlier_ratio": 0.7,
+    "min_template_score": 0.65,
+    "scale_min": 0.8,
+    "scale_max": 1.25,
+    "max_step_px": 60.0,
+    "depth_inset_fraction": 0.2,
+    "max_age_s": 0.3,
+    "max_gap_s": 0.8,
+    "min_depth_valid_fraction": 0.95,
+    "recovery_max_frames": 3,
+    "recovery_max_s": 0.6,
+    "recover_geometry": true,
+    "template_refresh_score": 0.9,
+    "seed_floor_score": 0.3
+  },
+  "temporal": {
+    "samples": 1,
+    "max_age_s": 0.6,
+    "max_gap_s": 0.8,
+    "max_window_span_m": 0.3,
+    "max_jump_m": 0.35,
+    "mode": "single_frame",
+    "reject_jump": true
+  },
+  "body": {
+    "urdf": "assets/R1.urdf",
+    "base_frame": "pelvis_link",
+    "joint_chain": [
+      "waist_roll_joint",
+      "waist_yaw_joint",
+      "head_pitch_joint",
+      "head_yaw_joint"
+    ],
+    "mount_parent_frame": "head_yaw_link",
+    "optical_to_mount_rotation": [
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        -1,
+        0,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ]
+    ],
+    "camera_origin_in_mount_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "mount_verified": false,
+    "mount_source": "Nominal orientation/zero offset from experiments/r1_target_control/vision_config.json; not measured camera extrinsic",
+    "max_state_gap_s": 0.05,
+    "max_bracket_span_s": 0.1,
+    "max_joint_speed_rad_s": 0.2,
+    "note": "Pelvis-link coordinates, not ground-footprint origin or odom. Camera mount and exposure timing remain unverified."
+  },
+  "odom": {
+    "max_pose_gap_s": 0.1,
+    "max_pose_bracket_s": 0.3,
+    "max_target_jump_m": 0.3,
+    "max_observation_age_s": 0.6,
+    "body_frame": "pelvis_link",
+    "odom_frame": "vendor_odom",
+    "clock": "robot_receive_monotonic",
+    "frame_verified": false,
+    "model": "planar SE2 pelvis assumption; roll/pitch ignored",
+    "topic": "rt/lf/odommodestate",
+    "wait_after_s": 0.08,
+    "depth_usage": "continuous_validation",
+    "initial_samples": 3,
+    "initial_max_span_s": 2.0
+  },
+  "verification_policy": {
+    "floor_plane_validation": "not_verified",
+    "camera_body_validation": "not_verified",
+    "target_position_validation": "not_verified",
+    "step_envelope_validation": "not_verified"
+  },
+  "preprocess_backend": "opencv",
+  "gpu_warmup_runs": 3,
+  "gpu_ready_timeout_s": 20.0,
+  "parallel_tracking": true,
+  "capture_rpc_timeout_s": 0.1,
+  "min_depth_interval_s": 0.1,
+  "observation_recovery": {
+    "max_age_s": 0.6,
+    "slow_after_s": 0.35,
+    "slow_floor_mps": 0.151,
+    "max_v_mps": 0.16
+  },
+  "orientation": {
+    "enabled": true,
+    "execute_enabled": false,
+    "max_w_radps": 0.15,
+    "max_yaw_accel_radps2": 0.3,
+    "max_turn_duration_s": 30.0,
+    "max_yaw_travel_rad": 3.5,
+    "max_turn_displacement_m": 0.1,
+    "heading_tolerance_rad": 0.035,
+    "heading_gain": 1.5,
+    "settle_yaw_rate_radps": 0.035,
+    "settle_min_s": 0.3,
+    "settle_samples": 3,
+    "max_measured_yaw_rate_radps": 0.5,
+    "orientation_only": false
+  },
+  "navigation_strategy": "gait_aware_arc",
+  "gait_approach": {
+    "execute_enabled": false,
+    "max_v_mps": 0.16,
+    "max_w_radps": 0.2,
+    "max_accel_mps2": 0.1,
+    "max_yaw_accel_radps2": 0.3,
+    "max_source_age_s": 0.6,
+    "max_duration_s": 95.0,
+    "max_path_m": 3.0,
+    "heading_gain": 1.5,
+    "arc_heading_rad": 0.3,
+    "turn_tolerance_rad": 0.035,
+    "settle_min_s": 0.3,
+    "settle_rate_radps": 0.035,
+    "settle_samples": 3,
+    "max_measured_yaw_rate_radps": 0.5,
+    "max_turn_duration_s": 40.0,
+    "linear_move_threshold_mps": 0.15,
+    "angular_move_threshold_radps": 0.15,
+    "turn_speed_radps": 0.18
+  },
+  "max_input_age_s": 0.2,
+  "tracking_only_after_pin": false,
+  "approach_mode": "visual_tracking",
+  "odom_hz": 20.0,
+  "visual_segments": {
+    "enabled": true,
+    "segment_commanded_m": 0.2,
+    "max_drive_s": 5.0,
+    "recheck_timeout_s": 3.0,
+    "max_total_commanded_m": 3.0,
+    "max_duration_s": 95.0,
+    "max_source_age_s": 0.8,
+    "max_segments": 20,
+    "segment_basis": "above_gait_threshold",
+    "look_once": true,
+    "look_once_frames": 3,
+    "look_once_overhead_m": 0.24,
+    "look_once_max_m": 0.5,
+    "look_once_fraction": 1.0,
+    "look_once_align_tolerance_rad": 0.15
+  },
+  "release_owner_after_stop": true
+}
