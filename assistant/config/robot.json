@@ -15,7 +15,7 @@
   "gesture_socket": "/run/hb/gesture_owner.sock",
   "approach_config": "/etc/hb/assistant/approach.json",
   "search_python": "/home/unitree/HB/object_search/.venv/bin/python",
-  "approach_python": "/home/unitree/r1_approach_local_env/bin/python",
+  "approach_python": "/home/unitree/HB/assistant/.venv/bin/python",
   "unitree_sdk_python_root": "/home/unitree/Foundation_Unitree/unitree_sdk2_python",
   "unitree_python_site": "/home/unitree/.local/lib/python3.8/site-packages",
   "interface": "eth10",

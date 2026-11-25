@@ -141,7 +141,9 @@ sync_presets() {
 }
 
 sync_assistant() {
+    # .venv/ and models/ are robot-local (Jetson-built TensorRT engine); never delete them.
     rsync "${RSYNC_BASE[@]}" --delete-delay "$@" "${COMMON_EXCLUDES[@]}" \
+        --exclude '.venv/' --exclude 'models/' \
         "$HB_ROOT/assistant/" "$ROBOT:$DEST/assistant/"
 }
 

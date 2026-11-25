@@ -15,17 +15,30 @@ thư mục này, `EXPORT.json` ghi hash và commit nguồn.
 
 ## Bật / tắt (robot được đỡ, DISARMED, có người giữ E-stop)
 
+Chạy hoàn toàn từ `/home/unitree/HB`; **không dùng** `/home/unitree/r1_assistant` (stack thử nghiệm) và không phụ
+thuộc gói cũ `r1_local_approach`. Hai thứ cần riêng cho robot nằm dưới `HB/assistant/` và được bỏ qua khi
+`./hb deploy assistant` đồng bộ (không bị xóa): `.venv/` (Python dùng gói hệ thống Jetson: NumPy, OpenCV, TensorRT) và
+`models/dac01/` (mô hình độ sâu + engine TensorRT build riêng cho Jetson, không đưa vào git).
+
 ```bash
-./hb deploy assistant                                   # máy trạm: đồng bộ assistant/ + integration
-bash ~/HB/integration/scripts/install_assistant.sh check # robot, user unitree
+./hb deploy assistant                                    # máy trạm: đồng bộ assistant/ + integration/
+bash ~/HB/integration/scripts/install_assistant.sh prepare   # robot, user unitree, một lần: tạo .venv, chép models/dac01
+bash ~/HB/integration/scripts/install_assistant.sh check     # kiểm tra, chỉ đọc
 sudo bash ~/HB/integration/scripts/install_assistant.sh enable --operator-ready
-sudo bash ~/HB/integration/scripts/install_assistant.sh disable   # quay lại hb_local_approach/object_search voice
+sudo bash ~/HB/integration/scripts/install_assistant.sh disable   # quay lại hb_local_approach / object_search voice
 ```
 
-`enable` ghi cấu hình chạy vào `/etc/hb/assistant/`, đặt `R1_APPROACH_PORT=5573`, `R1_APPROACH_ALLOW_NONZERO=1`
-trong `/etc/hb/stack.env` (bản sao lưu `stack.env.assistant.bak`), dừng `hb_local_approach` (dùng chung khóa
-camera), restart `hb_high_level` và `hb_voice`. Dữ liệu chạy ở `/home/unitree/hb_assistant/runs` (ngoài HB nên
-`./hb deploy` không xóa). Nếu stack riêng r1_assistant đang bật, chạy rollback của nó trước.
+- `prepare` chỉ **chép** mô hình từ `/home/unitree/r1_local_approach/models/dac01` (nếu HB chưa có), kiểm hash
+  `signature.json`/`engine.json`, không sửa thư mục cũ. Nếu robot không có mô hình đó, tự build bằng `build_engine.sh`.
+- `pin` (tự chạy trong `enable`) ghim cấu hình nhìn/chỉ theo `walk_policy` mà **HB trên robot đang chọn**
+  (`controller/config/locomotion.yaml`); đổi `walk_policy` sau `./hb deploy controller` thì chạy lại `pin`
+  (`check` báo lỗi nếu lệch).
+- `enable` từ chối khi stack thử nghiệm r1_assistant còn cài (`/etc/r1-assistant/enabled`, drop-in
+  `hb_voice.service.d/r1-assistant.conf`, hoặc `hb_r1_assistant` còn chạy): chạy rollback của nó trước. Nó cũng cần
+  `r1-p5-agent` đang chạy (chế độ search) và `controller/build/run_r1` có bộ nhận lệnh đi tới (có trong develop).
+- `enable` ghi cấu hình chạy vào `/etc/hb/assistant/`, đặt `R1_APPROACH_PORT=5573`, `R1_APPROACH_ALLOW_NONZERO=1` trong
+  `/etc/hb/stack.env` (sao lưu `stack.env.assistant.bak`), dừng `hb_local_approach` (dùng chung khóa camera), restart
+  `hb_high_level` và `hb_voice`. Dữ liệu chạy ở `/home/unitree/hb_assistant/runs` (ngoài HB nên `./hb deploy` không xóa).
 
 ## Giọng ElevenLabs
 

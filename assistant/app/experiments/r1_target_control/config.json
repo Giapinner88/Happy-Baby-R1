@@ -1,7 +1,7 @@
 {
-  "policy_bundle": "flat_plus_gait_0917_armfree",
-  "policy_contract": "flat_plus_gait_h4_v1",
-  "policy_sha256": "7daeea2a351abda42e2e361836637b85bb8122c7d1c5d09339b909ecad815ccb",
+  "policy_bundle": "multigait/v2574_armtight_c_iter24900",
+  "policy_contract": "r1_armfree0917_multigait_h4_v2573",
+  "policy_sha256": "ef5d3873216e20969003dc6e338b67b94d7447e5cf7fc0599999fcf0f2f01400",
   "udp_port": 5560,
   "stream_hz": 30.0,
   "hold_s": 2.0,

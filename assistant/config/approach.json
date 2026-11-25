@@ -5,7 +5,7 @@
   "capture_retry_on_timeout": true,
   "task_duration_s": 100.0,
   "interface": "eth10",
-  "model_dir": "/home/unitree/r1_local_approach/models/dac01",
+  "model_dir": "/home/unitree/HB/assistant/models/dac01",
   "sensor_worker": "sensor/camera_shadow_worker.py",
   "active_marker": "/run/hb-approach/active",
   "camera_lock": "/run/hb-approach/camera.lock",
