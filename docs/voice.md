@@ -136,8 +136,9 @@ loa robot. Không nhấn nhanh hai lần; đây là push-to-talk kiểu giữ đ
 - Giọng bị noise/rè: giảm `similarity_boost`, làm sạch hoặc tạo lại voice từ
   mẫu thu tốt hơn.
 - Nói quá nhanh/chậm: chỉnh `tts.speed` trong khoảng `0.7-1.2`.
-- Loa nhỏ: giữ `audio.response_gain` không quá `1.0`, tăng
-  `audio.response_volume_percent` đến mức không rè.
+- Loa nhỏ: đặt `audio.response_volume_percent: 100` trước, sau đó tăng
+  `audio.response_gain` (tối đa `2.0`; trên `1.0` là khuếch đại có nén đỉnh). Rè
+  hoặc robot tự trả lời tiếng loa của mình khi rảnh tay thì giảm lại.
 - Trễ trước khi nói: dùng `eleven_flash_v2_5`, trả lời ngắn trong
   `voice/config/prompt.txt`, đồng thời kiểm tra độ trễ mạng tới cả OpenAI và
   ElevenLabs.

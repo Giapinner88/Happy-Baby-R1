@@ -137,8 +137,10 @@ audio:
   # 0-100; hiện tối đa. Nếu quá lớn/rè, giảm về 75-85.
   response_volume_percent: 100
 
-  # 0.0-1.0; chỉ giảm PCM, không khuếch đại để tránh vỡ tiếng.
-  response_gain: 1.0
+  # 0.0-2.0; hệ số biên độ PCM. <= 1.0 chỉ giảm; > 1.0 khuếch đại, đỉnh được nén mềm
+  # từ 70% full scale (không tràn số). 2.0 ~ +6 dB ở đoạn nhỏ, đoạn to bị nén nhiều
+  # hơn. Rè hoặc robot tự nghe tiếng mình thì giảm về 1.3-1.5.
+  response_gain: 2.0
 
   # Sau khi đẩy xong PCM cuối, đợi thêm bao nhiêu giây mới mở lại mic. Bù phần
   # voice KHÔNG nhìn thấy được: chặng DDS sang PC1, bộ đệm của loa, và tiếng

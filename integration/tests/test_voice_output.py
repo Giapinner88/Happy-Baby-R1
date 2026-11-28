@@ -5,6 +5,7 @@ import sys
 import tempfile
 import time
 import unittest
+from array import array
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
@@ -197,6 +198,40 @@ class UnitreeSpeakerBridgeTest(unittest.IsolatedAsyncioTestCase):
 
         speaker._write_audio_locked.assert_awaited_once_with(frame)
         self.assertFalse(speaker._deferred_audio)
+
+
+class UnitreeSpeakerGainTest(unittest.TestCase):
+    """Digital gain must never wrap int16, and unity/attenuation stay exact."""
+
+    @staticmethod
+    def _run(gain, samples):
+        speaker = UnitreeSpeakerBridge(
+            bridge_path="/does/not/matter",
+            network_interface="eth10",
+            response_volume_percent=100,
+            response_gain=gain,
+        )
+        out = array("h")
+        out.frombytes(speaker._apply_gain(array("h", samples).tobytes()))
+        return list(out)
+
+    def test_unity_and_attenuation_are_unchanged(self):
+        samples = [-32768, -1000, 0, 1001, 32767]
+        self.assertEqual(self._run(1.0, samples), samples)
+        self.assertEqual(self._run(0.5, samples), [-16384, -500, 0, 500, 16383])
+
+    def test_double_gain_is_exact_below_the_knee(self):
+        samples = [-11000, -100, 0, 100, 11000]
+        self.assertEqual(self._run(2.0, samples), [2 * x for x in samples])
+
+    def test_double_gain_limits_peaks_monotonically_without_wrap(self):
+        samples = list(range(-32768, 32768, 7)) + [32767]
+        out = self._run(2.0, samples)
+        self.assertTrue(all(a <= b for a, b in zip(out, out[1:])))
+        self.assertTrue(all(-32767 <= y <= 32767 for y in out))
+        # Never quieter than the input, apart from a few LSB right at full scale.
+        self.assertTrue(all(abs(y) >= 0.999 * abs(x) - 1 for x, y in zip(samples, out)))
+        self.assertGreater(out[-1], 32000)
 
 
 if __name__ == "__main__":

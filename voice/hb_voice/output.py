@@ -109,6 +109,9 @@ def mic_source_cue_pcm(external: bool, *, sample_rate: int = 16000) -> bytes:
     return _tone_sequence_pcm(notes, sample_rate=sample_rate, gap_s=gap_s)
 
 
+# Fraction of full scale where the output limiter starts bending (only used when gain > 1).
+LIMITER_KNEE = 0.7
+
 class UnitreeSpeakerBridge(FrameProcessor):
     """Mirror output audio frames to `unitree_bridge/r1_bridge speaker`.
 
@@ -138,6 +141,7 @@ class UnitreeSpeakerBridge(FrameProcessor):
         self._sample_rate = sample_rate
         self._response_volume_percent = response_volume_percent
         self._response_gain = response_gain
+        self._limiter_table: array | None = None
         self._audio_debug = audio_debug
         self._gate = gate
         self._speaking_marker_path = Path(speaking_marker_path)
@@ -453,6 +457,28 @@ class UnitreeSpeakerBridge(FrameProcessor):
         )
         return True
 
+    def _gain_table(self) -> array:
+        """int16 -> int16 lookup for gain > 1: linear up to the knee, then a smooth limiter.
+
+        Below LIMITER_KNEE the sample is exactly ``sample * gain``; above it the curve bends
+        towards full scale (slope 1 at the knee), so loud peaks never wrap or hard-clip.
+        """
+        if self._limiter_table is None:
+            knee = LIMITER_KNEE * 32767.0
+            room = 32767.0 - knee
+
+            def limit(sample: int) -> int:
+                level = abs(sample) * self._response_gain
+                if level > knee:
+                    level = knee + room * math.tanh((level - knee) / room)
+                return int(math.copysign(level, sample))
+
+            # Indexed by the unsigned 16-bit view of the sample.
+            self._limiter_table = array(
+                "h", (limit(i if i < 32768 else i - 65536) for i in range(65536))
+            )
+        return self._limiter_table
+
     def _apply_gain(self, audio: bytes) -> bytes:
         if self._response_gain == 1.0 or not audio:
             return audio
@@ -460,8 +486,12 @@ class UnitreeSpeakerBridge(FrameProcessor):
         samples.frombytes(audio)
         if sys.byteorder != "little":
             samples.byteswap()
-        for index, sample in enumerate(samples):
-            samples[index] = int(sample * self._response_gain)
+        if self._response_gain > 1.0:
+            table = self._gain_table()
+            samples = array("h", (table[sample & 0xFFFF] for sample in samples))
+        else:
+            for index, sample in enumerate(samples):
+                samples[index] = int(sample * self._response_gain)
         if sys.byteorder != "little":
             samples.byteswap()
         return samples.tobytes()

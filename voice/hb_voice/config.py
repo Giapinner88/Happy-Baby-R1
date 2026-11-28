@@ -219,7 +219,7 @@ class VoiceConfig:
         response_volume_percent = _integer(audio, "response_volume_percent", path)
         _range("audio.response_volume_percent", response_volume_percent, 0, 100)
         response_gain = _number(audio, "response_gain", path)
-        _range("audio.response_gain", response_gain, 0.0, 1.0)
+        _range("audio.response_gain", response_gain, 0.0, 2.0)
         echo_tail_external_s = _number(audio, "echo_tail_external_s", path)
         echo_tail_robot_s = _number(audio, "echo_tail_robot_s", path)
         _range("audio.echo_tail_external_s", echo_tail_external_s, 0.0, 3.0)
