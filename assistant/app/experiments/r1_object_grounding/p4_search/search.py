@@ -25,6 +25,8 @@ def validate_config(c):
         raise ValueError('face_only must be bool')
     if type(c.get('parallel_perception',False)) is not bool:
         raise ValueError('parallel_perception must be bool')
+    if type(c.get('early_select_stop',False)) is not bool:
+        raise ValueError('early_select_stop must be bool')
     if type(c.get('recenter_attempts',2)) is not int or not 0<=c.get('recenter_attempts',2)<=4:
         raise ValueError('invalid recenter_attempts')
     step=c.get('recenter_step_deg',60)
@@ -136,8 +138,9 @@ class Search:
             raise TimeoutError('body turn did not make sufficient progress')
         return new_actual
 
-    def capture_staged(self,head,body):
-        self.settle(head,body);self.check()
+    def capture_staged(self,head,body,settled=False):
+        if not settled:self.settle(head,body)
+        self.check()
         captured=self.b.capture_view();self.capture_count+=1
         pose=captured['pose'];stamp=captured['captured_at_s']
         if not all(math.isfinite(x) for x in (stamp,pose['time_s'],pose['head_yaw_deg'],pose['body_heading_deg'])):
@@ -198,13 +201,18 @@ class Search:
         Capture order determines selection, never network completion order.
         """
         jobs=[]
+        early=self.c.get('early_select_stop',False)
         with ThreadPoolExecutor(max_workers=2) as pool:
             for head in self.c['head_yaws_deg']:
                 self.check()
+                if early and self.earlier_view_decided(jobs):break
                 if self.count+len(jobs)>=self.c['max_observations']:
                     raise TimeoutError('observation budget')
                 self.log('HEAD_SCAN',target_yaw_deg=head);self.b.move_head(head)
-                captured=self.capture_staged(head,body)
+                self.settle(head,body)
+                # Perception of an earlier view may finish while the head settles.
+                if early and self.earlier_view_decided(jobs):break
+                captured=self.capture_staged(head,body,settled=True)
                 self.log('PERCEPTION_SUBMITTED',image_sha256=captured['image_sha256'],head_yaw_deg=head)
                 jobs.append((head,captured,pool.submit(self.b.process_view,query,captured)))
             observations=[]
@@ -215,6 +223,21 @@ class Search:
                     self.state();wait([future],timeout=self.c['poll_s'])
                 observations.append(self.accept_observation(future.result(),head,body,captured))
         return observations
+
+    def earlier_view_decided(self,jobs):
+        """True when a finished earlier view already selected a target or asks to clarify.
+
+        Skips only views that were not captured yet; every submitted view is still joined and
+        validated, in capture order, before any action. Failed workers are left to the join.
+        """
+        for head,captured,future in jobs:
+            if not future.done() or future.exception() is not None:continue
+            decision=future.result().get('decision')
+            if decision in ('selected','ask'):
+                self.log('EARLY_SELECT_STOP',decided_head_yaw_deg=head,decision=decision,
+                         skipped_views=len(self.c['head_yaws_deg'])-len(jobs))
+                return True
+        return False
 
     def engage(self,query,observation):
         return self.face_target(observation) if self.c.get('face_only',False) else self.point_or_recenter(query,observation)

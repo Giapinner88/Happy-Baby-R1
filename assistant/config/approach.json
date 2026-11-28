@@ -27,7 +27,7 @@
     "controller": {
       "robot_radius_m": 0.25,
       "margin_m": 0.1,
-      "standoff_m": 1.0,
+      "standoff_m": 0.55,
       "goal_tolerance_m": 0.08,
       "max_age_s": 0.6,
       "max_position_error_m": 0.15,

@@ -45,7 +45,7 @@
     "app/experiments/r1_object_grounding/p2_bbox_baseline/p2_look_at_dryrun/capture_observation.py": "50db3a64fe316e6ba83ecff35eb15d1245d6b6dcaec749855f5c9f45512c940d",
     "app/experiments/r1_object_grounding/p2_bbox_baseline/run.py": "5972dc4824cfed1f15a559d17ddffbc603b34c8c2c2804aafa20d0ef032ae2c3",
     "app/experiments/r1_object_grounding/p4_search/backends.py": "276b5ccea8db7210d1a657e134001e5b074e961f931799953917940da328ff3d",
-    "app/experiments/r1_object_grounding/p4_search/config.json": "10a855ba53666937c30432f09baf6218d5c47f629d3d49b6348c471a6e776b9c",
+    "app/experiments/r1_object_grounding/p4_search/config.json": "3c94b66195b886e30310c0b6401b568877b242913e7db9d0ced57d1bca106089",
     "app/experiments/r1_object_grounding/p4_search/feedback.py": "00c33ab2d45211d81ef377f154a7880b77485499ef64920f91f46a870f5e64c3",
     "app/experiments/r1_object_grounding/p4_search/replay_absent.json": "0ab882bf86f47015fa1ed4d4d3026dffaf7d3e0b68561fd06bc0f3c3ce77b992",
     "app/experiments/r1_object_grounding/p4_search/replay_ambiguous.json": "fd9a332cf86c8eeb30a39080257791802da1cc5be8a64e855dde93537874f6e0",
@@ -53,7 +53,7 @@
     "app/experiments/r1_object_grounding/p4_search/replay_front.json": "596f98412afe1371cab9ce87fd3f39639739ed676b0d6971ec8370c7bcd7bf7c",
     "app/experiments/r1_object_grounding/p4_search/replay_left.json": "1558b855cb4fb5091d44cca9e0fbdbd59c9a4cdb14c870613d11c26cb97b048b",
     "app/experiments/r1_object_grounding/p4_search/run.py": "83e3409881000b3068d8181e584162cc760352f5ff2117d56bd7a4bca8d16a6c",
-    "app/experiments/r1_object_grounding/p4_search/search.py": "cc6b3bc8faaa01b64cedd9c3cf707e376aa4d12f9a26aa384c6202759a935b1f",
+    "app/experiments/r1_object_grounding/p4_search/search.py": "4f2ebf8b463425d07d4c335785993c5b54ea1b416f971fb8ec50c713ab77bb89",
     "app/experiments/r1_object_grounding/p4_search/verify.py": "b10e839f5a006acebb1a6fc2f0a9c7b3ed96acafc9897b12a28521ed2497c171",
     "app/experiments/r1_object_grounding/p5_voice_search/server.py": "38f2b85aa45eafff71b0ee3663cd74c5ebf086fe00eb6c0076c1028c856f08d8",
     "app/experiments/r1_object_grounding/p6_onboard/local_bridge.py": "128c4590ccf952930ca308ac287a47fb753c042bd7d7711af679112dc4b4737a",
@@ -95,7 +95,7 @@
     "app/teleop/r1/kinematics.py": "53f69b13b923f95a36665b2fa5f9b8f776b31280f984ef63bd2ed18768d37537",
     "bin/r1-assistant": "82cce1466a9cdcb3da2b7814a93dcd003ab49f9b6db9cfa48e76d88811a71e0b",
     "config/adapter_argv.json": "67d2107715d80a73cda5915dbc1375beba67fca4587dc150297dd14ec28898cb",
-    "config/approach.json": "7fb5868128771fd218c41d66962699e26e6b84e49422d78ef1281b6e88f2900e",
+    "config/approach.json": "cef8a51afb7eb28be865ac15f173b8b386678e1faf8dc6597243f63b12924402",
     "config/robot.json": "4434ce46e29532680f8e75755c7ad1d727bcf3e091bc391b1826884c31416e44",
     "overlay/sitecustomize.py": "4d725aa528caea2821d1ff7ca5d6c8667fb6d115c103dbfa8dbac1c6e06770e3",
     "runtime/r1_assistant/__init__.py": "6369fa0109b1a96e45acb9a0f82f0c53d39b82ac5e346af37b97e84b4adef03d",
@@ -106,6 +106,6 @@
     "runtime/r1_assistant/config.py": "85baaea09383f70156a48f5174bf1d074fc4f543c8f162bcadbc6684420b27c3",
     "runtime/r1_assistant/deploy.py": "246580478633b56d60ba37c5b9090e37fe961ff5f59cef16ff0ac05de076eed7",
     "runtime/r1_assistant/service.py": "405d131f34c8ec7245d9899806220e33a2f659a6231ccbf340f859587eebcc54",
-    "runtime/r1_assistant/voice.py": "43bc700713938951c2916c2e96e9ff961a5134b2d4fac68ea6780a81c4769b9b"
+    "runtime/r1_assistant/voice.py": "11dade2068f280c8a5af99faf885703f8e4ae85b6af375c7da9ea9e6d76e3b59"
   }
 }

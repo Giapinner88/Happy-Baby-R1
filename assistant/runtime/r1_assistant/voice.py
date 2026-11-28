@@ -221,7 +221,7 @@ def install():
                      if tool.name in GATED and tool.handler is not None else tool for tool in available]
         for name, description, handler, properties, required in (
             ("find_and_point", "Tìm và chỉ một vật; có thể hỏi lại nếu nhiều vật phù hợp.", find, query, ["query"]),
-            ("approach_object", "Tìm vật, quay về phía vật rồi đi tới cách khoảng 1 m; nếu vật bị dời chỗ thì tự tìm lại và đổi hướng. Đích ước lượng chưa xác nhận khoảng cách thực.", approach, query, ["query"]),
+            ("approach_object", "Tìm vật, quay về phía vật rồi đi tới khi mép thân còn cách vật khoảng 30 cm; nếu vật bị dời chỗ thì tự tìm lại và đổi hướng. Đích ước lượng chưa xác nhận khoảng cách thực.", approach, query, ["query"]),
             ("cancel_task", "Yêu cầu dừng ngay tác vụ robot đang thực hiện.", cancel, {}, []),
             ("task_status", "Đọc kết quả hoặc tiến độ tác vụ khi người dùng hỏi.", status, {}, []),
         ):
