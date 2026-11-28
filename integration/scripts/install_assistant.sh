@@ -16,6 +16,7 @@ APP="$HB_ROOT/assistant"
 ETC=/etc/hb/assistant
 MARKER=/etc/hb/assistant_enabled
 STACK_ENV=/etc/hb/stack.env
+TMPFILES=/etc/tmpfiles.d/hb-approach.conf
 VENV="$APP/.venv"
 MODEL="$APP/models/dac01"
 LEGACY_MODEL="${LEGACY_DAC_MODEL:-/home/unitree/r1_local_approach/models/dac01}"
@@ -160,6 +161,11 @@ PY
     sed -e "s|@HB_ROOT@|$HB_ROOT|g" -e "s|@RUN_USER@|$RUN_USER|g" -e "s|@APPROACH_PYTHON@|$APPROACH_PYTHON|g" \
         "$HB_ROOT/integration/systemd/hb_assistant.service.in" > /etc/systemd/system/hb_assistant.service
     chmod 0644 /etc/systemd/system/hb_assistant.service
+    # hb_voice's sandbox (ProtectSystem=strict) only makes /run/hb-approach writable if it exists when hb_voice
+    # starts. After a reboot hb_voice can start before hb_assistant creates it, leaving the camera lease read-only
+    # ("Read-only file system: /run/hb-approach/camera.lock"). Create it at boot, before any service.
+    printf 'd /run/hb-approach 0755 %s %s -\n' "$RUN_USER" "$RUN_USER" > "$TMPFILES"
+    systemd-tmpfiles --create "$TMPFILES"
     install -d -m 0755 /etc/systemd/system/hb_voice.service.d
     printf '[Service]\n# Camera lease file shared with hb_assistant.\nReadWritePaths=-/run/hb-approach\n' \
         > /etc/systemd/system/hb_voice.service.d/assistant.conf
@@ -179,7 +185,7 @@ disable() {
     disarmed
     rm -f "$MARKER"
     systemctl disable --now hb_assistant >/dev/null 2>&1 || true
-    rm -f /etc/systemd/system/hb_voice.service.d/assistant.conf
+    rm -f /etc/systemd/system/hb_voice.service.d/assistant.conf "$TMPFILES"
     set_env R1_APPROACH_ALLOW_NONZERO 0
     if [[ "$(cat "$ETC/local_approach.state" 2>/dev/null)" == enabled ]]; then systemctl enable --now hb_local_approach || true; fi
     sync
