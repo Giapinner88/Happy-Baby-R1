@@ -419,6 +419,11 @@ if(BUILD_TESTING)
     target_compile_definitions(tuning_include_test PRIVATE
         HB_TUNING_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/tuning.yaml")
     add_test(NAME tuning_include_test COMMAND tuning_include_test)
+    # assert() is the check: keep it active in Release builds.
+    add_executable(approach_release_test tests/approach_release_test.cpp)
+    target_include_directories(approach_release_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_options(approach_release_test PRIVATE -UNDEBUG)
+    add_test(NAME approach_release_test COMMAND approach_release_test)
 
     add_executable(gait_scheduler_test tests/gait_scheduler_test.cpp src/config/Tuning.cpp)
     target_compile_definitions(gait_scheduler_test PRIVATE

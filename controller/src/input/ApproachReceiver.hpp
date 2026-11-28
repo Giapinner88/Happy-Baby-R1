@@ -15,8 +15,8 @@ namespace approach_owner {
 constexpr uint32_t kMagic=0x31565041;
 // Receiver ceiling, not a validated walking speed or stride bound.
 constexpr float kMaxForwardMps=.20f;
-enum Kind:uint16_t { Hello=1, Command=2, Stop=3, Ping=4 };
-enum Status:uint16_t { Ready=1, Stored=2, Stopped=3, Pong=4, Invalid=10, Gate=11, Session=12, Sequence=13, Expired=14, ZeroOnly=15, Slew=16 };
+enum Kind:uint16_t { Hello=1, Command=2, Stop=3, Ping=4, Release=5 };
+enum Status:uint16_t { Ready=1, Stored=2, Stopped=3, Pong=4, Released=5, Invalid=10, Gate=11, Session=12, Sequence=13, Expired=14, ZeroOnly=15, Slew=16 };
 struct Packet { uint32_t magic; uint16_t version,kind; uint64_t session,sequence,deadline_us; float vx,wz; };
 struct Ack { uint32_t magic; uint16_t version,status; uint64_t session,sequence,owner_us; float requested_vx,requested_wz; };
 static_assert(sizeof(Packet)==40 && sizeof(Ack)==40,"APV1 wire layout");
@@ -35,6 +35,13 @@ public:
             if(p.vx || p.wz)return a;
             // A zero STOP may always suppress the adapter; it cannot arm it.
             armed_=false;vx_=wz_=0;owned_=true;a.status=Stopped;return a;
+        }
+        if(p.kind==Release){
+            // Explicit zero handoff by the same disarmed session/peer. Expiry alone
+            // stays zero-latched, so an old search sender cannot resume on timeout.
+            if(p.vx || p.wz || armed_ || p.session!=session_){a.status=Session;return a;}
+            if(p.sequence<=sequence_){a.status=Sequence;return a;}
+            sequence_=p.sequence;owned_=false;a.status=Released;return a;
         }
         if(!eligible || manual || emergency){a.status=Gate;return a;}
         if(p.kind==Hello){
