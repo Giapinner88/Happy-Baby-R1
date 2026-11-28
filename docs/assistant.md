@@ -22,7 +22,7 @@ Giữ `SELECT` trên tay cầm, nói một câu, rồi nhả.
 
 | Bạn nói (ví dụ) | Robot làm | Robot trả lời (ví dụ) |
 |---|---|---|
-| "Đi tới bình cứu hỏa" | Quét đầu ±25°, chưa thấy thì quay thân 180°; quay về phía vật; đi tới cách khoảng 1 m | "Tới nơi rồi nè." / "Mình tới gần rồi." |
+| "Đi tới bình cứu hỏa" | Quét đầu ±25°, chưa thấy thì quay thân 180°; quay về phía vật; đi tới khi mép thân cách vật khoảng 30 cm | "Tới nơi rồi nè." / "Mình tới gần rồi." |
 | "Đi tới bình nước" (có hai bình) | Hỏi lại, bạn trả lời "bên trái"/"bên phải" | "Bạn muốn bình bên trái hay bên phải?" |
 | (vật bị dời khi robot đang đi) | Nhìn lại, tìm lại, đổi hướng, đi tới chỗ mới (tối đa 2 lần) | "Mình tìm lại được rồi, tới nơi rồi nè." |
 | "Tìm và chỉ vào số 9" | Quét tìm rồi chỉ tay | "Nó ở đằng kia nè." |
@@ -110,7 +110,7 @@ sudo bash ~/HB/integration/scripts/install_assistant.sh enable --operator-ready
 
 - **Khi đang đi, robot không nhìn đường, không phát hiện người hay vật cản.** Khu vực phải trống, luôn có người giữ
   E-stop. Không dùng gần trẻ em khi chưa có kiểm chứng riêng.
-- Giới hạn mặc định (`assistant/config/approach.json`): đi 0.16 m/s, quay 0.2 rad/s, dừng cách vật khoảng 1.0 m, tổng
+- Giới hạn mặc định (`assistant/config/approach.json`): đi 0.16 m/s, quay 0.2 rad/s, dừng khi tâm thân cách vật khoảng 0,55 m (mép thân cách khoảng 30 cm; `standoff_m`, nhỏ nhất 0,43 m), tổng
   quãng lệnh 3 m mỗi tác vụ, mỗi đoạn kế hoạch tối đa 0.5 m, tối đa 2 lần tìm lại trong 150 s.
 - Quãng đi tính theo tích phân lệnh. Trong 5 đoạn thẳng 0.25–0.55 m, đo thước được 0.875–1.01 lần. Chưa đo trên quãng
   dài, sàn khác, hoặc khi quay.
@@ -164,6 +164,7 @@ Dữ liệu mỗi lượt ở `~/hb_assistant/runs/`:
 | `depth model missing` | Chép `dac01` vào `~/HB/assistant/models/` hoặc build lại, rồi `prepare` |
 | `policy pin out of date` | Đã đổi `walk_policy`: `bash ~/HB/integration/scripts/install_assistant.sh pin` |
 | `lacks the approach receiver` | `./hb deploy controller` (đổi controller/policy đang chạy: xem kỹ `./hb diff` trước) |
+| `Read-only file system: '/run/hb-approach/camera.lock'` (robot nói "chưa nhìn rõ") | Thiếu `/etc/tmpfiles.d/hb-approach.conf` (bản `enable` cũ): chạy lại `enable`, hoặc tạo file đó rồi `sudo systemctl restart hb_voice` |
 | Robot nói "Mình chưa nghe rõ" | Chốt camera không nhận được câu nói rõ; giữ SELECT và nói lại |
 | `head target not tracking` trong log tìm | Kiểm tra quyền đầu/tay (START) trong R2+A |
 | Dừng vì "tay cầm vừa lấy lại quyền" | Kiểm tra cần điều khiển/chế độ, rồi ra lệnh lại |
